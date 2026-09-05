@@ -1,0 +1,29 @@
+# Example Warden policy — sandboxing a hypothetical GitHub-issues MCP server.
+# Copy this, adjust the paths/hosts, and pass it to `warden run --policy`.
+
+command: ["node", "./server/index.js"]
+
+filesystem:
+  # Read-only: the server can read from here but not modify anything.
+  read:
+    - "./data/cache"
+  # Read-write: the server can create/modify/delete files here, nowhere else.
+  write:
+    - "./data/output"
+
+network:
+  # Only these hosts are reachable. Everything else, including DNS lookups
+  # for other hosts, is blocked at the sandbox boundary.
+  allow:
+    - "api.github.com"
+
+env:
+  # Only these environment variables are passed through from the parent
+  # shell. Values are NOT stored here — this just lists which names to
+  # forward.
+  allow:
+    - "GITHUB_TOKEN"
+
+limits:
+  memory_mb: 512
+  timeout_s: 300

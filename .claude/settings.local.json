@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(gh search *)",
+      "Bash(gh api *)",
+      "Bash(brew search *)",
+      "Bash(npm search *)"
+    ]
+  }
+}
