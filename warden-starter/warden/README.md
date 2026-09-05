@@ -8,8 +8,11 @@ GitHub five minutes ago. Warden runs them in a restricted sandbox instead,
 so a server only ever gets the files, network hosts, and environment
 variables you explicitly grant it.
 
-> Status: M1 complete (Linux filesystem sandboxing). See [ROADMAP.md](./ROADMAP.md) for
-> what's built and what's next. Network enforcement and audit logging planned for M2.
+> Status: M3 complete on Linux. See [ROADMAP.md](./ROADMAP.md) for what's
+> built and what's next.
+
+> Windows builds are cross-compiled and fail closed today; native Windows
+> enforcement is planned for M5.
 
 ## The problem
 
@@ -28,19 +31,20 @@ warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
 Warden spawns the server inside a sandbox that:
 
 - **Filesystem**: only sees the paths you list, read-only or read-write as you specify. Everything else is invisible, not just "permission denied." (Implemented in M1)
-- **Network**: can only reach the hostnames you allowlist. Everything else is blocked at the sandbox boundary, before DNS even resolves. (Planned for M2 — parsed but not enforced yet)
+- **Network**: can only reach the hostnames you allowlist. Everything else is blocked at the sandbox boundary, before DNS even resolves. (Implemented on Linux)
 - **Environment**: only receives the environment variables you pass through — no automatic inheritance of your full shell environment. (Implemented in M1)
 - **Stdio**: passed through transparently, so the MCP client (Claude, an IDE, etc.) talks to the sandboxed process exactly like it would an unsandboxed one. Sandboxing is invisible to the protocol. (Implemented in M1)
-- **Audit log**: records every file access attempt and network connection attempt — including blocked ones — so you can see what a server *tried* to do. (Planned for M2)
+- **Audit log**: records every file access attempt and network connection attempt — including blocked ones — so you can see what a server *tried* to do. (Implemented on Linux)
 
-> **M1 Status**: Linux filesystem sandboxing with `bwrap` is fully implemented. Network enforcement, audit logging, and resource limits arrive in M2/M3.
+> **M3 Status**: Linux filesystem sandboxing, hostname-restricted egress,
+> JSONL audit logging, trace/init tooling, and resource limits are implemented.
 
-## Quickstart (M1 — Linux filesystem sandboxing implemented)
+## Quickstart (M3 — Linux usability layer implemented)
 
 ```bash
 # 1. Write a policy describing what the server is allowed to touch
 cat > policy.yaml <<EOF
-command: ["node", "server.js"]
+command: ["/usr/bin/node", "server.js"]
 filesystem:
   read: ["./data"]
   write: ["./output"]
@@ -53,13 +57,13 @@ EOF
 # 2. Run the server inside the sandbox
 warden run --policy policy.yaml
 
-# Note: network.allow and limits are parsed but not yet enforced (M2/M3)
+# `network.allow` and limits are enforced on Linux.
 ```
 
 ```bash
 # 1. Write a policy describing what the server is allowed to touch
 cat > policy.yaml <<EOF
-command: ["node", "server.js"]
+command: ["/usr/bin/node", "server.js"]
 filesystem:
   read: ["./data"]
   write: ["./output"]
@@ -75,9 +79,9 @@ EOF
 # 2. Run the server inside the sandbox
 warden run --policy policy.yaml
 
-# 3. Or generate a starter policy by watching what the server does once,
-#    unsandboxed, so you're not writing the policy blind
-warden trace -- node server.js
+# 3. Or generate a starter policy by watching the server once, unsandboxed.
+warden trace -- /usr/bin/node server.js
+warden init -- /usr/bin/node server.js
 ```
 
 ## How it works
@@ -87,6 +91,35 @@ Warden is a thin CLI over OS-native sandboxing primitives — [bubblewrap](https
 on Linux, `sandbox-exec`/Seatbelt on macOS (with a Docker fallback), and a
 policy engine that translates a simple YAML file into the low-level
 namespace/seccomp/network rules each platform actually needs.
+
+## Linux network and audit requirements
+
+Linux network enforcement uses `bwrap` for a private network namespace and
+an HTTP CONNECT proxy for the only egress path. Warden injects `HTTP_PROXY`,
+`HTTPS_PROXY`, and `ALL_PROXY`; applications that need permitted network
+access must honor standard proxy variables. An application that bypasses them
+has no direct route, so its connection and DNS query fail instead.
+
+Complete syscall-level auditing uses `strace`, which Warden runs outside the
+sandbox so the server cannot modify the record. Both `bwrap` and `strace` are
+required on Linux; Warden fails closed if either is unavailable. Events are
+stored as JSON Lines at `${XDG_STATE_HOME:-~/.local/state}/warden/audit.jsonl`
+and can be printed with `warden logs`.
+
+## Trace, starter policies, and limits
+
+`warden trace -- <command...>` runs a command unsandboxed but records its
+file and network syscalls in an isolated trace session. Review that log, then
+run `warden init -- <command...>` to create a non-overwriting `policy.yaml`
+from the newest trace, with only successful observed grants. Use `--log` or
+`--output` to select files.
+`warden logs --tail 50 --follow` prints recent JSONL events and follows new
+ones.
+
+`limits.memory_mb` is a process-tree resident-memory cap, sampled every
+25 ms. `limits.timeout_s` is a wall-clock cap. On either breach Warden sends
+SIGTERM to the server process group, waits briefly, then sends SIGKILL if the
+server did not exit. A limit breach is also recorded in the audit log.
 
 ## Why not just use Docker?
 

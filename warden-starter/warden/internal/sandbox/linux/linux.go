@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package linux implements the Linux sandbox backend using bubblewrap
 // (bwrap). The sandbox is deny-by-default: the process sees only the
 // runtime base (/usr, /lib64), pseudo-filesystems, and the paths granted by
@@ -10,9 +12,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
+	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
+	"github.com/warden-sandbox/warden/internal/proxy"
 )
 
 // runtimeBase are read-only mounts every sandboxed process gets, because a
@@ -127,10 +132,24 @@ func isUnder(path, dir string) bool {
 // could not be started at all. A missing bwrap is an error — Warden never
 // falls back to running the command unsandboxed.
 func Run(cmd []string, p policy.Policy) (int, error) {
-	return runWithEnv(cmd, p, os.Environ())
+	// Check the core backend before opening persistent state so a missing
+	// bwrap always reports the real, actionable failure.
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		return 0, fmt.Errorf("bwrap not found: %w (required for the Linux sandbox backend; see ARCHITECTURE.md)", err)
+	}
+	logFile, _, err := audit.OpenDefault()
+	if err != nil {
+		return 0, fmt.Errorf("open audit log: %w", err)
+	}
+	defer logFile.Close()
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile))
 }
 
 func runWithEnv(cmd []string, p policy.Policy, parentEnv []string) (int, error) {
+	return runWithEnvAndAudit(cmd, p, parentEnv, nil)
+}
+
+func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger) (int, error) {
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
 		return 0, fmt.Errorf("bwrap not found: %w (required for the Linux sandbox backend; see ARCHITECTURE.md)", err)
@@ -140,20 +159,95 @@ func runWithEnv(cmd []string, p policy.Policy, parentEnv []string) (int, error) 
 	if err != nil {
 		return 0, fmt.Errorf("build bwrap args: %w", err)
 	}
+	// The host-side proxy has the only external network socket.  The target
+	// gets a fresh network namespace (above), where direct connections have
+	// no route; it can only reach the loopback bridge below.
+	eg, err := proxy.Start(p.Network.Allow, logger)
+	if err != nil {
+		return 0, fmt.Errorf("start egress proxy: %w", err)
+	}
+	defer eg.Close()
+	bridgeExe, err := os.Executable()
+	if err != nil {
+		return 0, fmt.Errorf("locate proxy bridge executable: %w", err)
+	}
+	const bridgePath = "/.warden/proxy-bridge"
+	const proxyDir = "/.warden/host-proxy"
+	const socketPath = proxyDir + "/egress.sock"
+	args = append(args,
+		"--ro-bind", bridgeExe, bridgePath,
+		// Bind the socket's parent directory rather than a socket inode:
+		// Linux reliably bind-mounts directories, while socket-file bind
+		// mounts vary by kernel. The directory has mode 0700 and contains
+		// only this one read-only proxy endpoint.
+		"--ro-bind", filepath.Dir(eg.SocketPath()), proxyDir,
+	)
 
-	sub := exec.Command(bwrap, append(args, cmd...)...)
+	bridgeArgs := []string{bridgePath, "__proxy-bridge", "--socket", socketPath, "--listen", "127.0.0.1:18080", "--"}
+	bridgeArgs = append(bridgeArgs, cmd...)
+	runArgs := append(args, bridgeArgs...)
+	program := bwrap
+	tracePath := ""
+	if logger != nil {
+		strace, err := exec.LookPath("strace")
+		if err != nil {
+			return 0, fmt.Errorf("strace not found: required for complete file/network auditing on Linux: %w", err)
+		}
+		trace, err := os.CreateTemp("", "warden-strace-*.log")
+		if err != nil {
+			return 0, fmt.Errorf("create audit trace: %w", err)
+		}
+		tracePath = trace.Name()
+		if err := trace.Close(); err != nil {
+			return 0, fmt.Errorf("close audit trace: %w", err)
+		}
+		defer os.Remove(tracePath)
+		program = strace
+		runArgs = append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath, bwrap}, runArgs...)
+	}
+	sub := exec.Command(program, runArgs...)
 	sub.Stdin = os.Stdin
 	sub.Stdout = os.Stdout
 	sub.Stderr = os.Stderr
+	// A dedicated group lets M3 cleanly terminate all descendants when a
+	// policy limit is breached without ever signalling Warden itself.
+	sub.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	// Deny by default for the environment: only policy-allowlisted names
 	// are forwarded from the parent.
-	sub.Env = envfilter.Filter(parentEnv, p.EnvAllowlist())
+	sub.Env = append(envfilter.Filter(parentEnv, p.EnvAllowlist()),
+		"HTTP_PROXY=http://127.0.0.1:18080",
+		"HTTPS_PROXY=http://127.0.0.1:18080",
+		"ALL_PROXY=http://127.0.0.1:18080",
+		"NO_PROXY=",
+	)
 
-	if err := sub.Run(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+	if err := sub.Start(); err != nil {
+		return 0, fmt.Errorf("start sandboxed process: %w", err)
+	}
+	runErr, limitErr := waitWithLimits(sub, p.Limits)
+	if tracePath != "" {
+		f, err := os.Open(tracePath)
+		if err != nil {
+			return 0, fmt.Errorf("open completed audit trace: %w", err)
+		}
+		importErr := audit.ImportStrace(f, logger)
+		closeErr := f.Close()
+		if importErr != nil {
+			return 0, fmt.Errorf("import complete audit trace: %w", importErr)
+		}
+		if closeErr != nil {
+			return 0, fmt.Errorf("close completed audit trace: %w", closeErr)
+		}
+	}
+	if limitErr != nil {
+		_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: limitErr.Limit, Allowed: false, Reason: limitErr.Error()})
+		return 0, limitErr
+	}
+	if runErr != nil {
+		if exitErr, ok := runErr.(*exec.ExitError); ok {
 			return exitErr.ExitCode(), nil
 		}
-		return 0, fmt.Errorf("run sandboxed process: %w", err)
+		return 0, fmt.Errorf("run sandboxed process: %w", runErr)
 	}
 	return 0, nil
 }

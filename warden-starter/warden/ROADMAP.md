@@ -26,20 +26,20 @@ you could actually demo, not just an internal refactor.
 **Known limitations (M1):** No network enforcement, no resource limits.
 
 ## M2 — Network enforcement
-- [ ] Local egress proxy with hostname allowlist
-- [ ] Network namespace setup that forces the sandboxed process through the
+- [x] Local egress proxy with hostname allowlist
+- [x] Network namespace setup that forces the sandboxed process through the
       proxy (no direct egress path)
-- [ ] Block DNS resolution for non-allowlisted hosts (not just the TCP
+- [x] Block DNS resolution for non-allowlisted hosts (not just the TCP
       connect — prevents leakage via DNS queries themselves)
-- [ ] Audit logger: structured log of every file/network attempt, allowed
+- [x] Audit logger: structured log of every file/network attempt, allowed
       or blocked
 
 ## M3 — Usability layer
-- [ ] `warden trace` — run unsandboxed but instrumented, log all access
+- [x] `warden trace` — run unsandboxed but instrumented, log all access
       attempts
-- [ ] `warden init` — generate a starter policy.yaml from a trace log
-- [ ] `warden logs` — tail/inspect the audit log
-- [ ] Resource limits: memory and wall-clock timeout enforcement, process
+- [x] `warden init` — generate a starter policy.yaml from a trace log
+- [x] `warden logs` — tail/inspect the audit log
+- [x] Resource limits: memory and wall-clock timeout enforcement, process
       killed cleanly on breach
 
 ## M4 — macOS support
@@ -48,7 +48,20 @@ you could actually demo, not just an internal refactor.
 - [ ] Backend auto-detection (`warden run` picks the best available backend
       unless `--backend` is passed explicitly)
 
-## M5 — Polish & distribution
+## M5 — Windows support
+- [ ] AppContainer backend with a restricted token and explicit filesystem
+      capabilities derived from the policy
+- [ ] Windows Filtering Platform (or equivalent per-AppContainer rules) for
+      hostname-restricted egress and blocked DNS resolution
+- [ ] ETW-based file/network audit events, including blocked attempts
+- [ ] Job Object memory and wall-clock limits with process-tree termination
+- [ ] Backend-aware Windows integration and escape tests
+
+**Security gate:** Windows support must fail closed when AppContainer,
+network filtering, auditing, or Job Object setup cannot be applied. A plain
+`CreateProcess` fallback is never acceptable.
+
+## M6 — Polish & distribution
 - [ ] Package as a single static binary (Homebrew tap, npm wrapper for
       Node users, or both)
 - [ ] Docs site with a policy schema reference and worked examples
@@ -59,8 +72,7 @@ you could actually demo, not just an internal refactor.
       threat model and known-limitations section matters before anyone
       relies on it
 
-## M6 — Stretch goals (post-1.0)
-- [ ] Windows backend (AppContainer or WSL2 delegation)
+## M7 — Stretch goals (post-1.0)
 - [ ] Interactive approval mode — prompt the user the first time a server
       requests an access not in the policy, rather than hard-failing
 - [ ] Integration with MCP gateways (e.g. wrap servers registered in a

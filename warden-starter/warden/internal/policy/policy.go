@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -30,15 +31,14 @@ type Policy struct {
 	// Filesystem grants read-only and read-write paths inside the sandbox.
 	Filesystem Filesystem `yaml:"filesystem"`
 
-	// Network grants hostnames the sandbox may connect to. Parsed, but not
-	// enforced until M2 (see ROADMAP.md).
+	// Network grants hostnames the sandbox may connect to.
 	Network Network `yaml:"network"`
 
 	// Env lists environment variable names passed through from the parent.
 	// Values are never stored in the policy file.
 	Env Env `yaml:"env"`
 
-	// Limits is parsed, but not enforced until M3.
+	// Limits constrains address-space use and wall-clock execution time.
 	Limits Limits `yaml:"limits"`
 }
 
@@ -178,6 +178,18 @@ func (p *Policy) Validate() error {
 			return fmt.Errorf("env.allow: %q is not a valid environment variable name", name)
 		}
 	}
+	if p.Limits.MemoryMB < 0 {
+		return fmt.Errorf("limits.memory_mb must not be negative")
+	}
+	if uint64(p.Limits.MemoryMB) > ^uint64(0)/(1024*1024) {
+		return fmt.Errorf("limits.memory_mb is too large")
+	}
+	if p.Limits.TimeoutS < 0 {
+		return fmt.Errorf("limits.timeout_s must not be negative")
+	}
+	if uint64(p.Limits.TimeoutS) > uint64((time.Duration(1<<63-1))/time.Second) {
+		return fmt.Errorf("limits.timeout_s is too large")
+	}
 	return nil
 }
 
@@ -268,11 +280,5 @@ func (p *Policy) EnvAllowlist() []string {
 // sections that are parsed but not yet enforced by this build.
 func (p *Policy) UnimplementedAdvisories() []string {
 	var out []string
-	if len(p.Network.Allow) > 0 {
-		out = append(out, "network.allow is parsed but not enforced in this build (M2)")
-	}
-	if p.Limits.MemoryMB > 0 || p.Limits.TimeoutS > 0 {
-		out = append(out, "limits are parsed but not enforced in this build (M3)")
-	}
 	return out
 }

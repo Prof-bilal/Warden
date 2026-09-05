@@ -1,3 +1,5 @@
+//go:build linux
+
 package linux
 
 import (
@@ -21,7 +23,7 @@ func requireBwrap(t *testing.T) string {
 	if err != nil {
 		t.Skip("bwrap not installed — skipping sandbox integration test")
 	}
-	if err := exec.Command(bwrap, "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib64", "/lib64", "/usr/bin/true").Run(); err != nil {
+	if err := exec.Command(bwrap, "--unshare-user", "--unshare-net", "--uid", "0", "--gid", "0", "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib64", "/lib64", "/usr/bin/true").Run(); err != nil {
 		t.Skipf("bwrap sandbox unusable on this host (%v) — skipping", err)
 	}
 	return bwrap

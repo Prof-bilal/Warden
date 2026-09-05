@@ -3,12 +3,13 @@
 This project is early-stage — see ROADMAP.md for the current milestone.
 Right now the most useful contributions are:
 
-1. **M1 groundwork**: a working `internal/policy` package (parse + validate
-   the YAML schema in ARCHITECTURE.md) and an `internal/sandbox/linux`
-   package that shells out to `bwrap` with the right bind-mount arguments.
+1. **Platform backends**: M4 Seatbelt/Docker work on macOS and M5
+   AppContainer, Windows Filtering Platform, ETW, and Job Object work on
+   Windows. Every backend must fail closed when an enforcement primitive is
+   unavailable.
 2. **Test servers**: point us at (or write) small, safe MCP servers we can
    use as integration test fixtures for sandboxing behavior.
-3. **Schema review**: poke holes in the policy.yaml schema in
+3. **Schema review**: poke holes in the policy YAML schema in
    ARCHITECTURE.md before too much code depends on it.
 
 ## Development setup
@@ -17,10 +18,16 @@ Right now the most useful contributions are:
 git clone <this repo>
 cd warden
 go build ./...
+go vet ./...
+go test ./...
 ```
 
-(Once M1 lands, this section will grow to include how to run the test suite
-against a real bwrap sandbox.)
+Before changing shared code, also verify that it cross-builds:
+
+```bash
+GOOS=darwin GOARCH=arm64 go build ./...
+GOOS=windows GOARCH=amd64 go build ./...
+```
 
 ## Pull requests
 

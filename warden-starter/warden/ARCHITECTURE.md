@@ -46,8 +46,8 @@ Entry point. Subcommands:
 - `warden run --policy <file> -- <command...>` — run a server under a policy.
 - `warden trace -- <command...>` — run **unsandboxed** but instrumented,
   logging every file/network access, to help generate a starter policy.
-- `warden init` — scaffold a policy file from a trace log or from
-  interactive prompts.
+- `warden init [--log <file>] [--output <file>] [-- <command...>]` — scaffold
+  a non-overwriting policy file from a JSONL trace log.
 - `warden logs` — view/tail the audit log for a past or running session.
 
 ### 2. Policy Engine
@@ -81,30 +81,49 @@ One implementation per platform, behind a common interface
   explicitly requested via `--backend docker`. Heavier, but works everywhere
   Docker does, and is a reasonable v1 for macOS/Windows before a native
   backend exists.
-- **Windows — deferred.** Likely AppContainer or a WSL2 delegation; not in
-  scope for the first milestones (see Roadmap).
+- **Windows — M5.** An AppContainer backend will use a restricted token,
+  filesystem capabilities, Windows Filtering Platform rules, ETW audit
+  events, and a Job Object for process-tree limits. Until all of those
+  enforcement primitives are installed successfully, Warden refuses to run;
+  it never falls back to a plain Windows process.
 
 ### 4. Egress Proxy
 
 Filesystem restriction is handled by the sandbox backend directly (bind
-mounts), but network restriction needs its own layer: a small local proxy
-that the sandboxed process is forced to route through (via `HTTP_PROXY`/
-`HTTPS_PROXY` env injection plus a network namespace that blocks direct
-egress). The proxy checks the destination host against the policy's
-`network.allow` list before permitting the connection, and logs everything,
-allowed or not.
+mounts), but network restriction uses a small local proxy. The sandbox gets a
+fresh network namespace with no external route. A loopback bridge is its only
+network listener; it forwards HTTP proxy traffic over a private Unix socket to
+the host-side proxy. `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` point to that
+bridge. Direct connects and direct DNS have no route; the host-side proxy
+checks `network.allow` before it performs any DNS lookup or opens an upstream
+connection. It logs every allow/deny decision.
 
 ### 5. Audit Logger
 
 Structured (JSON-lines) log of every access attempt: timestamp, type
-(file/network/env), resource, and allowed/blocked. This is what `trace`
-mode and `warden logs` both read from — it's the same logger, just running
-in "observe and allow everything" mode vs. "observe and enforce" mode.
+(file/network), action, resource, allowed/blocked, and reason. On Linux,
+Warden runs `strace -f` outside the sandbox to capture file and low-level
+network syscalls without granting the target write access to the evidence.
+The egress proxy records its hostname decisions separately. `warden logs`
+prints the persistent JSONL stream.
+
+### 6. Limits and trace mode
+
+`trace` runs a command without sandbox restrictions under external `strace`
+instrumentation, so the observed process cannot edit its own trace. `init`
+uses only successful observed accesses to produce a conservative starter
+policy; it omits runtime paths already provided by the Linux backend.
+
+For a sandboxed Linux run, Warden samples the resident memory of the launcher
+and its descendants every 25 ms and enforces `limits.memory_mb`. It also
+enforces `limits.timeout_s` with a wall-clock timer. On a breach it signals
+the dedicated process group with SIGTERM and escalates to SIGKILL after 750 ms
+if necessary; the breach is a structured audit event.
 
 ## Policy schema (draft)
 
 ```yaml
-command: ["node", "server.js"]   # required: how to start the MCP server
+command: ["/usr/bin/node", "server.js"] # required: use an absolute executable path
 
 filesystem:
   read: ["./data"]               # read-only bind mounts

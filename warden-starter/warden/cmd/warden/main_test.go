@@ -80,3 +80,23 @@ func TestParseRunArgs(t *testing.T) {
 		})
 	}
 }
+
+func TestParseM3Args(t *testing.T) {
+	log, output, cmd, err := parseInitArgs([]string{"--log", "trace.jsonl", "--output", "starter.yaml", "--", "/usr/bin/node", "server.js"})
+	if err != nil || log != "trace.jsonl" || output != "starter.yaml" || !reflect.DeepEqual(cmd, []string{"/usr/bin/node", "server.js"}) {
+		t.Fatalf("parseInitArgs = %q, %q, %v, %v", log, output, cmd, err)
+	}
+	log, tail, follow, err := parseLogsArgs([]string{"--log", "audit.jsonl", "--tail", "10", "--follow"})
+	if err != nil || log != "audit.jsonl" || tail != 10 || !follow {
+		t.Fatalf("parseLogsArgs = %q, %d, %v, %v", log, tail, follow, err)
+	}
+	if _, _, _, err := parseLogsArgs([]string{"--tail", "nope"}); err == nil {
+		t.Fatal("expected invalid tail error")
+	}
+}
+
+func TestLastLines(t *testing.T) {
+	if got, want := string(lastLines([]byte("one\ntwo\nthree\n"), 2)), "two\nthree\n"; got != want {
+		t.Errorf("lastLines = %q, want %q", got, want)
+	}
+}

@@ -215,12 +215,21 @@ func TestValidateRejectsBadEnvNames(t *testing.T) {
 func TestUnimplementedAdvisories(t *testing.T) {
 	p := Policy{Network: Network{Allow: []string{"api.github.com"}}, Limits: Limits{MemoryMB: 512}}
 	advisories := p.UnimplementedAdvisories()
-	if len(advisories) != 2 {
-		t.Fatalf("UnimplementedAdvisories() = %v, want 2", advisories)
+	if len(advisories) != 0 {
+		t.Fatalf("UnimplementedAdvisories() = %v, want none", advisories)
 	}
 
 	none := Policy{}
 	if got := none.UnimplementedAdvisories(); len(got) != 0 {
 		t.Errorf("expected no advisories, got %v", got)
+	}
+}
+
+func TestValidateRejectsNegativeLimits(t *testing.T) {
+	for _, limits := range []Limits{{MemoryMB: -1}, {TimeoutS: -1}} {
+		p := Policy{Limits: limits}
+		if err := p.Validate(); err == nil {
+			t.Errorf("Validate(%+v) succeeded, want error", limits)
+		}
 	}
 }

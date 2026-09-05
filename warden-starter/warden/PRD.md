@@ -44,9 +44,11 @@ This section is copied forward from ARCHITECTURE.md and is not re-derived here:
 
 ## Constraints & assumptions
 
-- Platform support order is Linux first, then macOS, with Docker as a fallback where native backends are unavailable.
-- The three backends in scope for the project are bubblewrap on Linux, Seatbelt/sandbox-exec on macOS, and Docker as a fallback backend.
-- Windows is explicitly deferred and is not in scope for v1.
+- Platform support order is Linux first, then macOS, then Windows.
+- The native backends in scope are bubblewrap on Linux, Seatbelt/sandbox-exec
+  on macOS, and AppContainer plus Windows Filtering Platform on Windows.
+- Windows support is an M5 milestone. Until it is complete, Windows builds
+  fail closed rather than running an unrestricted process.
 - The CLI is expected to be a thin orchestration layer over OS-native primitives, not a custom sandbox implementation.
 - The project is early-stage and pre-alpha; the README explicitly says it is not ready for production use yet.
 
@@ -60,6 +62,10 @@ This section is copied forward from ARCHITECTURE.md and is not re-derived here:
 ## Open questions
 
 - The architecture doc suggests Docker is a fallback backend for macOS/Windows, but the README's quickstart says Warden prefers native primitives and only mentions Docker as a reason not to use it. The repo does not yet specify whether Docker is a true fallback for all non-Linux environments or an explicit opt-in mode.
-- The repo describes `trace`/`init` as part of M3, but the policy schema draft does not yet define the exact on-disk representation of trace logs or the user approval flow for generated policies.
-- The architecture doc sketches an egress proxy with `HTTP_PROXY`/`HTTPS_PROXY` injection, but it does not yet specify whether the proxy is implemented as a separate process, a local daemon, or a library inside the sandbox backend.
-- The repository does not yet commit to whether `limits` in the policy are mandatory or optional for M1/M2; the example policy includes them, but the early roadmap treats resource limits as M3.
+- Trace sessions are JSON Lines files in Warden's state directory; `init` uses
+  the newest session by default and never overwrites an existing policy. An
+  interactive approval flow for individual suggested grants remains open.
+- The Linux egress proxy is launched by the sandbox backend for each run and
+  is reached through an in-namespace loopback bridge.
+- Limits are optional policy fields. When configured on Linux,
+  `memory_mb` and `timeout_s` are enforced for the sandboxed process tree.

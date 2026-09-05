@@ -21,7 +21,8 @@ These tests should run without OS dependencies because they test policy semantic
 
 Each sandbox backend should have an integration test layer that exercises the actual OS primitive in a controlled environment. For example:
 
-- Linux tests should use `bwrap` if available.
+- Linux tests should use `bwrap` and `strace` if available. Network tests
+  also require a host that permits an unprivileged network namespace.
 - macOS tests should use `sandbox-exec`/Seatbelt when available.
 - Docker-based fallback tests should run only when the Docker backend is expected to be in use.
 
@@ -38,6 +39,16 @@ Escape tests are the tests that validate the actual security promise of the prod
 - exceed a configured resource limit
 
 These should be explicit, reproducible tests with small fixtures, not implicit assumptions hidden inside a broader integration test.
+
+For Linux M2, assert both paths: a standard HTTP proxy request to an allowed
+host succeeds, while a direct TCP connection and a direct DNS query fail in
+the private network namespace. Check the JSONL audit log for the proxy's
+hostname decision and the corresponding `strace` syscall event.
+
+For M3, unit-test timeout and memory breaches against a child process and
+assert that the watcher returns a typed limit error after terminating the
+child process group. Test `init` with mixed successful and blocked events to
+ensure it never converts a blocked event into a policy grant.
 
 ## Fixtures
 

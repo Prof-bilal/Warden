@@ -16,9 +16,7 @@ filesystem:
     - "./data/output"
 
 network:
-  # NOT YET ENFORCED (M2). Parsed and validated, and `warden run` prints a
-  # warning so you are never misled into thinking egress is restricted.
-  # Once M2 lands: only these hosts are reachable, and DNS lookups for other
+  # Enforced on Linux: only these hosts are reachable. DNS lookups for other
   # hosts are blocked at the sandbox boundary.
   allow:
     - "api.github.com"
@@ -31,7 +29,7 @@ env:
     - "GITHUB_TOKEN"
 
 limits:
-  # NOT YET ENFORCED (M3). Parsed for schema compatibility; `warden run`
-  # warns that these values have no effect in this build.
+  # Enforced on Linux: resident memory for the process tree and wall-clock
+  # time. Warden terminates the process group cleanly on a breach.
   memory_mb: 512
   timeout_s: 300
