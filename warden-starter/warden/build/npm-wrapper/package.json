@@ -1,0 +1,16 @@
+{
+  "name": "@warden-sandbox/mcp-warden",
+  "version": "0.1.0",
+  "description": "npm wrapper for the Warden sandbox CLI",
+  "main": "index.js",
+  "bin": {
+    "warden": "./bin/warden"
+  },
+  "files": ["bin/"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  }
+}

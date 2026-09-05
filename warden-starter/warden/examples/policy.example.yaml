@@ -1,35 +1,90 @@
-# Example Warden policy — sandboxing a hypothetical GitHub-issues MCP server.
-# Copy this, adjust the paths/hosts, and pass it to `warden run --policy`.
+# Warden Policy — Comprehensive Reference
+# =========================================
 #
-# Relative paths below are resolved against THIS FILE's directory, not your
-# shell's CWD. The executable must be an absolute path: the sandbox binds its
-# parent directory, and a bare command name would resolve nowhere inside.
+# This file documents the full policy schema with examples for every field.
+# Copy this file (or any example in this directory) and adjust it for your
+# MCP server. Relative paths are resolved against THIS FILE's directory, not
+# your shell's CWD. The executable must be an absolute path because the
+# sandbox binds its parent directory — a bare command name would resolve
+# nowhere inside.
+#
+# Run with: warden run --policy policy.example.yaml -- <command...>
+# (The -- <command...> is optional if `command` is set in the file.)
 
-command: ["/usr/bin/node", "./server/index.js"]
+# ── Command ──────────────────────────────────────────────────────────────────
+#
+# How to start the sandboxed server. If omitted, you must provide the command
+# after `--` on the CLI. Must be an absolute path to the executable; the
+# remaining items are arguments.
+#
+# Tip: use `warden trace -- <cmd>` first to observe what your server touches,
+# then feed the JSONL log into `warden init` to auto-generate a starter policy.
+command: ["/usr/bin/node", "./server/dist/index.js"]
 
+# ── Filesystem ───────────────────────────────────────────────────────────────
+#
+# The sandbox is deny-by-default. Only paths listed here are visible inside
+# the sandbox, mounted at the same absolute path as on the host.
 filesystem:
-  # Read-only: the server can read from here but not modify anything.
+  # Read-only grants: the server can open and read files here but cannot
+  # modify, create, or delete anything. Grant the smallest set of directories
+  # the server actually needs — never the whole home or project root unless
+  # required.
   read:
-    - "./data/cache"
-  # Read-write: the server can create/modify/delete files here, nowhere else.
+    - "./data/cache"      # Example: local response cache
+    - "./config/secrets"  # Example: credential files the server must read
+
+  # Read-write grants: the server can create, modify, and delete files here.
+  # Keep this separate from source code to limit blast radius if the server
+  # is compromised. An empty list means no write access at all.
   write:
-    - "./data/output"
+    - "./data/output"     # Example: generated artifacts, caches that need writes
 
+# ── Network ──────────────────────────────────────────────────────────────────
+#
+# The sandbox gets a fresh network namespace with no external route. A loopback
+# bridge forwards HTTP/HTTPS traffic to the host-side egress proxy, which checks
+# `network.allow` before performing any DNS lookup or connection. DNS lookups
+# for disallowed hosts are blocked at the sandbox boundary.
+#
+# Only bare hostnames or IP literals are accepted — ports, paths, and URLs are
+# rejected (the egress layer handles port selection). Wildcards are not
+# supported; list each host your server needs to reach.
 network:
-  # Enforced on Linux: only these hosts are reachable. DNS lookups for other
-  # hosts are blocked at the sandbox boundary.
   allow:
-    - "api.github.com"
+    - "api.github.com"   # Example: REST and GraphQL both live under this hostname
+    - "slack.com"        # Example: web UI
+    - "api.slack.com"    # Example: API
+    - "localhost"        # Example: local database
+    - "db.internal.example.com"  # Example: internal service
 
+# ── Environment ──────────────────────────────────────────────────────────────
+#
+# Only the names listed here are forwarded from the parent shell. Values are
+# NEVER stored in the policy file — this list only controls what gets passed
+# through. An empty allowlist means the sandboxed process starts with no
+# environment variables (except those explicitly set by the runtime).
+#
+# Variable names must be valid identifiers (no spaces, tabs, newlines, or `=`).
 env:
-  # Only these environment variables are passed through from the parent
-  # shell. Values are NOT stored here — this just lists which names to
-  # forward.
   allow:
-    - "GITHUB_TOKEN"
+    - "GITHUB_TOKEN"      # Example: authentication credential
+    - "SLACK_BOT_TOKEN"   # Example: bot auth
+    - "HOME"              # Example: often needed by Node.js or library init
+    - "PATH"              # Example: if the server spawns child processes
 
+# ── Limits ───────────────────────────────────────────────────────────────────
+#
+# Resource constraints enforced on Linux (and best-effort on other platforms).
+# Warden terminates the process group cleanly when a limit is breached.
+# Set to 0 or omit to disable that particular limit.
 limits:
-  # Enforced on Linux: resident memory for the process tree and wall-clock
-  # time. Warden terminates the process group cleanly on a breach.
-  memory_mb: 512
+  # Resident memory cap for the entire process tree (in MB). Use this to bound
+  # memory leaks or runaway allocations. Example: 128 for lightweight servers,
+  # 512+ for database or media-heavy workloads.
+  memory_mb: 256
+
+  # Wall-clock time limit (in seconds). Useful for preventing hangs or
+  # indefinite loops. Long-running tasks (migrations, exports) may need higher
+  # values or a longer timeout.
   timeout_s: 300

@@ -1,0 +1,30 @@
+site_name: Warden
+site_description: A lightweight sandbox runtime for MCP servers
+site_url: https://warden-sandbox.github.io
+
+theme:
+  name: material
+  palette:
+    primary: blue
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/shield-lock
+repo_url: https://github.com/warden-sandbox/warden
+repo_name: warden-sandbox/warden
+
+nav:
+  - Home: index.md
+  - Schema Reference: schema.md
+  - Security Review: security.md
+  - Architecture: architecture.md
+  - Example Policies: https://github.com/warden-sandbox/warden/tree/main/warden-starter/warden/examples
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition

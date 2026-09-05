@@ -76,11 +76,24 @@ One implementation per platform, behind a common interface
     parent environment. Empty allowlist ⇒ empty environment.
 - **macOS — `sandbox-exec` (Seatbelt profiles).** Apple-provided, deprecated
   but functional and still the most practical unprivileged option; profile
-  is generated from the policy.
-- **Fallback — Docker.** Used when neither of the above is available, or
-  explicitly requested via `--backend docker`. Heavier, but works everywhere
-  Docker does, and is a reasonable v1 for macOS/Windows before a native
-  backend exists.
+  is generated from the policy. Network is deny-by-default except loopback
+  TCP to the egress proxy bridge (and its Unix socket). Structured file-deny
+  audit events are Linux/`strace`-only; Seatbelt still enforces file denies
+  as EPERM, and the egress proxy records network allow/deny decisions.
+- **Fallback — Docker.** Used when the native backend for the current OS is
+  unavailable, or explicitly requested via `--backend docker`. Preference
+  order for `--backend auto` (the default):
+  - Linux: `bwrap` → Docker → fail closed
+  - macOS: `sandbox-exec` → Docker → fail closed
+  - other: Docker → fail closed
+  Heavier than native primitives, but works anywhere a Docker daemon is
+  usable. Containers run `--network none` with the same loopback proxy-bridge
+  pattern as Linux; host paths are bind-mounted deny-by-default. The image
+  defaults to `alpine:3.20` (override with `WARDEN_DOCKER_IMAGE`). The
+  in-container proxy bridge must be a Linux ELF `warden` binary: on Linux
+  hosts the current executable is used; on macOS/Windows set
+  `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary (macOS auto-detect
+  still prefers Seatbelt when `sandbox-exec` is present).
 - **Windows — M5.** An AppContainer backend will use a restricted token,
   filesystem capabilities, Windows Filtering Platform rules, ETW audit
   events, and a Job Object for process-tree limits. Until all of those

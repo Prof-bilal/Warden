@@ -1,0 +1,35 @@
+# Example Warden policy — @modelcontextprotocol/server-slack
+# Copy this and adjust the command path and token name as needed.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path.
+
+command: ["/usr/bin/node", "./server/dist/index.js"]
+
+filesystem:
+  # Read-write cache for Slack OAuth tokens or rate-limit state.
+  # Using the same dir for read/write avoids duplicate grants.
+  read:
+    - "./data/cache"
+  write:
+    - "./data/cache"
+
+network:
+  # Slack's web UI and API endpoints. Both hostnames are typically needed.
+  allow:
+    - "slack.com"
+    - "api.slack.com"
+
+env:
+  # SLACK_BOT_TOKEN and SLACK_TEAM_ID are required by the Slack MCP server.
+  # Set them in your shell before running; only the listed names are forwarded.
+  allow:
+    - "SLACK_BOT_TOKEN"
+    - "SLACK_TEAM_ID"
+    - "HOME"
+
+limits:
+  # Network-bound servers allocate more memory for buffers; 300s covers
+  # extended conversations or batch history exports.
+  memory_mb: 256
+  timeout_s: 300

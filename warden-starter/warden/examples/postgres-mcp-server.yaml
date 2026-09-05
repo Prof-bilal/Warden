@@ -1,0 +1,40 @@
+# Example Warden policy — PostgreSQL database MCP server
+# Copy this and adjust hostnames, paths, and credentials as needed.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path.
+
+command: ["/usr/bin/node", "./server/dist/index.js"]
+
+filesystem:
+  # PostgreSQL client libraries read .pgpass and .postgresql for credentials
+  # and SSL config. Grant only the exact paths you need — never the whole home.
+  read:
+    - "./config/.pgpass"
+    - "./config/.postgresql"
+  # Database servers typically don't write files; keep this empty.
+  write: []
+
+network:
+  # Allow connections to the database host(s) only. Replace with your
+  # actual hostnames; wildcard hosts are not supported — list each one.
+  allow:
+    - "localhost"
+    - "db.internal.example.com"
+
+env:
+  # Standard PostgreSQL connection variables. Values are set in your shell,
+  # not in this file. Warden forwards only the names in this list.
+  allow:
+    - "PGHOST"
+    - "PGPORT"
+    - "PGUSER"
+    - "PGPASSWORD"
+    - "PGSSLMODE"
+    - "HOME"
+
+limits:
+  # Database servers hold connection pools and query buffers in memory.
+  # 600s covers long-running migrations or bulk exports.
+  memory_mb: 512
+  timeout_s: 600

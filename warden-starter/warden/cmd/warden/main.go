@@ -1,8 +1,10 @@
 // Command warden is the CLI entry point for the Warden sandbox runtime.
 //
 // Subcommands:
-//   - `warden run --policy <file> -- <command...>` runs a server under a
-//     policy, sandboxed by the current OS backend (Linux: bubblewrap).
+//   - `warden run --policy <file> [--backend auto|linux|seatbelt|docker] --
+//     <command...>` runs a server under a policy. Backend auto-detection
+//     prefers the OS-native sandbox (bwrap / sandbox-exec) and falls back to
+//     Docker only when the native primitive is missing.
 //   - `warden trace`, `warden init`, and `warden logs` are usability tools.
 package main
 
@@ -49,18 +51,25 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, `warden - a sandbox runtime for MCP servers
 
 Usage:
-  warden run --policy <file> -- <command...>   Run a server under a policy
+  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] -- <command...>
+                                                Run a server under a policy
   warden trace -- <command...>                 Run unsandboxed and record access attempts
   warden init [--log <file>] [--output <file>] [-- <command...>]
                                                 Generate a starter policy from an audit log
   warden logs [--tail <n>] [--follow] [--log <file>]
                                                 Inspect or follow the audit log
 
-See ROADMAP.md. M1–M3 are implemented on Linux.`)
+Backends (auto is the default):
+  linux     bubblewrap (bwrap) — preferred on Linux
+  seatbelt  sandbox-exec — preferred on macOS
+  windows   AppContainer / WFP / Job Object — preferred on Windows
+  docker    container fallback when a native backend is unavailable
+
+See ROADMAP.md. M1–M5 are implemented (Linux native + macOS Seatbelt + Windows AppContainer + Docker).`)
 }
 
 func cmdRun(args []string) {
-	policyPath, cmdTail, err := parseRunArgs(args)
+	policyPath, backend, cmdTail, err := parseRunArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		printUsage()
@@ -83,7 +92,7 @@ func cmdRun(args []string) {
 		os.Exit(2)
 	}
 
-	// The sandbox needs an absolute path for the executable: bwrap binds
+	// The sandbox needs an absolute path for the executable: backends bind
 	// the parent dir, and a bare command name would resolve nowhere.
 	if !filepath.IsAbs(cmd[0]) {
 		fmt.Fprintf(os.Stderr, "warden run: command %q is not an absolute path; sandbox requires a full path to the executable\n", cmd[0])
@@ -94,7 +103,7 @@ func cmdRun(args []string) {
 		os.Exit(2)
 	}
 
-	exitCode, err := sandbox.Run(cmd, p)
+	exitCode, err := sandbox.Run(cmd, p, backend)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		os.Exit(1)
@@ -102,48 +111,62 @@ func cmdRun(args []string) {
 	os.Exit(exitCode)
 }
 
-// parseRunArgs splits `--policy <file> <command...>` into the policy path
-// and the command tail. A `--` separator is optional but supported: it lets
-// the command start with a flag named like a warden option.
-func parseRunArgs(args []string) (policyPath string, cmd []string, err error) {
+// parseRunArgs splits run flags into the policy path, optional backend, and
+// command tail. A `--` separator is optional but supported: it lets the
+// command start with a flag named like a warden option.
+func parseRunArgs(args []string) (policyPath, backend string, cmd []string, err error) {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
 		case arg == "--policy" || arg == "-policy":
 			if i+1 >= len(args) {
-				return "", nil, fmt.Errorf("flag %s requires a value", arg)
+				return "", "", nil, fmt.Errorf("flag %s requires a value", arg)
 			}
 			if policyPath != "" {
-				return "", nil, fmt.Errorf("--policy specified twice")
+				return "", "", nil, fmt.Errorf("--policy specified twice")
 			}
 			policyPath = args[i+1]
 			i++
 		case strings.HasPrefix(arg, "--policy="):
 			if policyPath != "" {
-				return "", nil, fmt.Errorf("--policy specified twice")
+				return "", "", nil, fmt.Errorf("--policy specified twice")
 			}
 			policyPath = strings.TrimPrefix(arg, "--policy=")
+		case arg == "--backend" || arg == "-backend":
+			if i+1 >= len(args) {
+				return "", "", nil, fmt.Errorf("flag %s requires a value", arg)
+			}
+			if backend != "" {
+				return "", "", nil, fmt.Errorf("--backend specified twice")
+			}
+			backend = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--backend="):
+			if backend != "" {
+				return "", "", nil, fmt.Errorf("--backend specified twice")
+			}
+			backend = strings.TrimPrefix(arg, "--backend=")
 		case arg == "--":
 			cmd = args[i+1:]
 			if policyPath == "" {
-				return "", nil, fmt.Errorf("missing required flag --policy")
+				return "", "", nil, fmt.Errorf("missing required flag --policy")
 			}
-			return policyPath, cmd, nil
+			return policyPath, backend, cmd, nil
 		case strings.HasPrefix(arg, "-"):
-			return "", nil, fmt.Errorf("unknown flag %q (want --policy)", arg)
+			return "", "", nil, fmt.Errorf("unknown flag %q (want --policy or --backend)", arg)
 		default:
 			// First non-flag argument: everything from here is the command.
 			cmd = args[i:]
 			if policyPath == "" {
-				return "", nil, fmt.Errorf("missing required flag --policy")
+				return "", "", nil, fmt.Errorf("missing required flag --policy")
 			}
-			return policyPath, cmd, nil
+			return policyPath, backend, cmd, nil
 		}
 	}
 	if policyPath == "" {
-		return "", nil, fmt.Errorf("missing required flag --policy")
+		return "", "", nil, fmt.Errorf("missing required flag --policy")
 	}
-	return policyPath, nil, nil
+	return policyPath, backend, nil, nil
 }
 
 func cmdTrace(args []string) {

@@ -1,0 +1,33 @@
+# Example Warden policy — @modelcontextprotocol/server-filesystem
+# Copy this and adjust the command path, read grants, and env as needed.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path: the sandbox binds its
+# parent directory, and a bare command name would resolve nowhere inside.
+
+command: ["/usr/bin/node", "./server/dist/index.js"]
+
+filesystem:
+  # Read-only: the filesystem server reads project files. Grant only the
+  # directories the server needs; deny-by-default prevents arbitrary reads.
+  read:
+    - "./data"
+  # Read-write: the official filesystem server doesn't need to write.
+  # If your use-case requires writes (e.g. creating files), grant a specific
+  # directory instead of broadening this.
+  write: []
+
+network:
+  # The filesystem server operates locally and has no network egress.
+  allow: []
+
+env:
+  # No environment variables are required by this server. If your Node.js
+  # runtime needs specific vars, add them here — values are never stored,
+  # only the names are forwarded from the parent shell.
+  allow: []
+
+limits:
+  # Minimal footprint — the server does pure local filesystem I/O.
+  memory_mb: 128
+  timeout_s: 60

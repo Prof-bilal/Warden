@@ -1,0 +1,35 @@
+# Example Warden policy — @modelcontextprotocol/server-github
+# Copy this and adjust the command path, cache/output dirs, and token name.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path.
+
+command: ["/usr/bin/node", "./server/dist/index.js"]
+
+filesystem:
+  # Read-only cache for GitHub API responses or local artifacts.
+  read:
+    - "./data/cache"
+  # Read-write output dir for any generated files (e.g. diffs, reports).
+  # Keep this separate from your project source to limit blast radius.
+  write:
+    - "./data/output"
+
+network:
+  # Only the GitHub API is reachable; DNS lookups for other hosts are blocked.
+  # If you need GraphQL (api.github.com) and REST simultaneously, they share
+  # the same hostname so a single entry covers both.
+  allow:
+    - "api.github.com"
+
+env:
+  # GITHUB_TOKEN must be set in your parent shell (or passed via --env).
+  # Warden forwards only the listed names; everything else is dropped.
+  allow:
+    - "GITHUB_TOKEN"
+    - "HOME"
+
+limits:
+  # API calls and git operations can be memory-heavy; 300s covers long PR reviews.
+  memory_mb: 256
+  timeout_s: 300

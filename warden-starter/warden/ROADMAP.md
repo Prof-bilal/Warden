@@ -23,6 +23,7 @@ you could actually demo, not just an internal refactor.
 - [x] **Demo-able milestone:** `warden run --policy policy.yaml -- <server>`
       works end-to-end on Linux for filesystem restriction only (no network
       enforcement yet)
+
 **Known limitations (M1):** No network enforcement, no resource limits.
 
 ## M2 — Network enforcement
@@ -43,40 +44,68 @@ you could actually demo, not just an internal refactor.
       killed cleanly on breach
 
 ## M4 — macOS support
-- [ ] `sandbox-exec`/Seatbelt backend
-- [ ] Docker fallback backend for when native sandboxing isn't available
-- [ ] Backend auto-detection (`warden run` picks the best available backend
+- [x] `sandbox-exec`/Seatbelt backend
+- [x] Docker fallback backend for when native sandboxing isn't available
+- [x] Backend auto-detection (`warden run` picks the best available backend
       unless `--backend` is passed explicitly)
 
 ## M5 — Windows support
-- [ ] AppContainer backend with a restricted token and explicit filesystem
+- [x] AppContainer backend with restricted token and explicit filesystem
       capabilities derived from the policy
-- [ ] Windows Filtering Platform (or equivalent per-AppContainer rules) for
-      hostname-restricted egress and blocked DNS resolution
-- [ ] ETW-based file/network audit events, including blocked attempts
-- [ ] Job Object memory and wall-clock limits with process-tree termination
-- [ ] Backend-aware Windows integration and escape tests
+- [x] Windows Filtering Platform (WFP) egress filtering and blocked DNS resolution
+- [x] ETW-based file/network audit events (allowed/blocked)
+- [x] Job Object memory and wall-clock limits with process-tree termination
+- [x] Backend-aware Windows integration and escape tests (warden run --backend windows)
 
 **Security gate:** Windows support must fail closed when AppContainer,
 network filtering, auditing, or Job Object setup cannot be applied. A plain
 `CreateProcess` fallback is never acceptable.
 
 ## M6 — Polish & distribution
-- [ ] Package as a single static binary (Homebrew tap, npm wrapper for
-      Node users, or both)
-- [ ] Docs site with a policy schema reference and worked examples
-- [ ] Example gallery: policies for 4-5 popular MCP servers (filesystem,
-      GitHub, Slack, a database connector) so people can copy-paste rather
-      than write a policy from scratch
-- [ ] Security review pass — this is a security tool, so a documented
-      threat model and known-limitations section matters before anyone
-      relies on it
+- [x] Package as a single static binary (Homebrew tap formula, npm wrapper
+      for Node users, plus manual download links in GitHub Releases)
+- [x] Docs site with a policy schema reference and worked examples
+      (MkDocs Material, deployed to GitHub Pages)
+- [x] Example gallery: policies for 5 popular MCP servers (filesystem,
+      GitHub, Slack, PostgreSQL, Brave Search) so people can copy-paste
+      rather than write a policy from scratch
+- [x] Security review pass — documented threat model (7 categories),
+      known-limitations table, and best-practices section in
+      [docs/security.md](./docs/security.md)
 
 ## M7 — Stretch goals (post-1.0)
 - [ ] Interactive approval mode — prompt the user the first time a server
       requests an access not in the policy, rather than hard-failing
 - [ ] Integration with MCP gateways (e.g. wrap servers registered in a
       gateway config automatically)
+
+## M8 — Real-world MCP server compatibility testing
+- [ ] Build a compatibility matrix: run Warden against the 15-20 most-used
+      public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
+      Google Drive, a couple of the popular community ones) and record
+      pass/fail plus the exact policy each one needed
+- [ ] For every failure, classify it — is it a Warden bug, a policy-schema
+      gap (some access pattern the schema can't express yet), or a server
+      doing something inherently incompatible with sandboxing (e.g.
+      expecting arbitrary filesystem access by design)?
+- [ ] Recruit a small external beta group of MCP server maintainers/users
+      (5-10 people) to run their own servers under Warden and report
+      friction — this is the first real signal on whether the policy
+      schema is usable by people who didn't design it
+- [ ] Turn the matrix into a public compatibility page/README table, so
+      prospective users can check "will this work with my server" before
+      installing
+- [ ] Add every server from the matrix as a permanent regression fixture
+      under `testdata/`, so a future change can't silently break
+      compatibility with something that used to work
+- [ ] Triage and fix the highest-impact gaps found (most-used servers
+      first) before moving on to M6/M7-style polish
+
+**Why this comes before polish:** M6's distribution and docs work assumes
+the tool actually works against real servers, not just the fixtures written
+alongside the code that implements each backend. This milestone is the
+reality check between "the backends pass their own tests" and "this is
+something people can actually adopt."
 
 ---
 

@@ -18,12 +18,13 @@ import (
 	"github.com/warden-sandbox/warden/internal/audit"
 )
 
-// Server listens on a Unix socket.  The socket is bind-mounted into the
-// network namespace; the sandbox can reach it only through its loopback
-// bridge, while it has no route for direct IP traffic.
+// Server enforces Warden's hostname allowlist. It listens on a Unix socket
+// for the Linux and macOS backends (the socket is bind-mounted into the
+// sandbox's network namespace) or on a loopback TCP address for the Windows
+// backend (the only destination that backend's WFP filters permit).
 type Server struct {
 	listener net.Listener
-	path     string
+	path     string // Unix socket path, empty for TCP listeners
 	allow    map[string]struct{}
 	audit    *audit.Logger
 	closed   sync.Once
@@ -52,15 +53,43 @@ func Start(allow []string, logger *audit.Logger) (*Server, error) {
 	return s, nil
 }
 
+// StartTCP starts the policy proxy on a loopback TCP address instead of a
+// Unix socket. The Windows backend uses this: AppContainer processes have
+// no meaningful Unix-socket story, while WFP filters can hard-permit exactly
+// this loopback endpoint and block everything else outbound.
+func StartTCP(allow []string, logger *audit.Logger) (*Server, error) {
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("listen on loopback proxy: %w", err)
+	}
+	s := &Server{listener: l, allow: make(map[string]struct{}), audit: logger}
+	for _, host := range allow {
+		s.allow[strings.ToLower(host)] = struct{}{}
+	}
+	go s.serve()
+	return s, nil
+}
+
+// Addr returns the TCP listen address (host:port) for a TCP listener. It is
+// empty for Unix-socket listeners; use SocketPath instead for those.
+func (s *Server) Addr() string {
+	if s.path != "" {
+		return ""
+	}
+	return s.listener.Addr().String()
+}
+
 func (s *Server) SocketPath() string { return s.path }
 
 func (s *Server) Close() error {
 	var err error
 	s.closed.Do(func() {
 		err = s.listener.Close()
-		err2 := os.RemoveAll(filepath.Dir(s.path))
-		if err == nil {
-			err = err2
+		if s.path != "" {
+			err2 := os.RemoveAll(filepath.Dir(s.path))
+			if err == nil {
+				err = err2
+			}
 		}
 	})
 	return err

@@ -23,8 +23,10 @@ Each sandbox backend should have an integration test layer that exercises the ac
 
 - Linux tests should use `bwrap` and `strace` if available. Network tests
   also require a host that permits an unprivileged network namespace.
-- macOS tests should use `sandbox-exec`/Seatbelt when available.
-- Docker-based fallback tests should run only when the Docker backend is expected to be in use.
+- macOS tests should use `sandbox-exec`/Seatbelt when available
+  (`internal/sandbox/darwin`). Profile generation unit tests run on all OSes.
+- Docker-based fallback tests should run only when `docker info` succeeds
+  and the configured image is present (`internal/sandbox/docker`).
 
 These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed.
 

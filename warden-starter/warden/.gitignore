@@ -4,3 +4,7 @@
 # Go test/coverage artifacts
 *.test
 *.out
+
+# Build artifacts
+/dist
+/site

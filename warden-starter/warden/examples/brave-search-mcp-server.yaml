@@ -1,0 +1,30 @@
+# Example Warden policy — @modelcontextprotocol/server-brave-search
+# Copy this and adjust the command path and API key name as needed.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path.
+
+command: ["/usr/bin/node", "./server/dist/index.js"]
+
+filesystem:
+  # The search server doesn't read local files, but may cache responses.
+  read: []
+  write:
+    - "./data/cache"
+
+network:
+  # Brave Search API endpoint only.
+  allow:
+    - "api.search.brave.com"
+
+env:
+  # BRAVE_API_KEY must be set in your parent shell. Warden forwards only
+  # the listed names; everything else is dropped.
+  allow:
+    - "BRAVE_API_KEY"
+    - "HOME"
+
+limits:
+  # Light memory footprint for a search proxy; short timeout is sufficient.
+  memory_mb: 128
+  timeout_s: 60

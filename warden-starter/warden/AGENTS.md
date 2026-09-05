@@ -2,13 +2,15 @@
 
 ## Orientation
 
-Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. As of M1, `internal/policy`, `internal/sandbox/linux`, and `internal/envfilter` are implemented; `internal/audit` and the network egress layer remain to be built (M2). The CLI entry point stays thin and mostly concerns arg parsing.
+Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. M1–M4 are implemented: Linux bubblewrap, macOS Seatbelt, Docker fallback, egress proxy, audit/trace/init/logs, and resource limits. Windows (M5) remains ahead.
 
 ## Where things live
 
 - `cmd/warden` is the CLI entry point only. It parses subcommands and should not contain the policy-engine logic or sandbox enforcement itself.
 - `internal/policy` is the intended home for YAML parsing, validation, and policy normalization.
-- `internal/sandbox/<os>` is where platform-specific backends live, such as Linux bubblewrap support and future macOS/Windows implementations.
+- `internal/sandbox` selects the backend (`auto` prefers native, then Docker).
+- `internal/sandbox/<os>` holds platform-specific backends (`linux` bubblewrap,
+  `darwin` Seatbelt). `internal/sandbox/docker` is the cross-platform fallback.
 - `internal/audit` is the intended home for structured access logging, both for enforcement and for trace mode.
 - `examples/` contains sample policies and usage patterns that should be kept aligned with the architecture doc.
 - `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, and `CONTRIBUTING.md` are the canonical design and workflow documents; changes to the implementation should be checked against them before merging.

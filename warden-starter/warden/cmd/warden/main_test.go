@@ -7,17 +7,32 @@ import (
 
 func TestParseRunArgs(t *testing.T) {
 	cases := []struct {
-		name       string
-		args       []string
-		wantPolicy string
-		wantCmd    []string
-		wantErr    bool
+		name        string
+		args        []string
+		wantPolicy  string
+		wantBackend string
+		wantCmd     []string
+		wantErr     bool
 	}{
 		{
 			name:       "policy then command",
 			args:       []string{"--policy", "p.yaml", "/usr/bin/node", "server.js"},
 			wantPolicy: "p.yaml",
 			wantCmd:    []string{"/usr/bin/node", "server.js"},
+		},
+		{
+			name:        "policy and backend",
+			args:        []string{"--policy", "p.yaml", "--backend", "docker", "/usr/bin/true"},
+			wantPolicy:  "p.yaml",
+			wantBackend: "docker",
+			wantCmd:     []string{"/usr/bin/true"},
+		},
+		{
+			name:        "backend equals form",
+			args:        []string{"--policy=p.yaml", "--backend=seatbelt", "--", "/usr/bin/true"},
+			wantPolicy:  "p.yaml",
+			wantBackend: "seatbelt",
+			wantCmd:     []string{"/usr/bin/true"},
 		},
 		{
 			name:       "policy with equals then command",
@@ -57,14 +72,19 @@ func TestParseRunArgs(t *testing.T) {
 			args:    []string{"--policy", "a.yaml", "--policy", "b.yaml"},
 			wantErr: true,
 		},
+		{
+			name:    "duplicate backend",
+			args:    []string{"--policy", "a.yaml", "--backend", "linux", "--backend", "docker"},
+			wantErr: true,
+		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			gotPolicy, gotCmd, err := parseRunArgs(c.args)
+			gotPolicy, gotBackend, gotCmd, err := parseRunArgs(c.args)
 			if c.wantErr {
 				if err == nil {
-					t.Fatalf("expected error, got policy=%q cmd=%v", gotPolicy, gotCmd)
+					t.Fatalf("expected error, got policy=%q backend=%q cmd=%v", gotPolicy, gotBackend, gotCmd)
 				}
 				return
 			}
@@ -73,6 +93,9 @@ func TestParseRunArgs(t *testing.T) {
 			}
 			if gotPolicy != c.wantPolicy {
 				t.Errorf("policy = %q, want %q", gotPolicy, c.wantPolicy)
+			}
+			if gotBackend != c.wantBackend {
+				t.Errorf("backend = %q, want %q", gotBackend, c.wantBackend)
 			}
 			if !reflect.DeepEqual(gotCmd, c.wantCmd) {
 				t.Errorf("cmd = %v, want %v", gotCmd, c.wantCmd)

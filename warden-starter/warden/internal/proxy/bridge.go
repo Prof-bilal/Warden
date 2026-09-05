@@ -74,6 +74,10 @@ func RunBridge(socketPath, listenAddr string, command []string) (int, error) {
 	}
 }
 
+// forward proxies one accepted bridge connection to the upstream Unix
+// socket. On Windows there is no Unix-socket story for AppContainer
+// processes; the Windows backend dials the host-side proxy over loopback
+// TCP instead, which its WFP filters hard-permit.
 func forward(client net.Conn, socketPath string) {
 	defer client.Close()
 	upstream, err := net.Dial("unix", socketPath)
@@ -81,8 +85,13 @@ func forward(client net.Conn, socketPath string) {
 		return
 	}
 	defer upstream.Close()
+	pump(client, upstream)
+}
+
+// pump copies both directions between two connections until one side closes.
+func pump(a, b net.Conn) {
 	done := make(chan struct{}, 2)
-	go func() { _, _ = io.Copy(client, upstream); done <- struct{}{} }()
-	go func() { _, _ = io.Copy(upstream, client); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(a, b); done <- struct{}{} }()
+	go func() { _, _ = io.Copy(b, a); done <- struct{}{} }()
 	<-done
 }
