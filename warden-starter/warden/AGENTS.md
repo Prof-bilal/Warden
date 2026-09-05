@@ -2,7 +2,7 @@
 
 ## Orientation
 
-Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. The current codebase is mostly a design skeleton; the main implementation work is expected in `internal/policy`, `internal/sandbox/<os>`, and `internal/audit`, while the CLI entry point remains thin and mostly concerns arg parsing.
+Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. As of M1, `internal/policy`, `internal/sandbox/linux`, and `internal/envfilter` are implemented; `internal/audit` and the network egress layer remain to be built (M2). The CLI entry point stays thin and mostly concerns arg parsing.
 
 ## Where things live
 

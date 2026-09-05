@@ -131,10 +131,10 @@ filesystem: {}
 func TestValidateRejectsBadHosts(t *testing.T) {
 	for _, host := range []string{
 		"",
-		"api.github.com:443",  // ports not allowed in schema
+		"api.github.com:443", // ports not allowed in schema
 		"https://api.github.com",
 		"api/github.com",
-		"bad_host",   // underscore not allowed in DNS hostnames
+		"bad_host", // underscore not allowed in DNS hostnames
 		"foo..com",
 		"-leading.example",
 		"trailing-.example",

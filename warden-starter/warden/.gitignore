@@ -1,0 +1,6 @@
+# Built binary (AGENTS.md: do not commit built binaries or generated artifacts)
+/warden
+
+# Go test/coverage artifacts
+*.test
+*.out

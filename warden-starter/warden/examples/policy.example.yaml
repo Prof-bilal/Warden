@@ -1,7 +1,11 @@
 # Example Warden policy — sandboxing a hypothetical GitHub-issues MCP server.
 # Copy this, adjust the paths/hosts, and pass it to `warden run --policy`.
+#
+# Relative paths below are resolved against THIS FILE's directory, not your
+# shell's CWD. The executable must be an absolute path: the sandbox binds its
+# parent directory, and a bare command name would resolve nowhere inside.
 
-command: ["node", "./server/index.js"]
+command: ["/usr/bin/node", "./server/index.js"]
 
 filesystem:
   # Read-only: the server can read from here but not modify anything.
@@ -12,8 +16,10 @@ filesystem:
     - "./data/output"
 
 network:
-  # Only these hosts are reachable. Everything else, including DNS lookups
-  # for other hosts, is blocked at the sandbox boundary.
+  # NOT YET ENFORCED (M2). Parsed and validated, and `warden run` prints a
+  # warning so you are never misled into thinking egress is restricted.
+  # Once M2 lands: only these hosts are reachable, and DNS lookups for other
+  # hosts are blocked at the sandbox boundary.
   allow:
     - "api.github.com"
 
@@ -25,5 +31,7 @@ env:
     - "GITHUB_TOKEN"
 
 limits:
+  # NOT YET ENFORCED (M3). Parsed for schema compatibility; `warden run`
+  # warns that these values have no effect in this build.
   memory_mb: 512
   timeout_s: 300
