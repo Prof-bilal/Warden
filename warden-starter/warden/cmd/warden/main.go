@@ -10,6 +10,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
@@ -41,6 +43,8 @@ func main() {
 		cmdInit(os.Args[2:])
 	case "logs":
 		cmdLogs(os.Args[2:])
+	case "gateway":
+		cmdGateway(os.Args[2:])
 	default:
 		printUsage()
 		os.Exit(1)
@@ -51,13 +55,14 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, `warden - a sandbox runtime for MCP servers
 
 Usage:
-  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] -- <command...>
-                                                Run a server under a policy
+  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>
+                                                 Run a server under a policy
   warden trace -- <command...>                 Run unsandboxed and record access attempts
   warden init [--log <file>] [--output <file>] [-- <command...>]
                                                 Generate a starter policy from an audit log
   warden logs [--tail <n>] [--follow] [--log <file>]
-                                                Inspect or follow the audit log
+                                                 Inspect or follow the audit log
+  warden gateway init|run|wrap|list ...        Wrap gateway-registered servers
 
 Backends (auto is the default):
   linux     bubblewrap (bwrap) — preferred on Linux
@@ -69,11 +74,22 @@ See ROADMAP.md. M1–M5 are implemented (Linux native + macOS Seatbelt + Windows
 }
 
 func cmdRun(args []string) {
-	policyPath, backend, cmdTail, err := parseRunArgs(args)
+	approveEnabled, approveTimeout, rest, err := parseApproveFlags(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		printUsage()
 		os.Exit(2)
+	}
+	policyPath, backend, cmdTail, err := parseRunArgs(rest)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+		printUsage()
+		os.Exit(2)
+	}
+
+	if approveEnabled {
+		cmdRunWithApproval(policyPath, backend, cmdTail, approveTimeout)
+		return // unreachable: cmdRunWithApproval always exits
 	}
 
 	p, err := policy.Load(policyPath)
@@ -92,14 +108,18 @@ func cmdRun(args []string) {
 		os.Exit(2)
 	}
 
-	// The sandbox needs an absolute path for the executable: backends bind
-	// the parent dir, and a bare command name would resolve nowhere.
-	if !filepath.IsAbs(cmd[0]) {
-		fmt.Fprintf(os.Stderr, "warden run: command %q is not an absolute path; sandbox requires a full path to the executable\n", cmd[0])
+	// Most public MCP servers launch via a bare launcher (npx/uvx/node on
+	// PATH). Resolve it to an absolute path like the gateway backend does,
+	// so the sandbox can bind-mount the executable's parent directory.
+	// Still fail-closed when the name is not on PATH.
+	cmd, err = policy.ResolveExecutable(cmd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		os.Exit(2)
 	}
-	if _, err := os.Stat(cmd[0]); err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: executable %q: %v\n", cmd[0], err)
+
+	if err := checkSandboxCommand(cmd); err != nil {
+		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		os.Exit(2)
 	}
 
@@ -109,6 +129,122 @@ func cmdRun(args []string) {
 		os.Exit(1)
 	}
 	os.Exit(exitCode)
+}
+
+// maxApprovalRestarts caps the approve-mode respawn loop: every restart
+// needs a fresh user approval, so hitting the cap means something is
+// approving in a tight loop rather than a human deciding.
+const maxApprovalRestarts = 10
+
+// cmdRunWithApproval runs a server with interactive approval mode (M7) and
+// respawns it when a filesystem approval requires a restart. The policy is
+// reloaded from disk on every iteration so saved grants take effect. It
+// always terminates the process via os.Exit.
+func cmdRunWithApproval(policyPath, backend string, cmdTail []string, timeout time.Duration) {
+	if err := approve.CheckTTY(); err != nil {
+		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+		os.Exit(2)
+	}
+	cfg := &approve.Config{Enabled: true, PolicyPath: policyPath, Timeout: timeout}
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+		os.Exit(2)
+	}
+	for i := 0; i < maxApprovalRestarts; i++ {
+		p, err := policy.Load(policyPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			os.Exit(2)
+		}
+		for _, advisory := range p.UnimplementedAdvisories() {
+			fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
+		}
+		cmd, err := p.ResolveCommand(cmdTail)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			os.Exit(2)
+		}
+		cmd, err = policy.ResolveExecutable(cmd)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			os.Exit(2)
+		}
+		if err := checkSandboxCommand(cmd); err != nil {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			os.Exit(2)
+		}
+		exitCode, err := sandbox.RunWithApproval(cmd, p, backend, cfg)
+		if errors.Is(err, approve.ErrRestartRequested) {
+			fmt.Fprintf(os.Stderr, "warden run: restarting with the approved policy (%d/%d)\n", i+1, maxApprovalRestarts)
+			continue
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(exitCode)
+	}
+	fmt.Fprintf(os.Stderr, "warden run: too many approval restarts (%d); inspect %s for runaway grants\n", maxApprovalRestarts, policyPath)
+	os.Exit(1)
+}
+
+// checkSandboxCommand enforces the CLI-side contract every backend relies
+// on: an absolute executable path that exists.
+func checkSandboxCommand(cmd []string) error {
+	// The sandbox needs an absolute path for the executable: backends bind
+	// the parent dir, and a bare command name would resolve nowhere.
+	if len(cmd) == 0 || !filepath.IsAbs(cmd[0]) {
+		name := ""
+		if len(cmd) > 0 {
+			name = cmd[0]
+		}
+		return fmt.Errorf("command %q is not an absolute path; sandbox requires a full path to the executable", name)
+	}
+	if _, err := os.Stat(cmd[0]); err != nil {
+		return fmt.Errorf("executable %q: %v", cmd[0], err)
+	}
+	return nil
+}
+
+// parseApproveFlags extracts --approve and --approve-timeout from run args,
+// returning the remaining args for parseRunArgs. Unknown flags are left
+// untouched for the downstream parser.
+func parseApproveFlags(args []string) (enabled bool, timeout time.Duration, rest []string, err error) {
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--approve":
+			enabled = true
+		case strings.HasPrefix(arg, "--approve="):
+			v := strings.TrimPrefix(arg, "--approve=")
+			enabled, err = strconv.ParseBool(v)
+			if err != nil {
+				return false, 0, nil, fmt.Errorf("--approve=%q: want true or false", v)
+			}
+		case arg == "--approve-timeout":
+			if i+1 >= len(args) {
+				return false, 0, nil, fmt.Errorf("--approve-timeout requires a value (e.g. 2m)")
+			}
+			timeout, err = time.ParseDuration(args[i+1])
+			if err != nil || timeout < 0 {
+				return false, 0, nil, fmt.Errorf("--approve-timeout %q: want a non-negative duration like 30s or 2m", args[i+1])
+			}
+			i++
+		case strings.HasPrefix(arg, "--approve-timeout="):
+			v := strings.TrimPrefix(arg, "--approve-timeout=")
+			timeout, err = time.ParseDuration(v)
+			if err != nil || timeout < 0 {
+				return false, 0, nil, fmt.Errorf("--approve-timeout %q: want a non-negative duration like 30s or 2m", v)
+			}
+		default:
+			rest = append(rest, arg)
+		}
+	}
+	if timeout > 0 && !enabled {
+		return false, 0, nil, fmt.Errorf("--approve-timeout requires --approve")
+	}
+	return enabled, timeout, rest, nil
 }
 
 // parseRunArgs splits run flags into the policy path, optional backend, and

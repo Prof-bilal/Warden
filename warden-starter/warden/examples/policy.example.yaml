@@ -14,8 +14,9 @@
 # ── Command ──────────────────────────────────────────────────────────────────
 #
 # How to start the sandboxed server. If omitted, you must provide the command
-# after `--` on the CLI. Must be an absolute path to the executable; the
-# remaining items are arguments.
+# after `--` on the CLI. Prefer an absolute path to the executable; a bare
+# name on PATH (npx, uvx, node) is resolved via LookPath at launch and fails
+# closed when unresolvable. The remaining items are arguments.
 #
 # Tip: use `warden trace -- <cmd>` first to observe what your server touches,
 # then feed the JSONL log into `warden init` to auto-generate a starter policy.
@@ -36,7 +37,9 @@ filesystem:
 
   # Read-write grants: the server can create, modify, and delete files here.
   # Keep this separate from source code to limit blast radius if the server
-  # is compromised. An empty list means no write access at all.
+  # is compromised. An empty list means no write access at all. A write
+  # grant subsumes reads underneath it: listing the same path in both read
+  # and write is coalesced to a single write grant at load time.
   write:
     - "./data/output"     # Example: generated artifacts, caches that need writes
 

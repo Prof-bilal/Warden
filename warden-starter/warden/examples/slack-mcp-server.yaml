@@ -8,9 +8,9 @@ command: ["/usr/bin/node", "./server/dist/index.js"]
 
 filesystem:
   # Read-write cache for Slack OAuth tokens or rate-limit state.
-  # Using the same dir for read/write avoids duplicate grants.
-  read:
-    - "./data/cache"
+  # A write grant subsumes reads underneath it, so a separate read grant
+  # for the same dir is redundant (Load drops it during Normalize).
+  read: []
   write:
     - "./data/cache"
 

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -88,6 +89,7 @@ func Load(path string) (Policy, error) {
 	if err := p.ResolvePaths(dir); err != nil {
 		return Policy{}, fmt.Errorf("policy %q: %w", path, err)
 	}
+	p.Normalize()
 	if err := p.Validate(); err != nil {
 		return Policy{}, fmt.Errorf("policy %q: %w", path, err)
 	}
@@ -259,6 +261,33 @@ func (p *Policy) ResolveCommand(cli []string) ([]string, error) {
 		return p.Command, nil
 	}
 	return nil, fmt.Errorf("no command: pass it after `--` or set `command:` in the policy")
+}
+
+// ResolveExecutable resolves cmd[0] to an absolute path when it is a bare
+// name (e.g. "npx", "uvx", "node") via exec.LookPath, mirroring what
+// gateway.StarterPolicy already does for gateway-registered servers. Most
+// public MCP servers are installed and launched this way, so compat testing
+// (M8) showed the bare "must be an absolute path" failure is the single
+// most common first-run friction.
+//
+// Resolution is fail-closed: an unresolvable name returns an error instead
+// of a guess, and an already-absolute path is returned untouched (existence
+// is checked by the CLI/backend, not here). Callers must still pass the
+// resolved command to the sandbox backend, which requires absolute paths so
+// it can bind-mount the executable's parent directory.
+func ResolveExecutable(cmd []string) ([]string, error) {
+	if len(cmd) == 0 {
+		return nil, fmt.Errorf("no command configured: run `warden run --policy <file> -- <command...>` or set `command` in the policy")
+	}
+	if filepath.IsAbs(cmd[0]) {
+		return cmd, nil
+	}
+	abs, err := exec.LookPath(cmd[0])
+	if err != nil {
+		return nil, fmt.Errorf("command %q is not an absolute path and was not found on PATH (run `command -v %s` to locate it, then use the full path)", cmd[0], cmd[0])
+	}
+	out := append([]string{abs}, cmd[1:]...)
+	return out, nil
 }
 
 // EnvAllowlist returns a copy of the names to pass through, with duplicates

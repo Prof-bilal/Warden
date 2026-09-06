@@ -67,7 +67,8 @@ filesystem:
 		t.Fatalf("Load: %v", err)
 	}
 	dir := filepath.Dir(path)
-	want := []string{filepath.Join(dir, "..", "shared"), filepath.Join(dir, "data")}
+	// Load applies Normalize, which sorts grants into canonical order.
+	want := []string{filepath.Join(dir, "data"), filepath.Join(dir, "..", "shared")}
 	if p.Filesystem.Read[0] != want[0] || p.Filesystem.Read[1] != want[1] {
 		t.Errorf("Read = %v, want %v", p.Filesystem.Read, want)
 	}
