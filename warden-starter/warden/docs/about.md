@@ -34,7 +34,7 @@ Warden is in **beta**. Implemented and tested:
 
 Coming soon: Homebrew tap, npm wrapper publishing, and the external beta
 program ([join it](beta.md)). Track milestones in
-[ROADMAP.md](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ROADMAP.md).
+[roadmap](roadmap.md).
 
 ## Security posture
 
@@ -51,6 +51,5 @@ not buried.
   [LICENSE](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/LICENSE)
 - **Repository:**
   [Prof-bilal/Warden](https://github.com/Prof-bilal/Warden)
-- **Contributing:** see
-  [CONTRIBUTING.md](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/CONTRIBUTING.md)
+- **Contributing:** see [Contributing](contributing.md)
 - **Compatibility reports:** file one via the [Beta Program](beta.md)

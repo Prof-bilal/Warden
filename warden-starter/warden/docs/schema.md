@@ -1,7 +1,7 @@
 # Policy Schema Reference
 
 This document describes the complete policy YAML schema used by Warden.
-See [examples/policy.example.yaml](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/examples/policy.example.yaml) for a
+See [Example Policies](examples.md#comprehensive-reference) for a
 fully-worked example.
 
 ## Top-level fields
@@ -148,6 +148,6 @@ limits:
 
 ## Cross-reference
 
-- For a complete working policy, see [examples/policy.example.yaml](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/examples/policy.example.yaml).
+- For a complete working policy, see [Example Policies](examples.md).
 - For backend-specific enforcement details, see [Architecture – Sandbox Backends](architecture.md#backend-selection).
 - For security implications of each section, see [Security Review](security.md).

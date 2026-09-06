@@ -22,15 +22,24 @@ nav:
   - Reference:
     - Schema Reference: schema.md
     - CLI Reference: cli.md
+    - Example Policies: examples.md
   - Understand:
     - Architecture: architecture.md
     - Security Review: security.md
     - Compatibility Matrix: compatibility.md
-    - Example Policies: https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/examples
   - Community:
     - Gateway Integration: gateway.md
     - Interactive Approval: approve.md
     - Beta Program: beta.md
+  - Project:
+    - Roadmap: roadmap.md
+    - Product Requirements: prd.md
+    - MVP Scope: mvp.md
+    - Contributing: contributing.md
+    - Testing Guide: testing.md
+    - Code Style: codestyle.md
+    - Review Guide: reviewing.md
+    - Deploying These Docs: deploy.md
 
 markdown_extensions:
   - toc:

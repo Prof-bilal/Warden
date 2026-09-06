@@ -165,7 +165,7 @@ traffic to unauthorized destinations.
    unexpected server behavior.
 
 4. **Keep Warden updated.** Security fixes land in new releases — check
-   [ROADMAP.md](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ROADMAP.md) for the current status and the issue
+   [roadmap](roadmap.md) for the current status and the issue
    tracker for disclosed vulnerabilities.
 
 5. **Use absolute paths for `command`.** Relative executable paths may

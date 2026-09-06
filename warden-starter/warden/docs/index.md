@@ -73,13 +73,16 @@ whether your server works before installing:
 1. **[Install](install.md)** — Linux, macOS, Windows, Docker fallback, or
    build from source
 2. **[Quickstart](quickstart.md)** — your first sandboxed run in five minutes
-3. **[Schema Reference](schema.md)** — every `policy.yaml` field
-4. **[CLI Reference](cli.md)** — every command and flag
-5. **[FAQ](faq.md)** — common failures and fixes
+3. **[Example Policies](examples.md)** — copy-paste policies for filesystem,
+   GitHub, Slack, Postgres, and Brave Search
+4. **[Schema Reference](schema.md)** — every `policy.yaml` field
+5. **[CLI Reference](cli.md)** — every command and flag
+6. **[FAQ](faq.md)** — common failures and fixes
+7. **[Roadmap](roadmap.md)** — what's built and what's next
 
 > **Status:** beta. Core sandboxing (Linux, macOS, Windows, Docker fallback),
 > tracing, approval mode, and gateway integration are implemented and tested.
 > Distribution via Homebrew and npm is coming soon — today, install from a
-> [GitHub Release](https://github.com/Prof-bilal/Warden/releases) or build
-> from source. See the [roadmap](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ROADMAP.md)
+> [GitHub Release](https://github.com/Prof-bilal/Warden/releases) or
+> [build from source](install.md#option-b-build-from-source). See the [Roadmap](roadmap.md)
 > and [About](about.md) pages for details.
