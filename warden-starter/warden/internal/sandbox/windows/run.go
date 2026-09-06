@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
@@ -27,6 +28,31 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 	defer logFile.Close()
 	logger := audit.New(logFile)
 
+	return runWithApproval(cmd, p, logger, nil)
+}
+
+// RunWithApproval sandboxes cmd like Run with interactive approval mode for
+// network requests: blocked hosts prompt on the terminal and approved ones
+// apply live via the egress proxy. ETW audit events are post-hoc, so there
+// is no live filesystem signal — filesystem stays hard-deny (use
+// `warden trace` + `warden init` to widen it). A nil or disabled cfg behaves
+// like Run.
+func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, error) {
+	if cfg == nil || !cfg.Enabled {
+		return Run(cmd, p)
+	}
+	if err := cfg.Validate(); err != nil {
+		return 0, err
+	}
+	logFile, _, err := audit.OpenDefault()
+	if err != nil {
+		return 0, err
+	}
+	defer logFile.Close()
+	return runWithApproval(cmd, p, audit.New(logFile), cfg)
+}
+
+func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approval *approve.Config) (int, error) {
 	// Host-side egress proxy on a loopback TCP address; its exact endpoint is
 	// the only destination WFP permits.
 	eg, err := proxy.StartTCP(p.Network.Allow, logger)
@@ -34,6 +60,10 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 		return 0, err
 	}
 	defer eg.Close()
+
+	if approval != nil && approval.Enabled {
+		eg.SetApprover(approve.NewPrompter(approval.PolicyPath, approval.Timeout, logger).NetworkApprover())
+	}
 
 	plan, err := BuildPlan(cmd, p, NewSessionID(), eg.Addr())
 	if err != nil {

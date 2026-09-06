@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -43,10 +44,30 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 		return 0, fmt.Errorf("open audit log: %w", err)
 	}
 	defer logFile.Close()
-	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile))
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), nil)
 }
 
-func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger) (int, error) {
+// RunWithApproval spawns cmd like Run with interactive approval mode for
+// network requests: blocked hosts prompt on the terminal and approved ones
+// apply live via the egress proxy. Seatbelt has no Linux-strace-equivalent
+// live file signal, so filesystem stays hard-deny (use `warden trace` +
+// `warden init` to widen it). A nil or disabled cfg behaves like Run.
+func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, error) {
+	if cfg == nil || !cfg.Enabled {
+		return Run(cmd, p)
+	}
+	if err := cfg.Validate(); err != nil {
+		return 0, err
+	}
+	logFile, _, err := audit.OpenDefault()
+	if err != nil {
+		return 0, fmt.Errorf("open audit log: %w", err)
+	}
+	defer logFile.Close()
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), cfg)
+}
+
+func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
 	sandboxExec, err := exec.LookPath("sandbox-exec")
 	if err != nil {
 		return 0, fmt.Errorf("sandbox-exec not found: %w", err)
@@ -57,6 +78,10 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, fmt.Errorf("start egress proxy: %w", err)
 	}
 	defer eg.Close()
+
+	if approval != nil && approval.Enabled {
+		eg.SetApprover(approve.NewPrompter(approval.PolicyPath, approval.Timeout, logger).NetworkApprover())
+	}
 
 	profile, err := BuildSeatbeltProfile(cmd, p, eg.SocketPath())
 	if err != nil {

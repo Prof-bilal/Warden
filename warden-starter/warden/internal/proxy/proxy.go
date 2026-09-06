@@ -18,6 +18,30 @@ import (
 	"github.com/warden-sandbox/warden/internal/audit"
 )
 
+// Decision is what an Approver resolves for one blocked network request.
+// Deny keeps the current behavior (403 + audit event). The allow variants
+// all let the current request through; they differ in what is remembered.
+type Decision int
+
+const (
+	// Deny blocks the request. This is also the fail-closed outcome when no
+	// approver is set, the prompter has no terminal, or approval times out.
+	Deny Decision = iota
+	// AllowOnce lets this request through without remembering anything: the
+	// next request to the host prompts again.
+	AllowOnce
+	// AllowSession remembers the host in memory for the rest of this run.
+	AllowSession
+	// AllowAndSave remembers the host for this run; the approver is also
+	// expected to persist it to the policy file before returning.
+	AllowAndSave
+)
+
+// Approver resolves one blocked request to host:port. It is called
+// synchronously in the request path, so it may prompt the user; concurrent
+// requests serialize inside the approver implementation, not here.
+type Approver func(host, port string) Decision
+
 // Server enforces Warden's hostname allowlist. It listens on a Unix socket
 // for the Linux and macOS backends (the socket is bind-mounted into the
 // sandbox's network namespace) or on a loopback TCP address for the Windows
@@ -25,7 +49,9 @@ import (
 type Server struct {
 	listener net.Listener
 	path     string // Unix socket path, empty for TCP listeners
+	mu       sync.RWMutex
 	allow    map[string]struct{}
+	approver Approver
 	audit    *audit.Logger
 	closed   sync.Once
 }
@@ -121,12 +147,52 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.allowed(host) {
+		// Interactive approval mode (M7): give the user one chance to
+		// allow the host before falling back to the deny path. Without
+		// an approver this block is skipped and the request is denied.
+		if s.approverFor(host, port) {
+			s.proxyRequest(w, r, host, port)
+			return
+		}
 		s.deny(w, r.Method, net.JoinHostPort(host, port), "host is not in network.allow")
 		return
 	}
 
-	// net.Dial performs DNS resolution only after allowed(host), which is the
-	// crucial ordering that prevents blocked hostnames leaking in DNS queries.
+	s.proxyRequest(w, r, host, port)
+}
+
+// approverFor asks the approver about host:port. It reports whether the
+// current request may proceed. Session/persistent approvals are recorded in
+// the allowlist so later requests pass without re-prompting; AllowOnce
+// proceeds without recording.
+func (s *Server) approverFor(host, port string) bool {
+	s.mu.RLock()
+	approver := s.approver
+	s.mu.RUnlock()
+	if approver == nil {
+		return false
+	}
+	switch approver(host, port) {
+	case AllowOnce:
+		s.log("connect", net.JoinHostPort(host, port), true, "approved by user for this request only")
+		return true
+	case AllowSession:
+		s.Grant(host)
+		s.log("connect", net.JoinHostPort(host, port), true, "approved by user for this session")
+		return true
+	case AllowAndSave:
+		s.Grant(host)
+		s.log("connect", net.JoinHostPort(host, port), true, "approved by user and saved to policy")
+		return true
+	default:
+		return false
+	}
+}
+
+// proxyRequest dials an approved upstream and forwards the request.
+// net.Dial performs DNS resolution only after the allow check, which is the
+// crucial ordering that prevents blocked hostnames leaking in DNS queries.
+func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, host, port string) {
 	upstream, err := (&net.Dialer{}).DialContext(r.Context(), "tcp", net.JoinHostPort(host, port))
 	if err != nil {
 		s.log("connect", net.JoinHostPort(host, port), false, err.Error())
@@ -175,9 +241,32 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) allowed(host string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	_, ok := s.allow[strings.ToLower(host)]
 	return ok
 }
+
+// SetApprover installs the interactive-approval callback (M7). A nil
+// approver restores plain deny-by-default behavior.
+func (s *Server) SetApprover(a Approver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.approver = a
+}
+
+// Grant adds host to the in-memory allowlist for the rest of this run.
+// Persistent approvals additionally write through to the policy file via the
+// approver; Grant itself never touches the filesystem.
+func (s *Server) Grant(host string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.allow[strings.ToLower(host)] = struct{}{}
+}
+
+// IsAllowed reports whether host is currently allowlisted (policy grants
+// plus any session approvals so far).
+func (s *Server) IsAllowed(host string) bool { return s.allowed(host) }
 
 func (s *Server) deny(w http.ResponseWriter, action, resource, reason string) {
 	s.log(action, resource, false, reason)

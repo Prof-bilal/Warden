@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "/usr/bin/node",
+      "args": ["./server/dist/index.js"],
+      "env": {}
+    },
+    "github": {
+      "command": "/usr/bin/node",
+      "args": ["./github/dist/index.js"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "remote-docs": {
+      "type": "streamable-http",
+      "url": "https://docs.example.com/mcp"
+    }
+  }
+}

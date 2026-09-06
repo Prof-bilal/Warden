@@ -1,8 +1,6 @@
 package policy
 
 import (
-	"net"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -24,22 +22,20 @@ func StarterFromAudit(events []audit.Event, command []string) Policy {
 		}
 		switch event.Type {
 		case "file":
-			path := filepath.Clean(event.Resource)
-			if !filepath.IsAbs(path) || runtimePath(path) {
+			grant, isWrite, ok := ProposeFileGrant(event.Action, event.Resource)
+			if !ok {
 				continue
 			}
-			if writeAction(event.Action) {
-				// A writable mount must name an existing directory when the
-				// trace target creates a new file.
-				write[filepath.Dir(path)] = struct{}{}
+			if isWrite {
+				write[grant] = struct{}{}
 			} else {
-				read[path] = struct{}{}
+				read[grant] = struct{}{}
 			}
 		case "network":
 			if !strings.EqualFold(event.Action, "connect") {
 				continue
 			}
-			host := hostOnly(event.Resource)
+			host := HostOnly(event.Resource)
 			if validateHost(host) == nil {
 				hosts[strings.ToLower(host)] = struct{}{}
 			}
@@ -48,7 +44,7 @@ func StarterFromAudit(events []audit.Event, command []string) Policy {
 	// A write grant subsumes a read grant for the same path tree.
 	for path := range read {
 		for dir := range write {
-			if path == dir || isWithin(path, dir) {
+			if path == dir || Within(path, dir) {
 				delete(read, path)
 				break
 			}
@@ -66,36 +62,6 @@ func StarterFromAudit(events []audit.Event, command []string) Policy {
 
 // Marshal returns a readable policy document suitable for warden init.
 func (p Policy) Marshal() ([]byte, error) { return yaml.Marshal(p) }
-
-func runtimePath(path string) bool {
-	for _, dir := range []string{"/usr", "/lib", "/lib64", "/proc", "/dev", "/tmp", "/.warden"} {
-		if path == dir || isWithin(path, dir) {
-			return true
-		}
-	}
-	return false
-}
-
-func writeAction(action string) bool {
-	switch action {
-	case "creat", "unlink", "unlinkat", "rename", "renameat", "renameat2", "mkdir", "mkdirat", "rmdir", "chmod", "fchmodat", "chown", "fchownat":
-		return true
-	default:
-		return false
-	}
-}
-
-func hostOnly(resource string) string {
-	if host, _, err := net.SplitHostPort(resource); err == nil {
-		return host
-	}
-	return resource
-}
-
-func isWithin(path, dir string) bool {
-	rel, err := filepath.Rel(dir, path)
-	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
-}
 
 func sortedSet(set map[string]struct{}) []string {
 	values := make([]string, 0, len(set))

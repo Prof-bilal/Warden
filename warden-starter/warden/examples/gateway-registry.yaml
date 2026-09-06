@@ -1,0 +1,37 @@
+# Example gateway registry mixing both supported YAML families.
+#
+# - `upstreams` follows the jonfairbanks/mcp-gateway shape
+#   (id, transport, command as string-or-list, args, env, endpoint).
+# - `backends` follows the MikkoParkkola/mcp-gateway shape
+#   (command as a single string, env, http_url for remote servers).
+#
+# Remote entries (endpoint/http_url) have no local process and are skipped by
+# `warden gateway init` with a clear reason. Stdio entries get a
+# deny-by-default policy in --policies <name>.yaml.
+#
+# Use ${VAR} for required secrets (fails closed when unset) and
+# ${VAR:-default} for optional values. Values stay in the gateway file and the
+# parent environment — generated policies store NAMES only, never secrets.
+
+upstreams:
+  - id: "context7"
+    transport: "stdio"
+    command: "npx"
+    args:
+      - "-y"
+      - "@upstash/context7-mcp"
+
+  - id: "github-remote"
+    transport: "streamable_http"
+    endpoint: "https://api.githubcopilot.com/mcp/"
+
+backends:
+  tavily:
+    command: "npx -y @anthropic/mcp-server-tavily"
+    description: "Web search via Tavily"
+    env:
+      TAVILY_API_KEY: "${TAVILY_API_KEY}"
+
+  sentry:
+    http_url: "https://mcp.sentry.dev/mcp"
+    description: "Sentry issues (remote — not sandboxable)"

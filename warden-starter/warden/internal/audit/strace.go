@@ -17,28 +17,11 @@ func ImportStrace(r io.Reader, logger *Logger) error {
 	// Long argv values should not make an audit record disappear.
 	s.Buffer(make([]byte, 4*1024), 1024*1024)
 	for s.Scan() {
-		line := s.Text()
-		if strings.Contains(line, "+++ exited") || strings.Contains(line, "--- SIG") {
+		event, ok := ParseStraceLine(s.Text())
+		if !ok {
 			continue
 		}
-		open := strings.IndexByte(line, '(')
-		if open < 1 {
-			continue
-		}
-		action := line[:open]
-		if end := strings.LastIndex(action, "] "); end >= 0 { // strace -f PID prefix
-			action = action[end+2:]
-		}
-		if !isAuditedCall(action) {
-			continue
-		}
-		resource := syscallResource(action, line[open+1:])
-		allowed := !strings.Contains(line, ") = -1 ")
-		reason := "syscall succeeded"
-		if !allowed {
-			reason = syscallResult(line)
-		}
-		if err := logger.Log(Event{Type: eventType(action), Action: action, Resource: resource, Allowed: allowed, Reason: reason}); err != nil {
+		if err := logger.Log(event); err != nil {
 			return fmt.Errorf("write strace audit event: %w", err)
 		}
 	}
@@ -46,6 +29,36 @@ func ImportStrace(r io.Reader, logger *Logger) error {
 		return fmt.Errorf("read strace output: %w", err)
 	}
 	return nil
+}
+
+// ParseStraceLine converts one strace %file/%network record into an audit
+// event. It reports false for lines that carry no auditable syscall
+// (exit/signal notices, strace status lines, untraced calls), so batch
+// import and live tailing share identical parsing. A failed syscall
+// (returning -1) becomes Allowed=false; callers decide what a failure means
+// (genuine ENOENT vs. a sandbox denial) from the resource and policy.
+func ParseStraceLine(line string) (Event, bool) {
+	if strings.Contains(line, "+++ exited") || strings.Contains(line, "--- SIG") {
+		return Event{}, false
+	}
+	open := strings.IndexByte(line, '(')
+	if open < 1 {
+		return Event{}, false
+	}
+	action := line[:open]
+	if end := strings.LastIndex(action, "] "); end >= 0 { // strace -f PID prefix
+		action = action[end+2:]
+	}
+	if !isAuditedCall(action) {
+		return Event{}, false
+	}
+	resource := syscallResource(action, line[open+1:])
+	allowed := !strings.Contains(line, ") = -1 ")
+	reason := "syscall succeeded"
+	if !allowed {
+		reason = syscallResult(line)
+	}
+	return Event{Type: eventType(action), Action: action, Resource: resource, Allowed: allowed, Reason: reason}, true
 }
 
 func isAuditedCall(action string) bool {

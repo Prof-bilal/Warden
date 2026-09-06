@@ -7,13 +7,16 @@
 package linux
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 
+	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -142,14 +145,34 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 		return 0, fmt.Errorf("open audit log: %w", err)
 	}
 	defer logFile.Close()
-	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile))
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), nil)
 }
 
 func runWithEnv(cmd []string, p policy.Policy, parentEnv []string) (int, error) {
-	return runWithEnvAndAudit(cmd, p, parentEnv, nil)
+	return runWithEnvAndAudit(cmd, p, parentEnv, nil, nil)
 }
 
-func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger) (int, error) {
+// RunWithApproval spawns the command like Run but with interactive approval
+// mode (M7): blocked network requests prompt on the terminal and apply live
+// via the egress proxy, while blocked file accesses detected in the live
+// strace stream prompt with an offer to save the grant and restart. A nil or
+// disabled cfg behaves exactly like Run.
+func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, error) {
+	if cfg == nil || !cfg.Enabled {
+		return Run(cmd, p)
+	}
+	if err := cfg.Validate(); err != nil {
+		return 0, err
+	}
+	logFile, _, err := audit.OpenDefault()
+	if err != nil {
+		return 0, fmt.Errorf("open audit log: %w", err)
+	}
+	defer logFile.Close()
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), cfg)
+}
+
+func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
 		return 0, fmt.Errorf("bwrap not found: %w (required for the Linux sandbox backend; see ARCHITECTURE.md)", err)
@@ -167,6 +190,14 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, fmt.Errorf("start egress proxy: %w", err)
 	}
 	defer eg.Close()
+
+	// Interactive approval mode: blocked hosts prompt on the terminal and
+	// approved ones join the proxy allowlist while the server keeps running.
+	var prompter *approve.Prompter
+	if approval != nil && approval.Enabled {
+		prompter = approve.NewPrompter(approval.PolicyPath, approval.Timeout, logger)
+		eg.SetApprover(prompter.NetworkApprover())
+	}
 	bridgeExe, err := os.Executable()
 	if err != nil {
 		return 0, fmt.Errorf("locate proxy bridge executable: %w", err)
@@ -224,19 +255,39 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	if err := sub.Start(); err != nil {
 		return 0, fmt.Errorf("start sandboxed process: %w", err)
 	}
-	runErr, limitErr := waitWithLimits(sub, p.Limits)
+
+	// Filesystem approval watches the live strace stream for denials worth
+	// prompting about. Bind mounts are fixed at spawn, so an approved grant
+	// is saved to the policy file and the watcher cancels the run context,
+	// which the wait below turns into a restart signal for the CLI.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if prompter != nil {
+		if tracePath == "" {
+			_ = logger.Log(audit.Event{Type: "approval", Action: "unavailable", Resource: "filesystem", Allowed: false, Reason: "no audit trace; filesystem approvals disabled for this run"})
+		} else {
+			go watchFileApprovals(ctx, prompter, approval.PolicyPath, tracePath, p, cmd, logger, cancel)
+		}
+	}
+	var runErr error
+	var limitErr *LimitExceededError
+	if prompter != nil {
+		var restarted bool
+		runErr, limitErr, restarted = waitWithLimitsCtx(sub, p.Limits, ctx)
+		if restarted {
+			// Preserve the partial trace as evidence, then ask the CLI
+			// to respawn under the widened policy file.
+			if tracePath != "" {
+				_ = importTraceFile(tracePath, logger)
+			}
+			return 0, approve.ErrRestartRequested
+		}
+	} else {
+		runErr, limitErr = waitWithLimits(sub, p.Limits)
+	}
 	if tracePath != "" {
-		f, err := os.Open(tracePath)
-		if err != nil {
-			return 0, fmt.Errorf("open completed audit trace: %w", err)
-		}
-		importErr := audit.ImportStrace(f, logger)
-		closeErr := f.Close()
-		if importErr != nil {
-			return 0, fmt.Errorf("import complete audit trace: %w", importErr)
-		}
-		if closeErr != nil {
-			return 0, fmt.Errorf("close completed audit trace: %w", closeErr)
+		if err := importTraceFile(tracePath, logger); err != nil {
+			return 0, err
 		}
 	}
 	if limitErr != nil {
@@ -250,4 +301,67 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, fmt.Errorf("run sandboxed process: %w", runErr)
 	}
 	return 0, nil
+}
+
+// importTraceFile folds a completed strace log into the audit logger.
+func importTraceFile(tracePath string, logger *audit.Logger) error {
+	f, err := os.Open(tracePath)
+	if err != nil {
+		return fmt.Errorf("open completed audit trace: %w", err)
+	}
+	importErr := audit.ImportStrace(f, logger)
+	closeErr := f.Close()
+	if importErr != nil {
+		return fmt.Errorf("import complete audit trace: %w", importErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close completed audit trace: %w", closeErr)
+	}
+	return nil
+}
+
+// watchFileApprovals tails the live strace log and prompts for denials that
+// qualify via approve.ShouldPromptFile. Approved grants are saved to the
+// policy file immediately; a restart choice invokes requestRestart (the run
+// context cancel), which ends the wait so the CLI can respawn. The policy
+// snapshot refreshes after every save so later prompts see earlier grants.
+func watchFileApprovals(ctx context.Context, prompter *approve.Prompter, policyPath, tracePath string, pol policy.Policy, cmd []string, logger *audit.Logger, requestRestart func()) {
+	var mu sync.Mutex // guards snapshot; emit is single-threaded but be explicit
+	snapshot := pol
+	exe := ""
+	if len(cmd) > 0 {
+		exe = cmd[0]
+	}
+	emit := func(ev audit.Event) {
+		mu.Lock()
+		snap := snapshot
+		mu.Unlock()
+		grant, write, ok := approve.ShouldPromptFile(ev, &snap, exe)
+		if !ok {
+			return
+		}
+		outcome, fresh := prompter.PromptFile(ev.Action, ev.Resource, grant, write)
+		if !fresh || outcome == approve.FileDeny {
+			return
+		}
+		if err := approve.SaveFileGrant(policyPath, grant, write); err != nil {
+			// Loud on stderr (the CLI channel): the user approved, but the
+			// grant is not in effect. The run continues without it.
+			fmt.Fprintf(os.Stderr, "warden approval: could not save filesystem grant %q: %v; continuing without it\n", grant, err)
+			_ = logger.Log(audit.Event{Type: "approval", Action: "deny", Resource: grant, Allowed: false, Reason: fmt.Sprintf("approved grant could not be saved: %v", err)})
+			return
+		}
+		if freshPol, err := policy.Load(policyPath); err == nil {
+			mu.Lock()
+			snapshot = freshPol
+			mu.Unlock()
+		}
+		fmt.Fprintf(os.Stderr, "warden approval: saved filesystem grant %q to %s\n", grant, policyPath)
+		if outcome == approve.FileRestart {
+			requestRestart()
+		}
+	}
+	if err := approve.TailTraceFile(ctx, tracePath, emit); err != nil && ctx.Err() == nil {
+		_ = logger.Log(audit.Event{Type: "approval", Action: "unavailable", Resource: "filesystem", Allowed: false, Reason: fmt.Sprintf("approval watch ended: %v", err)})
+	}
 }
