@@ -1,7 +1,7 @@
 # Architecture
 
 This document summarises how Warden works. For the full design including
-non-goals and rationale, see [ARCHITECTURE.md](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ARCHITECTURE.md).
+non-goals and rationale, see the [full design doc](design.md).
 
 ## Component overview
 

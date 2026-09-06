@@ -88,7 +88,7 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
       public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
       Google Drive, a couple of the popular community ones) and record
       pass/fail plus the exact policy each one needed
-      (18 servers in [`testdata/compat/matrix.yaml`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/testdata/compat/matrix.yaml),
+      (18 servers in [`testdata/compat/matrix.yaml`](compatibility.md#manifest),
       published in [`docs/compatibility.md`](compatibility.md):
       14 pass, 2 conditional, 2 fail)
 - [x] For every failure, classify it — is it a Warden bug, a policy-schema
@@ -101,7 +101,7 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
       friction — this is the first real signal on whether the policy
       schema is usable by people who didn't design it
       (program + report template: [`docs/beta.md`](beta.md),
-      [`.github/ISSUE_TEMPLATE/compat_report.md`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/.github/ISSUE_TEMPLATE/compat_report.md))
+      [compatibility report template](beta.md#report-template))
 - [x] Turn the matrix into a public compatibility page/README table, so
       prospective users can check "will this work with my server" before
       installing
@@ -110,7 +110,7 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
 - [x] Add every server from the matrix as a permanent regression fixture
       under `testdata/`, so a future change can't silently break
       compatibility with something that used to work
-      ([`testdata/compat/`](https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/testdata/compat/), enforced by
+      ([`testdata/compat/`](compatibility.md#pinned-policies), enforced by
       `go test ./internal/compat/`)
 - [x] Triage and fix the highest-impact gaps found (most-used servers
       first) before moving on to M6/M7-style polish

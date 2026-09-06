@@ -47,8 +47,7 @@ not buried.
 
 ## License and links
 
-- **License:** MIT — see
-  [LICENSE](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/LICENSE)
+- **License:** MIT — see [License](license.md)
 - **Repository:**
   [Prof-bilal/Warden](https://github.com/Prof-bilal/Warden)
 - **Contributing:** see [Contributing](contributing.md)

@@ -2,7 +2,7 @@
 
 Will Warden work with *your* MCP server? This page is the public,
 tested answer. Every row below has a permanent regression fixture under
-[`testdata/compat/`](https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/testdata/compat)
+`testdata/compat/`
 — the exact `policy.yaml` the server needs — enforced by
 `go test ./internal/compat/`, so a future Warden change cannot silently
 break a server that used to work. Each pinned policy is reproduced in
@@ -529,6 +529,227 @@ env:
 limits:
   memory_mb: 512
   timeout_s: 300
+```
+
+
+## Manifest
+
+The machine-readable source of truth (`testdata/compat/matrix.yaml`) behind the table above — verdict, failure class, and grant probes per server, enforced by `go test ./internal/compat/`. Reproduced verbatim.
+
+```yaml
+# Warden MCP compatibility matrix (M8) — machine-readable manifest.
+#
+# This file is the single source of truth for the matrix published in
+# docs/compatibility.md. Each entry MUST have a matching fixture directory
+# testdata/compat/<name>/policy.yaml, enforced by internal/compat/compat_test.go.
+#
+# verdict:
+#   pass        — works under the fixture policy on a host with a working backend
+#   conditional — works only with per-deployment grants (documented in notes)
+#   fail        — cannot be sandboxed without a schema or design change
+# failure_class (for verdict != pass, plus fixed bugs):
+#   warden-bug  — Warden defect (fixed where fix_version is set)
+#   schema-gap  — access pattern the policy schema cannot express yet
+#   inherent    — server is incompatible with sandboxing by design
+verdicts:
+  - name: filesystem
+    upstream: "@modelcontextprotocol/server-filesystem"
+    verdict: pass
+    failure_class: none
+    policy: filesystem/policy.yaml
+    notes: "Local file I/O only. Grant exactly the dirs the server may serve."
+    probe_allow_files: ["data"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: github
+    upstream: "@modelcontextprotocol/server-github"
+    verdict: pass
+    failure_class: none
+    policy: github/policy.yaml
+    notes: "REST + GraphQL share api.github.com. Needs GITHUB_TOKEN."
+    probe_allow_files: ["data/cache", "data/output"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["api.github.com"]
+    probe_allow_env: ["GITHUB_TOKEN"]
+
+  - name: slack
+    upstream: "@modelcontextprotocol/server-slack"
+    verdict: pass
+    failure_class: warden-bug
+    fix_note: "Shipped example listed ./data/cache in both read and write; every backend rejected it as ambiguous. Fixed by policy.Normalize (write-wins coalescing) + canonical write-only example."
+    policy: slack/policy.yaml
+    notes: "Needs slack.com + api.slack.com, SLACK_BOT_TOKEN, SLACK_TEAM_ID."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["slack.com", "api.slack.com"]
+    probe_allow_env: ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"]
+
+  - name: postgres
+    upstream: "@modelcontextprotocol/server-postgres"
+    verdict: pass
+    failure_class: none
+    policy: postgres/policy.yaml
+    notes: "DB host per deployment; credentials via PG* env, never in policy."
+    probe_allow_files: ["config/.pgpass"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["localhost", "db.internal.example.com"]
+    probe_allow_env: ["PGHOST", "PGPASSWORD"]
+
+  - name: sqlite
+    upstream: "@modelcontextprotocol/server-sqlite"
+    verdict: pass
+    failure_class: none
+    policy: sqlite/policy.yaml
+    notes: "SQLite needs WRITE on the db file's directory (WAL + journal sidecars)."
+    probe_allow_files: ["data/db.sqlite3", "data"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: brave-search
+    upstream: "@modelcontextprotocol/server-brave-search"
+    verdict: pass
+    failure_class: none
+    policy: brave-search/policy.yaml
+    notes: "Single-host API egress. Needs BRAVE_API_KEY."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["api.search.brave.com"]
+    probe_allow_env: ["BRAVE_API_KEY"]
+
+  - name: gdrive
+    upstream: "@modelcontextprotocol/server-gdrive"
+    verdict: pass
+    failure_class: none
+    policy: gdrive/policy.yaml
+    notes: "Google APIs live on www.googleapis.com + oauth2.googleapis.com + drive.google.com. OAuth client file is a read grant."
+    probe_allow_files: ["config/credentials.json", "data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["www.googleapis.com", "oauth2.googleapis.com", "drive.google.com"]
+    probe_allow_env: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
+
+  - name: git
+    upstream: "@modelcontextprotocol/server-git"
+    verdict: pass
+    failure_class: none
+    policy: git/policy.yaml
+    notes: "Needs write on the repo checkout it operates on."
+    probe_allow_files: ["data/repo"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: memory
+    upstream: "@modelcontextprotocol/server-memory"
+    verdict: pass
+    failure_class: none
+    policy: memory/policy.yaml
+    notes: "Knowledge-graph server; local JSON store only, no network."
+    probe_allow_files: ["data/memory.json"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: time
+    upstream: "@modelcontextprotocol/server-time"
+    verdict: pass
+    failure_class: none
+    policy: time/policy.yaml
+    notes: "No filesystem or network needs at all — empty grants."
+    probe_allow_files: []
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: sequential-thinking
+    upstream: "@modelcontextprotocol/server-sequential-thinking"
+    verdict: pass
+    failure_class: none
+    policy: sequential-thinking/policy.yaml
+    notes: "Pure reasoning server; empty grants like time."
+    probe_allow_files: []
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: notion
+    upstream: "community: notion-mcp (@makenotion / sison1992)"
+    verdict: pass
+    failure_class: none
+    policy: notion/policy.yaml
+    notes: "Single-host API egress. Needs NOTION_API_KEY."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["api.notion.com"]
+    probe_allow_env: ["NOTION_API_KEY"]
+
+  - name: linear
+    upstream: "community: linear-mcp"
+    verdict: pass
+    failure_class: none
+    policy: linear/policy.yaml
+    notes: "Single-host API egress. Needs LINEAR_API_KEY."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["api.linear.app"]
+    probe_allow_env: ["LINEAR_API_KEY"]
+
+  - name: tavily
+    upstream: "community: tavily-mcp (web search)"
+    verdict: pass
+    failure_class: none
+    policy: tavily/policy.yaml
+    notes: "Single-host API egress. Needs TAVILY_API_KEY."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["api.tavily.com"]
+    probe_allow_env: ["TAVILY_API_KEY"]
+
+  - name: fetch
+    upstream: "@modelcontextprotocol/server-fetch"
+    verdict: conditional
+    failure_class: inherent
+    policy: fetch/policy.yaml
+    notes: "Fetches ARBITRARY user-supplied URLs by design. Sandboxable only with an explicit per-deployment host list; a fully general fetch server cannot be allowlisted in advance. This is inherent, not a Warden bug."
+    probe_allow_files: ["data/cache"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["example.com"]
+    probe_allow_env: []
+
+  - name: kubernetes
+    upstream: "community: kubernetes-mcp"
+    verdict: conditional
+    failure_class: inherent
+    policy: kubernetes/policy.yaml
+    notes: "Needs the cluster API host (per deployment) plus a read grant on the kubeconfig. Works once those two deployment-specific grants are set."
+    probe_allow_files: ["config/kubeconfig"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["k8s.internal.example.com"]
+    probe_allow_env: ["KUBECONFIG"]
+
+  - name: docker
+    upstream: "community: docker-mcp"
+    verdict: fail
+    failure_class: inherent
+    policy: docker/policy.yaml
+    notes: "Requires the Docker daemon socket (/var/run/docker.sock), i.e. full host container control. Granting the socket voids the sandbox; there is no scoped-down grant that preserves both function and isolation. FAIL by design."
+    probe_allow_files: ["data"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: []
+    probe_allow_env: []
+
+  - name: playwright
+    upstream: "community: playwright-mcp (browser automation)"
+    verdict: fail
+    failure_class: schema-gap
+    policy: playwright/policy.yaml
+    notes: "Two gaps: (1) the schema has no wildcard hosts, but a browser visits arbitrary domains; (2) the schema has no unix-socket grant for the browser IPC, and nested browser sandboxes need syscalls Warden does not mediate. Tracked as schema gaps, not planned for M8."
+    probe_allow_files: ["data/profile"]
+    probe_deny_files: ["/etc/shadow"]
+    probe_allow_hosts: ["example.com"]
+    probe_allow_env: ["PLAYWRIGHT_BROWSERS_PATH"]
 ```
 
 ## Try it yourself

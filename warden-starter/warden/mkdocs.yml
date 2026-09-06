@@ -25,6 +25,7 @@ nav:
     - Example Policies: examples.md
   - Understand:
     - Architecture: architecture.md
+    - Full Design Doc: design.md
     - Security Review: security.md
     - Compatibility Matrix: compatibility.md
   - Community:
@@ -39,6 +40,7 @@ nav:
     - Testing Guide: testing.md
     - Code Style: codestyle.md
     - Review Guide: reviewing.md
+    - License: license.md
     - Deploying These Docs: deploy.md
 
 markdown_extensions:

@@ -10,9 +10,7 @@ directory — not your shell's current working directory.
 > auto-generated policy is conservative by design; review and tighten it
 > from there.
 
-Source files live in [`examples/`](https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/examples)
-in the repo. The full content of each one is reproduced below so you don't
-have to leave this site.
+The source files live under `examples/` in the repo. The full content of each one is reproduced below so you don't have to leave this site.
 
 ## Policies
 
