@@ -1,12 +1,13 @@
 {
   "name": "warden-sandbox-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "npm wrapper for the Warden sandbox CLI",
   "bin": {
     "warden": "./bin/warden"
   },
   "files": [
     "bin/",
+    "README.md",
     "LICENSE"
   ],
   "engines": {
