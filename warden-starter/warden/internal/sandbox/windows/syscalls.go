@@ -38,14 +38,20 @@ var (
 	procControlTraceW           = advapi32.NewProc("ControlTraceW")
 	procEnableTraceEx2          = advapi32.NewProc("EnableTraceEx2")
 
-	// kernel32
-	procOpenTraceW               = kernel32.NewProc("OpenTraceW")
-	procProcessTrace             = kernel32.NewProc("ProcessTrace")
-	procCloseTrace               = kernel32.NewProc("CloseTrace")
+	// kernel32 (process/enumeration helpers only; ETW consumer APIs are
+	// advapi32, not kernel32 — bind them below with the other advapi32
+	// procs so the whole session fails closed if any symbol is missing).
 	procQueryDosDeviceW          = kernel32.NewProc("QueryDosDeviceW")
 	procCreateToolhelp32Snapshot = kernel32.NewProc("CreateToolhelp32Snapshot")
 	procProcess32First           = kernel32.NewProc("Process32FirstW")
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
+
+	// advapi32 ETW consumer APIs were previously bound to kernel32, which
+	// does not export them — on real Windows that caused TestEtwSessionLifecycle
+	// to panic with "procedure could not be found" instead of failing closed.
+	procOpenTraceW               = advapi32.NewProc("OpenTraceW")
+	procProcessTrace             = advapi32.NewProc("ProcessTrace")
+	procCloseTrace               = advapi32.NewProc("CloseTrace")
 
 	// fwpuclnt (Windows Filtering Platform user-mode API)
 	procFwpmEngineOpen        = fwpuclnt.NewProc("FwpmEngineOpen")
