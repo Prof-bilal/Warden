@@ -1,0 +1,18 @@
+# Fixture policy — community kubernetes-mcp (compat: CONDITIONAL)
+# Works once the two deployment-specific grants are set: the cluster API
+# host and a read grant on the kubeconfig file.
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read:
+    - "./config/kubeconfig"
+  write: []
+network:
+  allow:
+    - "k8s.internal.example.com"
+env:
+  allow:
+    - "KUBECONFIG"
+    - "HOME"
+limits:
+  memory_mb: 256
+  timeout_s: 300

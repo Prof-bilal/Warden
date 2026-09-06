@@ -1,0 +1,17 @@
+# Fixture policy — @modelcontextprotocol/server-fetch (compat: CONDITIONAL)
+# Fetch retrieves arbitrary user-supplied URLs by design, so no static
+# allowlist is complete. This fixture pins one host (example.com) to prove
+# the mechanism; a deployment must extend network.allow per use-case.
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data/cache"
+network:
+  allow:
+    - "example.com"
+env:
+  allow: []
+limits:
+  memory_mb: 256
+  timeout_s: 120

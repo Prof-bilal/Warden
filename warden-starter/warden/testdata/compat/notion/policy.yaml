@@ -1,0 +1,16 @@
+# Fixture policy — community notion-mcp (compat: pass)
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data/cache"
+network:
+  allow:
+    - "api.notion.com"
+env:
+  allow:
+    - "NOTION_API_KEY"
+    - "HOME"
+limits:
+  memory_mb: 256
+  timeout_s: 300

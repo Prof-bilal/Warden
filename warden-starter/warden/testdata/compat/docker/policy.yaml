@@ -1,0 +1,18 @@
+# Fixture policy — community docker-mcp (compat: FAIL, inherent)
+# The server needs the Docker daemon socket (/var/run/docker.sock), i.e.
+# full host container control. That grant is DELIBERATELY ABSENT here:
+# granting the socket would void the sandbox. This fixture pins the rest of
+# the policy so the regression test locks in the fail verdict and the
+# documented reason (see docs/compatibility.md).
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read:
+    - "./data"
+  write: []
+network:
+  allow: []
+env:
+  allow: []
+limits:
+  memory_mb: 256
+  timeout_s: 300

@@ -1,0 +1,13 @@
+# Fixture policy — @modelcontextprotocol/server-memory (compat: pass)
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data"
+network:
+  allow: []
+env:
+  allow: []
+limits:
+  memory_mb: 128
+  timeout_s: 60

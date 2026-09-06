@@ -1,0 +1,13 @@
+# Fixture policy — @modelcontextprotocol/server-time (compat: pass)
+# No filesystem or network needs at all: empty grants, deny-by-default.
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write: []
+network:
+  allow: []
+env:
+  allow: []
+limits:
+  memory_mb: 64
+  timeout_s: 60

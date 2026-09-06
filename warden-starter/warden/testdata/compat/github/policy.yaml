@@ -1,0 +1,17 @@
+# Fixture policy — @modelcontextprotocol/server-github (compat: pass)
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read:
+    - "./data/cache"
+  write:
+    - "./data/output"
+network:
+  allow:
+    - "api.github.com"
+env:
+  allow:
+    - "GITHUB_TOKEN"
+    - "HOME"
+limits:
+  memory_mb: 256
+  timeout_s: 300

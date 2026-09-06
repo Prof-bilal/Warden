@@ -1,0 +1,20 @@
+# Fixture policy — community playwright-mcp (compat: FAIL, schema-gap)
+# A browser visits arbitrary domains (needs wildcard hosts, which the schema
+# rejects) and needs browser IPC / nested-sandbox syscalls Warden does not
+# mediate. This fixture pins a single host to prove the mechanism while the
+# matrix records the fail verdict and the gap.
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data/profile"
+network:
+  allow:
+    - "example.com"
+env:
+  allow:
+    - "PLAYWRIGHT_BROWSERS_PATH"
+    - "HOME"
+limits:
+  memory_mb: 512
+  timeout_s: 300

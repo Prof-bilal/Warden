@@ -1,0 +1,22 @@
+# Fixture policy — @modelcontextprotocol/server-postgres (compat: pass)
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read:
+    - "./config/.pgpass"
+    - "./config/.postgresql"
+  write: []
+network:
+  allow:
+    - "localhost"
+    - "db.internal.example.com"
+env:
+  allow:
+    - "PGHOST"
+    - "PGPORT"
+    - "PGUSER"
+    - "PGPASSWORD"
+    - "PGSSLMODE"
+    - "HOME"
+limits:
+  memory_mb: 512
+  timeout_s: 600

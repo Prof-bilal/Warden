@@ -1,0 +1,16 @@
+# Fixture policy — @modelcontextprotocol/server-brave-search (compat: pass)
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data/cache"
+network:
+  allow:
+    - "api.search.brave.com"
+env:
+  allow:
+    - "BRAVE_API_KEY"
+    - "HOME"
+limits:
+  memory_mb: 128
+  timeout_s: 60

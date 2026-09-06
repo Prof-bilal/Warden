@@ -1,0 +1,20 @@
+# Fixture policy — @modelcontextprotocol/server-slack (compat: pass)
+# Canonical write-only cache dir: a write grant subsumes reads underneath
+# it, so no duplicate read grant (see policy.Normalize).
+command: ["/usr/bin/node", "./server/dist/index.js"]
+filesystem:
+  read: []
+  write:
+    - "./data/cache"
+network:
+  allow:
+    - "slack.com"
+    - "api.slack.com"
+env:
+  allow:
+    - "SLACK_BOT_TOKEN"
+    - "SLACK_TEAM_ID"
+    - "HOME"
+limits:
+  memory_mb: 256
+  timeout_s: 300
