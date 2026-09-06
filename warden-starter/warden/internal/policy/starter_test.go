@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,10 +17,10 @@ func TestStarterFromAuditIsConservative(t *testing.T) {
 		{Type: "network", Action: "connect", Resource: "api.example.test:443", Allowed: true},
 		{Type: "network", Action: "connect", Resource: "blocked.example.test:443", Allowed: false},
 	}, []string{"/usr/bin/server", "--stdio"})
-	if got, want := strings.Join(p.Filesystem.Read, ","), "/work/input.txt"; got != want {
+	if got, want := strings.Join(p.Filesystem.Read, ","), filepath.FromSlash("/work/input.txt"); got != want {
 		t.Errorf("read = %q, want %q", got, want)
 	}
-	if got, want := strings.Join(p.Filesystem.Write, ","), "/work/out"; got != want {
+	if got, want := strings.Join(p.Filesystem.Write, ","), filepath.FromSlash("/work/out"); got != want {
 		t.Errorf("write = %q, want %q", got, want)
 	}
 	if got, want := strings.Join(p.Network.Allow, ","), "api.example.test"; got != want {

@@ -68,8 +68,14 @@ jobs:
       - name: Update package.json version from tag
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
 
-      - name: Publish to npm
-        run: npm publish --access public
+      - name: Publish to npm (skip if version already exists)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if npm view "warden-sandbox-cli@$VERSION" version 2>/dev/null; then
+            echo "Version $VERSION already published — skipping (rerun-safe)"
+          else
+            npm publish --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

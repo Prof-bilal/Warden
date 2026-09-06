@@ -8,11 +8,11 @@ import (
 
 func TestProposeFileGrant(t *testing.T) {
 	grant, write, ok := ProposeFileGrant("openat", "/srv/data/file.txt")
-	if !ok || grant != "/srv/data/file.txt" || write {
+	if !ok || grant != filepath.FromSlash("/srv/data/file.txt") || write {
 		t.Fatalf("read = %q, %v, %v", grant, write, ok)
 	}
 	grant, write, ok = ProposeFileGrant("creat", "/srv/data/new.txt")
-	if !ok || grant != "/srv/data" || !write {
+	if !ok || grant != filepath.FromSlash("/srv/data") || !write {
 		t.Fatalf("creat = %q, %v, %v", grant, write, ok)
 	}
 	for _, tc := range []struct{ action, resource string }{
@@ -27,13 +27,21 @@ func TestProposeFileGrant(t *testing.T) {
 }
 
 func TestCoversFile(t *testing.T) {
-	p := Policy{Filesystem: Filesystem{Read: []string{"/srv/ro"}, Write: []string{"/srv/rw"}}}
-	for _, path := range []string{"/srv/ro", "/srv/ro/a.txt", "/srv/rw", "/srv/rw/sub/b.txt"} {
+	p := Policy{Filesystem: Filesystem{Read: []string{filepath.FromSlash("/srv/ro")}, Write: []string{filepath.FromSlash("/srv/rw")}}}
+	for _, path := range []string{
+		filepath.FromSlash("/srv/ro"),
+		filepath.FromSlash("/srv/ro/a.txt"),
+		filepath.FromSlash("/srv/rw"),
+		filepath.FromSlash("/srv/rw/sub/b.txt"),
+	} {
 		if !CoversFile(p, path) {
 			t.Errorf("CoversFile(%q) = false, want true", path)
 		}
 	}
-	for _, path := range []string{"/srv/other", "/etc/passwd"} {
+	for _, path := range []string{
+		filepath.FromSlash("/srv/other"),
+		filepath.FromSlash("/etc/passwd"),
+	} {
 		if CoversFile(p, path) {
 			t.Errorf("CoversFile(%q) = true, want false", path)
 		}
@@ -60,17 +68,17 @@ func TestAddHost(t *testing.T) {
 
 func TestAddFileGrantSubsumes(t *testing.T) {
 	p := Policy{}
-	if _, err := p.AddFileGrant("/srv/data/file.txt", false); err != nil {
+	if _, err := p.AddFileGrant(filepath.FromSlash("/srv/data/file.txt"), false); err != nil {
 		t.Fatal(err)
 	}
-	added, err := p.AddFileGrant("/srv/data", true)
+	added, err := p.AddFileGrant(filepath.FromSlash("/srv/data"), true)
 	if err != nil || !added {
 		t.Fatalf("AddFileGrant = %v, %v", added, err)
 	}
 	if len(p.Filesystem.Read) != 0 {
 		t.Fatalf("write grant should subsume read, got %v", p.Filesystem.Read)
 	}
-	added, err = p.AddFileGrant("/srv/data/other.txt", false)
+	added, err = p.AddFileGrant(filepath.FromSlash("/srv/data/other.txt"), false)
 	if err != nil || added {
 		t.Fatalf("covered read = %v, %v", added, err)
 	}
@@ -81,7 +89,7 @@ func TestAddFileGrantSubsumes(t *testing.T) {
 
 func TestSaveRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "policy.yaml")
-	p := Policy{Filesystem: Filesystem{Read: []string{"/srv/ro"}}}
+	p := Policy{Filesystem: Filesystem{Read: []string{filepath.FromSlash("/srv/ro")}}}
 	if err := p.Save(path); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -89,7 +97,7 @@ func TestSaveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(loaded.Filesystem.Read) != 1 || loaded.Filesystem.Read[0] != "/srv/ro" {
+	if len(loaded.Filesystem.Read) != 1 || loaded.Filesystem.Read[0] != filepath.FromSlash("/srv/ro") {
 		t.Fatalf("round trip = %+v", loaded.Filesystem)
 	}
 	info, err := os.Stat(path)
@@ -103,11 +111,11 @@ func TestSaveRoundTrip(t *testing.T) {
 
 func TestNormalizeDropsShadowedReadsSortsAndDedups(t *testing.T) {
 	p := Policy{Filesystem: Filesystem{
-		Read:  []string{"/srv/b", "/srv/a", "/srv/a", "/srv/w/file.txt", "/srv/keep"},
-		Write: []string{"/srv/w"},
+		Read:  []string{filepath.FromSlash("/srv/b"), filepath.FromSlash("/srv/a"), filepath.FromSlash("/srv/a"), filepath.FromSlash("/srv/w/file.txt"), filepath.FromSlash("/srv/keep")},
+		Write: []string{filepath.FromSlash("/srv/w")},
 	}}
 	p.Normalize()
-	wantRead := []string{"/srv/a", "/srv/b", "/srv/keep"}
+	wantRead := []string{filepath.FromSlash("/srv/a"), filepath.FromSlash("/srv/b"), filepath.FromSlash("/srv/keep")}
 	if len(p.Filesystem.Read) != len(wantRead) {
 		t.Fatalf("Read = %v, want %v", p.Filesystem.Read, wantRead)
 	}
@@ -116,14 +124,14 @@ func TestNormalizeDropsShadowedReadsSortsAndDedups(t *testing.T) {
 			t.Fatalf("Read = %v, want %v", p.Filesystem.Read, wantRead)
 		}
 	}
-	if len(p.Filesystem.Write) != 1 || p.Filesystem.Write[0] != "/srv/w" {
-		t.Fatalf("Write = %v, want [/srv/w]", p.Filesystem.Write)
+	if len(p.Filesystem.Write) != 1 || p.Filesystem.Write[0] != filepath.FromSlash("/srv/w") {
+		t.Fatalf("Write = %v, want [%s]", p.Filesystem.Write, filepath.FromSlash("/srv/w"))
 	}
 }
 
 func TestResolveExecutable(t *testing.T) {
-	got, err := ResolveExecutable([]string{"/usr/bin/node", "server.js"})
-	if err != nil || got[0] != "/usr/bin/node" {
+	got, err := ResolveExecutable([]string{filepath.FromSlash("/usr/bin/node"), "server.js"})
+	if err != nil || got[0] != filepath.FromSlash("/usr/bin/node") {
 		t.Fatalf("absolute passthrough = %v, %v", got, err)
 	}
 	if _, err := ResolveExecutable(nil); err == nil {

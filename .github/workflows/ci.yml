@@ -45,9 +45,11 @@ jobs:
       - run: go vet ./...
       - shell: pwsh
         run: go test -v ./...
+        id: test
       - name: Assert ETW and escape tests actually ran
-        # Elevated runner: these must execute, not skip. A skip here means
-        # the privilege environment changed — fail loudly.
+        # Run even when the test step panics or fails (e.g. missing DLL
+        # export causing a process exit) so the assertion is never silenced.
+        if: always() && steps.test.outcome != 'skipped'
         shell: pwsh
         run: |
           $out = go test -v -count=1 -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' ./internal/sandbox/windows/ 2>&1 | Out-String

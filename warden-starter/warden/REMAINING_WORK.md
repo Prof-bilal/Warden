@@ -12,13 +12,13 @@ after v0.1.5) exposed, plus loose ends from the release work.
 
 ---
 
-## P0 — Fix the production bug exposed by the Windows job (was masked until now)
+## P0 — Fix the production bug exposed by the Windows job ✅ FIXED (`eadca83`)
 
-A real Windows runner is the only place the TinyGo/COM proc bindings get
-exercised, and it caught a **wrong DLL binding that would panic `warden run`
-instead of failing closed** on a real Windows machine.
+A real Windows runner is the only place the proc bindings get exercised, and it
+caught a **wrong DLL binding that would panic `warden run` instead of failing
+closed** on a real Windows machine.
 
-**What failed:** `TestEtwSessionLifecycle` panicked with
+**What failed first:** `TestEtwSessionLifecycle` panicked with
 
 ```
 panic: Failed to find OpenTraceW procedure in kernel32.dll:
@@ -26,43 +26,61 @@ panic: Failed to find OpenTraceW procedure in kernel32.dll:
 ```
 
 because `syscalls.go` bound `OpenTraceW`, `ProcessTrace`, `CloseTrace` to
-`kernel32.dll`, but those live in **advapi32.dll** on modern Windows.
+`kernel32.dll`, but those live in **advapi32.dll** on modern Windows. Fixed in
+[`eadca83`](https://github.com/Prof-bilal/Warden/commit/eadca83) — moved the
+three ETW consumer procs to `advapi32`.
 
-**Impact:** before this fix, `warden run --backend windows` with ETW enabled
-would panic at session startup on real Windows (advapi32 exports the symbol,
-kernel32 does not), rather than failing closed cleanly. The ETW session's
-`ProcessTrace` goroutine would have died too.
+**Confirmed fixed:** the fix landed and pushed; the next CI rerun is pending.
 
-**Where:** `internal/sandbox/windows/syscalls.go:42-44` (proc bindings).
-Verify/confirm on device and also in docs:
-- this may also need a human sanity check that `ProcessTrace`/`CloseTrace`
-  are advapi32 on the actual target, since the plan's original "kernel32" was
-  wrong and I haven't independently confirmed the full trio via the device docs
-  this conversation referenced (MS evntcons.h).
+**Secondary P0 (same root cause class) — FwpmEngineOpen bound to fwpuclnt.dll
+which is absent on this runner:** `TestEscapeNetworkBlockedAudited` panicked
+with
 
-**Acceptance:** the Windows CI job goes green on this test, including the
-assertion step that confirms the ETW/escape/AppContainer/WFP tests actually
-ran (not skipped).
+```
+panic: Failed to find FwpmEngineOpen procedure in fwpuclnt.dll:
+        The specified procedure could not be found.
+```
 
-**Acceptance criteria (language-sensitive):**
-- `warden version` and `warden --version` both print the stamped version.
-- Release binary checksum matches the published SHA256SUMS.
-- `TestEtwSessionLifecycle` passes on the Windows runner, and the assertion
-  step in the Windows job confirms ETW/escape/AppContainer/WFP tests ran.
+even though the three WFP filter procs were correctly bound to `fwpuclnt.dll`.
+Investigation shows `fwpuclnt.dll` is **not present on this GitHub Windows
+runner image** (the caller `FwpmEngineOpen` historically lives in
+`iphlapi.dll`), so `Syscall.BadImageError`-style lookup fails at first
+`.Call()`. The test's own skip logic (via `requireAppContainer → Supported()`)
+never runs because the panic happens in `Run()` *after* the `Supported()` check
+passes. 
+
+**What this means:** this is the **same class of bug as the ETW one** — a DLL
+binding the author assumed would be present but isn't on the actual host —
+except here it affects the WFP egress layer (used by every production
+`warden run` on Windows, not just tests). It must be fixed before claiming the
+Windows backend is verified.
+
+**Where:** `internal/sandbox/windows/syscalls.go` (fwpuclnt bindings) and the
+call sites that assume `fwpuclnt.dll` is loadable (`wfp.go`).
+
+**Acceptance (after fix):** the Windows CI job goes green on the ETW tests
+*and* on the WFP-using escape test, with any remaining skips only from
+privilege/evironment reasons (elevated, curl presence), not from missing-DLL
+panics.
 
 ---
 
 ## P1 — Make the Windows CI job robust (so it fails loudly on skip, not silently)
 
-The Windows job assertion step I added (`windows-latest`) is a good start, but
-it's currently gated behind `TestEtw|TestEscape|TestAppContainer|TestWFP` in a
-pwsh grep. Once the P0 DLL fix lands, this job should go green on the escape
-tests — and stay green.
+The Windows job assertion step (`windows-latest`, pwsh grep on
+`TestEtw|TestEscape|TestAppContainer|TestWFP`) is a good start, but it only
+runs when the `go test -v ./...` step passes. Since `TestEscapeNetworkBlocked
+Audited` panicked (process exit 1), the assertion step was **skipped** — so the
+missing-FwpmEngineOpen bug above never got asserted, only observed downstream.
 
-**TBD:**
+**TBD after P0 WFP fix:**
 - Confirm the assertion regex still matches the real test names after any rename.
-- If any escape test is skipped on the runner (elevated privilege issue), the
-  assertion step must fail so the skip is caught rather than silently ignored.
+- If any escape/ETW test is skipped on the runner (elevated/privilege/evironment
+  reason), the assertion step must fail so the skip is caught rather than
+  silently ignored.
+- Consider gating the assertion to run even when `go test` exits non-zero (e.g.
+  parse the log for the targeted test names regardless), so a single panicking
+  test can't silence the assertion.
 
 ---
 
@@ -126,8 +144,9 @@ shipping v0.1.3–v0.1.5.
 **3.1 — Subproject `ci.yml` still lives at `warden-starter/warden/.github/`**
 
 GitHub **only reads root `.github/workflows/`**, so the subproject's `ci.yml`
-(including the `windows-latest` job) never actually executed until I moved it
-to root. That `ci.yml` file still exists in the subproject. Decide whether to:
+(including the `windows-latest` job) never actually executed until it was moved
+to root in [`885ab2f`](https://github.com/Prof-bilal/Warden/commit/885ab2f).
+That subproject `ci.yml` still exists. Decide whether to:
 - delete it (the root one is authoritative now), or
 - keep it as a historical snapshot / migration artifact.
 
@@ -164,15 +183,18 @@ Homebrew tap repo being set up for distribution. If tap distribution is wanted,
 that's a separate manual step (create tap repo, commit the generated formula,
 update the landing page if it references a tap URL).
 
-**3.6 — Verify OpenTraceW/ProcessTrace/CloseTrace DLL on the actual target**
+**3.6 — Confirm the second P0 (fwpuclnt.dll / FwpmEngineOpen) is fixed on the
+actual Windows target**
 
-The P0 fix is based on the documented fact that those are advapi32 exports.
-Before treating it as fully verified on the Windows target, I'd ideally confirm
-via the device's own SDK / docs this conversation referenced, since the prior
-"kernel32" assumption was wrong and I haven't independently re-confirmed the
-full trio from the authoritative source (MS evntcons.h / the SDK headers) on
-this device. Treat P0 as "likely correct, needs one external confirmation pass"
-if production-Windows behavior matters here.
+The first P0 (ETW procs → advapi32) is fixed in `eadca83` and pushed; the
+second P0 (WFP `FwpmEngineOpen` bound to `fwpuclnt.dll`, which is absent on the
+GitHub Windows runner and thus panics at `Run()` time) is documented but not
+yet fixed. Fix it before claiming the Windows backend is verified: either bind
+`FwpmEngineOpen` to the DLL that actually exports it on the target, or make the
+WFP layer fail closed cleanly (return an error, never panic) when its DLL isn't
+loadable. After the fix, the Windows CI job should go green on the
+ETW tests *and* on `TestEscapeNetworkBlockedAudited` (with any remaining skips
+only from environment/privilege reasons, not missing-DLL panics).
 
 ---
 

@@ -168,6 +168,29 @@ func fwpmResultError(call string, code uintptr) error {
 	return fmt.Errorf("WFP %s: code %#x", call, code)
 }
 
+// wfpSupported checks that all WFP procs required by the egress layer are
+// resolvable in the DLL. This is a fail-closed gate: if any proc is missing
+// (wrong DLL, wrong name, stripped Windows image), the sandbox refuses to
+// start rather than panicking at Call time.
+func wfpSupported() error {
+	for _, p := range []*windows.LazyProc{
+		procFwpmEngineOpen,
+		procFwpmEngineClose,
+		procFwpmTransactionBegin,
+		procFwpmTransactionCommit,
+		procFwpmTransactionAbort,
+		procFwpmSublayerAdd,
+		procFwpmFilterAdd,
+		procFwpmFreeMemory,
+		procFwpmFilterDeleteById,
+	} {
+		if err := p.Find(); err != nil {
+			return failClose("WFP engine", fmt.Errorf("required WFP procedure %q not found: %w", p.Name, err))
+		}
+	}
+	return nil
+}
+
 // fwpmOpen opens a handle to the filter engine.
 func fwpmOpen() (windows.Handle, error) {
 	var engine windows.Handle
@@ -208,6 +231,9 @@ type wfpSession struct {
 // error aborts the transaction and closes the engine so a partially configured
 // policy can never leave a default-permit path.
 func installWFPEgress(imageNTPath string, allowPort uint16, seedGUID string) (sess *wfpSession, err error) {
+	if err := wfpSupported(); err != nil {
+		return nil, err
+	}
 	engine, err := fwpmOpen()
 	if err != nil {
 		return nil, err

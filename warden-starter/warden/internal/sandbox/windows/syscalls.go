@@ -49,20 +49,23 @@ var (
 	// advapi32 ETW consumer APIs were previously bound to kernel32, which
 	// does not export them — on real Windows that caused TestEtwSessionLifecycle
 	// to panic with "procedure could not be found" instead of failing closed.
-	procOpenTraceW               = advapi32.NewProc("OpenTraceW")
-	procProcessTrace             = advapi32.NewProc("ProcessTrace")
-	procCloseTrace               = advapi32.NewProc("CloseTrace")
+	procOpenTraceW   = advapi32.NewProc("OpenTraceW")
+	procProcessTrace = advapi32.NewProc("ProcessTrace")
+	procCloseTrace   = advapi32.NewProc("CloseTrace")
 
-	// fwpuclnt (Windows Filtering Platform user-mode API)
-	procFwpmEngineOpen        = fwpuclnt.NewProc("FwpmEngineOpen")
-	procFwpmEngineClose       = fwpuclnt.NewProc("FwpmEngineClose")
-	procFwpmTransactionBegin  = fwpuclnt.NewProc("FwpmTransactionBegin")
-	procFwpmTransactionCommit = fwpuclnt.NewProc("FwpmTransactionCommit")
-	procFwpmTransactionAbort  = fwpuclnt.NewProc("FwpmTransactionAbort")
-	procFwpmSublayerAdd       = fwpuclnt.NewProc("FwpmSublayerAdd")
-	procFwpmFilterAdd         = fwpuclnt.NewProc("FwpmFilterAdd")
-	procFwpmFreeMemory        = fwpuclnt.NewProc("FwpmFreeMemory")
-	procFwpmFilterDeleteById  = fwpuclnt.NewProc("FwpmFilterDeleteById")
+	// fwpuclnt (Windows Filtering Platform user-mode API). The DLL exports
+	// use versioned names (FwpmXxx0); the C header's #define macros are not
+	// present in the export table, so using the unversioned names causes a
+	// "procedure could not be found" panic at runtime.
+	procFwpmEngineOpen        = fwpuclnt.NewProc("FwpmEngineOpen0")
+	procFwpmEngineClose       = fwpuclnt.NewProc("FwpmEngineClose0")
+	procFwpmTransactionBegin  = fwpuclnt.NewProc("FwpmTransactionBegin0")
+	procFwpmTransactionCommit = fwpuclnt.NewProc("FwpmTransactionCommit0")
+	procFwpmTransactionAbort  = fwpuclnt.NewProc("FwpmTransactionAbort0")
+	procFwpmSublayerAdd       = fwpuclnt.NewProc("FwpmSublayerAdd0")
+	procFwpmFilterAdd         = fwpuclnt.NewProc("FwpmFilterAdd0")
+	procFwpmFreeMemory        = fwpuclnt.NewProc("FwpmFreeMemory0")
+	procFwpmFilterDeleteById  = fwpuclnt.NewProc("FwpmFilterDeleteById0")
 )
 
 // lasterr maps a Windows BOOL-style Proc.Call error to a Go error, normalising

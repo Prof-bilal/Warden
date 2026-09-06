@@ -187,18 +187,18 @@ func TestDocumentedSchemaGaps(t *testing.T) {
 func TestOverlapNormalizeIsWriteWins(t *testing.T) {
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
-			Read:  []string{"/srv/data/cache", "/srv/data/other"},
-			Write: []string{"/srv/data/cache"},
+			Read:  []string{filepath.FromSlash("/srv/data/cache"), filepath.FromSlash("/srv/data/other")},
+			Write: []string{filepath.FromSlash("/srv/data/cache")},
 		},
 	}
 	p.Normalize()
-	if len(p.Filesystem.Write) != 1 || p.Filesystem.Write[0] != "/srv/data/cache" {
+	if len(p.Filesystem.Write) != 1 || p.Filesystem.Write[0] != filepath.FromSlash("/srv/data/cache") {
 		t.Fatalf("Normalize mangled write grants: %v", p.Filesystem.Write)
 	}
-	if len(p.Filesystem.Read) != 1 || p.Filesystem.Read[0] != "/srv/data/other" {
+	if len(p.Filesystem.Read) != 1 || p.Filesystem.Read[0] != filepath.FromSlash("/srv/data/other") {
 		t.Fatalf("Normalize should drop only the shadowed read grant, got: %v", p.Filesystem.Read)
 	}
-	if !policy.CoversFile(p, "/srv/data/cache/token.json") {
+	if !policy.CoversFile(p, filepath.Join(filepath.FromSlash("/srv/data/cache"), "token.json")) {
 		t.Fatalf("coalesced write grant no longer covers reads underneath it")
 	}
 }
@@ -207,9 +207,9 @@ func TestOverlapNormalizeIsWriteWins(t *testing.T) {
 // launcher names resolve via PATH, absolute paths pass through, and unknown
 // names fail closed (never a silent unsandboxed guess).
 func TestResolveExecutable(t *testing.T) {
-	abs := []string{"/usr/bin/node", "server.js"}
+	abs := []string{filepath.FromSlash("/usr/bin/node"), "server.js"}
 	got, err := policy.ResolveExecutable(abs)
-	if err != nil || got[0] != "/usr/bin/node" {
+	if err != nil || got[0] != filepath.FromSlash("/usr/bin/node") {
 		t.Fatalf("absolute command should pass through, got %v, %v", got, err)
 	}
 	if _, err := policy.ResolveExecutable(nil); err == nil {
