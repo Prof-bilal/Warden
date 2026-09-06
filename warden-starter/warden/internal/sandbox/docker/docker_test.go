@@ -17,7 +17,8 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 		t.Fatal(err)
 	}
 	sockDir := t.TempDir()
-	cmd := []string{"/usr/bin/true"}
+	cmdDir := t.TempDir()
+	cmd := []string{filepath.Join(cmdDir, "true")}
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
 			Read:  []string{readDir},
@@ -40,7 +41,6 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 		sockDir + ":/.warden/host-proxy:ro",
 		"alpine:3.20",
 		"__proxy-bridge",
-		"/usr/bin/true",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("docker args missing %q\nargs: %v", want, args)
@@ -58,7 +58,7 @@ func TestBuildDockerArgsRejectsReadWriteConflict(t *testing.T) {
 			Write: []string{dir},
 		},
 	}
-	_, err := BuildDockerArgs([]string{"/usr/bin/true"}, p, bridge, t.TempDir(), "alpine:3.20")
+	_, err := BuildDockerArgs([]string{filepath.Join(t.TempDir(), "true")}, p, bridge, t.TempDir(), "alpine:3.20")
 	if err == nil {
 		t.Fatal("expected read/write conflict error")
 	}

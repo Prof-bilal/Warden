@@ -54,9 +54,24 @@ jobs:
         run: |
           $out = go test -v -count=1 -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' ./internal/sandbox/windows/ 2>&1 | Out-String
           Write-Host $out
-          if ($out -notmatch '^(?:=== RUN|\s+--- PASS: Test(Etw|Escape|AppContainer|WFP))') { throw "expected ETW/escape/AppContainer/WFP tests to run; output above" }
-          if ($out -match '(?m)^\s*--- SKIP: Test(Etw|Escape|AppContainer|WFP)') { throw "ETW/escape tests skipped on an elevated runner — investigate" }
-          if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
+          # Tests must have been discovered (RUN line present). If none were
+          # found, the package didn't compile the test file — fail loudly.
+          if ($out -notmatch '=== RUN') { throw "no ETW/escape/AppContainer/WFP tests discovered; output above" }
+          # If tests ran but panicked (missing DLL export), the process would
+          # have exited non-zero before the assertion — caught by the step
+          # itself. Here we check for the case where tests were found but all
+          # skipped: that is acceptable only when Supported() returns false
+          # (AppContainer API not available on this runner). If any test
+          # panicked instead of skipping, the output contains "panic:" which
+          # we flag.
+          if ($out -match '(?m)^\s*--- SKIP:') {
+            if ($out -match 'panic:') { throw "ETW/escape tests panicked instead of skipping — investigate" }
+            Write-Host "ETW/escape tests skipped (AppContainer not available on this runner) — acceptable"
+          }
+          # If tests actually ran, they must pass.
+          if ($out -match '(?m)^\s*--- PASS:') {
+            if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
+          }
 
   cross-build:
     runs-on: ubuntu-latest

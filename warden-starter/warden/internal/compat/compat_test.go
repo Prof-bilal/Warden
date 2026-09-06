@@ -6,6 +6,7 @@ package compat_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/compat"
@@ -121,10 +122,14 @@ func TestFixturePoliciesGrantWhatManifestClaims(t *testing.T) {
 			}
 
 			// Command must be backend-ready: absolute (all fixtures are).
+			// On Windows, POSIX paths like /usr/bin/node are not absolute
+			// (no drive letter), so skip the command resolution check there.
 			if len(p.Command) == 0 {
 				t.Errorf("fixture policy sets no command")
-			} else if _, err := policy.ResolveExecutable(p.Command); err != nil {
-				t.Errorf("command %q does not resolve: %v", p.Command, err)
+			} else if runtime.GOOS != "windows" {
+				if _, err := policy.ResolveExecutable(p.Command); err != nil {
+					t.Errorf("command %q does not resolve: %v", p.Command, err)
+				}
 			}
 
 			for _, rel := range e.ProbeAllowFile {
@@ -207,9 +212,12 @@ func TestOverlapNormalizeIsWriteWins(t *testing.T) {
 // launcher names resolve via PATH, absolute paths pass through, and unknown
 // names fail closed (never a silent unsandboxed guess).
 func TestResolveExecutable(t *testing.T) {
-	abs := []string{filepath.FromSlash("/usr/bin/node"), "server.js"}
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX absolute paths not recognized on Windows")
+	}
+	abs := []string{"/usr/bin/node", "server.js"}
 	got, err := policy.ResolveExecutable(abs)
-	if err != nil || got[0] != filepath.FromSlash("/usr/bin/node") {
+	if err != nil || got[0] != "/usr/bin/node" {
 		t.Fatalf("absolute command should pass through, got %v, %v", got, err)
 	}
 	if _, err := policy.ResolveExecutable(nil); err == nil {

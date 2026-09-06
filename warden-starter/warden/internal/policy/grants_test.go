@@ -3,16 +3,20 @@ package policy
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestProposeFileGrant(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+	}
 	grant, write, ok := ProposeFileGrant("openat", "/srv/data/file.txt")
-	if !ok || grant != filepath.FromSlash("/srv/data/file.txt") || write {
+	if !ok || grant != "/srv/data/file.txt" || write {
 		t.Fatalf("read = %q, %v, %v", grant, write, ok)
 	}
 	grant, write, ok = ProposeFileGrant("creat", "/srv/data/new.txt")
-	if !ok || grant != filepath.FromSlash("/srv/data") || !write {
+	if !ok || grant != "/srv/data" || !write {
 		t.Fatalf("creat = %q, %v, %v", grant, write, ok)
 	}
 	for _, tc := range []struct{ action, resource string }{
@@ -67,18 +71,21 @@ func TestAddHost(t *testing.T) {
 }
 
 func TestAddFileGrantSubsumes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+	}
 	p := Policy{}
-	if _, err := p.AddFileGrant(filepath.FromSlash("/srv/data/file.txt"), false); err != nil {
+	if _, err := p.AddFileGrant("/srv/data/file.txt", false); err != nil {
 		t.Fatal(err)
 	}
-	added, err := p.AddFileGrant(filepath.FromSlash("/srv/data"), true)
+	added, err := p.AddFileGrant("/srv/data", true)
 	if err != nil || !added {
 		t.Fatalf("AddFileGrant = %v, %v", added, err)
 	}
 	if len(p.Filesystem.Read) != 0 {
 		t.Fatalf("write grant should subsume read, got %v", p.Filesystem.Read)
 	}
-	added, err = p.AddFileGrant(filepath.FromSlash("/srv/data/other.txt"), false)
+	added, err = p.AddFileGrant("/srv/data/other.txt", false)
 	if err != nil || added {
 		t.Fatalf("covered read = %v, %v", added, err)
 	}
@@ -88,8 +95,11 @@ func TestAddFileGrantSubsumes(t *testing.T) {
 }
 
 func TestSaveRoundTrip(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+	}
 	path := filepath.Join(t.TempDir(), "policy.yaml")
-	p := Policy{Filesystem: Filesystem{Read: []string{filepath.FromSlash("/srv/ro")}}}
+	p := Policy{Filesystem: Filesystem{Read: []string{"/srv/ro"}}}
 	if err := p.Save(path); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -97,7 +107,7 @@ func TestSaveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(loaded.Filesystem.Read) != 1 || loaded.Filesystem.Read[0] != filepath.FromSlash("/srv/ro") {
+	if len(loaded.Filesystem.Read) != 1 || loaded.Filesystem.Read[0] != "/srv/ro" {
 		t.Fatalf("round trip = %+v", loaded.Filesystem)
 	}
 	info, err := os.Stat(path)
@@ -130,8 +140,11 @@ func TestNormalizeDropsShadowedReadsSortsAndDedups(t *testing.T) {
 }
 
 func TestResolveExecutable(t *testing.T) {
-	got, err := ResolveExecutable([]string{filepath.FromSlash("/usr/bin/node"), "server.js"})
-	if err != nil || got[0] != filepath.FromSlash("/usr/bin/node") {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX absolute paths not recognized on Windows")
+	}
+	got, err := ResolveExecutable([]string{"/usr/bin/node", "server.js"})
+	if err != nil || got[0] != "/usr/bin/node" {
 		t.Fatalf("absolute passthrough = %v, %v", got, err)
 	}
 	if _, err := ResolveExecutable(nil); err == nil {
