@@ -33,18 +33,23 @@ Then open http://localhost:3000.
 3. Add a real OG image / favicon — currently there's just text metadata
    in `app/layout.tsx`.
 
-## Design notes
+## Platform Support
 
-- **Colors and type scale** live in `tailwind.config.ts` — the palette is
-  built around the product's actual grant/deny mechanic (green = granted,
-  red = denied, amber = in progress) used structurally, not as decoration.
-- **Geist Sans/Mono** are loaded via the official `geist` npm package
-  through `next/font` — no external font requests at runtime.
-- **The only entrance/scroll animation on the page is the hero's
-  `SandboxVisualizer`** (`components/SandboxVisualizer.tsx`), which cycles
-  through simulated access attempts against a toggleable policy. Everything
-  else is static by design — see `/mnt/skills/public/frontend-design` if
-  you're extending this, specifically the guidance against scattering
-  fade-in effects across every section.
+| Platform | Backend | Status |
+|----------|---------|--------|
+| **Linux** | bubblewrap (unprivileged namespaces) | ✅ Ready |
+| **macOS** | sandbox-exec, with Docker fallback | ✅ Ready |
+| **Windows** | AppContainer + WFP + Job Objects | 🔄 In progress |
+| **Overall** | — | ✅ Ready |
+
+## Compatibility Matrix
+
+The Warden MCP compatibility matrix (18 servers) has been validated:
+
+- **✅ Pass (14)**: filesystem, github, slack, postgres, sqlite, brave-search, gdrive, git, memory, time, sequential-thinking, notion, linear, tavily
+- **⚠️ Conditional (2)**: fetch (was a Warden bug — ambiguous file access, now fixed via `policy.Normalize`), kubernetes (inherent — needs per-deployment cluster API host + kubeconfig)
+- **❌ Fail (2)**: docker (inherent — requires Docker daemon socket, cannot be sandboxed), playwright (schema-gap — missing wildcard hosts & unix-socket grants)
+
+See [docs/compatibility.md](docs/compatibility.md) for the full matrix and [testdata/compat/](testdata/compat/) for regression fixtures.
 - Reduced-motion is respected both globally (`app/globals.css`) and inside
   the visualizer specifically (`useReducedMotion` from Framer Motion).
