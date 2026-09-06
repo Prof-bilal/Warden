@@ -51,7 +51,7 @@ MCP Client (Claude / IDE / agent)
 |---|---|---|
 | Linux | bubblewrap (`bwrap`) | Docker |
 | macOS | `sandbox-exec` (Seatbelt) | Docker |
-| Windows | AppContainer (planned M5) | Fail closed |
+| Windows | AppContainer + WFP + ETW | Fail closed |
 | Other | Docker | Fail closed |
 
 Force a specific backend with `--backend linux|seatbelt|docker|windows`.
@@ -82,10 +82,12 @@ Warden invokes `bwrap` with a carefully constructed argument list:
 - **Environment:** Only names in `env.allow` are forwarded; all others are
   discarded. Proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`) are
   injected automatically.
-- **Auditing (Linux only):** If a logger is configured, Warden wraps the
-  bwrap invocation in `strace -f -e trace=%file,%network`, writing syscall
-  traces to a temp file that is imported into the audit log after the
-  sandbox exits.
+- **Auditing:** If a logger is configured, Warden wraps the bwrap
+  invocation in `strace -f -e trace=%file,%network`, writing syscall traces
+  to a temp file that is imported into the audit log after the sandbox
+  exits. (On Windows the equivalent audit source is the real-time ETW
+  session; on macOS the structured network events come from the egress
+  proxy.)
 
 ### macOS — `sandbox-exec` (Seatbelt)
 
@@ -104,12 +106,17 @@ the current Warden ELF binary (Linux). On macOS/Windows hosts, set
 `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary. The default image
 is `alpine:3.20` (override with `WARDEN_DOCKER_IMAGE`).
 
-### Windows — AppContainer (M5)
+### Windows — AppContainer + WFP + ETW (M5)
 
-An early-stage backend using a restricted token, filesystem capabilities,
-Windows Filtering Platform (WFP) rules, ETW audit events, and a Job Object
-for process-tree limits. Warden refuses to run if any of these primitives
-fail to install — it never falls back to an unrestricted process.
+The backend runs the command under an AppContainer (LowBox) token derived
+from the policy: filesystem capabilities are installed as DACL grants,
+Windows Filtering Platform (WFP) rules on a per-run sublayer permit only
+loopback traffic to the egress proxy and deny everything else outbound, a
+Job Object enforces process-tree memory/time limits, and a real-time ETW
+session audits Kernel-File activity for the process tree. Warden refuses to
+run if any of these primitives fail to install — it never falls back to an
+unrestricted process. Note that WFP and ETW both require an elevated (admin)
+process; see `docs/security.md` for the known limitations.
 
 ## Policy flow
 

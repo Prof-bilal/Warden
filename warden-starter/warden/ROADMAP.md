@@ -61,6 +61,34 @@ you could actually demo, not just an internal refactor.
 network filtering, auditing, or Job Object setup cannot be applied. A plain
 `CreateProcess` fallback is never acceptable.
 
+### M5 completion (ETW + CI + truth-sync) — landed
+
+**Policy decision:** real ETW auditing fails closed. If the trace session cannot
+start, `warden run` refuses to run — auditing is part of the security gate.
+Because the kernel (WPP-style) providers accept a single enabling session, a
+machine where another controller holds them (PerfView, an EDR) fails closed
+with a clear error rather than running unaudited.
+
+**What landed:**
+- `etw.go` starts a real private real-time session (`StartTraceW` →
+  `EnableTraceEx2` for Kernel-File + Kernel-Network → `OpenTraceW` →
+  `ProcessTrace`) scoped to the sandboxed process tree, mapped into the
+  `audit.Event` JSONL stream (`etwdecode.go` for the pure decode logic).
+  Kernel-File records that carry a verifiable path become `file` events;
+  Kernel-Network records are captured but their payloads are not mapped yet —
+  blocked/allowed network audit is reported with exact host:port decisions by
+  the egress proxy and the WFP deny filters (denied packets never reach a
+  provider that could log them).
+- Escape/lifecycle tests on the new Windows CI job pin the session lifecycle
+  and assert a blocked network request lands in the audit log as
+  `allowed=false`; see `etw_test.go` and `integration_test.go`.
+- `.github/workflows/ci.yml` gains a `windows-latest` job (elevated runners,
+  so the AppContainer/WFP/ETW tests execute instead of skipping). The
+  syscalls.go "re-verify when CI gains a runner" caveat stays until that job
+  is green; remove it after the first passing run.
+- Docs and landing page now describe Windows as Ready with the elevation
+  caveat (WFP/ETW require admin); see `docs/security.md`.
+
 ## M6 — Polish & distribution
 - [x] Package as a single static binary (Homebrew tap formula, npm wrapper
       for Node users, plus manual download links in GitHub Releases)

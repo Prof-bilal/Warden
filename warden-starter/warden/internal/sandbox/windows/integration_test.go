@@ -5,8 +5,11 @@ package windows
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/policy"
 )
 
@@ -79,6 +82,81 @@ func TestGrantedPathReadable(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("read of granted path failed (exit %d): got: %v", code, err)
 	}
+}
+
+// readAuditEvents decodes Warden's default audit log. Records from parallel
+// warden runs on the same host may be interleaved, so assertions match on
+// event content (a unique resource), never on position.
+func readAuditEvents(t *testing.T) []audit.Event {
+	t.Helper()
+	path, err := audit.DefaultPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		t.Fatal(err)
+	}
+	defer f.Close()
+	events, err := audit.ReadEvents(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return events
+}
+
+// waitAuditEvent polls the audit log until match succeeds (events are logged
+// asynchronously by the proxy/ETW goroutines) and fails the test if it never
+// appears.
+func waitAuditEvent(t *testing.T, match func(audit.Event) bool) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		for _, ev := range readAuditEvents(t) {
+			if match(ev) {
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatal("no matching audit event appeared within 5s")
+}
+
+// TestEscapeNetworkBlockedAudited runs the sandbox and asserts that a blocked
+// network request lands in the audit log as an allowed=false `network` event.
+// The sandboxed curl is forced through the egress proxy by the injected
+// HTTP_PROXY variables; the proxy performs the hostname allowlist check and
+// logs the exact denial — the deterministic "blocked" audit signal. (Direct
+// DNS is also blocked — by the AppContainer token and the WFP deny filters —
+// but denied packets never reach a provider that could audit them.)
+func TestEscapeNetworkBlockedAudited(t *testing.T) {
+	// curl.exe ships in System32 on supported Windows; it honors the
+	// injected HTTP_PROXY environment without extra configuration.
+	curl := filepath.Join(os.Getenv("SystemRoot"), "System32", "curl.exe")
+	if _, err := os.Stat(curl); err != nil {
+		t.Skip("curl.exe not present on this host")
+	}
+
+	const blockedHost = "blocked-w4rd3n.invalid"
+	p := policy.Policy{Network: policy.Network{Allow: []string{"allowed.example"}}}
+	// curl is the sandbox root image, so WFP permits exactly its loopback
+	// connection to the proxy while the token denies everything else. The
+	// proxy allows only "allowed.example"; the request to blockedHost must be
+	// denied with HTTP 403, which curl reports as exit code 22.
+	code, err := runEscape(t, p, []string{curl, "-s", "http://" + blockedHost + "/"})
+	if err != nil {
+		t.Skipf("sandbox could not start here: %v", err)
+	}
+	if code != 22 {
+		t.Fatalf("curl exit = %d, want 22 (HTTP 403 from the deny-by-default proxy)", code)
+	}
+	waitAuditEvent(t, func(ev audit.Event) bool {
+		return ev.Type == "network" && !ev.Allowed &&
+			strings.EqualFold(ev.Resource, blockedHost+":80")
+	})
 }
 
 func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {

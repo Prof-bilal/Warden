@@ -2,7 +2,7 @@
 
 ## Orientation
 
-Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. M1–M4 are implemented: Linux bubblewrap, macOS Seatbelt, Docker fallback, egress proxy, audit/trace/init/logs, and resource limits. Windows (M5) remains ahead.
+Warden is a lightweight sandbox runtime for MCP servers. The repo is intentionally small and early-stage: the core idea is to run third-party MCP servers under OS-native sandboxing so that a local AI tooling stack only gets the filesystem paths, network hosts, and environment variables an explicit policy allows. M1–M5 are implemented: Linux bubblewrap, macOS Seatbelt, Docker fallback, Windows AppContainer + WFP + Job Objects, egress proxy, audit/trace/init/logs, and resource limits.
 
 ## Where things live
 
@@ -10,7 +10,8 @@ Warden is a lightweight sandbox runtime for MCP servers. The repo is intentional
 - `internal/policy` is the intended home for YAML parsing, validation, and policy normalization.
 - `internal/sandbox` selects the backend (`auto` prefers native, then Docker).
 - `internal/sandbox/<os>` holds platform-specific backends (`linux` bubblewrap,
-  `darwin` Seatbelt). `internal/sandbox/docker` is the cross-platform fallback.
+  `darwin` Seatbelt, `windows` AppContainer + WFP + ETW + Job Objects).
+  `internal/sandbox/docker` is the cross-platform fallback.
 - `internal/audit` is the intended home for structured access logging, both for enforcement and for trace mode.
 - `examples/` contains sample policies and usage patterns that should be kept aligned with the architecture doc.
 - `README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, and `CONTRIBUTING.md` are the canonical design and workflow documents; changes to the implementation should be checked against them before merging.

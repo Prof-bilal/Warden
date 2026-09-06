@@ -1,7 +1,7 @@
 const BACKENDS = [
   { platform: "Linux", mechanism: "bubblewrap (unprivileged namespaces)", status: "Ready" },
   { platform: "macOS", mechanism: "sandbox-exec, with Docker fallback", status: "Ready" },
-  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects", status: "In progress" },
+  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Ready" },
 ];
 
 const STATUS_STYLE: Record<string, string> = {

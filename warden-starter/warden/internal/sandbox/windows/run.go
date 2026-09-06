@@ -100,8 +100,10 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 	}
 	defer job.Close()
 
-	// 5. Start ETW auditing before the target begins.
-	trace, err := startTrace("warden-"+plan.AppContainerName, nil)
+	// 5. Start ETW auditing before the target begins. Fail closed: an audit
+	// session that cannot start refuses the whole run (the security gate), so
+	// the trace's error is returned as-is.
+	trace, err := startTrace("warden-"+plan.AppContainerName, logger)
 	if err != nil {
 		return 0, err
 	}
@@ -123,7 +125,6 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 	}
 	tree, _ := processTreePIDs(pi.dwProcessId)
 	trace.tree = tree
-	trace.logger = logger
 	go trace.run()
 
 	code, limitErr := job.wait(pi.hProcess, p.Limits, logger)

@@ -84,7 +84,7 @@ Warden spawns the server inside a sandbox that:
 |---|---|---|
 | Linux | bubblewrap (`bwrap`) | Docker |
 | macOS | `sandbox-exec` (Seatbelt) | Docker |
-| Windows | AppContainer / WFP | Fail closed |
+| Windows | AppContainer / WFP / ETW | Fail closed |
 | Other | Docker | Fail closed |
 
 Force a specific backend with `--backend linux|seatbelt|docker|windows`.

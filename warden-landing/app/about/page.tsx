@@ -6,7 +6,7 @@ const REPO = "https://github.com/Prof-bilal/Warden";
 const ROWS = [
   { area: "Linux sandbox (bubblewrap)", state: "Filesystem, network proxy, audit, limits" },
   { area: "macOS sandbox (Seatbelt)", state: "With Docker fallback" },
-  { area: "Windows sandbox", state: "AppContainer + WFP, fail-closed" },
+  { area: "Windows sandbox", state: "AppContainer + WFP + ETW audit, fail-closed" },
   { area: "trace / init / logs", state: "Observe, generate, inspect" },
   { area: "Approval mode", state: "Prompt instead of hard-fail" },
   { area: "Gateway integration", state: "Wrap gateway-registered servers" },

@@ -146,7 +146,8 @@ traffic to unauthorized destinations.
 | Process-tree visibility | Limits apply to the direct child process tree only; grandchildren spawned via `fork()` + `exec()` outside the tracked tree may escape limits. |
 | macOS Seatbelt | Deprecated by Apple; may be removed in a future macOS release with no Warden fallback on native. |
 | Docker fallback | Requires a running Docker daemon. The in-container proxy bridge must be a Linux ELF binary — on macOS this requires cross-compilation. |
-| Windows AppContainer | Early-stage implementation; edge cases with process groups and WFP rule ordering are possible. |
+| Windows AppContainer | WFP and the ETW audit session require an elevated (admin) process; warden fails closed without it. The kernel (WPP-style) ETW providers accept one enabling session, so another controller holding them (PerfView, an EDR) also fails the run closed. |
+| Windows audit visibility | A denied file open is enforced by the AppContainer token before it reaches the file system, so it produces no ETW event — a denial shows up as an absent allowed operation, not a blocked record. Kernel-Network payloads are captured but not yet decoded; network allow/deny audit comes from the egress proxy and the WFP deny filters. |
 | strace auditing | Adds ~2–5x overhead on Linux; `strace` must be installed. Auditing is optional — runs without a logger fall back to syscall-level denials only. |
 | Egress proxy scope | Only intercepts HTTP/HTTPS traffic. Raw TCP and UDP connections cannot be filtered by the proxy. |
 

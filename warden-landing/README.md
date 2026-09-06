@@ -39,7 +39,7 @@ Then open http://localhost:3000.
 |----------|---------|--------|
 | **Linux** | bubblewrap (unprivileged namespaces) | ✅ Ready |
 | **macOS** | sandbox-exec, with Docker fallback | ✅ Ready |
-| **Windows** | AppContainer + WFP + Job Objects | 🔄 In progress |
+| **Windows** | AppContainer + WFP + Job Objects + ETW audit | ✅ Ready |
 | **Overall** | — | ✅ Ready |
 
 ## Compatibility Matrix

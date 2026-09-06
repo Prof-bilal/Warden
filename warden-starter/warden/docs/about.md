@@ -26,7 +26,7 @@ Warden is in **beta**. Implemented and tested:
 |---|---|
 | Linux sandbox (bubblewrap) | ✅ Filesystem, network egress proxy, audit, limits |
 | macOS sandbox (Seatbelt) | ✅ With Docker fallback |
-| Windows sandbox (AppContainer/WFP) | ✅ Fail-closed, no unsandboxed fallback |
+| Windows sandbox (AppContainer/WFP/ETW) | ✅ Fail-closed, no unsandboxed fallback |
 | `trace` / `init` / `logs` | ✅ Observe, generate, inspect |
 | Approval mode (`--approve`) | ✅ Prompt instead of hard-fail |
 | Gateway integration | ✅ Wrap gateway-registered servers |
