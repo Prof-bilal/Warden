@@ -1,0 +1,84 @@
+name: CI
+
+# The Go module lives at warden-starter/warden; every `run:` step below
+# resolves against that directory (see defaults). This is the primary CI:
+# it replaces the old root go.yml (build+test only) and — critically —
+# runs the Windows job, which is the only place the WFP/AppContainer/ETW
+# escape and lifecycle tests execute for real.
+on:
+  pull_request:
+  push:
+    # '**' matches every branch but not tag pushes (release.yml owns tags).
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: warden-starter/warden
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
+
+  # GitHub-hosted Windows runners run elevated, so the WFP/AppContainer/ETW
+  # escape and lifecycle tests execute for real instead of skipping: this job
+  # is the verifier for the Windows backend's syscall mirrors and the ETW
+  # session (see syscalls.go and etw.go).
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - run: go build ./...
+      - run: go vet ./...
+      - shell: pwsh
+        run: go test -v ./...
+      - name: Assert ETW and escape tests actually ran
+        # Elevated runner: these must execute, not skip. A skip here means
+        # the privilege environment changed — fail loudly.
+        shell: pwsh
+        run: |
+          $out = go test -v -count=1 -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' ./internal/sandbox/windows/ 2>&1 | Out-String
+          Write-Host $out
+          if ($out -notmatch '^(?:=== RUN|\s+--- PASS: Test(Etw|Escape|AppContainer|WFP))') { throw "expected ETW/escape/AppContainer/WFP tests to run; output above" }
+          if ($out -match '(?m)^\s*--- SKIP: Test(Etw|Escape|AppContainer|WFP)') { throw "ETW/escape tests skipped on an elevated runner — investigate" }
+          if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build ./...
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install mkdocs-material
+      - run: mkdocs build --strict
