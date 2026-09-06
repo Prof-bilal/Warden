@@ -1,0 +1,112 @@
+# Prompt: Research-grounded growth docs for Warden (marketing, scaling, secrets guard, monetization)
+
+Paste this into your AI coding agent, run from the Warden repo root. It
+covers all four areas from the earlier discussion. Each domain has its own
+research step — don't let the agent reuse one round of research across
+all four; marketing, competitive/scaling, secrets patterns, and pricing
+each need their own current, specific sources.
+
+---
+
+## Instructions for the AI agent
+
+You're producing four grounded strategy docs for Warden, one per domain
+below. For each: **research first, using current web sources — don't
+draft from assumptions or from what's already in this prompt.** Where you
+can't find a real source for a claim, mark it as an open question in the
+doc rather than stating it as fact. Read `README.md`, `ARCHITECTURE.md`,
+and `ROADMAP.md` first so every doc is grounded in what Warden actually
+is and where it actually stands today, not a generic template for "a
+security dev tool."
+
+---
+
+### Domain 1 — Marketing & content → `docs/marketing-strategy.md`
+
+**Research before writing:**
+- Current mechanics of Product Hunt, Hacker News (Show HN), and dev-tool-
+  specific launch platforms (DevHunt, BetaList) — rules change often,
+  verify what's true now, not what was true when this prompt was written.
+- Developer-focused content marketing practices — what actually works for
+  a technical, security-conscious audience versus generic SaaS marketing.
+- Look at 2-3 comparable open-source security/infra tools' own launch
+  posts and early content (their Show HN threads, early blog posts) as
+  concrete examples, not just marketing theory.
+
+**Produce, grounded in what you find:**
+- A one-line positioning statement and who it's actually for
+- Primary and secondary launch channels, ranked by fit for this specific
+  audience, with reasoning
+- A pre-launch checklist (audience building, build-in-public cadence) and
+  a launch-day checklist
+- A recurring content plan that uses what Warden already produces as a
+  byproduct (compatibility matrix updates, new backend support, roadmap
+  milestones) rather than inventing content from nothing
+- A short reading list, cited
+
+---
+
+### Domain 2 — Scaling & features → `docs/scaling-roadmap.md`
+
+**Research before writing:**
+- The current competitive landscape for MCP/agent sandboxing specifically
+  — what do existing tools already cover well, and where are the
+  documented, real gaps? Don't assume the gaps from six months ago still
+  hold; re-check.
+- Current MCP ecosystem adoption signals (growth, new gaps reported by
+  practitioners) to justify what's actually worth prioritizing next versus
+  what's just plausible-sounding.
+
+**Produce, grounded in what you find:**
+- `docs/scaling-roadmap.md`: a post-M8 feature roadmap, each item tagged
+  with the research finding that justifies it. Append new milestones to
+  `ROADMAP.md` using the next available milestone number — don't
+  renumber or duplicate existing ones.
+- Flag explicitly which proposed features are validated by current
+  evidence versus which are speculative bets, so priority is honest.
+
+---
+
+### Domain 3 — Secrets Guard (Proposal 3 integration)
+
+This one already has its own complete prompt: run
+`secrets-guard-domain-prompt.md` as-is for this domain — same research-
+first discipline, producing `docs/secrets-guard-prd.md`,
+`docs/secrets-guard-patterns.md`, and the corresponding additions to
+`ROADMAP.md`, `AGENTS.md`, and `TESTING.md`. Don't duplicate that work
+here; just make sure the milestone number it adds to `ROADMAP.md` doesn't
+collide with whatever Domain 2 added.
+
+---
+
+### Domain 4 — Monetization → `docs/monetization-strategy.md`
+
+**Research before writing:**
+- Pricing models of at least 3-4 comparable open-source security/infra
+  companies, not just one or two — the more data points, the less any
+  single company's quirks distort the recommendation.
+- Whether there's any current signal on Warden's own traction (stars,
+  installs, compatibility-matrix contributors) — if there isn't much yet,
+  say so plainly rather than writing a monetization plan as if traction
+  already exists.
+
+**Produce, grounded in what you find:**
+- `docs/monetization-strategy.md`: a tiering proposal with reasoning tied
+  to the comparable companies you researched, not invented tier names
+- An explicit sequencing section: what has to be true first (e.g., M8
+  compatibility work done, some number of real self-hosted users) before
+  any of this is worth building
+- An explicit "don't build yet" list — since the project is pre-1.0, most
+  of monetization should currently be documentation, not code
+
+---
+
+## Final pass
+
+1. Add all four docs to `README.md`'s "Project docs" section (or create
+   that section if the earlier doc-bootstrap prompt hasn't been run yet).
+2. Check the milestone numbers Domain 2 and Domain 3 each added to
+   `ROADMAP.md` don't collide.
+3. Re-read all four together — if `scaling-roadmap.md` and
+   `monetization-strategy.md` disagree on what's worth building next,
+   don't silently pick one; flag the disagreement.

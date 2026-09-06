@@ -26,52 +26,111 @@ export default function Hero() {
   }
 
   return (
-    <section className="mx-auto max-w-content px-6 pb-20 pt-16 md:pb-28 md:pt-24">
-      <div className="max-w-[38rem]">
-        <h1 className="text-[2.5rem] font-medium leading-[1.08] tracking-[-0.02em] text-paper md:text-[3.25rem]">
-          Your MCP servers don&apos;t need your whole filesystem.
-        </h1>
-        <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
-          Warden runs them in a sandbox that only sees what you grant — a
-          folder, a hostname, nothing more. Everything else fails, and
-          Warden writes down that it tried.
-        </p>
+    // InvisibleTech editorial hero — layout + font only, colors preserved from warden (ink/paper/muted)
+    <section className="relative overflow-hidden border-b border-ink-700 bg-ink-950">
+      {/* graph-paper dot grid — very faint, masked to top, no color takeover */}
+      <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-[0.18]" aria-hidden />
+      {/* subtle top fade wash — uses existing ink-900 at low opacity, not a new palette */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-ink-900/30 to-transparent"
+        aria-hidden
+      />
 
-        <div className="mt-8 flex flex-col gap-3">
-          <button
-            onClick={handleNpmCopy}
-            className="flex w-full max-w-[30rem] items-center justify-between gap-4 rounded-sm border border-ink-600 bg-ink-900 px-4 py-3 text-left font-mono text-[0.875rem] text-paper transition-colors hover:border-ink-500"
-          >
-            <span className="truncate">
-              <span className="text-muted">$ </span>
-              {NPM_CMD}
-            </span>
-            {npmCopied ? (
-              <Check size={15} className="shrink-0 text-grant" />
-            ) : (
-              <Copy size={15} className="shrink-0 text-muted" />
-            )}
-          </button>
-
-          <button
-            onClick={handleCopy}
-            className="flex w-full max-w-[30rem] items-center justify-between gap-4 rounded-sm border border-ink-700 bg-ink-900 px-4 py-3 text-left font-mono text-[0.875rem] text-muted transition-colors hover:border-ink-500 hover:text-paper"
-          >
-            <span className="truncate">
-              <span className="text-muted">$ </span>
-              {INSTALL_CMD}
-            </span>
-            {copied ? (
-              <Check size={15} className="shrink-0 text-grant" />
-            ) : (
-              <Copy size={15} className="shrink-0 text-muted" />
-            )}
-          </button>
+      {/* 1280px max-width container — InvisibleTech page model */}
+      <div className="relative mx-auto max-w-[1280px] px-6 pb-16 pt-10 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
+        {/* ── Eyebrow: 6px dot + Apkpraktikal-style mono small caps, wide tracking ── */}
+        <div className="flex items-center gap-2.5">
+          <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-blueprint" aria-hidden />
+          <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-muted md:text-[0.75rem] md:tracking-[0.12em]">
+            SANDBOX RUNTIME — FOR MCP SERVERS
+          </span>
         </div>
-      </div>
 
-      <div className="mt-16">
-        <SandboxVisualizer />
+        {/* ── Two-column editorial rhythm: headline ~55% / intro ~45%, gap 24-64px ── */}
+        <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
+          {/* Left: Two-tone headline — Apk Galeria → Newsreader, negative tracking */}
+          <div>
+            <h1 className="hero-display max-w-[900px] text-[2.6rem] font-normal leading-[0.95] tracking-[-0.02em] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
+              {/* first phrase in paper (primary), second phrase in muted — the InvisibleTech call-and-response */}
+              <span className="block text-paper">
+                Your MCP servers
+                <span className="font-light text-muted"> don&apos;t need</span>
+              </span>
+              <span className="block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
+                your whole filesystem.
+              </span>
+            </h1>
+
+            {/* Pill meta — InvisibleTech badges are 9999px, hairline 1px, no shadow */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                Grants, not promises
+              </span>
+              <span className="inline-flex items-center rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                Fail-closed · Audited
+              </span>
+            </div>
+          </div>
+
+          {/* Right: supporting body + CTAs — right column at ~45% width on desktop */}
+          <div className="flex max-w-[32rem] flex-col lg:ml-auto lg:max-w-[30rem]">
+            <p className="hero-display text-[1.0625rem] font-normal leading-[1.65] text-muted md:text-[1.125rem] md:leading-[1.7]">
+              Warden runs them in a sandbox that only sees what you grant — a folder, a hostname, nothing more.
+              Everything else fails, and Warden writes down that it tried.
+            </p>
+
+            {/* Install pills — 9999px radius, hairline border, mono, no shadow, comfortable 24px element gap */}
+            <div className="mt-8 flex flex-col gap-3">
+              <button
+                onClick={handleNpmCopy}
+                className="group flex w-full items-center justify-between gap-4 rounded-full border border-ink-600 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-paper transition-colors hover:border-ink-500 hover:bg-ink-800 md:px-5 md:py-3 md:text-[0.875rem]"
+                aria-label="Copy npm install command"
+              >
+                <span className="truncate">
+                  <span className="text-muted">$ </span>
+                  {NPM_CMD}
+                </span>
+                {npmCopied ? (
+                  <Check size={15} className="shrink-0 text-grant" />
+                ) : (
+                  <Copy size={15} className="shrink-0 text-muted transition-colors group-hover:text-paper" />
+                )}
+              </button>
+
+              <button
+                onClick={handleCopy}
+                className="group flex w-full items-center justify-between gap-4 rounded-full border border-ink-700 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-muted transition-colors hover:border-ink-600 hover:text-paper md:px-5 md:py-3 md:text-[0.875rem]"
+                aria-label="Copy curl install command"
+              >
+                <span className="truncate">
+                  <span className="text-muted">$ </span>
+                  {INSTALL_CMD}
+                </span>
+                {copied ? (
+                  <Check size={15} className="shrink-0 text-grant" />
+                ) : (
+                  <Copy size={15} className="shrink-0 text-muted transition-colors group-hover:text-paper" />
+                )}
+              </button>
+
+              <p className="px-1 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-muted/80">
+                Works with any MCP client · No daemon · Linux today, macOS next
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Visualizer — 12px card radius (InvisibleTech cards), 80px section gap above */}
+        <div className="mt-12 md:mt-16 lg:mt-20">
+          {/* subtle hairline divider before demo — editorial rhythm, 80px gap */}
+          <div className="mb-8 hidden h-px bg-ink-800 lg:block" aria-hidden />
+          <div className="overflow-hidden rounded-[12px]">
+            <SandboxVisualizer />
+          </div>
+          <p className="mt-3 text-center font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+            Interactive — toggle a grant and watch the matching attempt change
+          </p>
+        </div>
       </div>
     </section>
   );

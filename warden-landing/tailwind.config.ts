@@ -31,9 +31,18 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        display: ["var(--font-display)", "Newsreader", "GT Sectra", "Tiempos Text", "serif"],
       },
       maxWidth: {
         content: "72rem",
+        display: "80rem", // 1280px — InvisibleTech page max-width
+      },
+      letterSpacing: {
+        tighter: "-0.03em", // display 64px
+        tightHero: "-0.024em", // 52px
+        tightLg: "-0.018em", // 48px
+        eyebrow: "0.12em",
+        eyebrowLg: "0.14em",
       },
     },
   },

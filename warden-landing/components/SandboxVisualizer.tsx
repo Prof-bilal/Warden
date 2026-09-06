@@ -58,7 +58,7 @@ export default function SandboxVisualizer() {
   }
 
   return (
-    <div className="grid gap-px overflow-hidden rounded-sm border border-ink-700 bg-ink-700 md:grid-cols-[16rem_1fr]">
+    <div className="grid gap-px overflow-hidden rounded-[12px] border border-ink-700 bg-ink-700 md:grid-cols-[16rem_1fr]">
       <div className="bg-ink-900 p-5">
         <p className="text-[0.8125rem] text-muted">Policy</p>
         <div className="mt-3 space-y-2">
@@ -66,7 +66,7 @@ export default function SandboxVisualizer() {
             <button
               key={key}
               onClick={() => toggle(key)}
-              className="flex w-full items-center gap-2.5 rounded-sm border border-ink-700 px-3 py-2 text-left transition-colors hover:border-ink-600"
+              className="flex w-full items-center gap-2.5 rounded-full border border-ink-700 px-3 py-2 text-left transition-colors hover:border-ink-600"
             >
               <span
                 className={
@@ -106,10 +106,10 @@ export default function SandboxVisualizer() {
                 </span>
                 <span
                   className={
-                    "shrink-0 px-2 py-0.5 text-[0.6875rem] " +
+                    "shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] " +
                     (entry.granted
-                      ? "rounded-sm bg-grant-subtle text-grant"
-                      : "rounded-none border border-deny/40 bg-deny-subtle text-deny")
+                      ? "bg-grant-subtle text-grant"
+                      : "border border-deny/40 bg-deny-subtle text-deny")
                   }
                 >
                   {entry.granted ? "granted" : "denied"}
