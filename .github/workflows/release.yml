@@ -13,9 +13,15 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        # The Go module and Makefile live in the warden subdirectory.
+        working-directory: warden-starter/warden
     steps:
       - uses: actions/checkout@v4
         with:
+          # Full history so `git describe --tags` stamps the binaries with
+          # the pushed tag instead of a dev fallback.
           fetch-depth: 0
 
       - uses: actions/setup-go@v5
@@ -31,15 +37,20 @@ jobs:
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
 
+      # actions do not inherit defaults.run.working-directory: the files glob
+      # is resolved against the workspace root.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: warden-starter/warden/dist/*
           generate_release_notes: true
 
   publish-npm:
     runs-on: ubuntu-latest
     needs: build
+    defaults:
+      run:
+        working-directory: warden-starter/warden/build/npm-wrapper
     steps:
       - uses: actions/checkout@v4
 
@@ -49,21 +60,20 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Update package.json version from tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          cd warden-starter/warden/build/npm-wrapper
-          npm version "$VERSION" --no-git-tag-version
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
 
       - name: Publish to npm
-        run: |
-          cd warden-starter/warden/build/npm-wrapper
-          npm publish --access public
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   docs:
     runs-on: ubuntu-latest
     needs: build
+    defaults:
+      run:
+        # mkdocs.yml lives with the module.
+        working-directory: warden-starter/warden
     steps:
       - uses: actions/checkout@v4
 
@@ -76,9 +86,10 @@ jobs:
       - name: Build docs site
         run: mkdocs build --site-dir site
 
+      # Resolved against the workspace root, not the working-directory.
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: warden-starter/warden/site
 
   deploy:
     runs-on: ubuntu-latest
