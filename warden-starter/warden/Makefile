@@ -9,8 +9,10 @@ build:
 
 build-all:
 	mkdir -p dist
-	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/warden-linux-amd64   ./cmd/warden
-	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 $(GO) build $(LDFLAGS) -o dist/warden-darwin-arm64  ./cmd/warden
+	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/warden-linux-amd64    ./cmd/warden
+	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 $(GO) build $(LDFLAGS) -o dist/warden-linux-arm64    ./cmd/warden
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/warden-darwin-amd64   ./cmd/warden
+	CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 $(GO) build $(LDFLAGS) -o dist/warden-darwin-arm64   ./cmd/warden
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o dist/warden-windows-amd64.exe ./cmd/warden
 
 test:

@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+"use strict";
+
+const { execFileSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const https = require("https");
+
+const VERSION = require("../package.json").version;
+
+const platformMap = { linux: "linux", darwin: "darwin", win32: "windows" };
+const archMap = { x64: "amd64", arm64: "arm64" };
+
+const platform = os.platform();
+const arch = os.arch();
+const osName = platformMap[platform];
+const archName = archMap[arch];
+const ext = platform === "win32" ? ".exe" : "";
+
+const fileName = `warden-${osName}-${archName}${ext}`;
+const url = `https://github.com/Prof-bilal/Warden/releases/download/v${VERSION}/${fileName}`;
+
+const cacheDir = path.join(os.homedir(), ".cache", "warden");
+const binPath = path.join(cacheDir, `${VERSION}`, fileName);
+
+function download(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https
+      .get(url, { timeout: 30000 }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          download(res.headers.location, dest).then(resolve).catch(reject);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
+          return;
+        }
+        res.pipe(file);
+        file.on("finish", () => { file.close(); resolve(); });
+      })
+      .on("error", (err) => { fs.unlink(dest, () => {}); reject(err); });
+  });
+}
+
+(async () => {
+  if (!osName || !archName) {
+    console.error(`warden: unsupported platform "${platform}" or architecture "${arch}"`);
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(binPath)) {
+    const dir = path.dirname(binPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    console.log(`Downloading warden v${VERSION}...`);
+    try {
+      await download(url, binPath);
+    } catch (err) {
+      console.error(`Failed to download warden: ${err.message}`);
+      process.exit(1);
+    }
+  }
+
+  if (platform !== "win32") fs.chmodSync(binPath, 0o755);
+
+  const args = process.argv.slice(2);
+  try {
+    execFileSync(binPath, args, { stdio: "inherit" });
+  } catch (err) {
+    process.exit(err.status || 1);
+  }
+})();

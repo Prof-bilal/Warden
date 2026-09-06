@@ -1,16 +1,28 @@
 {
-  "name": "@warden-sandbox/mcp-warden",
+  "name": "warden-sandbox-cli",
   "version": "0.1.0",
   "description": "npm wrapper for the Warden sandbox CLI",
-  "main": "index.js",
   "bin": {
     "warden": "./bin/warden"
   },
-  "files": ["bin/"],
+  "files": [
+    "bin/",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=18"
   },
-  "scripts": {
-    "postinstall": "node install.js"
+  "keywords": [
+    "sandbox",
+    "mcp",
+    "security",
+    "cli",
+    "warden"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prof-bilal/Warden.git",
+    "directory": "warden-starter/warden/build/npm-wrapper"
   }
 }
