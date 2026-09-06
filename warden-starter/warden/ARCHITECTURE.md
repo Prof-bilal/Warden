@@ -44,6 +44,9 @@ flowchart TB
 Entry point. Subcommands:
 
 - `warden run --policy <file> -- <command...>` — run a server under a policy.
+- `warden run --policy <file> --approve [--approve-timeout <dur>] -- <command...>` —
+  interactive approval mode (M7): the first out-of-policy access prompts on
+  the controlling terminal instead of only hard-failing (see below).
 - `warden trace -- <command...>` — run **unsandboxed** but instrumented,
   logging every file/network access, to help generate a starter policy.
 - `warden init [--log <file>] [--output <file>] [-- <command...>]` — scaffold
@@ -111,6 +114,12 @@ bridge. Direct connects and direct DNS have no route; the host-side proxy
 checks `network.allow` before it performs any DNS lookup or opens an upstream
 connection. It logs every allow/deny decision.
 
+With `--approve`, the proxy consults an approver callback before denying:
+the user may allow the host once, for the session (in-memory allowlist), or
+persistently (allowlist plus append to the policy file). Prompts go to
+`/dev/tty` — never the MCP stdio channel — and any prompt failure denies
+(fail closed). See `docs/approve.md`.
+
 ### 5. Audit Logger
 
 Structured (JSON-lines) log of every access attempt: timestamp, type
@@ -119,6 +128,13 @@ Warden runs `strace -f` outside the sandbox to capture file and low-level
 network syscalls without granting the target write access to the evidence.
 The egress proxy records its hostname decisions separately. `warden logs`
 prints the persistent JSONL stream.
+
+Approval decisions are audit events too (`type: approval`), so `warden logs`
+shows who-allowed-what alongside the underlying access attempts. On Linux,
+`--approve` additionally tails the live strace stream for file denials worth
+prompting about; an approved filesystem grant is saved to the policy file
+and the CLI respawns the server (bind mounts are fixed at spawn, so a
+restart is the only way a wider filesystem grant takes effect).
 
 ### 6. Limits and trace mode
 
@@ -136,11 +152,11 @@ if necessary; the breach is a structured audit event.
 ## Policy schema (draft)
 
 ```yaml
-command: ["/usr/bin/node", "server.js"] # required: use an absolute executable path
+command: ["/usr/bin/node", "server.js"] # required: absolute path, or a bare name on PATH (npx/uvx/node) resolved via LookPath at launch
 
 filesystem:
   read: ["./data"]               # read-only bind mounts
-  write: ["./output"]            # read-write bind mounts
+  write: ["./output"]            # read-write bind mounts (subsumes reads underneath; a path in both is coalesced to write)
   # everything else is invisible inside the sandbox, not just unreadable
 
 network:

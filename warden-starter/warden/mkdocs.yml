@@ -1,6 +1,6 @@
 site_name: Warden
 site_description: A lightweight sandbox runtime for MCP servers
-site_url: https://warden-sandbox.github.io
+site_url: https://prof-bilal.github.io/Warden
 
 theme:
   name: material
@@ -9,15 +9,28 @@ theme:
   icon:
     repo: fontawesome/brands/github
     logo: material/shield-lock
-repo_url: https://github.com/warden-sandbox/warden
-repo_name: warden-sandbox/warden
+repo_url: https://github.com/Prof-bilal/Warden
+repo_name: Prof-bilal/Warden
 
 nav:
   - Home: index.md
-  - Schema Reference: schema.md
-  - Security Review: security.md
-  - Architecture: architecture.md
-  - Example Policies: https://github.com/warden-sandbox/warden/tree/main/warden-starter/warden/examples
+  - About: about.md
+  - Start:
+    - Install: install.md
+    - Quickstart: quickstart.md
+    - FAQ: faq.md
+  - Reference:
+    - Schema Reference: schema.md
+    - CLI Reference: cli.md
+  - Understand:
+    - Architecture: architecture.md
+    - Security Review: security.md
+    - Compatibility Matrix: compatibility.md
+    - Example Policies: https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/examples
+  - Community:
+    - Gateway Integration: gateway.md
+    - Interactive Approval: approve.md
+    - Beta Program: beta.md
 
 markdown_extensions:
   - toc:

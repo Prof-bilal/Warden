@@ -1,19 +1,26 @@
 # Warden
 
-**A lightweight sandbox runtime for MCP servers.**
+**Your MCP servers run with your keys to the kingdom. Warden takes them back.**
 
-MCP servers routinely run as plain Node or Python processes on your machine
-with full filesystem and network access — even ones you just cloned from
-GitHub five minutes ago. Warden runs them in a restricted sandbox so a server
-only ever gets the files, network hosts, and environment variables you
-explicitly grant it.
+Every MCP server you install — that filesystem helper, that Slack bot, that
+script you cloned five minutes ago — runs as a plain process with **your**
+full permissions: your SSH keys, your tokens, your files, unrestricted
+network. Nothing in the MCP protocol stops a buggy or malicious server from
+reading `~/.ssh` or exfiltrating data. Most installs are one `npx` command
+away from total access.
 
-> **Status:** All backends implemented. Homebrew, npm, and GitHub Releases
-> distribution is in place. See [ROADMAP.md](https://github.com/warden-sandbox/warden/blob/main/warden-starter/warden/ROADMAP.md) for details.
+Warden runs each server in a restricted sandbox instead. A server only ever
+sees the files, network hosts, and environment variables you explicitly
+grant it — everything else is invisible. Sandboxing is invisible to the
+protocol: your MCP client talks to the sandboxed server exactly as before.
 
-## Quickstart
+```bash
+warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
+```
 
-Write a policy that describes what the server is allowed to touch:
+## How it works in 30 seconds
+
+Write a policy describing what the server may touch:
 
 ```yaml
 # policy.yaml
@@ -30,48 +37,49 @@ limits:
   timeout_s: 300
 ```
 
-Then run the server inside the sandbox:
+Run it sandboxed — or generate the policy automatically by watching the
+server once, unsandboxed:
 
 ```bash
 warden run --policy policy.yaml
+# or:
+warden trace -- /usr/bin/node server.js && warden init
 ```
 
-Or generate a starter policy automatically by tracing an unsandboxed run:
+## Why Warden
 
-```bash
-warden trace -- /usr/bin/node server.js
-warden init
-```
+- **Filesystem** — only granted paths exist inside the sandbox, read-only or
+  read-write as you specify. The rest isn't "permission denied" — it's gone.
+- **Network** — only allowlisted hostnames resolve and connect. Everything
+  else is blocked before DNS even resolves.
+- **Environment** — only the variables you name are passed through. Your
+  shell environment never leaks in by default.
+- **Audit log** — every access attempt, allowed *and blocked*, is recorded.
+  See what a server *tried* to do with `warden logs`.
+- **Single static binary**, near-zero overhead — sandboxing a server is no
+  harder than running it. No daemon, no containers per run.
 
-See [Example Policies](https://github.com/warden-sandbox/warden/tree/main/warden-starter/warden/examples) and the [Schema Reference](schema.md)
-for details.
+## Proven against real servers
+
+Warden is tested against **18 real-world MCP servers — 14 pass, 2
+conditional, 2 fail (documented)** — each with its exact policy pinned as a
+regression fixture, so updates can't silently break what used to work. Check
+whether your server works before installing:
+
+**[→ Compatibility Matrix](compatibility.md)** · **[→ Beta Program](beta.md)**
 
 ## Get started
 
-- **[Schema Reference](schema.md)** — complete field-by-field guide to `policy.yaml`
-- **[Example Policies](https://github.com/warden-sandbox/warden/tree/main/warden-starter/warden/examples)** — real-world policy files
-- **[Security Review](security.md)** — threat model and known limitations
-- **[Architecture](architecture.md)** — how Warden works under the hood
-- **[ROADMAP.md](https://github.com/warden-sandbox/warden/blob/main/warden-starter/warden/ROADMAP.md)** — milestones and current status
+1. **[Install](install.md)** — Linux, macOS, Windows, Docker fallback, or
+   build from source
+2. **[Quickstart](quickstart.md)** — your first sandboxed run in five minutes
+3. **[Schema Reference](schema.md)** — every `policy.yaml` field
+4. **[CLI Reference](cli.md)** — every command and flag
+5. **[FAQ](faq.md)** — common failures and fixes
 
-## What Warden does
-
-```
-warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
-```
-
-Warden spawns the server inside a sandbox that:
-
-- **Filesystem** — only sees paths you list, read-only or read-write as you
-  specify. Everything else is invisible, not just "permission denied."
-- **Network** — can only reach hostnames you allowlist. Connections to other
-  hosts are blocked at the sandbox boundary before DNS even resolves.
-- **Environment** — only receives the env vars you pass through. No automatic
-  inheritance of your shell environment.
-- **Stdio** — passed through transparently, so the MCP client (Claude, an IDE,
-  etc.) talks to the sandboxed process exactly like an unsandboxed one.
-- **Audit log** — records every file access attempt and network connection
-  attempt (including blocked ones) at `${XDG_STATE_HOME:-~/.local/state}/warden/audit.jsonl`. View with `warden logs`.
-
-For the full design, see the [Architecture doc](architecture.md) or the
-[ARCHITECTURE.md](https://github.com/warden-sandbox/warden/blob/main/warden-starter/warden/ARCHITECTURE.md) in the repo.
+> **Status:** beta. Core sandboxing (Linux, macOS, Windows, Docker fallback),
+> tracing, approval mode, and gateway integration are implemented and tested.
+> Distribution via Homebrew and npm is coming soon — today, install from a
+> [GitHub Release](https://github.com/Prof-bilal/Warden/releases) or build
+> from source. See the [roadmap](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ROADMAP.md)
+> and [About](about.md) pages for details.

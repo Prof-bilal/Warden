@@ -1,7 +1,7 @@
 # Policy Schema Reference
 
 This document describes the complete policy YAML schema used by Warden.
-See [examples/policy.example.yaml](https://github.com/warden-sandbox/warden/blob/main/warden-starter/warden/examples/policy.example.yaml) for a
+See [examples/policy.example.yaml](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/examples/policy.example.yaml) for a
 fully-worked example.
 
 ## Top-level fields
@@ -23,9 +23,12 @@ command via `warden run --policy <file> -- <cmd...>`.
 command: ["/usr/bin/node", "server.js"]
 ```
 
-The executable path **must be absolute** inside the sandbox. The sandbox binds
-the parent directory read-only, so a bare command name (e.g. `node`) would
-resolve nowhere. Use the full path to the interpreter binary.
+The executable should be an **absolute path** inside the sandbox — the sandbox
+binds the parent directory read-only, so only an absolute path is guaranteed
+visible. For convenience, `warden run` (and `warden gateway run`) also accept
+a bare name on `PATH` (`npx`, `uvx`, `node`) and resolve it via `LookPath` at
+launch, failing closed when the name is not found. Prefer the absolute path
+in checked-in policies so the grant is explicit and reproducible.
 
 Values after the executable are passed as-is — relative paths here are
 resolved against the policy file's directory by `ResolvePaths`.
@@ -45,7 +48,10 @@ Each entry is a path (relative to the policy file, resolved by
 - `write` paths are bind-mounted **read-write**.
 - Paths inside the runtime base (`/usr`, `/lib64`) cannot be granted write —
   that would make part of the system writable and widen the sandbox.
-- A path listed in both `read` and `write` is rejected as ambiguous.
+- A path listed in both `read` and `write` is coalesced to a single `write`
+  grant at load time (`Normalize`), since a write grant already subsumes
+  reads underneath it. The backends keep a fail-closed ambiguity check for
+  policies constructed programmatically without going through `Load`.
 
 **Validation rules:**
 
@@ -142,6 +148,6 @@ limits:
 
 ## Cross-reference
 
-- For a complete working policy, see [examples/policy.example.yaml](https://github.com/warden-sandbox/warden/blob/main/warden-starter/warden/examples/policy.example.yaml).
+- For a complete working policy, see [examples/policy.example.yaml](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/examples/policy.example.yaml).
 - For backend-specific enforcement details, see [Architecture – Sandbox Backends](architecture.md#backend-selection).
 - For security implications of each section, see [Security Review](security.md).

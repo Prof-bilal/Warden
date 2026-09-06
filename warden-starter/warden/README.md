@@ -50,15 +50,14 @@ for details.
 ## Install
 
 ```bash
-# macOS
-brew install warden-sandbox/warden/warden
-
-# npm
-npm install -g @warden-sandbox/mcp-warden
-
 # Manual download — static binaries for Linux, macOS, and Windows:
-# https://github.com/warden-sandbox/warden/releases
+# https://github.com/Prof-bilal/Warden/releases
 ```
+
+Or build from source with Go 1.22+ (`go build -o warden ./cmd/warden`).
+Homebrew and npm distribution is coming soon. Full per-OS guide, including
+required sandbox primitives (`bwrap`, `sandbox-exec`, Docker fallback):
+[Install](./docs/install.md).
 
 ## What Warden does
 
@@ -94,8 +93,8 @@ Docker is **never** preferred over a working native backend.
 ## Commands
 
 ```
-warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] -- <command...>
-    Run a server under a policy
+warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>
+    Run a server under a policy (--approve prompts on first out-of-policy access)
 
 warden trace -- <command...>
     Run unsandboxed and record access attempts
@@ -105,7 +104,41 @@ warden init [--log <file>] [--output <file>] [-- <command...>]
 
 warden logs [--tail <n>] [--follow] [--log <file>]
     Inspect or follow the audit log
+
+warden gateway init --config <file> --policies <dir>
+    Generate per-server starter policies from a gateway config
+
+warden gateway run --config <file> --policies <dir> --server <name>
+    Run one registered server sandboxed
+
+warden gateway wrap --config <file> --policies <dir> [--output <file>]
+    Emit a gateway config whose commands run through Warden
 ```
+
+See [Gateway Integration](./docs/gateway.md) and the
+[example configs](./examples/gateway-mcp.json) (`gateway-registry.yaml`).
+
+See [Interactive Approval Mode](./docs/approve.md) for `--approve` semantics
+(live network prompts; filesystem prompts save + restart; fail-closed
+without a terminal).
+
+## Compatibility
+
+Tested against 18 real-world MCP servers — **14 pass, 2 conditional, 2 fail**.
+Each row links to the exact policy and has a permanent regression fixture
+under [`testdata/compat/`](./testdata/compat/). Full details, failure
+classification, and triage notes: [Compatibility Matrix](./docs/compatibility.md).
+
+| Server | Verdict | Policy |
+|---|---|---|
+| Filesystem, GitHub, Slack, PostgreSQL, SQLite, Brave Search, Google Drive, Git, Memory, Time, Sequential Thinking, Notion, Linear, Tavily | ✅ pass | [`testdata/compat/`](./testdata/compat/) |
+| Fetch, Kubernetes | ⚠️ conditional (deployment-specific hosts) | [`testdata/compat/fetch/`](./testdata/compat/fetch/) · [`testdata/compat/kubernetes/`](./testdata/compat/kubernetes/) |
+| Docker (needs daemon socket), Playwright (needs wildcard hosts) | ❌ fail — documented gaps | [Failure analysis](./docs/compatibility.md#failures-classified) |
+
+Running your own server? Trace it, generate a policy, and
+[file a compatibility report](./docs/beta.md#filing-a-compatibility-report) —
+external beta reports are what proves the schema is usable by people who
+didn't design it.
 
 ## Documentation
 
@@ -113,7 +146,10 @@ warden logs [--tail <n>] [--follow] [--log <file>]
 - [Example Policies](./examples/) — copy-paste policies for popular MCP servers
 - [Security Review](./docs/security.md) — threat model, known limitations, and best practices
 - [Architecture](./docs/architecture.md) — how Warden works under the hood
-- [ROADMAP.md](./ROADMAP.md) — milestones and current status
+ - [Interactive Approval Mode](./docs/approve.md) — `--approve` prompts instead of hard-fails
+ - [Compatibility Matrix](./docs/compatibility.md) — 18 tested servers, exact policies, failure analysis
+ - [Beta Program](./docs/beta.md) — run your server under Warden and report friction
+ - [ROADMAP.md](./ROADMAP.md) — milestones and current status
 
 ## Contributing
 

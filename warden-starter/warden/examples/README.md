@@ -55,6 +55,8 @@ varies by field). Being explicit in your policy makes intent clear and helps
 
 ## Next steps
 
+- Check the [Compatibility Matrix](../docs/compatibility.md) — 18 tested
+  servers with exact policies under [`testdata/compat/`](../testdata/compat/).
 - Read the [Schema Reference](../docs/schema.md) to understand every field.
 - Run `warden trace -- <your-server>` to see what a server actually touches.
 - Run `warden init` to generate a starter policy from the trace output.

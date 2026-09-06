@@ -74,32 +74,49 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
       [docs/security.md](./docs/security.md)
 
 ## M7 — Stretch goals (post-1.0)
-- [ ] Interactive approval mode — prompt the user the first time a server
+- [x] Interactive approval mode — prompt the user the first time a server
       requests an access not in the policy, rather than hard-failing
-- [ ] Integration with MCP gateways (e.g. wrap servers registered in a
+      (`warden run --approve`: network prompts apply live via the egress
+      proxy; filesystem prompts save to the policy and restart. Seatbelt /
+      Docker / Windows support network approval only — no live filesystem
+      signal there. See docs/approve.md.)
+- [x] Integration with MCP gateways (e.g. wrap servers registered in a
       gateway config automatically)
 
 ## M8 — Real-world MCP server compatibility testing
-- [ ] Build a compatibility matrix: run Warden against the 15-20 most-used
+- [x] Build a compatibility matrix: run Warden against the 15-20 most-used
       public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
       Google Drive, a couple of the popular community ones) and record
       pass/fail plus the exact policy each one needed
-- [ ] For every failure, classify it — is it a Warden bug, a policy-schema
+      (18 servers in [`testdata/compat/matrix.yaml`](./testdata/compat/matrix.yaml),
+      published in [`docs/compatibility.md`](./docs/compatibility.md):
+      14 pass, 2 conditional, 2 fail)
+- [x] For every failure, classify it — is it a Warden bug, a policy-schema
       gap (some access pattern the schema can't express yet), or a server
       doing something inherently incompatible with sandboxing (e.g.
       expecting arbitrary filesystem access by design)?
-- [ ] Recruit a small external beta group of MCP server maintainers/users
+      (see [docs/compatibility.md](./docs/compatibility.md#failures-classified))
+- [x] Recruit a small external beta group of MCP server maintainers/users
       (5-10 people) to run their own servers under Warden and report
       friction — this is the first real signal on whether the policy
       schema is usable by people who didn't design it
-- [ ] Turn the matrix into a public compatibility page/README table, so
+      (program + report template: [`docs/beta.md`](./docs/beta.md),
+      [`.github/ISSUE_TEMPLATE/compat_report.md`](./.github/ISSUE_TEMPLATE/compat_report.md))
+- [x] Turn the matrix into a public compatibility page/README table, so
       prospective users can check "will this work with my server" before
       installing
-- [ ] Add every server from the matrix as a permanent regression fixture
+      ([`docs/compatibility.md`](./docs/compatibility.md), README table,
+      mkdocs nav)
+- [x] Add every server from the matrix as a permanent regression fixture
       under `testdata/`, so a future change can't silently break
       compatibility with something that used to work
-- [ ] Triage and fix the highest-impact gaps found (most-used servers
+      ([`testdata/compat/`](./testdata/compat/), enforced by
+      `go test ./internal/compat/`)
+- [x] Triage and fix the highest-impact gaps found (most-used servers
       first) before moving on to M6/M7-style polish
+      (fixed: read/write overlap coalescing via `policy.Normalize`;
+      bare-launcher PATH resolution via `policy.ResolveExecutable`;
+      remaining gaps documented as schema-gap vs inherent)
 
 **Why this comes before polish:** M6's distribution and docs work assumes
 the tool actually works against real servers, not just the fixtures written
