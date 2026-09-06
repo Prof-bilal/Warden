@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "v*"
+  # Manual runs are build-only dry runs: binaries + checksums are produced but
+  # nothing is published (no Release, npm, or Pages), so pipeline changes can
+  # be tested safely without burning an immutable npm version.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -40,12 +44,14 @@ jobs:
       # actions do not inherit defaults.run.working-directory: the files glob
       # is resolved against the workspace root.
       - name: Create GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           files: warden-starter/warden/dist/*
           generate_release_notes: true
 
   publish-npm:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: build
     defaults:
@@ -68,6 +74,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   docs:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: build
     defaults:
@@ -92,6 +99,7 @@ jobs:
           path: warden-starter/warden/site
 
   deploy:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: docs
     environment:
