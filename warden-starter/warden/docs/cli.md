@@ -71,6 +71,19 @@ warden logs [--log <file>] [--tail <n> | -n <n>] [--follow | -f]
 `--tail 0` prints nothing; `--follow` polls for appended events (survives
 truncation). Prints "no audit events recorded yet" when the log doesn't exist.
 
+## `warden version`
+
+Print the stamped build version and exit 0:
+
+```bash
+warden version
+warden --version
+```
+
+Release builds stamp the version at link time (the npm launcher downloads
+that exact version's binary); unstamped source builds report `dev`.
+Accepts `version`, `--version`, `-version`, and `-v`.
+
 ## `warden gateway`
 
 Wrap gateway-registered servers so the gateway launches each one sandboxed:

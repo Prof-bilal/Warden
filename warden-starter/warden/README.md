@@ -113,6 +113,9 @@ warden gateway run --config <file> --policies <dir> --server <name>
 
 warden gateway wrap --config <file> --policies <dir> [--output <file>]
     Emit a gateway config whose commands run through Warden
+
+warden version
+    Print the build version (also `--version`)
 ```
 
 See [Gateway Integration](./docs/gateway.md) and the

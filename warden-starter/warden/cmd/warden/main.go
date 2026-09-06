@@ -6,6 +6,7 @@
 //     prefers the OS-native sandbox (bwrap / sandbox-exec) and falls back to
 //     Docker only when the native primitive is missing.
 //   - `warden trace`, `warden init`, and `warden logs` are usability tools.
+//   - `warden version` (`--version`) prints the stamped build version.
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
+	"github.com/warden-sandbox/warden/internal/version"
 )
 
 func main() {
@@ -45,6 +47,8 @@ func main() {
 		cmdLogs(os.Args[2:])
 	case "gateway":
 		cmdGateway(os.Args[2:])
+	case "version", "--version", "-v", "-version":
+		cmdVersion()
 	default:
 		printUsage()
 		os.Exit(1)
@@ -63,6 +67,7 @@ Usage:
   warden logs [--tail <n>] [--follow] [--log <file>]
                                                  Inspect or follow the audit log
   warden gateway init|run|wrap|list ...        Wrap gateway-registered servers
+  warden version                               Print the build version (also --version)
 
 Backends (auto is the default):
   linux     bubblewrap (bwrap) — preferred on Linux
@@ -71,6 +76,17 @@ Backends (auto is the default):
   docker    container fallback when a native backend is unavailable
 
 See ROADMAP.md. M1–M5 are implemented (Linux native + macOS Seatbelt + Windows AppContainer + Docker).`)
+}
+
+// cmdVersion prints the stamped build version and exits 0. Release builds
+// stamp it via -ldflags (see the Makefile); builds from a source checkout
+// without stamping report the in-source default.
+func cmdVersion() {
+	v := version.Version
+	if v == "" {
+		v = "dev"
+	}
+	fmt.Println("warden version", v)
 }
 
 func cmdRun(args []string) {
