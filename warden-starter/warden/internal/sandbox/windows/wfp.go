@@ -169,10 +169,17 @@ func fwpmResultError(call string, code uintptr) error {
 }
 
 // wfpSupported checks that all WFP procs required by the egress layer are
-// resolvable in the DLL. This is a fail-closed gate: if any proc is missing
-// (wrong DLL, wrong name, stripped Windows image), the sandbox refuses to
-// start rather than panicking at Call time.
+// resolvable in the DLL initWFP() selected. This is a fail-closed gate: if
+// initWFP() couldn't find any host DLL for the API on this host, or any
+// proc lookup fails (wrong DLL, wrong name, stripped Windows image), the
+// sandbox refuses to start rather than panicking at Call time.
 func wfpSupported() error {
+	// initWFP() must have bound the procs; if none of the candidate DLLs
+	// loaded on this host, every proc pointer is still nil. Report this as a
+	// clear actionable error rather than letting a nil deref panic later.
+	if procFwpmEngineOpen == nil {
+		return failClose("WFP engine", errWFPDLLMissing)
+	}
 	for _, p := range []*windows.LazyProc{
 		procFwpmEngineOpen,
 		procFwpmEngineClose,
@@ -185,7 +192,7 @@ func wfpSupported() error {
 		procFwpmFilterDeleteById,
 	} {
 		if err := p.Find(); err != nil {
-			return failClose("WFP engine", fmt.Errorf("required WFP procedure %q not found: %w", p.Name, err))
+			return failClose("WFP engine", fmt.Errorf("required WFP procedure %q not found in %s: %w", p.Name, wfpDLLName(), err))
 		}
 	}
 	return nil

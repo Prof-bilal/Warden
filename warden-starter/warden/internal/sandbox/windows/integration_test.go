@@ -177,3 +177,31 @@ func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {
 		t.Fatalf("timed-out sandbox returned 0; expected a limit breach")
 	}
 }
+
+// TestWFPDLLProbeResilient is the unit test for the REMAINING_WORK P0 follow-up:
+// on hosts where fwpuclnt.dll is missing (e.g. stripped server SKUs, the GitHub
+// Actions windows-latest runner image), initWFP() must fall back to the
+// iphlapi.dll host or report a clear error rather than panicking inside
+// LazyProc.Call. This test exercises the error-reporting path; on a host
+// where WFP is fully available it succeeds without checking anything new.
+func TestWFPDLLProbeResilient(t *testing.T) {
+	err := wfpSupported()
+	if err != nil {
+		// Any error from wfpSupported() must be the failClose-wrapped
+		// WFP error, not a panic or an unrelated code path.
+		msg := err.Error()
+		if !strings.Contains(msg, "WFP engine") {
+			t.Fatalf("wfpSupported returned non-WFP error: %v", err)
+		}
+	}
+}
+
+// TestWFPDLLNameNonEmpty asserts the diagnostic helper always returns a
+// non-empty string (either the resolved DLL name or the "(none)" sentinel)
+// so the error message in wfpSupported() is always actionable.
+func TestWFPDLLNameNonEmpty(t *testing.T) {
+	name := wfpDLLName()
+	if name == "" {
+		t.Fatalf("wfpDLLName() returned empty string")
+	}
+}

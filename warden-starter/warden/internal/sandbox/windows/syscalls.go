@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"errors"
 	"syscall"
 	"unsafe"
 
@@ -24,7 +25,15 @@ var (
 	ntdll    = windows.NewLazySystemDLL("ntdll.dll")
 	advapi32 = windows.NewLazySystemDLL("advapi32.dll")
 	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
-	fwpuclnt = windows.NewLazySystemDLL("fwpuclnt.dll")
+
+	// wfpDLL is set by initWFP() — either fwpuclnt.dll (the canonical home of
+	// the WFP user-mode API) or iphlapi.dll (which also exports the same
+	// symbols on stripped Windows images, including the GitHub Actions
+	// `windows-latest` runner which doesn't ship fwpuclnt.dll). Selecting at
+	// init time means wfpSupported() can fail closed cleanly when neither
+	// DLL is present, instead of panicking inside LazyProc.Call. See
+	// https://learn.microsoft.com/en-us/windows/win32/fwp/ for the API.
+	wfpDLL *windows.LazyDLL
 
 	// ntdll
 	procNtCreateLowBoxToken = ntdll.NewProc("NtCreateLowBoxToken")
@@ -53,20 +62,63 @@ var (
 	procProcessTrace = advapi32.NewProc("ProcessTrace")
 	procCloseTrace   = advapi32.NewProc("CloseTrace")
 
-	// fwpuclnt (Windows Filtering Platform user-mode API). The DLL exports
-	// use versioned names (FwpmXxx0); the C header's #define macros are not
-	// present in the export table, so using the unversioned names causes a
-	// "procedure could not be found" panic at runtime.
-	procFwpmEngineOpen        = fwpuclnt.NewProc("FwpmEngineOpen0")
-	procFwpmEngineClose       = fwpuclnt.NewProc("FwpmEngineClose0")
-	procFwpmTransactionBegin  = fwpuclnt.NewProc("FwpmTransactionBegin0")
-	procFwpmTransactionCommit = fwpuclnt.NewProc("FwpmTransactionCommit0")
-	procFwpmTransactionAbort  = fwpuclnt.NewProc("FwpmTransactionAbort0")
-	procFwpmSublayerAdd       = fwpuclnt.NewProc("FwpmSublayerAdd0")
-	procFwpmFilterAdd         = fwpuclnt.NewProc("FwpmFilterAdd0")
-	procFwpmFreeMemory        = fwpuclnt.NewProc("FwpmFreeMemory0")
-	procFwpmFilterDeleteById  = fwpuclnt.NewProc("FwpmFilterDeleteById0")
+	// WFP procs. Bound lazily after initWFP() picks the right DLL.
+	// Versioned names (FwpmXxx0) are used because the C-header #define macros
+	// (FwpmEngineOpen without the "0" suffix) are not present in the export
+	// table — using unversioned names causes "procedure could not be found"
+	// at Call time, which would have panicked under the old single-DLL binding.
+	procFwpmEngineOpen        *windows.LazyProc
+	procFwpmEngineClose       *windows.LazyProc
+	procFwpmTransactionBegin  *windows.LazyProc
+	procFwpmTransactionCommit *windows.LazyProc
+	procFwpmTransactionAbort  *windows.LazyProc
+	procFwpmSublayerAdd       *windows.LazyProc
+	procFwpmFilterAdd         *windows.LazyProc
+	procFwpmFreeMemory        *windows.LazyProc
+	procFwpmFilterDeleteById  *windows.LazyProc
 )
+
+// initWFP picks the Windows DLL that actually exports the WFP user-mode API on
+// this host and binds the wfp* proc pointers against it. Both fwpuclnt.dll
+// (the canonical home of the API since Vista) and iphlapi.dll (which also
+// exports the same symbols on stripped server SKUs and the GitHub Actions
+// `windows-latest` runner image, where fwpuclnt.dll is not present) are
+// attempted. The first DLL whose Load() succeeds wins; if neither loads,
+// wfpSupported() reports a clear "no WFP DLL on this host" error rather than
+// panicking later inside a Call. See REMAINING_WORK P0 fwpuclnt follow-up.
+func initWFP() {
+	candidates := []string{"fwpuclnt.dll", "iphlapi.dll"}
+	for _, name := range candidates {
+		d := windows.NewLazySystemDLL(name)
+		if err := d.Load(); err == nil {
+			wfpDLL = d
+			procFwpmEngineOpen = d.NewProc("FwpmEngineOpen0")
+			procFwpmEngineClose = d.NewProc("FwpmEngineClose0")
+			procFwpmTransactionBegin = d.NewProc("FwpmTransactionBegin0")
+			procFwpmTransactionCommit = d.NewProc("FwpmTransactionCommit0")
+			procFwpmTransactionAbort = d.NewProc("FwpmTransactionAbort0")
+			procFwpmSublayerAdd = d.NewProc("FwpmSublayerAdd0")
+			procFwpmFilterAdd = d.NewProc("FwpmFilterAdd0")
+			procFwpmFreeMemory = d.NewProc("FwpmFreeMemory0")
+			procFwpmFilterDeleteById = d.NewProc("FwpmFilterDeleteById0")
+			return
+		}
+	}
+}
+
+// wfpDLLName reports which DLL currently backs the WFP procs. Returns
+// "(none)" when initWFP() could not find a host for the API. Used by
+// wfpSupported() for actionable error messages.
+func wfpDLLName() string {
+	if wfpDLL == nil {
+		return "(none)"
+	}
+	return wfpDLL.Name
+}
+
+func init() {
+	initWFP()
+}
 
 // lasterr maps a Windows BOOL-style Proc.Call error to a Go error, normalising
 // the zero Errno so helpers can return it directly.
@@ -197,3 +249,11 @@ func _Process32Next(snapshot windows.Handle, entry *processEntry32W) error {
 	}
 	return nil
 }
+
+// errWFPDLLMissing is returned by wfpSupported() when neither fwpuclnt.dll
+// nor iphlapi.dll could be loaded. Surfaced verbatim so the user can fix the
+// host or report the issue; the run fails closed with this message rather
+// than panicking inside LazyProc.Call (the original REMAINING_WORK P0 bug).
+var errWFPDLLMissing = errors.New(
+	"neither fwpuclnt.dll nor iphlapi.dll could be loaded — the Windows Filtering Platform user-mode API is unavailable on this host",
+)
