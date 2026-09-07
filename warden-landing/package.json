@@ -1,6 +1,6 @@
 {
   "name": "warden-landing",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -29,11 +29,12 @@
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.0"
   },
-  "description": "Landing page for Warden",
+  "description": "Warden - A sandbox runtime for MCP servers",
   "keywords": [
     "warden",
     "mcp",
     "sandbox"
   ],
-  "author": "Prof-bilal"
+  "author": "Prof-bilal",
+  "license": "MIT"
 }
