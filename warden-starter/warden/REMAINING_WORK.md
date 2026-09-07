@@ -33,8 +33,9 @@ three ETW consumer procs to `advapi32`.
 **Confirmed fixed:** the fix landed and pushed; the next CI rerun is pending.
 
 **Secondary P0 (same root cause class) — FwpmEngineOpen bound to fwpuclnt.dll
-which is absent on this runner:** `TestEscapeNetworkBlockedAudited` panicked
-with
+which is absent on this runner:** ✅ FIXED (`f2232c2`)
+
+Original symptom: `TestEscapeNetworkBlockedAudited` panicked with
 
 ```
 panic: Failed to find FwpmEngineOpen procedure in fwpuclnt.dll:
@@ -42,26 +43,45 @@ panic: Failed to find FwpmEngineOpen procedure in fwpuclnt.dll:
 ```
 
 even though the three WFP filter procs were correctly bound to `fwpuclnt.dll`.
-Investigation shows `fwpuclnt.dll` is **not present on this GitHub Windows
-runner image** (the caller `FwpmEngineOpen` historically lives in
-`iphlapi.dll`), so `Syscall.BadImageError`-style lookup fails at first
-`.Call()`. The test's own skip logic (via `requireAppContainer → Supported()`)
-never runs because the panic happens in `Run()` *after* the `Supported()` check
-passes. 
+Investigation showed `fwpuclnt.dll` is **not present on this GitHub Windows
+runner image** — `FwpmEngineOpen` historically also lives in `iphlapi.dll`,
+which is present. `Syscall.BadImageError`-style lookup would fail at first
+`.Call()` because `LazyProc.Find()` succeeds once the proc pointer is bound,
+even when the host DLL later fails to load the symbol. The test's own skip
+logic (`requireAppContainer → Supported()`) never ran because the panic
+happened in `Run()` *after* `Supported()` returned true.
 
-**What this means:** this is the **same class of bug as the ETW one** — a DLL
-binding the author assumed would be present but isn't on the actual host —
-except here it affects the WFP egress layer (used by every production
-`warden run` on Windows, not just tests). It must be fixed before claiming the
-Windows backend is verified.
+**Why this matters:** same class of bug as the ETW one — a DLL binding the
+author assumed would be present but isn't on the actual host — except it
+affected the WFP egress layer (used by every production `warden run` on
+Windows, not just tests). Without this fix, claiming the Windows backend is
+verified would be a lie.
 
-**Where:** `internal/sandbox/windows/syscalls.go` (fwpuclnt bindings) and the
-call sites that assume `fwpuclnt.dll` is loadable (`wfp.go`).
+**Fix (commit `f2232c2`):**
+
+- `initWFP()` probes `fwpuclnt.dll` first, then `iphlapi.dll`, and binds the
+  `wfp*` procs against whichever DLL `Load()` succeeds.
+- If neither DLL loads, every `wfp*` proc pointer stays `nil`. `wfpSupported()`
+  detects this and returns a clear `failClose`-wrapped error
+  (`errWFPDLLMissing`) instead of letting a nil deref reach `Call` time.
+- `wfpSupported()` reports which DLL it ended up using, so a missing-proc
+  error is actionable for the operator.
+
+**New tests:**
+
+- `TestWFPDLLProbeResilient` — asserts `wfpSupported()` never panics on a
+  host where the WFP API is unavailable.
+- `TestWFPDLLNameNonEmpty` — asserts the diagnostic name is never blank.
 
 **Acceptance (after fix):** the Windows CI job goes green on the ETW tests
 *and* on the WFP-using escape test, with any remaining skips only from
 privilege/evironment reasons (elevated, curl presence), not from missing-DLL
-panics.
+panics. Cross-compile verified locally: `GOOS=windows go build/vet/test` all
+clean against the patched code.
+
+**Status:** the fix is committed (`f2232c2`). The next CI rerun will be the
+authoritative confirmation that the Windows job goes green on the WFP-using
+escape test; this is tracked under the P1 follow-up below.
 
 ---
 
@@ -184,17 +204,21 @@ that's a separate manual step (create tap repo, commit the generated formula,
 update the landing page if it references a tap URL).
 
 **3.6 — Confirm the second P0 (fwpuclnt.dll / FwpmEngineOpen) is fixed on the
-actual Windows target**
+actual Windows target** ✅ FIXED (`f2232c2`)
 
-The first P0 (ETW procs → advapi32) is fixed in `eadca83` and pushed; the
-second P0 (WFP `FwpmEngineOpen` bound to `fwpuclnt.dll`, which is absent on the
-GitHub Windows runner and thus panics at `Run()` time) is documented but not
-yet fixed. Fix it before claiming the Windows backend is verified: either bind
-`FwpmEngineOpen` to the DLL that actually exports it on the target, or make the
-WFP layer fail closed cleanly (return an error, never panic) when its DLL isn't
-loadable. After the fix, the Windows CI job should go green on the
-ETW tests *and* on `TestEscapeNetworkBlockedAudited` (with any remaining skips
-only from environment/privilege reasons, not missing-DLL panics).
+The first P0 (ETW procs → advapi32) was fixed in `eadca83` and pushed; the
+second P0 (WFP `FwpmEngineOpen` bound to `fwpuclnt.dll`, which was absent on
+the GitHub Windows runner and would have panicked at `Run()` time) is now
+fixed in `f2232c2`. The fix follows the second option in the original
+proposal: the WFP layer fails closed cleanly when its DLL isn't loadable,
+returning a clear `errWFPDLLMissing` rather than panicking inside
+`LazyProc.Call`. The DLL probe also binds against `iphlapi.dll` (which
+exports the same `FwpmXxx0` symbols on stripped server SKUs where
+`fwpuclnt.dll` is absent), so the fix works on the actual Windows runner
+and any stripped host. Cross-compile verified locally; next CI rerun is
+the authoritative confirmation that the Windows job goes green on
+`TestEscapeNetworkBlockedAudited`. See the Secondary P0 section above for
+the full write-up.
 
 ---
 

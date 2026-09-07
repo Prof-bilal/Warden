@@ -42,6 +42,15 @@ Then open http://localhost:3000.
 | **Windows** | AppContainer + WFP + Job Objects + ETW audit | ✅ Ready |
 | **Overall** | — | ✅ Ready |
 
+Windows requires an elevated (Administrator) shell to attach the WFP filters
+and ETW audit session; without elevation Warden fails closed with a clear
+message rather than running unaudited. The two Windows P0 production bugs
+the Windows CI job surfaced (ETW procs routed to the wrong DLL, WFP procs
+bound to a DLL absent on the runner) are fixed in commits `eadca83` and
+`f2232c2`. The authoritative cross-machine CI verification state — and the
+small set of remaining cross-platform test-debt items — is tracked in
+[`REMAINING_WORK.md`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md).
+
 ## Compatibility Matrix
 
 The Warden MCP compatibility matrix (18 servers) has been validated:

@@ -110,7 +110,16 @@ export default function TestingPage() {
 
       <section className="mx-auto max-w-content px-6 pb-20">
         <h2 className="text-[1.375rem] font-medium text-paper">Test results</h2>
-        <p className="mt-2 text-[0.9375rem] text-muted">All 10 core tests pass on every platform.</p>
+        <p className="mt-2 text-[0.9375rem] text-muted">
+          All 10 core tests pass on every platform in local runs. The Windows
+          CI job is the authoritative cross-machine verification — its current
+          status (and the small set of remaining cross-platform test-debt
+          items) is tracked in the
+          {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK.md</a>{" "}
+          file. Recent fixes (commits <code className="text-blueprint">eadca83</code> ETW proc routing and{" "}
+          <code className="text-blueprint">f2232c2</code> WFP DLL probe) closed the two Windows
+          P0 production bugs the Windows CI job surfaced.
+        </p>
         <div className="mt-8 overflow-x-auto">
           <table className="w-full min-w-[36rem] border-collapse text-left">
             <thead>

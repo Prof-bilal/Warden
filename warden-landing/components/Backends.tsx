@@ -33,6 +33,15 @@ export default function Backends() {
             </div>
           ))}
         </div>
+
+        <p className="mt-6 max-w-[36rem] text-[0.8125rem] leading-[1.6] text-muted/80">
+          Windows requires an elevated (Administrator) shell to attach the WFP
+          filters and ETW audit session. Without elevation, Warden fails closed
+          with a clear message rather than running unaudited. See the
+          {" "}<a className="underline decoration-muted/40 hover:text-paper" href="/docs/install">install docs</a>{" "}
+          and the {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK</a>{" "}
+          tracker for the exact CI verification state.
+        </p>
       </div>
     </section>
   );
