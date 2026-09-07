@@ -1,7 +1,7 @@
 {
   "name": "warden-landing",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
+  "private": false,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -28,5 +28,12 @@
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.0"
-  }
+  },
+  "description": "Landing page for Warden",
+  "keywords": [
+    "warden",
+    "mcp",
+    "sandbox"
+  ],
+  "author": "Prof-bilal"
 }
