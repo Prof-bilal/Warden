@@ -1,0 +1,16 @@
+command: ["/bin/cat", "/etc/passwd"]
+
+filesystem:
+  read:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+  write: []
+
+network:
+  allow: []
+
+env:
+  allow: []
+
+limits:
+  memory_mb: 64
+  timeout_s: 10

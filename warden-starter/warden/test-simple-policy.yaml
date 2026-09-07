@@ -1,0 +1,19 @@
+command: ["/bin/ls", "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"]
+
+filesystem:
+  read:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+  write:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+
+network:
+  allow: []
+
+env:
+  allow:
+    - "HOME"
+    - "PATH"
+
+limits:
+  memory_mb: 64
+  timeout_s: 10

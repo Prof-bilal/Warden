@@ -1,0 +1,18 @@
+# Policy for filesystem MCP server test
+command: ["/home/abdullah/.local/share/mise/installs/node/26.8.1/bin/node", "./mcp-test/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js", "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"]
+
+filesystem:
+  read:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+  write:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+
+network:
+  allow: []
+
+env:
+  allow: []
+
+limits:
+  memory_mb: 256
+  timeout_s: 300

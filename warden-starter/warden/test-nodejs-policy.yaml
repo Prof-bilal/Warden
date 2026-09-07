@@ -1,0 +1,22 @@
+command: ["/usr/local/bin/node", "/app/mcp-test/test-server.js", "/app/test-data"]
+
+filesystem:
+  read:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/mcp-test"
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+  write:
+    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+
+network:
+  allow:
+    - "api.github.com"
+
+env:
+  allow:
+    - "HOME"
+    - "PATH"
+    - "NODE_ENV"
+
+limits:
+  memory_mb: 256
+  timeout_s: 300

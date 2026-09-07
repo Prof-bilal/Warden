@@ -62,6 +62,11 @@ const CARDS = [
     body: "Unit tests, integration tests, escape tests, fixtures, and CI expectations for the project.",
     href: "/docs/testing",
   },
+  {
+    title: "Cross-platform testing",
+    body: "Test Warden on Linux, macOS, and Windows — build binaries, run MCP servers, verify security boundaries.",
+    href: "/docs/testing-platforms",
+  },
 ];
 
 export default function Docs() {
