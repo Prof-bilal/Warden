@@ -32,6 +32,10 @@ import (
 	"github.com/warden-sandbox/warden/internal/version"
 )
 
+// allCommands lists every user-facing command name for help discovery and
+// suggestion matching. Internal commands (like __proxy-bridge) are excluded.
+var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "version", "help"}
+
 func main() {
 	if len(os.Args) < 2 {
 		handleBareInvocation()
@@ -42,7 +46,6 @@ func main() {
 	case "__proxy-bridge":
 		cmdProxyBridge(os.Args[2:])
 	case "run":
-		// Explicit help for subcommands - clean, no banner.
 		if hasHelpFlag(os.Args[2:]) {
 			printRunHelp()
 			os.Exit(0)
@@ -73,16 +76,33 @@ func main() {
 		}
 		cmdGateway(os.Args[2:])
 	case "doctor":
+		if hasHelpFlag(os.Args[2:]) {
+			printDoctorHelp()
+			os.Exit(0)
+		}
 		cmdDoctor(os.Args[2:])
 	case "version", "--version", "-v", "-version":
+		if hasHelpFlag(os.Args[2:]) {
+			printVersionHelp()
+			os.Exit(0)
+		}
 		cmdVersion()
-	case "help", "--help", "-h":
+	case "help":
+		if len(os.Args) > 2 {
+			printCommandHelp(os.Args[2])
+		} else {
+			printUsage()
+		}
+		os.Exit(0)
+	case "--help", "-h":
 		printUsage()
 		os.Exit(0)
 	default:
-		// Unknown subcommand: show clean usage (no banner to avoid noise for scripts)
-		fmt.Fprintf(os.Stderr, "warden: unknown command %q\n\n", os.Args[1])
-		printUsage()
+		fmt.Fprintf(os.Stderr, "\u2717 Unknown command: %s\n\n", os.Args[1])
+		if suggestion := suggestCommand(os.Args[1]); suggestion != "" {
+			fmt.Fprintf(os.Stderr, "Did you mean:\n\n  warden %s\n\n", suggestion)
+		}
+		fmt.Fprintf(os.Stderr, "Run:\n\n  warden help\n\nto see available commands.\n")
 		os.Exit(1)
 	}
 }
@@ -114,8 +134,6 @@ func handleBareInvocation() {
 }
 
 func printUsage() {
-	// Clean, script-friendly help. No large banner here per UX rule.
-	// Colors are semantic and degrade gracefully with NO_COLOR.
 	title := "WARDEN"
 	if ui.ColorEnabled() {
 		title = ui.Bold(ui.Cyan(title))
@@ -131,21 +149,22 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  warden <command> [options]")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
-	fmt.Fprintln(os.Stderr, "  run        Run an MCP server inside Warden")
-	fmt.Fprintln(os.Stderr, "  trace      Record access attempts without sandboxing")
-	fmt.Fprintln(os.Stderr, "  init       Create a starter policy from a trace")
+	fmt.Fprintln(os.Stderr, "  init       Create a security policy")
+	fmt.Fprintln(os.Stderr, "  run        Run an MCP server in the sandbox")
+	fmt.Fprintln(os.Stderr, "  trace      Record access attempts for policy generation")
 	fmt.Fprintln(os.Stderr, "  logs       Inspect the audit log")
 	fmt.Fprintln(os.Stderr, "  doctor     Check sandbox readiness")
 	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
-	fmt.Fprintln(os.Stderr, "  version    Show version information")
+	fmt.Fprintln(os.Stderr, "  version    Show version")
+	fmt.Fprintln(os.Stderr, "  help       Show help for a command")
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Run:"))
-	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] -- <command...>")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, ui.Bold("Get started:"))
 	fmt.Fprintln(os.Stderr, "  warden init")
-	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- /usr/bin/node server.js")
-	fmt.Fprintln(os.Stderr, "  warden doctor")
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- <server>")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Learn more:"))
+	fmt.Fprintln(os.Stderr, "  warden help run")
+	fmt.Fprintln(os.Stderr, "  warden help gateway")
 	fmt.Fprintln(os.Stderr, "")
 	sec := "Security:"
 	if ui.ColorEnabled() {
@@ -154,45 +173,228 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, sec)
 	fmt.Fprintln(os.Stderr, "  Warden fails closed when sandbox enforcement")
 	fmt.Fprintln(os.Stderr, "  is unavailable. It never runs unsandboxed.")
+	fmt.Fprintln(os.Stderr, "  The server gets only the permissions your policy")
+	fmt.Fprintln(os.Stderr, "  explicitly grants.")
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Dim("See docs: https://github.com/Prof-bilal/Warden  •  warden <command> --help for details"))
+	fmt.Fprintln(os.Stderr, ui.Dim("Docs: https://github.com/Prof-bilal/Warden"))
+}
+
+// printCommandHelp dispatches to the right help function for "warden help <cmd>".
+func printCommandHelp(cmd string) {
+	switch cmd {
+	case "run":
+		printRunHelp()
+	case "trace":
+		printTraceHelp()
+	case "init":
+		printInitHelp()
+	case "logs":
+		printLogsHelp()
+	case "doctor":
+		printDoctorHelp()
+	case "version":
+		printVersionHelp()
+	case "gateway":
+		printGatewayUsage()
+	case "help":
+		printUsage()
+	default:
+		fmt.Fprintf(os.Stderr, "\u2717 No help available for: %s\n\n", cmd)
+		fmt.Fprintf(os.Stderr, "Run:\n\n  warden help\n\nto see available commands.\n")
+		os.Exit(1)
+	}
+}
+
+// suggestCommand returns the closest command name for a typo, or "" if none
+// is close enough. Uses simple Levenshtein-distance heuristic.
+func suggestCommand(input string) string {
+	best := ""
+	bestDist := len(input) / 2 // max distance to consider a match
+	if bestDist < 1 {
+		bestDist = 1
+	}
+	for _, cmd := range allCommands {
+		d := levenshtein(input, cmd)
+		if d > 0 && d <= bestDist {
+			bestDist = d
+			best = cmd
+		}
+	}
+	return best
+}
+
+func levenshtein(a, b string) int {
+	la, lb := len(a), len(b)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+	prev := make([]int, lb+1)
+	for j := 0; j <= lb; j++ {
+		prev[j] = j
+	}
+	for i := 1; i <= la; i++ {
+		curr := make([]int, lb+1)
+		curr[0] = i
+		for j := 1; j <= lb; j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			curr[j] = min(curr[j-1]+1, prev[j]+1, prev[j-1]+cost)
+		}
+		prev = curr
+	}
+	return prev[lb]
+}
+
+func min(a, b, c int) int {
+	if a < b {
+		if a < c {
+			return a
+		}
+		return c
+	}
+	if b < c {
+		return b
+	}
+	return c
 }
 
 func printRunHelp() {
-	fmt.Fprintln(os.Stderr, ui.Bold("warden run")+ " — Run a server under a policy")
+	title := "WARDEN RUN"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Run an MCP server inside the Warden sandbox.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
-	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>")
+	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [options] -- <command...>")
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Flags:"))
-	fmt.Fprintln(os.Stderr, "  --policy <file>            Required. Policy YAML.")
-	fmt.Fprintln(os.Stderr, "  --backend <name>           auto (default), linux, seatbelt, windows, docker")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --policy <file>            Security policy to enforce (required)")
+	fmt.Fprintln(os.Stderr, "  --backend <name>           Backend: auto (default), linux, seatbelt, windows, docker")
 	fmt.Fprintln(os.Stderr, "  --approve                  Prompt on first out-of-policy access")
-	fmt.Fprintln(os.Stderr, "  --approve-timeout <dur>    Per-prompt timeout (e.g. 30s, 2m)")
-	fmt.Fprintln(os.Stderr, "  -- <command...>             Command to sandbox")
+	fmt.Fprintln(os.Stderr, "  --approve-timeout <dur>    Per-prompt timeout (e.g. 30s, 2m); requires --approve")
+	fmt.Fprintln(os.Stderr, "  --help                     Show this help")
 	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Dim("Warden fails closed when the sandbox backend is unavailable."))
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- /usr/bin/node server.js")
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml --backend docker -- python app.py")
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml --approve -- npx @modelcontextprotocol/server")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  The server runs with only the permissions explicitly")
+	fmt.Fprintln(os.Stderr, "  granted by the policy. If the sandbox cannot be")
+	fmt.Fprintln(os.Stderr, "  initialized, Warden refuses to run the server.")
 }
 
 func printTraceHelp() {
-	fmt.Fprintln(os.Stderr, ui.Bold("warden trace")+ " — Run unsandboxed and record access attempts")
+	title := "WARDEN TRACE"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Run unsandboxed and record access attempts for policy generation.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
 	fmt.Fprintln(os.Stderr, "  warden trace -- <command...>")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden trace -- /usr/bin/node server.js")
+	fmt.Fprintln(os.Stderr, "  warden trace -- npx @modelcontextprotocol/server")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Next:"))
+	fmt.Fprintln(os.Stderr, "  warden init          Generate a policy from the trace")
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- <server>")
 }
 
 func printInitHelp() {
-	fmt.Fprintln(os.Stderr, ui.Bold("warden init")+ " — Generate a starter policy from a trace")
+	title := "WARDEN INIT"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Create a security policy from a recorded trace.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
-	fmt.Fprintln(os.Stderr, "  warden init [--log <file>] [--output <file>] [-- <command...>]")
+	fmt.Fprintln(os.Stderr, "  warden init [options]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --log <file>       Audit/trace log to read (default: latest trace)")
+	fmt.Fprintln(os.Stderr, "  --output <file>    Output policy file (default: policy.yaml)")
+	fmt.Fprintln(os.Stderr, "  -- <command...>    Command to record in the policy")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("What the policy controls:"))
+	fmt.Fprintln(os.Stderr, "  Filesystem     explicit paths only")
+	fmt.Fprintln(os.Stderr, "  Network        explicit hosts only")
+	fmt.Fprintln(os.Stderr, "  Environment    explicit variables only")
+	fmt.Fprintln(os.Stderr, "  Resources      explicit limits")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden init")
+	fmt.Fprintln(os.Stderr, "  warden init --log trace.jsonl --output starter.yaml")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Next:"))
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- <server>")
 }
 
 func printLogsHelp() {
-	fmt.Fprintln(os.Stderr, ui.Bold("warden logs")+ " — Inspect the audit log")
+	title := "WARDEN LOGS"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Inspect the Warden audit log.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
-	fmt.Fprintln(os.Stderr, "  warden logs [--log <file>] [--tail <n>] [--follow]")
+	fmt.Fprintln(os.Stderr, "  warden logs [options]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --log <file>     Audit log path (default: ~/.local/state/warden/audit.jsonl)")
+	fmt.Fprintln(os.Stderr, "  --tail <n>       Show last N lines")
+	fmt.Fprintln(os.Stderr, "  --follow, -f     Follow/tail the log (polls every 250ms)")
+	fmt.Fprintln(os.Stderr, "  --help           Show this help")
+}
+
+func printDoctorHelp() {
+	title := "WARDEN DOCTOR"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Check whether this system is ready to run Warden sandboxes.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden doctor")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Checks may include:"))
+	fmt.Fprintln(os.Stderr, "  Sandbox backend")
+	fmt.Fprintln(os.Stderr, "  Namespace support")
+	fmt.Fprintln(os.Stderr, "  Network enforcement")
+	fmt.Fprintln(os.Stderr, "  Required runtime dependencies")
+	fmt.Fprintln(os.Stderr, "  Platform compatibility")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  A failed security check must never be interpreted")
+	fmt.Fprintln(os.Stderr, "  as 'sandbox disabled'. Warden fails closed.")
+}
+
+func printVersionHelp() {
+	title := "WARDEN VERSION"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Show the Warden version.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden version")
+	fmt.Fprintln(os.Stderr, "  warden --version")
+	fmt.Fprintln(os.Stderr, "  warden -v")
 }
 
 func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []string) {
