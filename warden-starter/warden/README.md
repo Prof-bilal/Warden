@@ -114,9 +114,20 @@ warden gateway run --config <file> --policies <dir> --server <name>
 warden gateway wrap --config <file> --policies <dir> [--output <file>]
     Emit a gateway config whose commands run through Warden
 
+warden doctor
+    Check sandbox readiness (backend, namespaces, proxy, policy engine)
+
 warden version
     Print the build version (also `--version`)
 ```
+
+`warden` with no args shows the branded header and usage; `warden init` and
+`warden doctor` show the large ASCII banner when run interactively (never
+in CI or for `warden run`/`--help`/`--version`). Colors respect
+`NO_COLOR`, `TERM=dumb`, and `WARDEN_NO_UNICODE`; see
+[CLI Reference — CLI Experience](./docs/cli.md#cli-experience). First-run
+shows a one-time welcome (`Welcome to Warden`); it never blocks
+`warden run` and is suppressed in CI.
 
 See [Gateway Integration](./docs/gateway.md) and the
 [example configs](./examples/gateway-mcp.json) (`gateway-registry.yaml`).

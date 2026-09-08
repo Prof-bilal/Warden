@@ -7,6 +7,8 @@
 //     Docker only when the native primitive is missing.
 //   - `warden trace`, `warden init`, and `warden logs` are usability tools.
 //   - `warden version` (`--version`) prints the stamped build version.
+//   - `warden doctor` checks sandbox readiness.
+//   - `warden` with no arguments shows the branded header and usage.
 package main
 
 import (
@@ -26,12 +28,13 @@ import (
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
 	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
+	"github.com/warden-sandbox/warden/internal/ui"
 	"github.com/warden-sandbox/warden/internal/version"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		printUsage()
+		handleBareInvocation()
 		os.Exit(1)
 	}
 
@@ -39,49 +42,251 @@ func main() {
 	case "__proxy-bridge":
 		cmdProxyBridge(os.Args[2:])
 	case "run":
+		// Explicit help for subcommands - clean, no banner.
+		if hasHelpFlag(os.Args[2:]) {
+			printRunHelp()
+			os.Exit(0)
+		}
 		cmdRun(os.Args[2:])
 	case "trace":
+		if hasHelpFlag(os.Args[2:]) {
+			printTraceHelp()
+			os.Exit(0)
+		}
 		cmdTrace(os.Args[2:])
 	case "init":
+		if hasHelpFlag(os.Args[2:]) {
+			printInitHelp()
+			os.Exit(0)
+		}
 		cmdInit(os.Args[2:])
 	case "logs":
+		if hasHelpFlag(os.Args[2:]) {
+			printLogsHelp()
+			os.Exit(0)
+		}
 		cmdLogs(os.Args[2:])
 	case "gateway":
+		if hasHelpFlag(os.Args[2:]) {
+			printGatewayUsage()
+			os.Exit(0)
+		}
 		cmdGateway(os.Args[2:])
+	case "doctor":
+		cmdDoctor(os.Args[2:])
 	case "version", "--version", "-v", "-version":
 		cmdVersion()
+	case "help", "--help", "-h":
+		printUsage()
+		os.Exit(0)
 	default:
+		// Unknown subcommand: show clean usage (no banner to avoid noise for scripts)
+		fmt.Fprintf(os.Stderr, "warden: unknown command %q\n\n", os.Args[1])
 		printUsage()
 		os.Exit(1)
 	}
 }
 
+func hasHelpFlag(args []string) bool {
+	for _, a := range args {
+		if a == "--help" || a == "-h" || a == "help" {
+			return true
+		}
+	}
+	return false
+}
+
+func handleBareInvocation() {
+	// First-run welcome takes precedence on first meaningful invocation.
+	if shown := ui.MaybeShowWelcome(os.Stderr); shown {
+		fmt.Fprintln(os.Stderr, "")
+		printUsage()
+		return
+	}
+	// Otherwise show branded header + usage.
+	// In a TTY we show the large banner; in non-TTY we rely on printUsage
+	// header (which already prints WARDEN + tagline) to avoid duplication.
+	if ui.IsTerminalWriter(os.Stderr) && !ui.IsCI() {
+		_, _ = ui.PrintBanner(os.Stderr)
+		fmt.Fprintln(os.Stderr, "")
+	}
+	printUsage()
+}
+
 func printUsage() {
-	fmt.Fprintln(os.Stderr, `warden - a sandbox runtime for MCP servers
+	// Clean, script-friendly help. No large banner here per UX rule.
+	// Colors are semantic and degrade gracefully with NO_COLOR.
+	title := "WARDEN"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	sub := "Secure execution for MCP servers."
+	if ui.ColorEnabled() {
+		sub = ui.Dim(sub)
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, sub)
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden <command> [options]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
+	fmt.Fprintln(os.Stderr, "  run        Run an MCP server inside Warden")
+	fmt.Fprintln(os.Stderr, "  trace      Record access attempts without sandboxing")
+	fmt.Fprintln(os.Stderr, "  init       Create a starter policy from a trace")
+	fmt.Fprintln(os.Stderr, "  logs       Inspect the audit log")
+	fmt.Fprintln(os.Stderr, "  doctor     Check sandbox readiness")
+	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
+	fmt.Fprintln(os.Stderr, "  version    Show version information")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Run:"))
+	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] -- <command...>")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden init")
+	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- /usr/bin/node server.js")
+	fmt.Fprintln(os.Stderr, "  warden doctor")
+	fmt.Fprintln(os.Stderr, "")
+	sec := "Security:"
+	if ui.ColorEnabled() {
+		sec = ui.Cyan(sec)
+	}
+	fmt.Fprintln(os.Stderr, sec)
+	fmt.Fprintln(os.Stderr, "  Warden fails closed when sandbox enforcement")
+	fmt.Fprintln(os.Stderr, "  is unavailable. It never runs unsandboxed.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Dim("See docs: https://github.com/Prof-bilal/Warden  •  warden <command> --help for details"))
+}
 
-Usage:
-  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>
-                                                 Run a server under a policy
-  warden trace -- <command...>                 Run unsandboxed and record access attempts
-  warden init [--log <file>] [--output <file>] [-- <command...>]
-                                                Generate a starter policy from an audit log
-  warden logs [--tail <n>] [--follow] [--log <file>]
-                                                 Inspect or follow the audit log
-  warden gateway init|run|wrap|list ...        Wrap gateway-registered servers
-  warden version                               Print the build version (also --version)
+func printRunHelp() {
+	fmt.Fprintln(os.Stderr, ui.Bold("warden run")+ " — Run a server under a policy")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Flags:"))
+	fmt.Fprintln(os.Stderr, "  --policy <file>            Required. Policy YAML.")
+	fmt.Fprintln(os.Stderr, "  --backend <name>           auto (default), linux, seatbelt, windows, docker")
+	fmt.Fprintln(os.Stderr, "  --approve                  Prompt on first out-of-policy access")
+	fmt.Fprintln(os.Stderr, "  --approve-timeout <dur>    Per-prompt timeout (e.g. 30s, 2m)")
+	fmt.Fprintln(os.Stderr, "  -- <command...>             Command to sandbox")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Dim("Warden fails closed when the sandbox backend is unavailable."))
+}
 
-Backends (auto is the default):
-  linux     bubblewrap (bwrap) — preferred on Linux
-  seatbelt  sandbox-exec — preferred on macOS
-  windows   AppContainer / WFP / Job Object — preferred on Windows
-  docker    container fallback when a native backend is unavailable
+func printTraceHelp() {
+	fmt.Fprintln(os.Stderr, ui.Bold("warden trace")+ " — Run unsandboxed and record access attempts")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden trace -- <command...>")
+}
 
-See ROADMAP.md. M1–M5 are implemented (Linux native + macOS Seatbelt + Windows AppContainer + Docker).`)
+func printInitHelp() {
+	fmt.Fprintln(os.Stderr, ui.Bold("warden init")+ " — Generate a starter policy from a trace")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden init [--log <file>] [--output <file>] [-- <command...>]")
+}
+
+func printLogsHelp() {
+	fmt.Fprintln(os.Stderr, ui.Bold("warden logs")+ " — Inspect the audit log")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden logs [--log <file>] [--tail <n>] [--follow]")
+}
+
+func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []string) {
+	if os.Getenv("WARDEN_QUIET") != "" {
+		return
+	}
+	if ui.IsCI() {
+		return
+	}
+	if !ui.IsTerminalWriter(os.Stderr) {
+		return
+	}
+	// Resolve backend display name
+	be := backend
+	if be == "" {
+		be = "auto"
+	}
+	// Try to resolve actual backend for display, but don't fail if unavailable.
+	if resolved, err := sandbox.Resolve(be); err == nil {
+		be = resolved
+	}
+	title := "WARDEN"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	sep := "──────────────────────────────────────"
+	if ui.TerminalWidth() < 50 {
+		sep = "────────────────────────────────"
+	}
+	fmt.Fprintln(os.Stderr, ui.Dim(sep))
+	fmt.Fprintln(os.Stderr, "")
+	// Policy, backend, command
+	if policyPath != "" {
+		fmt.Fprintf(os.Stderr, "%-12s %s\n", ui.Dim("Policy"), ui.Cyan(policyPath))
+	}
+	fmt.Fprintf(os.Stderr, "%-12s %s\n", ui.Dim("Backend"), ui.Cyan(be))
+	if len(cmd) > 0 {
+		displayCmd := cmd[0]
+		if len(cmd) > 1 {
+			displayCmd += " " + strings.Join(cmd[1:], " ")
+		}
+		// Truncate long command for narrow terminals
+		if len(displayCmd) > ui.TerminalWidth()-14 {
+			displayCmd = displayCmd[:ui.TerminalWidth()-17] + "..."
+		}
+		fmt.Fprintf(os.Stderr, "%-12s %s\n", ui.Dim("Command"), displayCmd)
+	}
+	fmt.Fprintln(os.Stderr, "")
+	// Filesystem grants
+	fmt.Fprintln(os.Stderr, ui.Cyan("Filesystem"))
+	if len(p.Filesystem.Read) == 0 && len(p.Filesystem.Write) == 0 {
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("everything else (deny by default)"))
+	} else {
+		for _, r := range p.Filesystem.Read {
+			fmt.Fprintf(os.Stderr, "  %s %s %s\n", ui.Green(ui.CheckMark()), r, ui.Dim("(read)"))
+		}
+		for _, w := range p.Filesystem.Write {
+			fmt.Fprintf(os.Stderr, "  %s %s %s\n", ui.Green(ui.CheckMark()), w, ui.Dim("(write)"))
+		}
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("everything else"))
+	}
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Cyan("Network"))
+	if len(p.Network.Allow) == 0 {
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("everything else (deny by default)"))
+	} else {
+		for _, h := range p.Network.Allow {
+			fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Green(ui.CheckMark()), h)
+		}
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("everything else"))
+	}
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Cyan("Environment"))
+	if len(p.Env.Allow) == 0 {
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("all unspecified variables"))
+	} else {
+		for _, e := range p.Env.Allow {
+			fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Green(ui.CheckMark()), e)
+		}
+		fmt.Fprintf(os.Stderr, "  %s %s\n", ui.Dim(ui.CrossMark()), ui.Dim("all unspecified variables"))
+	}
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Dim(sep))
+	// Sandbox active line — green, not just color
+	fmt.Fprintf(os.Stderr, "%s %s\n", ui.Green(ui.CheckMark()), ui.Green("Sandbox active"))
+	fmt.Fprintf(os.Stderr, "%s\n", ui.Dim("Warden fails closed when sandboxing is unavailable."))
+	fmt.Fprintln(os.Stderr, "")
 }
 
 // cmdVersion prints the stamped build version and exits 0. Release builds
 // stamp it via -ldflags (see the Makefile); builds from a source checkout
 // without stamping report the in-source default.
+// MUST remain script-friendly: single line "warden version X" with no banner.
 func cmdVersion() {
 	v := version.Version
 	if v == "" {
@@ -94,13 +299,13 @@ func cmdRun(args []string) {
 	approveEnabled, approveTimeout, rest, err := parseApproveFlags(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		printUsage()
+		printRunHelp()
 		os.Exit(2)
 	}
 	policyPath, backend, cmdTail, err := parseRunArgs(rest)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		printUsage()
+		printRunHelp()
 		os.Exit(2)
 	}
 
@@ -139,6 +344,8 @@ func cmdRun(args []string) {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		os.Exit(2)
 	}
+
+	maybePrintRunSummary(policyPath, backend, p, cmd)
 
 	exitCode, err := sandbox.Run(cmd, p, backend)
 	if err != nil {
@@ -194,6 +401,9 @@ func cmdRunWithApproval(policyPath, backend string, cmdTail []string, timeout ti
 		if err := checkSandboxCommand(cmd); err != nil {
 			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 			os.Exit(2)
+		}
+		if i == 0 {
+			maybePrintRunSummary(policyPath, backend, p, cmd)
 		}
 		exitCode, err := sandbox.RunWithApproval(cmd, p, backend, cfg)
 		if errors.Is(err, approve.ErrRestartRequested) {
@@ -349,7 +559,14 @@ func cmdTrace(args []string) {
 		fmt.Fprintf(os.Stderr, "warden trace: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stderr, "warden trace: recorded access events in %s\n", path)
+	// Keep run-like output clean; only report trace file to stderr.
+	// Use semantic color for path.
+	msg := fmt.Sprintf("warden trace: recorded access events in %s", path)
+	if ui.ColorEnabled() {
+		// Highlight path in cyan
+		msg = fmt.Sprintf("warden trace: recorded access events in %s", ui.Cyan(path))
+	}
+	fmt.Fprintln(os.Stderr, msg)
 	os.Exit(exitCode)
 }
 
@@ -358,6 +575,47 @@ func cmdInit(args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden init: %v\n", err)
 		os.Exit(2)
+	}
+	// Polished presentation for init: show banner/header when TTY.
+	isTTY := ui.IsTerminalWriter(os.Stderr) && !ui.IsCI()
+	showBanner := isTTY
+	if isTTY && ui.IsFirstRun() {
+		// First-run welcome takes precedence; it already contains banner + intro.
+		_, _ = ui.PrintWelcome(os.Stderr)
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, ui.Dim("──────────────────────────────────────"))
+		fmt.Fprintln(os.Stderr, "")
+		_ = ui.MarkFirstRun()
+		showBanner = false // avoid double banner
+		what := "Let's secure your first MCP server."
+		if ui.ColorEnabled() {
+			what = ui.Bold(what)
+		}
+		fmt.Fprintln(os.Stderr, what)
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, ui.Dim("What Warden does:"))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Filesystem", ui.Dim("explicit paths only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Network", ui.Dim("explicit hosts only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Environment", ui.Dim("explicit variables only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Resources", ui.Dim("explicit limits"))
+		fmt.Fprintln(os.Stderr, "")
+	} else if showBanner {
+		_, _ = ui.PrintBanner(os.Stderr)
+		fmt.Fprintln(os.Stderr, "")
+		what := "Let's secure your first MCP server."
+		if ui.ColorEnabled() {
+			what = ui.Bold(what)
+		}
+		fmt.Fprintln(os.Stderr, what)
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, ui.Dim("What Warden does:"))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Filesystem", ui.Dim("explicit paths only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Network", ui.Dim("explicit hosts only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Environment", ui.Dim("explicit variables only"))
+		fmt.Fprintf(os.Stderr, "  %-15s %s\n", "Resources", ui.Dim("explicit limits"))
+		fmt.Fprintln(os.Stderr, "")
 	}
 	if logPath == "" {
 		logPath, err = audit.LatestTracePath()
@@ -408,7 +666,23 @@ func cmdInit(args []string) {
 		fmt.Fprintf(os.Stderr, "warden init: close %q: %v\n", outputPath, err)
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stderr, "warden init: wrote conservative starter policy to %s\n", outputPath)
+	// Polished success output.
+	if isTTY {
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, ui.Dim("Created:"))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "  %s\n", ui.Cyan(outputPath))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, ui.Dim("Next:"))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "  %s\n", ui.Cyan(fmt.Sprintf("warden run --policy %s -- <server>", outputPath)))
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "%s Ready.\n", ui.Green(ui.CheckMark()))
+		// Mark first-run as seen after successful init
+		_ = ui.MarkFirstRun()
+	} else {
+		fmt.Fprintf(os.Stderr, "warden init: wrote conservative starter policy to %s\n", outputPath)
+	}
 }
 
 func cmdLogs(args []string) {

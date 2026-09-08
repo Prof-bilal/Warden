@@ -57,6 +57,70 @@ If **no** backend is available, Warden refuses to run — it never silently
 falls back to unsandboxed execution. See the [FAQ](faq.md#warden-run-refuses-to-start)
 if you hit that error.
 
+## What a successful install looks like
+
+When installed via `npm` (`npm i -g @warden-sandbox/cli` or `npx`) the
+installer shows a polished, non-blocking progress sequence. In a TTY it
+animates briefly with a braille spinner; in CI or when piped it falls back
+to deterministic bracketed lines so logs stay clean. No spinner is left
+behind on exit.
+
+TTY (interactive):
+
+```
+██     ██  █████  ██████  ██████  ███████ ███    ██
+██     ██ ██   ██ ██   ██ ██   ██ ██      ████   ██
+██  █  ██ ███████ ██████  ██   ██ █████   ██ ██  ██
+██ ███ ██ ██   ██ ██   ██ ██   ██ ██      ██  ██ ██
+ ███ ███  ██   ██ ██   ██ ██████  ███████ ██   ████
+              MCP SERVER SANDBOX
+
+        Secure execution for MCP servers
+
+  Installing Warden...
+
+  ✓ Checking platform  (linux/amd64)
+  ✓ Installing runtime  (warden-linux-amd64)
+  ✓ Installing CLI
+  ✓ Verifying installation
+
+  ─────────────────────────────────────
+
+  ✓ Warden v0.1.0 installed successfully.
+
+  Get started:
+
+    warden init
+    warden run --policy policy.yaml -- <server>
+    warden doctor  — check sandbox readiness
+
+  Security:
+    Warden fails closed when sandboxing is unavailable.
+```
+
+CI / non-TTY fallback:
+
+```
+WARDEN — MCP Server Sandbox  v0.1.0
+[1/4] Checking platform... OK
+[2/4] Installing runtime... OK
+[3/4] Installing CLI... OK
+[4/4] Verifying installation... OK
+
+Warden v0.1.0 installed successfully.
+```
+
+The same fail-closed guarantee applies: if the platform is unsupported or
+the binary cannot be downloaded/verified, the installer exits non-zero
+and prints `You can manually install from: https://github.com/Prof-bilal/Warden/releases`
+without leaving a half-installed state. Colors respect `NO_COLOR` and
+`TERM=dumb`; set `WARDEN_NO_UNICODE=1` for ASCII fallbacks.
+
+First-run after install, `warden` (no args) shows a one-time welcome with
+the banner, capabilities, and next steps (`warden init` / `warden doctor`).
+It is never shown in CI, never shown for `warden run`, and can be disabled
+with `WARDEN_NO_FIRST_RUN=1`. See [CLI Reference](cli.md#cli-experience).
+
 ## Verify your install
 
 From the repo checkout, run a no-op command under the strictest fixture
@@ -67,6 +131,7 @@ your OS, e.g. `/bin/true` on macOS):
 warden run --policy testdata/compat/time/policy.yaml -- /usr/bin/true
 echo "exit: $?"
 warden logs --tail 5
+warden doctor   # shows Environment + Security posture + Status: READY
 ```
 
 Next: [Quickstart](quickstart.md).
