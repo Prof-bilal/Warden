@@ -214,9 +214,13 @@ func TestFailClosedMessaging(t *testing.T) {
 func TestFirstRunWelcome(t *testing.T) {
 	bin := buildWarden(t)
 	tmp := t.TempDir()
+	// Build a clean env that strips CI indicators so IsFirstRun doesn't
+	// short-circuit before WARDEN_FORCE_FIRST_RUN takes effect.
+	env := strippedEnv(os.Environ())
+	env = append(env, "XDG_STATE_HOME="+tmp, "WARDEN_FORCE_FIRST_RUN=1", "NO_COLOR=1")
 	// Force first-run via env, even though not TTY - invoke bare (no args)
 	cmd := exec.Command(bin)
-	cmd.Env = append(os.Environ(), "XDG_STATE_HOME="+tmp, "WARDEN_FORCE_FIRST_RUN=1", "NO_COLOR=1")
+	cmd.Env = env
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
@@ -230,7 +234,7 @@ func TestFirstRunWelcome(t *testing.T) {
 	}
 	// Second run should not contain welcome (marker exists)
 	cmd2 := exec.Command(bin)
-	cmd2.Env = append(os.Environ(), "XDG_STATE_HOME="+tmp, "NO_COLOR=1")
+	cmd2.Env = append(strippedEnv(os.Environ()), "XDG_STATE_HOME="+tmp, "NO_COLOR=1")
 	var outBuf2, errBuf2 bytes.Buffer
 	cmd2.Stdout = &outBuf2
 	cmd2.Stderr = &errBuf2
@@ -239,6 +243,24 @@ func TestFirstRunWelcome(t *testing.T) {
 	if strings.Contains(combined2, "Welcome to Warden") {
 		t.Errorf("second run should not contain welcome, got %q", combined2)
 	}
+}
+
+// strippedEnv returns env with CI-indicator variables removed so
+// IsFirstRun / IsCI don't short-circuit in subprocess tests.
+func strippedEnv(env []string) []string {
+	ciVars := map[string]bool{
+		"CI": true, "GITHUB_ACTIONS": true, "GITLAB_CI": true,
+		"JENKINS_URL": true, "TF_BUILD": true, "CIRCLECI": true,
+		"BUILDKITE": true, "TEAMCITY_VERSION": true,
+	}
+	var out []string
+	for _, e := range env {
+		k := strings.SplitN(e, "=", 2)[0]
+		if !ciVars[k] {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func TestFirstRunDoesNotInterfereWithRun(t *testing.T) {

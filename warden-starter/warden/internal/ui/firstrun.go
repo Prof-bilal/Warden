@@ -57,6 +57,8 @@ func MarkFirstRun() error {
 		return err
 	}
 	_ = f.Close()
+	// Enforce exact perms regardless of umask.
+	_ = os.Chmod(marker, 0o600)
 	return nil
 }
 
