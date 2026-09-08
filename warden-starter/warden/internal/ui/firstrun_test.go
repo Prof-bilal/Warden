@@ -22,6 +22,11 @@ func TestFirstRunMarker(t *testing.T) {
 	t.Cleanup(func() { os.Unsetenv("WARDEN_FORCE_FIRST_RUN") })
 	origCI := os.Getenv("CI")
 	origNoFirst := os.Getenv("WARDEN_NO_FIRST_RUN")
+	ciVars := []string{"GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "TF_BUILD", "CIRCLECI", "BUILDKITE", "TEAMCITY_VERSION"}
+	savedCI := make(map[string]string)
+	for _, k := range ciVars {
+		savedCI[k] = os.Getenv(k)
+	}
 	t.Cleanup(func() {
 		os.Setenv("CI", origCI)
 		if origNoFirst == "" {
@@ -29,9 +34,17 @@ func TestFirstRunMarker(t *testing.T) {
 		} else {
 			os.Setenv("WARDEN_NO_FIRST_RUN", origNoFirst)
 		}
+		for _, k := range ciVars {
+			if v := savedCI[k]; v != "" {
+				os.Setenv(k, v)
+			}
+		}
 	})
 	os.Unsetenv("CI")
 	os.Unsetenv("WARDEN_NO_FIRST_RUN")
+	for _, k := range ciVars {
+		os.Unsetenv(k)
+	}
 
 	if !IsFirstRun() {
 		t.Fatal("IsFirstRun should be true before marker")

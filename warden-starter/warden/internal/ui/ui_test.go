@@ -153,6 +153,21 @@ func TestIsCI(t *testing.T) {
 		t.Error("IsCI should be true when CI=true")
 	}
 	os.Setenv("CI", "false")
+	// Save and clear other CI indicator env vars that IsCI checks, so they
+	// don't interfere with the CI=false assertion.
+	ciVars := []string{"GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_URL", "TF_BUILD", "CIRCLECI", "BUILDKITE", "TEAMCITY_VERSION"}
+	saved := make(map[string]string)
+	for _, k := range ciVars {
+		saved[k] = os.Getenv(k)
+		os.Unsetenv(k)
+	}
+	t.Cleanup(func() {
+		for _, k := range ciVars {
+			if v := saved[k]; v != "" {
+				os.Setenv(k, v)
+			}
+		}
+	})
 	if IsCI() {
 		t.Error("IsCI should be false when CI=false")
 	}

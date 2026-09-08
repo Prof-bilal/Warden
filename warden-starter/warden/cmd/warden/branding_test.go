@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -13,7 +14,11 @@ import (
 func buildWarden(t *testing.T) string {
 	t.Helper()
 	tmp := t.TempDir()
-	out := filepath.Join(tmp, "warden")
+	name := "warden"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	out := filepath.Join(tmp, name)
 	cmd := exec.Command("go", "build", "-o", out, ".")
 	cmd.Dir = "."
 	if outB, err := cmd.CombinedOutput(); err != nil {
