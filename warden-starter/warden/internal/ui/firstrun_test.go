@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/audit"
@@ -66,8 +67,10 @@ func TestFirstRunMarker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marker not found: %v", err)
 	}
-	if fi.Mode().Perm() != 0o600 {
-		t.Errorf("marker perms = %o, want 0600", fi.Mode().Perm())
+	if runtime.GOOS != "windows" {
+		if fi.Mode().Perm() != 0o600 {
+			t.Errorf("marker perms = %o, want 0600", fi.Mode().Perm())
+		}
 	}
 }
 

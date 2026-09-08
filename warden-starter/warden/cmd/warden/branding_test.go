@@ -181,6 +181,9 @@ func TestNonInteractiveProgressFallback(t *testing.T) {
 }
 
 func TestFailClosedMessaging(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("backend mismatch test is for non-windows hosts")
+	}
 	// Test that RefuseToRun error contains fail-closed messaging (via sandboxerr)
 	// This is unit-level: run warden with auto backend forced to fail by using an isolated env
 	// We can directly test the error string via the binary's doctor NOT READY case when backend unavailable.
@@ -189,10 +192,17 @@ func TestFailClosedMessaging(t *testing.T) {
 	// and check that error is not swallowed, and that doctor's NOT READY contains fails closed.
 	bin := buildWarden(t)
 	tmp := t.TempDir()
+
+	// Use a command that is absolute on the current platform.
+	cmd := "/usr/bin/true"
+	if runtime.GOOS == "windows" {
+		cmd = "C:\\Windows\\System32\\cmd.exe"
+	}
+
 	// Create a minimal policy that will trigger backend failure when we use --backend windows on linux
 	policyPath := filepath.Join(tmp, "policy.yaml")
-	_ = os.WriteFile(policyPath, []byte("command: [\"/usr/bin/true\"]\n"), 0o600)
-	_, stderr, code := runWarden(t, bin, []string{"NO_COLOR=1"}, "run", "--policy", policyPath, "--backend", "windows", "--", "/usr/bin/true")
+	_ = os.WriteFile(policyPath, []byte("command: [\""+cmd+"\"]\n"), 0o600)
+	_, stderr, code := runWarden(t, bin, []string{"NO_COLOR=1"}, "run", "--policy", policyPath, "--backend", "windows", "--", cmd)
 	if code == 0 {
 		t.Fatalf("expected failure for windows backend on linux")
 	}
@@ -202,7 +212,7 @@ func TestFailClosedMessaging(t *testing.T) {
 		t.Errorf("fail-closed error should mention backend, got %q", stderr)
 	}
 	// Also test that policy with missing file fails with clear message
-	_, stderr2, code2 := runWarden(t, bin, []string{"NO_COLOR=1"}, "run", "--policy", "/nonexistent.yaml", "--", "/usr/bin/true")
+	_, stderr2, code2 := runWarden(t, bin, []string{"NO_COLOR=1"}, "run", "--policy", "/nonexistent.yaml", "--", cmd)
 	if code2 == 0 {
 		t.Error("expected failure for missing policy")
 	}
