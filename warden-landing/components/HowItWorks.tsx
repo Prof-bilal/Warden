@@ -29,8 +29,40 @@ const FIELDS = [
 ];
 
 export default function HowItWorks() {
+  const howToSchema = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: "How to sandbox an MCP server with Warden",
+    description:
+      "Write a policy file, run Warden, and your MCP server is sandboxed with deny-by-default controls.",
+    step: [
+      {
+        "@type": "HowToStep",
+        name: "Write a policy file",
+        text: "Create a YAML policy that specifies which filesystem paths, network hosts, and environment variables your MCP server can access.",
+        position: 1,
+      },
+      {
+        "@type": "HowToStep",
+        name: "Run Warden with the policy",
+        text: "Execute warden run --policy policy.yaml to start your MCP server inside the sandbox.",
+        position: 2,
+      },
+      {
+        "@type": "HowToStep",
+        name: "Server runs sandboxed",
+        text: "The server can only access what the policy grants. Everything else fails, and Warden logs every blocked attempt.",
+        position: 3,
+      },
+    ],
+  };
+
   return (
     <section id="how-it-works" className="border-t border-ink-800">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+      />
       <div className="mx-auto max-w-content px-6 py-20">
         <h2 className="max-w-[28rem] text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
           One file describes exactly what a server can touch.

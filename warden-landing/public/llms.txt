@@ -1,0 +1,39 @@
+# Warden — A Sandbox Runtime for MCP Servers
+
+> Run third-party MCP servers in OS-native sandboxes. Only the files, hosts, and environment variables you explicitly grant are accessible.
+
+## What is Warden?
+
+Warden is an open-source sandbox runtime for MCP (Model Context Protocol) servers. It runs third-party code inside OS-native sandboxes — bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP on Windows, Docker as fallback — with deny-by-default controls on filesystem, network, and environment access.
+
+## Key Features
+
+- **Deny-by-default sandboxing**: Servers only get what you explicitly grant
+- **OS-native backends**: Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW)
+- **Single YAML policy**: Readable in one sitting, describes all grants
+- **Fail-closed**: Missing backends fail loudly, never silently skip sandboxing
+- **Audit logging**: Every blocked access is logged
+- **Interactive approval**: `--approve` mode for discovering grants at runtime
+- **No daemon required**: Single static binary, zero dependencies
+
+## Quick Install
+
+```bash
+npm install -g warden-sandbox-cli
+```
+
+Or download the latest binary:
+```bash
+curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64
+```
+
+## Links
+
+- Website: https://warden-six-rouge.vercel.app
+- GitHub: https://github.com/Prof-bilal/Warden
+- Documentation: https://warden-six-rouge.vercel.app/docs
+- npm: https://www.npmjs.com/package/warden-sandbox-cli
+
+## License
+
+MIT

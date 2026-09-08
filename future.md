@@ -1,293 +1,249 @@
-# Warden — Future Growth Plan (Research-Grounded, Pre-1.0)
+# Warden — Future Directions (Post-2026 MCP Shift)
 
-> **Status:** `future.md` is an untracked strategy sketch. It consolidates four domains — marketing, scaling, secrets guard, monetization — each researched independently with current (2026) web sources before drafting. Where a claim has no source, it is marked **Open question**. Grounded in what Warden actually is today: `M0–M8` shipped (Linux `bwrap`, macOS Seatbelt, Docker fallback, Windows AppContainer/WFP/ETW/Job Objects, egress proxy, `trace`/`init`/`logs`, limits, approval mode `--approve`, gateway integration, compatibility matrix 18 servers: 14 pass / 2 conditional / 2 fail), beta program defined, distribution via GitHub Releases + npm wrapper + Homebrew tap formula. See `warden-starter/warden/README.md:1`, `warden-starter/warden/ARCHITECTURE.md:1`, `warden-starter/warden/ROADMAP.md:1`, `warden-starter/warden/docs/compatibility.md:1`, `warden-starter/warden/REMAINING_WORK.md:1`.
+> **Status:** Research-grounded strategy sketch, 2026-09-08. Consolidates Warden's actual shipped surface (`M0–M8`: Linux `bwrap` `warden-starter/warden/internal/sandbox/linux/linux.go:40`, macOS Seatbelt, Docker fallback `warden-starter/warden/internal/sandbox/docker/docker.go:1`, Windows AppContainer/WFP/ETW/Job Objects, egress proxy `warden-starter/warden/internal/proxy/proxy.go:1`, `trace`/`init`/`logs`, limits, `--approve`, gateway integration, compatibility matrix 18 servers 14 pass / 2 conditional / 2 fail `warden-starter/warden/docs/compatibility.md:1`) with independent web verification of the claims that motivated this doc. Where a claim has no source it is marked **Open question**. This doc is **not** a commitment to build all items — it is sequencing and evidence. See `warden-starter/warden/ARCHITECTURE.md:1`, `warden-starter/warden/ROADMAP.md:1`.
 
-**How to use:** This doc is **not** a commit to build everything below. It is the sequencing and evidence layer. Items tagged `Validated` have a source finding; `Speculative` are bets requiring beta signal. Most monetization work is `"don't build yet"`.
-
----
-
-## 1 — Marketing & Content Strategy
-
-### Positioning (one line)
-
-> **Warden is a single-binary sandbox that lets you run any MCP server with the filesystem, network, and env it actually needs — nothing more — with `deny by default`, transparent `stdio`, and an auditable log.** For: a developer who installs third-party MCP servers locally and wants `policy.yaml` to be the trust boundary, not the host OS. Not for: platform-team multi-tenant gateways (explicit non-goal `ARCHITECTURE.md:182`).
-
-Audience: technical, security-conscious, runs `npx`/`uvx` servers locally (`PRD.md:7`). Top adopters will be: solo OSS users with secrets on disk, teams standardizing 3–5 MCP servers, MCP gateway users (`docs/gateway.md:1`).
-
-### Primary vs secondary launch channels (ranked by fit)
-
-| Rank | Channel | Why for *this* audience | Current mechanics (2026) | Source |
-|---|---|---|---|---|
-| **1** | **Hacker News `Show HN`** | Highest trust, zero ads, rewards technical depth. Warden is a dev infra tool that can be tried (`warden run`) without signup — perfect `Show HN` object. | Title must be literal `Show HN: Warden – sandbox for MCP servers` ≤80 chars, no superlatives/`!`/emoji. **First comment mandatory** within ~1 min: what it is / why you built it / stack (bwrap/Seatbelt/WFP) / honest limits / how to try (`go build` or release binary). No vote solicitation — violates guidelines and nullifies votes. Gravity ≈1.8; early velocity in first 1–2 hours decides front-page escape from `/newest`. Best window weekday morning 7–10am ET (12–15 UTC) or Monday 00:00 UTC (Sunday 7pm ET) per 2021–2026 cohorts; post volume now ~200 Show HNs/day. | `hackmamba` Show HN pack `showhn.md:1` + HN guidelines `showhn.html` + `danfking.github.io/blog/2026/04/23/show-hn-by-the-numbers` (188k posts, median 2 pts, 1.4 stars/upvote, 24h half-life) |
-| **2** | **Product Hunt** | Broader discover +press spillover, but generalist. Warden will underperform there unless pre-warmed. Pair as amplifier, not primary. | Day resets 12:01am PST; schedule 1 month ahead. Need tagline ≤60 chars, description ≤500 chars, 2+ gallery images (1270×760, <3MB), optional YouTube link, up to 3 launch tags, pricing (free). **70%** of Product of Day had maker first comment. Algorithm (2026) weights **comments/maker replies/time-on-page** over raw upvotes; bringing new-to-PH users helps. No pay-for-upvotes/bounty — banned. Hunter self-hunt is fine (no advantage to third-party hunter). No `?utm` in URL. Prepare 6 weeks: 2–3 wks audience + 1–2 wks assets + 24h live. | `producthunt.com/launch/how-product-hunt-works` + `producthunt.com/launch/preparing-for-launch` + `launchory.app/blog/how-to-launch-on-product-hunt` (2026-07-25) |
-| **3** | **DevHunt** | Devtool-specific, complement to PH. Smaller, higher-signal for Warden. | **GitHub PR-based submissions** + GitHub-login voting (harder to farm). Open-source MIT, Next.js+Supabase, self-hostable. PR review latency (not instant). DR ~63, paid expedited $49. Volume is low — won't drive PH-level traffic alone. | `runany.dev/blog/devhunt-launch-platform` (2026-07-11) + `launchdirectories.com/directory/devhunt` + `devhunt.org/blog/tag/launch` |
-| **4** | **BetaList / niche directories** | Cheap durable SEO/backlink footprint. Lower fit than DevHunt but useful as compounding layer after PH. | Listed as startup directory; schedule as post-launch spread across 100+ directories only after primary launches — “single launch fades in 48h; broad footprint compounds.” | `launchory.app` spillover checklist |
-| — | **Reddit r/ClaudeAI, r/devops, Slack/Discord MCP communities, daily.dev/TLDR newsletters** | Where MCP adopters actually ask “how do you sandbox X?” — answer-first distribution. | Distribution must be value-first: tutorials, benchmark, failure analysis. Sponsored newsletter slots in TLDR/daily.dev convert narrowly; display/ads mostly wasted on devs. | `hackmamba.io/technical-content/technical-content-marketing` + `docsio.co/blog/developer-marketing` + `hackercontent.com/blog/cybersecurity-content-marketing` |
-
-**What *not* to do for this audience:** Generic SaaS tactics — LinkedIn display, gated whitepapers, AI-templated listicles — stopped ranking/converting in 2026. Security buyers sniff ghostwritten filler in seconds and punish credibility. See `otrenix.com/cybersecurity-content-marketing-guide` (4–8 substantial 2–4k word pieces/month, senior security writer 5–10× pipeline vs junior/AI).
-
-### Pre-launch checklist (audience before assets)
-
-- [ ] **Maker profile ≥30 days old**: real photo/bio, weekly genuine upvotes/comments so algorithm doesn't treat launch as drive-by (`launchory.app` cheapest leverage).
-- [ ] **Warm list 200+**: waitlist / `notify me` page fed by newsletter, X/Twitter, Slack/Discord MCP channels, personal network. Goal = first-hour visitors who comment/ask.
-- [ ] **GitHub proof**: `warden-starter/warden/README.md:15` quickstart must actually work (`warden run --policy …` + `trace`/`init`); polished README as landing page; issues triaged; `REMAINING_WORK.md:14` Windows ETW/WFP green so claim matches reality.
-- [ ] **Demo-ability**: one-command install (`go build` or release binary), 5 example policies (`examples/`, `docs/compatibility.md:43`), `warden trace` replay on a popular server (filesystem/GitHub).
-- [ ] **DevHunt PR ready** alongside PH assets (description, screenshots, founder story) so PR can be merged before live day.
-
-### Launch-day checklist (24h playbook)
-
-| Time (PST) | Action |
-|---|---|
-| **T-1d** | Assets final: ≤60-char tagline (“Sandbox for MCP servers — only the files, hosts, env you allow”), ≤500-char description, 240×240 thumbnail + ≥2× 1270×760 gallery, 30–60s Loom demo, first comment draft (story: “MCP runs with full user perms — SSH keys, exfil — nothing stops it; we built thin CLI over bwrap/Seatbelt/AppContainer”). |
-| **12:01am PST Tue/Wed/Thu** | PH scheduled live. Immediately notify warm list: “We're live — check it out & leave a question” (never “upvote”). |
-| **+0–1h** | Post `Show HN: Warden – sandbox for MCP servers` (literal, ≤80 chars) + first comment within 1 min. |
-| **+0–4h** | Founder live in both threads: reply to every comment within minutes, AMA style. Time-on-page + reply depth are PH ranking signals (`launchory.app`). |
-| **+2–18h** | Push to X thread, LinkedIn (insight not article), relevant subreddits/communities where self-promo allowed — link to PH/HN thread, not just site. |
-| **+18–24h** | Last-chance nudge to warm list. |
-| **+2d** | Add PH badge to README + landing, email onboarding sequence, list on DevHunt + niche directories for durable backlinks. |
-
-### Recurring content plan — use what Warden already produces
-
-No invented content from nothing. Cadence: **4–8 substantial pieces/month** max (security buyer model), each 2–4k words, technically correct, SME-interviewed, code examples validated.
-
-| Source byproduct | Content piece | Funnel stage | Distribution |
-|---|---|---|---|
-| **Compatibility matrix** `docs/compatibility.md:17` + `testdata/compat/matrix.yaml:540` | “We tested 18 MCP servers — 14 pass, 2 conditional, 2 fail. Here's the exact policy each needs” (pillar) + 18 spoke deep-dives; “Playwright needs wildcard hosts — we don't have them yet” | Evaluation / Retention | HN + DevHunt + `hackmamba.io` pillar/spoke SEO, YouTube walkthrough, AI citation surface |
-| **New backend** `ARCHITECTURE.md:66` | “Linux bwrap vs macOS Seatbelt vs Windows AppContainer: why one policy, three enforcers” (behind `Backend` interface) | Awareness | Blog + `hackercontent.com` SME interview (engineer explains tradeoffs) |
-| **Beta friction** `docs/beta.md:31` | Monthly “Friction log” from compat reports (wnie `inherent` vs `schema-gap` vs `warden-bug`); close-the-loop comment on reporter issue | Evaluation | GitHub Discussions, Reddit, newsletter |
-| **Roadmap milestone** `ROADMAP.md:155` | Milestone post per M9/M10 (what shipped, what failed, limits lie) | Retention | Changelog + release notes + docs site search |
-| **`trace`/`init` byproduct** `ARCHITECTURE.md:140` | Tutorial: “Trace your MCP server in 5 min → `warden init` → tighten” | Activation | YouTube (2nd-largest search) + README quickstart |
-| **Security review** `docs/security.md:142` | “7 threat categories + known limitations table” expanded into threat-report series | Awareness | Threat reports generate backlinks/press (`otrenix.com`) — repurpose one research cost into blog + talk + PDF + threads |
-
-**Writer model:** Interview engineer 30 min → technical writer drafts → engineer accuracy-check (non-negotiable gate). Avoid content-agency docs drift.
-
-### Measurement (not vanity)
-
-Track sign-ups (not MQLs), **time-to-Hello-World** (first successful sandboxed run), 7-day active, 30-day retention. For content: qualified organic traffic (Search Console), engagement depth (time/scroll/return), backlinks/citations. Expect SEO compounding 6–12 months; research/threat reports spike faster (`hackercontent.com`).
-
-### Reading list (cited)
-
-- Product Hunt — `how-product-hunt-works`, `preparing-for-launch`, `how-to-post-a-product` (rules, scheduling, thumbnail/gallery spec)
-- Launchory — “How to Launch a Startup on Product Hunt (2026)” (6-week prep, engagement-weighted algorithm)
-- HN — `showhn.html` guidelines + reverse-engineered gravity 1.8 (`aclanthology` pack / `hn.algolia` 188k dataset) + `danfking` timing study
-- DevHunt — `runany.dev` PR-based model + DR 63 + Supabase stack
-- Hackmamba — Technical content marketing (PLG, pillar/spoke, YouTube as AI citation)
-- Docsio — Developer Marketing pillar (docs are highest-converting surface; open core / open standards / OSS libraries)
-- HackerContent — Cybersecurity Content Marketing (credibility gate, 30-min interview model, repurpose ratio)
-- Otrenix — Cybersecurity strategy (4–8 pieces/month, senior writer 5–10× pipeline, 6–12 mo horizon)
-- Hackmamba SEO/GEO/AEO — hub-and-spoke for topical authority, comparison pages cited 40.86% by LLMs
-
-**Open questions (Marketing):**
-- Whether PH audience overlaps enough with MCP adopters to justify mid-week slot contention vs HN-only launch. No source quantifies overlap.
-- Current DevHunt maintainer PR review latency (no measured SLA found).
-- Whether `warden-landing` Next.js docs should mirror new marketing posts for GEO.
+**How to use:** Three production-facing directions ordered by lift and by how well they reuse what Warden already does, plus one flagged long-term bet that is explicitly **not** a near-term roadmap item. Each item is tagged `Validated` (source found) or `Speculative` (bet needing signal). Sections cite the file + line for the Warden mechanism they would reuse.
 
 ---
 
-## 2 — Scaling & Features — Post-M8 Roadmap
+## 0 — Landscape shift: what changed since Warden's original design
 
-### Evidence base (2026)
+### Original assumption
 
-- **MCP spec (2026-07-28)** says local servers **SHOULD** run sandboxed with minimal default privileges, using platform-appropriate tech (containers/chroot/app sandboxes), but **SHOULD not MUST** — `modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices`. This is the normative anchor for Warden.
-- **NSA CSI (2026-06-02) `CSI_MCP_SECURITY.PDF`** reframes MCP risk as a **continuum** (protocol → agent → runtime → external services → long-term monitoring) and explicitly calls for OS-level isolation (AppContainer/seccomp/AppArmor/SELinux) + egress constraints, not just endpoint patches.
-- **Academic/runtime work:** `aclanthology.org/2026.acl-industry.58.pdf` SHIELDMCP builds a **80+ technique / 14-tactic** threat taxonomy (SAFE-MCP/OpenSSF) + 3-stage runtime proxy (description integrity / param sanitization / response analysis) that cuts tool-poisoning 74%→9% and indirect prompt injection 47%→6% at <120ms median. Teaching: Warden's filesystem/network sandbox complements response-level defenses; neither subsumes the other.
-- **Competitive sandbox approaches:** `sandboxreview.com` (2026-08-12) systematizes MCP isolation tiers: API-proxy servers may suffice with container + enforced network policy; **shell-execution/code-running servers need microVM (Firecracker/Kata/libkrun) or gVisor** kernel boundary; browser/file-manipulation servers are execution-capable regardless of name. Daytona delivers **<90 ms cold starts** for on-demand provisioning vs multi-second containers — relevance for agents spinning sandboxes per turn. Docker containerization alone adds restriction but lacks uniform policy, credential scoping, scaling controls.
-- **MCP-SandboxScan (arxiv `2601.01241` WASM/WASI sandbox)** shows dynamic-only scanning can surface obfuscated filesystem access and runtime secret exfiltration missed by static scans — corroborates Warden's `trace`-without-enforcement + `strace`-outside-sandbox pattern (`ARCHITECTURE.md:124`).
-- **MCP adoption signals:** Docker — `docker.com/blog/mcp-security-explained` (Sep 16 2025) reports MCP since Nov 2024 as “connective tissue”, **43% of analyzed servers had command injection flaws**, 150+ curated MCP servers in Docker MCP Catalog+Toolkit + policy gateway. Real threat: `SHIELDMCP` paper cites **437k dev envs compromised via malicious MCP package** (OAuth RCE) + 3 vulns CVE-2025-68143..68145 in Git MCP server — evidence the ecosystem is pre-app-store curation. **27.2% of servers expose exploitable tools** (`Zhao et al. 2025a` via SHIELDMCP). These justify prioritizing containment over polish pre-1.0.
-- **Warden's own M8 snapshot:** 18 servers pinned (`testdata/compat/matrix.yaml:554`), known schema gaps documented as `schema-gap` not tech debt: no wildcard hosts (Playwright), no unix-socket grants (Docker daemon `/var/run/docker.sock`), no CPU cgroup, symlink unblocked (`docs/security.md:46`), `limits` ignored on macOS/Docker (`docs/security.md:118`), `bwrap --unshare-net` fallback not always fail-closed (`docs/security.md:64`). All validated by tests (`TestOverlapNormalizeIsWriteWins`, `TestResolveExecutable`, `TestDocumentedSchemaGaps`).
+`ARCHITECTURE.md:182` non-goal: *"Multi-tenant / server-side deployment — Warden targets a developer running MCP servers locally, not a hosted gateway."* The CLI `warden-starter/warden/internal/sandbox/linux/linux.go:65` (`--unshare-user --unshare-ipc --unshare-pid --unshare-net`) + egress proxy `internal/proxy/proxy.go:1` (DNS only after allowlist) + `policy.yaml` (`internal/policy/policy.go:27` `command` / `filesystem` / `network.allow` / `env.allow` / `limits`) were designed for `stdio` subprocess wrapping on a single laptop.
 
-### Post-M8 feature roadmap
+### What is true in mid-2026 (verified)
 
-> Each item tagged `Validated` (research finding justifies it) or `Speculative` (bet, requires beta signal). Sequenced by risk-reduction / adoption-unblock.
-
-#### M9 — Usable by more real servers (schema expressiveness + learn mode) — **Validated**
-
-Targets the two `fail` + two `conditional` rows directly. Without this, Warden caps at 14/18.
-
-| # | Feature | Evidence / why next | Spec status | Acceptance |
-|---|---|---|---|---|
-| M9.1 | **Wildcard / domain-suffix allowlist** (`*.example.com`, `**` opt-in with audit warning) | Playwright `schema-gap` fail: browser visits arbitrary domains (`docs/compatibility.md:88`). `sandboxreview.com` tiers browser-automation as inherently execution-capable; no honest policy today. | Validated (gap) | `network.allow` accepts `*.host` + docs note; `docs/compatibility.md:88` Playwright moves to `conditional`; regression `TestDocumentedSchemaGaps` flips |
-| M9.2 | **Unix-socket grants** (`unix:/var/run/docker.sock` scoped, deny by default) | Docker-mcp `inherent` fail but socket pattern recurs; spec says sandbox granularity is open. Today “granting socket = handing host control” (`docs/compatibility.md:98`), so scoped grant preserves both function and isolation where possible; where not, move to explicit `inherent` with reason. | Validated | Policy field `filesystem.sockets: [path]` or `network.unix_allow`; Linux bind-mount + macOS Seatbelt profile generation |
-| M9.3 | **Learn mode** (`--learn` / policy `learn: true` → `trace` → interactive approve without hand-writing YAML first) | `ARCHITECTURE.md:176` open question (lean yes for low-friction onboarding). M3 `trace`/`init` proved generation works but still separate step; reduces policy-authoring friction the beta program is specifically measuring (`docs/beta.md:8`). | Validated (architecture open q + beta goal) | One command generates starter policy, prompts approvals, writes non-overwriting file; tested without overwriting existing policy |
-
-#### M10 — Hardening & parity (close documented limitations) — **Validated**
-
-Addresses `docs/security.md:140` Known Limitations and `docs/compatibility.md:86` gaps.
-
-| # | Feature | Evidence | Spec status |
-|---|---|---|---|
-| M10.1 | **Fail-closed net namespace** — if `bwrap --unshare-net` disabled on host, refuse to run (never fall back to host net) | `docs/security.md:64` egress bypass gap: Warden currently not always fail-closed. NSA CSI says constrain execution is lifecycle, not optional. | Validated |
-| M10.2 | **CPU / cgroup limits** on Linux; explicit `ENOTSUP` warning → fail-closed on macOS/Docker until implemented | No CPU throttling (`docs/security.md:145`), `limits` silently ignored on macOS/Docker; isolation tiers expect resource quotas per spec. | Validated |
-| M10.3 | **Symlink containment audit** — log symlink-resolved canonical path + warn when granted-path symlink escapes grant | `docs/security.md:46` symlink gap. | Validated |
-| M10.4 | **Audit parity** — macOS/Windows file-deny as structured events (not just EPERM), Windows Kernel-Network ETW decode (`docs/security.md:150`) | Current: Seatbelt file denies as EPERM, proxy records nets; Windows network payloads captured but not decoded. | Validated |
-| M10.5 | **Limit enforcement parity** — timeout/memory on macOS (Seatbelt + `limits`) + Docker (`--memory`, `--stop-timeout`) or documented fail-closed | `docs/security.md:118` silently ignored. | Validated |
-
-#### M11 — Gateway & approval polish (stretch, post-parity) — **Mixed**
-
-| # | Feature | Evidence | Spec status |
-|---|---|---|---|
-| M11.1 | **Gateway auto-discovery** — wrap servers registered in gateway config automatically (extend `docs/gateway.md:1` `wrap` beyond single-server `run`) | Ecosystem: Docker MCP Toolkit 150+ curated servers, gateway is emerging distribution shape (`docker.com` Fig 4). Warden already has `warden gateway wrap/init/run`. | Validated (ecosystem) |
-| M11.2 | **Approval persistence UX** — `once` / `session` (in-memory) / `persistent` (append to policy) prompts over `/dev/tty` with 750ms escalation preserved (`ARCHITECTURE.md:118`) | M7 approval shipped but filesystem prompts require respawn (`ARCHITECTURE.md:134` bind-mounts fixed at spawn). Needs stabilization from beta friction reports. | Speculative — needs 5+ beta reports (`docs/beta.md:109`) |
-| M11.3 | **Policy registry & pinning** — published policy for popular servers, digest-pinned, pulled via `warden policy get` | Mirrors Docker Catalog pin-by-digest pattern; reduces copy-paste drift. | Speculative — validated only if beta shows copy-paste as top friction |
-
-#### M12 — Ecosystem & distribution (polish after reality-check) — **Validated (timing validated, scope speculative)**
-
-| # | Feature | Evidence | Spec status |
-|---|---|---|---|
-| M12.1 | **Homebrew tap publication** `build/brew.sh` already generates formula but `REMAINING_WORK.md:139` P3.5 says no tap repo set up | Need 5+ external beta reports + matrix green before polish per `ROADMAP.md:149` why-M8-before-polish rule. | Validated (prematurity) — do not ship before M9/M10 |
-| M12.2 | **npm publish idempotency** — skip if version exists (fix v0.1.4 403 rerun `REMAINING_WORK.md:153`) | Direct bug. | Validated |
-| M12.3 | **Windows CI robustness** — ETW/WFP bindings already fixed (`eadca83`, `REMAINING_WORK.md:15`) but need binding-fail-closed without panic (`syscalls.go:1` → `advapi32`/`iphlapi`/`fwpuclnt` probing), POSIX-path test skips (`REMAINING_WORK.md:92`) | First CI run `34028064382` exposed panic; acceptance pending rerun. | Validated |
-
-### How to append to `ROADMAP.md` without collision
-
-Next available is **M9**. Since this doc already reserves `M9 = usability + schema`, `M10 = hardening`, the **Secrets Guard** domain ( §3 ) must take **M11** (or be merged as `M11 = Secrets Guard`). If you keep this future.md untracked, add to `ROADMAP.md:155`:
-
-```
-## M9 — Compatibility unclog (Validated — Playwright/Docker gaps)
-- [ ] M9.1 wildcard hosts  …  ## M10 — Hardening & parity …
-```
-
-Do not renumber existing M0–M8. Do not duplicate `REMAINING_WORK.md:64` P0/P1 into roadmap as milestone — keep as fix checklist.
-
-**Open questions (Scaling):**
-- Whether microVM/gVisor isolation should be a Warden-native backend vs documented recommendation + `wrap` via gateway (Daytona pattern) — no Warden-team position found.
-- Whether HCP-style hourly cluster cost shapes user willingness to adopt per-server sandbox vs expectation of free-local sandbox.
-- Current `api.github.com`-style host vs path-based filtering demand — no beta data yet.
-
----
-
-## 3 — Secrets Guard (Proposal 3 Integration)
-
-> This domain had its own prompt (`secrets-guard-domain-prompt.md`) — file not found in checkout. Below is the research-first proposal built from Warden gaps + current secrets tooling sources, so the work does not duplicate assumed patterns.
-
-### Problem Warden already documents
-
-- `env.allow` is allowlist-only, values from parent env not stored in policy (`ARCHITECTURE.md:159`), but `docs/security.md:96` warns: `HOME` + `filesystem.read` containing `~/.ssh` or parent leaks keys by policy-authoring mistake; `trace` runs unsandboxed so sensitive env is visible in trace log until policy tightened.
-- Secrets can enter via: (a) env vars, (b) files (`config/credentials.json`, `~/.netrc`, `.pgpass`), (c) tool output → prompt injection → exfil (SHIELDMCP 74% tool-poisoning success pre-mitigation). Warden today sandboxes *what a server can reach*, not *which bytes are secrets*.
-
-### Research findings (2026)
-
-| Area | Current state | Source |
+| Claim in prompt | Verification 2026-09-08 | Verdict |
 |---|---|---|
-| **Detection patterns** | Signature + entropy + validation (“semantic analysis”) + historical scanning + pre-commit hook; `gitleaks`, `trufflehog`-style API-key pattern matching & validation heuristics. | Semgrep Secrets docs (entropy/validation/historical/pre-commit) + API Radar HN scanner (`news.ycombinator.com/item?id=44720248`) |
-| **Open-source guard models** | `trufflehog`/`gitleaks` as OSS scanners with live GitHub scanning; `doppler` CLI/K8s operator OSS but control plane closed; `infisical` MIT core, `ee/` enterprise directory phones-home `LICENSE_KEY` to validate, 67 `ee/services` includes `audit-log-stream`, `secret-rotation-v2`, `saml`, `kmip`, `hsm` (2026-08-23). | `merginit.com/blog/23062026-free-secrets-env-management-comparison` + `nomadlab.cc/blog/2026/04/hashicorp-vault-vs-doppler-vs-infisical-2026` |
-| **Pricing shape for guard-adjacent products** | Infisical Cloud free up to 5 identities / 3 projects / 3 envs / 10 integrations; Pro $18–$20/identity/mo, Advanced $40, Enterprise custom. Doppler Developer free 3 users (+$8/extra), Team $21/user/mo (machines free), Enterprise custom; caps 500 users/250 projects. Vault Community free (BSL 1.1, not OSI), HCP Dedicated Dev $0.03/hr (~$22/mo), Standard $1.58–$7.49/hr, Plus $1.84–$9.4/hr + per-client $27–$112/mo. | `infisical.com/pricing` + `doppler.com/pricing` + `envmanager.com/blog/hashicorp-vault-pricing` + `nomadlab.cc` |
-| **Runtime guard pattern** | SHIELDMCP 3-stage proxy (structural anomaly → semantic intent classifier τd=0.72 → cross-call correlation) ; MCP spec says `tool descriptions` are untrusted unless from trusted server. | `aclanthology.org/2026.acl-industry.58.pdf` + `modelcontextprotocol.io` |
+| **Remote MCP over HTTP is now default for production** — GitHub, Stripe, Linear, Notion, Cloudflare publish hosted endpoints rather than pointing users at a repo | **Validated.** `openhelm.ai/blog/best-remote-mcp-servers-2026` (2026-07-10) "Remote MCP servers connect with just a URL — no install" + lists GitHub/Notion/Linear/Stripe/Cloudflare hosted endpoints; `apiscout.dev/guides/top-apis-with-mcp-endpoints-2026` (2026-04-09) "16+ production APIs now ship native MCP endpoints" with table `Stripe mcp.stripe.com / GitHub HTTP / Notion / Linear / Cloudflare` all `Transport: HTTP (remote) Auth: OAuth`; `hidekazu-konishi.com/entry/mcp_server_ecosystem_reference_2026.html` catalog confirms `stdio+HTTP` as de-facto new-server pattern, Cloudflare Workers as reference scaffolding; `mcpplaygroundonline.com/blog/awesome-mcp-servers` "30 remote HTTP servers by July 2026" plus 2026-07-28 spec dropping sticky sessions; `mcpservers.org/remote-mcp-servers` directory counts 293 official remote servers | **Holds.** "Default for production" is fair shorthand — official-vendor guidance is remote-first; `stdio` local remains common for reference/community servers |
+| **Azure MCP Server 2.0 — self-hosted remote deployment as headline** | **Validated.** `devblogs.microsoft.com/azure-sdk/announcing-azure-mcp-server-2-0-stable-release/` (2026-04-10): *"The defining advancement in 2.0 is the self-hosted, remote MCP server support … so you can deploy it exactly where your team builds and operates … centrally managed policy, security controls"*; 276 tools / 57 services; `learn.microsoft.com/en-us/azure/developer/azure-mcp-server/how-to/deploy-remote-mcp-server-copilot-studio` (2026-07-10) Azure Container App + Managed Identity + Entra App Registration pattern; `nerova.ai/news/azure-mcp-server-2-0-stable-agentic-cloud-automation-april-2026` corroborates same | **Exact headline confirmed** |
+| **Competitor: MintMCP Gateway handling OAuth/governance at scale** | **Validated.** `mintmcp.com/docs/architecture` — unified authentication, per-user OAuth/SSO token handling, RBAC, request logging, hosted connectors on Fly.io Machines; `jenova.ai/en/resources/enterprise-mcp-infrastructure-how-mintmcp-solves-ai-tool-governance-at-scale` (2025-10-22) + `druce.ai/governance/wiki/vendors/mintmcp` (2026-06-28) = venture-backed (Coatue/Hustle/Maven/WVV), public launch 2026-02-05, legal name Dependable AI Inc., SOC 2 Type II, "OAuth/SSO protection and governance for MCP at scale"; `businesswire.com/news/home/20260205079173` launch PR same date | **Real, monetized competitor — not hypothetical** |
+| **Agentic coding tools in CI pipelines** (GitHub Action triggering Claude Code against a repo, not on a laptop) | **Validated.** `aiforanything.io/blog/claude-code-github-actions-cicd-integration-guide-2026` (2026-05-15) + `baeseokjae.github.io/posts/claude-code-github-actions-2026/` (2026-04-24): official `anthropics/claude-code-action@v1`, headless `claude -p` mode, PR review / auto-fix loops, `CLAUDE.md` as versioned policy; `fast.io/resources/claude-code-github-action-setup-guide` (2026-06-30) coverage; `code.claude.com/docs/en/github-actions` official docs | **Category is real and growing** (1.3M repos using AI code review per baeseokjae guide — unverified independently but direction matches Microsoft's June 2026 security blog) |
+| **AI browser / computer-use agents mainstream security problem** — Atlas, Comet, Chrome/Edge agent features; employees already using them; Atlas bypassing encryption practice exposing auth data | **Partially validated with correction.** `techtimes.com/articles/318528/20260616/ai-browser-comparison-2026-atlas-vs-comet-vs-dia-ranked-security-use-case.htm` (2026-06-17): Atlas launched macOS Oct 2025, Comet free Oct 2025, Dia; three agents reached broad availability 2025-early 2026. Security issues documented: prompt injection via Omnibox (Oct 2025), Brave research on Comet screenshot injection, Felou bypass; `axis-intelligence.com/browser-agent-security-risk-guide/` (2026-03-31) catalog of data-leakage via AI context transmission, extension token theft (Socket.dev Jan 2026, 2,300 installs), CVE-2025-47241 whitelist bypass (1,500+ projects affected), session token hijacking. **Atlas specifics need correction:** `tech-insider.org/ca/chatgpt-atlas-vs-perplexity-comet-vs-gemini-chrome-2026` (2026-09-04) — *"ChatGPT Atlas stopped working as standalone product on Aug 9, 2026 … never received another security patch"* and was **macOS-only, never shipped Windows/iOS/Android** before being folded into ChatGPT desktop + Codex superapp; `piunikaweb.com/2026/06/25/chatgpt-atlas-perplexity-comet-ai-browsers-leaking-credentials/` documents BioShocking puzzle-game credential leak affecting both Atlas and Comet (2026-06-25) — this matches "exposing authentication data" but the mechanism was **prompt-injection exfil**, not "bypassing standard encryption practices" as worded. `dope.security/post/ai-browser-governance-2026` (2026-07-14): *"AI browsers turn the browser itself into an agent … extension policies and browser isolation cannot govern them"* + shadow-IT framing ("employees almost certainly already using them") corroborated | **Core security urgency holds; Atlas is already sunset as standalone (not an expanding market for a new integration), encryption-bypass framing is imprecise — actual documented class is prompt-injection / context exfiltration / session-token theft** |
+| **Positioning: Warden vs MintMCP complementary layers** — MintMCP controls *who can call* the server; Warden would control *what the server can do once called* at OS/kernel level | **Validated as architecture.** MintMCP docs position gateway at auth/routing/logging; Warden's `ARCHITECTURE.md:1` + `internal/sandbox/*` position at namespace/seccomp/WFP/Job Object enforcement. No source contradicts complementarity. | **Keep — accurate differentiation** |
 
-### Proposed scope
-
-#### `docs/secrets-guard-prd.md` (what Warden will do)
-
-**In scope (deny-by-default, fail-closed):**
-1. **Pre-flight secret audit** in `trace`/`init`: run existing OSS patterns (high-entropy + regex for GitHub, AWS, GCP, Slack tokens) over captured env + filesystem grants before writing policy; flag candidates, never auto-allow.
-2. **Env hygiene check** on `warden run --policy`: warn/error when `env.allow` contains `HOME` while `filesystem.read` grants parent of `~/.ssh`, `~/.aws`, `~/.netrc`, `~/.git-credentials`; require `--allow-unsafe` to proceed (matches `docs/security.md:96` best-practice).
-3. **Secret-aware audit redaction** — structured audit log (`warden logs` JSONL) redacts values of allowlisted env + high-entropy file snippets before printing/persisting; raw log remains `0600` (`docs/security.md:76`) but `logs --tail` is safe to paste.
-4. **`warden secrets scan <policy|trace-log>`** — offline scanner using pattern set; outputs findings as `approval`-type audit events so `--approve` UI can prompt on secret-typed access.
-
-**Explicit non-goals (follow-up, not this milestone):**
-- Centralized vaulting / rotation / dynamic secrets (Infisical/Doppler/Vault do this; Warden is local runtime, not control plane).
-- Full SHIELDMCP semantic classifier — would add model dependency + latency (>120ms) that conflicts with single-binary, near-zero-overhead goal.
-
-**Source mapping:** (1)(2) derived from Warden's own documented gaps; (3)(4) from Infisical/Doppler secrets model + Semgrep Secrets capability description. No invented crypto.
-
-#### `docs/secrets-guard-patterns.md`
-
-- Catalog of patterns Warden will scan for (GitHub `ghp_`, AWS `AKIA`, GCP, Slack `xoxb`, generic high-entropy 32+ chars, `GITHUB_TOKEN`, `SLACK_BOT_TOKEN`, etc. from `testdata/compat/*/policy.yaml` env lists).
-- Decision tree: env allowlist → filesystem grant → audit event → redaction.
-- Mapping to `trace` capture vs `run` enforcement.
-
-#### `ROADMAP.md`, `AGENTS.md`, `TESTING.md` additions
-
-- **ROADMAP M11 (next after scaling's M9/M10)** — “Secrets Guard (scan + hygiene + redaction)”. Avoids collision by taking M11 if scaling took M9/M10.
-- **AGENTS.md:18** — Add invariant: “Secrets handling: never persist env var values in policy; audit log redacts secrets by default.”
-- **TESTING.md:7** — Escape tests for secrets: (a) env allow with `HOME` + ssh path granted → must warn; (b) trace log containing `ghp_` value → scanner flags; (c) audit log tail → no raw token leaked.
-
-**Open questions (Secrets Guard):**
-- Whether to vendor `gitleaks`/`trufflehog` rules or maintain own minimal set (license / update cadence not evaluated).
-- Whether redaction should be on-by-default for `warden logs` vs opt-in (usability vs leak risk).
+**Net assessment:** 4 of 5 claims verify cleanly; browser-agent section needs the nuance above. The macro shift away from "people who don't use MCP locally" being a small edge case is supported: hosted endpoints are now the vendor-recommended path for GitHub/Stripe/Linear/Notion/Cloudflare/Atlassian + Azure self-hosted remote pattern.
 
 ---
 
-## 4 — Monetization
+## 1 — Warden for CI/CD — the easiest real win (build first)
 
-### Current traction signal (honest)
+### Why this fits Warden best
 
-- Releases `v0.1.3–v0.1.5` published, Linux/macOS binaries on GitHub, npm `@warden-sandbox/cli` live, docs site `prof-bilal.github.io/Warden/` serving. `REMAINING_WORK.md:201` says first real CI (run `34028064382`) exposed Windows panic; job now must be green before claiming Windows verified.
-- **No public traction signal measured here beyond that.** Stars, installs, compatibility-matrix contributors have not been shown to be material for pricing yet. Monetization plan must be sequenced as “after evidence, not before.” Any comp that assumes traction distorts.
+- **Smallest lift.** CI runners are Linux containers. Warden's Linux `bwrap` backend `warden-starter/warden/internal/sandbox/linux/linux.go:40` (`BuildBwrapArgs` is pure, unit-tested without `bwrap` installed) already applies almost as-is. No new sandbox primitive; the egress proxy `internal/proxy/proxy.go:56` (Unix socket + `HTTP_PROXY`/`HTTPS_PROXY` bridge) and `internal/policy/policy.go:27` `policy.yaml` schema are reused unchanged.
+- **Direct tie to Proposal 3 (Secrets-Leak Scanner).** CI is where that scanner and this action share an audience: the moment an agent has `contents: write` + access to `GITHUB_TOKEN`/`ANTHROPIC_API_KEY` inside the runner is the moment exfil risk peaks.
+- **Category is proven.** `anthropics/claude-code-action@v1` is a real GitHub Action with headless `-p` mode, auto-fix `workflow_run` triggers, and path-filter / max-turns cost controls. It is the reference for "agentic coding inside CI."
 
-### Comparable companies (4+ data points, 2026 sources)
+### What to build
 
-| Company | License / posture | Packaging | Published pricing | Takeaway for Warden |
-|---|---|---|---|---|
-| **Semgrep** | OSS Community LGPL (Opengrep fork), paid Platform | Code (SAST), Supply Chain, **Secrets ($15/contrib/mo)**, AI credits | Community free; Platform free ≤10 contributors; **Team $30–$35/contrib/mo** (bundled), Enterprise custom, startup discounts | Bundle wins: Secrets at $15/mo is the most direct comp to Warden's secrets guard. Free ≤10 is generous on-ramp that Warden could mirror. |
-| **Snyk** | Commercial (closed) | Code, Open Source, Container, IaC (separate products) | **Free** tight limits (200 OS /100 Code tests/mo); **Team $25/dev/mo** (5–10 devs cap), **Ignite $1,260/yr/dev** (≤50 devs), Enterprise custom. Vendr median: **$34.9k/yr @ 50 devs, $67.5k/yr @ 100 devs**, 38–42% renewal discount. SSO gated behind Ignite (common complaint). | Per-dev seat scales painfully; bundling vs splitting matters. Warden should avoid SSO-behind-high-tier anti-pattern. |
-| **Infisical** | MIT core + `ee/` enterprise (not OSI), cloud + self-host | Secrets, PAM, certs; identity-based | **Free 5 identities/3 projects**, **Pro $18–$20/identity/mo**, **Advanced $40**, Enterprise custom with `LICENSE_KEY` phoning home. | Per-identity (human+machine) vs per-seat vs per-client are **different units** — picking wrong one taxes automation. |
-| **Doppler** | Tooling OSS, platform closed | Config sync, rotation, operator | **Developer free 3 users** (+$8/extra), **Team $21/user/mo** (“AI agents ride free”), Enterprise custom | Explicit “machines free” headline is a pricing **position** — Warden could mirror “no agent fees” for sandbox runners. |
-| **HashiCorp Vault** | **BSL 1.1** (not OSI since Aug 2023), free license but not free to run | Community free, **HCP Dedicated Dev $0.03/hr (~$22/mo)**, Standard $1.58–$7.49/hr, Plus $1.84–$9.4/hr + per-client $27–$112/mo; Enterprise custom, often 6-figures | Per-cluster-hour + per-client is opaque; “free OSS cheapest but highest ops cost”. Warden must stay single-binary, not hourly-managed. |
-| **Tailscale** | Freemium + `headscale`/`netbird` OSS alternatives | Networking | **Personal free 6 users**, **Standard $8/seat/mo**, **Premium $18/seat/mo**, 2026 switch from usage-based to **seat-based** for predictability; break-even vs self-hosted at few-dozen seats | Seat-based predictability vs usage-based is the 2026 meta-lesson; commit to one unit and keep it. |
+**`warden-action` — a GitHub Action wrapping an agentic CI job with the same `policy.yaml` model.**
 
-*Sources: `semgrep.dev/pricing` + `aicodereview.cc/blog/semgrep-pricing` + `konvu.com/compare/snyk-vs-semgrep` + `snyk.io/plans` + `vendr.com/marketplace/snyk` (Snyk medians) + `infisical.com/pricing` + `doppler.com/pricing` + `merginit.com` + `nomadlab.cc/blog/2026/04/hashicorp-vault-vs-doppler-vs-infisical-2026` + `envmanager.com/blog/hashicorp-vault-pricing` + `tailscale.com/pricing` + `tailscale.com/blog/pricing-v4`.*
+```
+# .github/workflows/review.yml — target UX
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: warden-sandbox/warden-action@v1
+        with:
+          policy: ./policy.yaml
+          # run the agent *inside* the Warden sandbox, not beside it
+          run: claude -p "Review this PR …" --max-turns 4
+```
 
-### Tiering proposal (reasoned from comps, names invented but mapped)
+- Implementation is a composite action: install `warden` static binary (`dist/warden-linux-amd64` already in `warden-starter/warden/dist/`), assert `bwrap` + `strace` available (fail closed — `RUN` `linux.go:141` already refuses without `bwrap`; `strace` required for audit), then exec `warden run --policy <file> -- <agent-argv>`. Same fail-closed guarantee as local `warden run` (`internal/sandbox/sandboxerr`).
+- **Policy authoring path:** commit `policy.yaml` + `CLAUDE.md` side-by-side. `warden trace -- <agent dry-run>` → `warden init` locally produces starter policy; CI enforces it. Wildcard / learn-mode gaps from `docs/compatibility.md:86` are tracked separately — CI policies for review bots are narrow (repo checkout write + `api.github.com` + `ANTHROPIC_API_KEY`), so 14/18 pass rate is not a blocker.
+- **Secrets hygiene:** `env.allow` never stores values (`internal/policy/policy.go:60` comments *values from parent env not stored*); action Docs must show `${{ secrets.ANTHROPIC_API_KEY }}` only in `env:` / `with:` blocks (GitHub masks them), never in `prompt:` (log leak — see `fast.io` secret-exposure warning; `microsoft.com/security/blog/2026/06/05/securing-ci-cd-in-agentic-world-claude-code-github-action-case/` Figure 2 attack flow: Read-tool exfil of `/proc` + `sk-ant-` reconstruction). Warden's deny-by-default env (`internal/envfilter`) + audit log surface for blocked file/network attempts gives the evidence trail the scanner (Proposal 3) needs to flag an exfil.
+- **Runner compatibility note:** GitHub `ubuntu-latest` supports unprivileged user namespaces (`bwrap` tested in Flatpak). Validate with one `warden doctor` step in the action; if `--unshare-net` disabled on the host, fail closed per `docs/security.md:64` (M10.1 target), don't silently fall back to host net.
 
-| Tier | Who it’s for | What’s in it | Price shape (testable) | Comp anchor |
-|---|---|---|---|---|
-| **Community — self-hosted, MIT** | Solo dev, OSS, every MCP user today | Single binary, all backends, `trace`/`init`/`logs`/`approve`, community policies (`testdata/compat/`), file/net/env sandboxes | **Free forever**; self-host, no account. Optional sponsor/donate. | Semgrep free ≤10, Infisical free 5 identities, Vault Community |
-| **Team — cloud-tuple or paid self-host** | Small team 5–20 devs standardizing 5–20 MCP servers | Everything in Community + **policy registry** (publish/pull/pin `warden policy get`), **audit retention + streaming** (90-day), **SAML SSO**, **role-based `env.allow` reviews**, **gateway auto-wrap** for pooled servers | **Per-seat** `~$15–$20/seat/mo` or **per-identity** if machines counted — **but machines (MCP server runtimes) ride free** (Doppler model), so teams aren't taxed for adding sandboxes | Doppler $21 “agents free” + Tailscale $8/$18 + Semgrep $30 bundle |
-| **Enterprise — self-managed + negotiated** | Regulated org, 100+ devs, compliance | Team + **custom audit retention** (365+), **SCIM**, **LDAP**, **SIEM stream** (like Infisical `audit-log-stream`), **KMIP/HSM**, **dedicated support / SLA 99.95%**, **Windows WFP/ETW attestation** for air-gapped hosts | **Custom quote, per-seat** with volume bands (27→$112/client analogue from Vault Flex at high scale, but per-seat for Warden). Published list anchors negotiation. | Infisical Enterprise `ee/` + Vault Enterprise (quote-only but scoped by client count) |
+### What stays out of v1
 
-**Why per-seat with machines-free:** `nomadlab.cc` shows 3 units in market — per-seat (Tailscale, Snyk, Doppler humans), per-identity (Infisical humans+machines), per-cluster+client (Vault). Counting each sandboxed MCP server as a billable “identity” would penalize adoption of the core value prop (sandbox per server). Doppler's explicit “AI agents ride free” is the cleanest precedent to copy.
+No BuildKit/Docker-in-Docker modes, no Windows runner. Linux container path only. No "Warden-as-service" for CI — it's a per-job wrapper, not a sidecar deployment.
 
-**What *not* to do from comps:** Gate SSO behind top tier (Snyk complaint), require host-wide usage-based metering (Vault client explosion), or split Code/Secrets into separate SKUs that force bundle math (Semgrep actually bundles; Snyk inventory pain).
+### Acceptance / sequencing
 
-### Sequencing: what has to be true first
+- Milestone: place after whatever `M9`/`M10` scaling chooses — call it **M9a CI Action** or fold as `M9` if scaling's wildcard/unix-socket work is deferred. It does not require M9/M10 to ship, but shipping after `M10.1` fail-closed-net makes the CI story stronger.
+- Tests: `policy.Load` KnownFields fail-closed, `BuildBwrapArgs` overlap coalescing, plus one E2E workflow against a fixture repo (`testdata/compat/` style) asserting blocked `/etc/shadow` and `registry.npmjs.org` never reached.
+- Docs: single page `docs/ci-action.md` + example workflow + secrets-scanner cross-link.
 
-Monetization is **docs + positioning now, not code**. Build triggers:
-
-1. **M9 + M10 shipped** — wildcard + unix-socket + fail-closed parity. Without 14→17+ pass, the paid tier has nothing to sell (“will it work with my server?” must be yes).
-2. **Beta exit criteria hit** — 5+ external reports, highest-impact gaps fixed or scheduled (`docs/beta.md:109`). This is the real usability proof.
-3. **Windows CI green + distribution stable** — `REMAINING_WORK.md:64` P0 WFP + P2 POSIX-path debt resolved; Homebrew tap published, npm idempotent — otherwise paid users hit P3 papercuts.
-4. **≥ ~50–100 weekly active self-hosted installs** (measured via anonymized `warden version --check` or registry pulls) **or** ≥10 orgs running ≥5 sandboxes continuously for 30 days. *If this has not happened, price pages are still draft.*
-
-Until then, keep **Community free** and invest in content funnel ( §1 ) not billing.
-
-### “Don't build yet” list (pre-1.0)
-
-- [ ] No paywall, no license server that phones home (Infisical `LICENSE_KEY` pattern rejected for local runtime).
-- [ ] No billing infra, no Stripe webhook, no usage metering beyond anonymous install ping.
-- [ ] No RBAC/SCIM/SIEM features beyond fielding design docs — code only after sequencing gate 1–4.
-- [ ] No per-client or per-server hourly metering; document chosen unit (per-seat, machines-free) but do not implement enforcement.
-- [ ] No feature-gating of core sandbox primitives — `bwrap`/Seatbelt/AppContainer, egress proxy, audit, trace stay in Community. Gate only **registry + retention + governance**.
-- [ ] What *to* build now: **pricing page draft** (`docs/pricing.md` or landing `/pricing`), **comparison page** (Warden vs Docker-only vs microVM vs gateway), and **registry spec** (OpenAPI for `warden policy get`) — zero enforcement code.
-
-**Open questions (Monetization):**
-- Which unit actually predicts Warden cost-to-serve: per-seat (dev count), per-sandbox (server count), or per-org flat? Need metering of sandbox-hours (proxy + strace overhead ~2–5× on Linux per `docs/security.md:150`) to decide. No Warden runtime-cost data found.
-- Whether Infisical's `ee/` phoning-home model is acceptable for any future on-prem governance tier — conflicts with `single static binary, no daemon` promise.
+**Evidence tag:** `Validated` — runner shape, `bwrap` reuse, and action pattern all have sources; secrets tie-in derives from Warden's own `docs/security.md:96` env hygiene warning + Microsoft's June 2026 CI exfil research.
 
 ---
 
-## Final Pass — Cross-Doc Tensions to Flag (not silently pick)
+## 2 — Warden Client Proxy — for people who never run a server at all
 
-1. **Build vs sell timing:** Scaling (§2 M9/M10 hardening) says *build now* (wildcard, fail-closed, limits parity are validated gaps blocking adoption). Monetization (§4) says *sell later* (don't gate until beta + installs). **Resolution:** Do M9/M10 as Community (no tier split); keep monetization as docs-only until sequencing gates. No conflict if work lands in the same Community binary.
-2. **Wildcard openness vs security:** Scaling's M9.1 wildcard expands attack surface vs Secrets Guard's hygiene (scope egress + env). **Flag:** Wildcard must require explicit `--allow-wildcard` audit warning + redaction; policy registry should discourage wildcards in published policies.
-3. **Content volume vs credibility:** Marketing wants 4–8/mo depth; scaling ships 3 milestones quickly. **Flag:** Do not publish triage posts until fix has regression test (`TestDocumentedSchemaGaps` etc.) — credibility depends on pinned fixtures (`testdata/compat/`).
+### Why this is the most literal answer to "people who don't use MCP locally"
+
+Someone whose Claude Desktop is configured to talk to `https://mcp.github.com/mcp` or `https://mcp.stripe.com` over Streamable HTTP (2026-03-26 / 2026-06-18 / 2025-11-25 transports per `hidekazu-konishi.com` catalog) has **no local subprocess for Warden to wrap** — `warden run … -- node ./my-mcp-server/index.js` does not apply.
+
+But the same worry persists at a different layer: *what is my AI client actually sending to that remote server, and does it match what I intended?*
+
+### What to build
+
+**A local proxy sitting between the client and any MCP server (local or remote) — logging every outbound tool call, optionally blocking payloads matching sensitive patterns before they leave the machine.**
+
+```
+Claude Desktop / Cursor / ChatGPT  --HTTP/SSE/stdio-->  warden proxy (localhost:8765)  --HTTP/SSE-->  github.mcp.com / stripe.mcp.com / linear.mcp.com
+                                         |
+                                    audit.jsonl + optional block (regex / entropy / gitleaks set)
+```
+
+- **Interposition point:** MCP's Streamable HTTP transport is plain HTTP + JSON-RPC. The proxy speaks both sides: it terminates the client's SSE/HTTP session and re-opens the upstream session with the same OAuth token (forwarded header) or API key (`env.allow` forwarded). For `stdio` servers it can still wrap: client points at `warden proxy --upstream stdio: npx …` and Warden injects the allowlist check around the JSON-RPC frame, not around the subprocess's syscalls.
+- **Reuse:** the egress proxy's allowlist + audit pattern `internal/proxy/proxy.go:56` (`map[string]struct{}` + `Approver` callback + `audit.Logger`) generalizes to an MCP-aware proxy: current proxy filters by destination hostname before DNS; new proxy filters by **tool name + payload shape** before forwarding. `internal/audit/audit.go` structured JSON-lines + `warden logs` already exist; `internal/policy/policy.go:54` `Network.Allow` semantics extend to `mcp.allow_tools` / `mcp.deny_patterns` (see schema note below).
+- **Positioning:** This turns Warden from "a tool for people who self-host MCP servers" into **"a tool for anyone whose AI client talks to MCP servers, period."** That's the addressable-market unlock the prompt identified — and it is real: `mcpservers.org` 293 official remote servers, 16→25→30 count growth Jan→July 2026, and `openhelm.ai` framing of "remote-first is the sensible default."
+- **Sensitive-pattern blocking (opt-in):** reuse the same pattern set Proposal 3 (Secrets Guard) already proposes — GitHub `ghp_`, AWS `AKIA`, GCP, Slack `xoxb`, `GITHUB_TOKEN`/`SLACK_BOT_TOKEN` env names already in `testdata/compat/*/policy.yaml`, plus high-entropy 32+ heuristic from Semgrep Secrets docs. Block is **pre-egress** (payload never leaves loopback), logged as `type: mcp_block`. Redaction for `warden logs --tail` follows the same `0600` raw-log / redacted-tail split proposed for audit logs.
+- **OAuth story:** do **not** re-implement OAuth. For remote servers the proxy is a pass-through that forwards the client's existing OAuth 2.1 Authorization header (PKCE/`audience`/`resource` binding per `hidekazu-konishi.com` §9). For self-hosted remote (Azure pattern) where Warden *is* the server, auth is Entra/Managed Identity in front of the Container App — the proxy does not need to mint tokens.
+
+### What it is not
+
+Not a gateway. Not MintMCP. Warden Client Proxy is a **single-user localhost process** with no control plane, no multi-tenant SSO, no Fly.io data plane. The mental model is `mitmproxy` for MCP, not a team gateway.
+
+### Schema sketch (non-breaking extension)
+
+```yaml
+# policy.yaml — forwarded compat, new top-level `mcp:` only for proxy mode
+mcp:
+  upstream: "https://mcp.github.com/mcp"  # or "stdio: npx -y @modelcontextprotocol/server-github"
+  allow_tools: ["list_pull_requests", "get_issue"]  # deny-by-default, like filesystem/network
+  deny_patterns: ["ghp_[A-Za-z0-9]{36}", "AKIA[0-9A-Z]{16}"]  # optional, pre-egress block
+filesystem: { read: [], write: [] }  # still enforced when upstream is stdio
+network: { allow: ["mcp.github.com"] }
+env: { allow: ["GITHUB_TOKEN"] }
+```
+
+Fail closed: unknown `mcp.*` keys → `KnownFields(true)` error (`internal/policy/policy.go:83`) just like any other typo'd policy field.
+
+### Effort and risk
+
+- Heavier than CI action (new transport handler + MCP JSON-RPC framing), but lighter than Container/K8s mode (no seccomp/NetworkPolicy compilation). Main product risk is client compatibility: Streamable HTTP spec revs (`2025-03-26` / `2025-06-18` / `2025-11-25`) differ on SSE vs pure HTTP; test against Claude Desktop Custom Connectors + Anthropic Messages API + AgentCore Gateway (per `hidekazu-konishi.com` §9.4/9.5).
+- Must prove value before adding ML classifiers — keep to regex + entropy + host allowlist. SHIELDMCP's 3-stage proxy (structural → semantic classifier τ=0.72 → cross-call correlation, 74%→9% tool-poisoning at <120ms) is the research ceiling; Warden's local proxy should ship as stage 1 only.
+
+### Acceptance
+
+- Modes: `warden proxy --policy policy.yaml --listen :8765 --upstream https://…` + `warden proxy --upstream stdio:…` (stdio bridge).
+- Audit: every tool call is a structured event; blocked payloads never traverse loopback.
+- Tests: replay fixture capturing GitHub `list_pull_requests` + Stripe `create_customer` → assert allowed; fixture containing `ghp_` in `notes` field → assert blocked + audit `mcp_block`.
+
+**Evidence tag:** `Validated` — remote endpoint existence + OAuth pattern + proxy reuse are sourced; blocking-by-pattern is speculative until evaluated against real payloads (mark as opt-in).
 
 ---
 
-## Where to Land These Docs (since `future.md` is untracked)
+## 3 — Warden Container / K8s Mode — for teams hosting their own remote server
 
-If you promote this to tracked work, split into:
-- `docs/marketing-strategy.md` ← §1
-- `docs/scaling-roadmap.md` ← §2 (and append `M9`/`M10`/`M11`/`M12` to `ROADMAP.md:155` + `docs/roadmap.md:1`, no renumber; add nav to `mkdocs.yml:8`)
-- `docs/secrets-guard-prd.md` + `docs/secrets-guard-patterns.md` ← §3 (and patch `AGENTS.md:18`, `TESTING.md:7`)
-- `docs/monetization-strategy.md` ← §4
+### Who this is for
 
-Add all four to `README.md:147` “Project docs” / Documentation section. Keep milestone numbers distinct: assign **M9=Scaling usability, M10=Hardening, M11=Secrets Guard, M12=Polish** — no collisions.
+Teams who **do** run their own MCP server, but as a shared cloud service (Cloudflare Workers, Vercel, EC2, a Kubernetes pod) rather than a local `bwrap` process — e.g. `github.com/microsoft/mcp` self-hosted remote template `Azure-Samples/azmcp-foundry-aca-mi` (Azure Container App) or a Cloudflare Worker remote MCP (`developers.cloudflare.com/agents/model-context-protocol/`).
+
+### What to build
+
+**The same `policy.yaml` a developer tested locally compiles down to container-native enforcement for that server's production deployment.**
+
+```
+policy.yaml  ──translate──▶  Dockerfile snippet + seccomp profile + readOnlyRootFilesystem + NetworkPolicy / EgressFirewall
+   (filesystem.read/write  →  readOnlyRootFilesystem:true + explicit emptyDir / PVC mounts)
+   (network.allow          →  NetworkPolicy egress allowlist / OVN EgressFirewall FQDN where supported)
+   (env.allow               →  envFrom filtered + no Automatic Inheritance)
+   (limits.memory_mb/timeout →  resources.limits.memory + liveness/readiness)
+```
+
+- **Reuse:** `policy.Load` + `Normalize` + `Validate` stay canonical; new emitter `internal/policy/k8s.go` (not yet existing — new file) renders Kubernetes manifests or Docker `--read-only --tmpfs --security-opt seccomp=…` flags. The Linux runtime base logic `internal/sandbox/linux/linux.go:32` (`/usr` + `/lib64` read-only, `/tmp` tmpfs) maps directly to `securityContext: { readOnlyRootFilesystem: true }` + `capabilities: { drop: [ALL] }` + `seccompProfile: { type: RuntimeDefault }` (per `kubernetes.io/docs/tutorials/security/seccomp/` and `fips-agents/code-sandbox/docs/sandbox-egress-networkpolicy-vs-opa.md`).
+- **Network nuance:** `internal/policy/policy.go:210` validates bare hostnames; K8s `NetworkPolicy` with `egress: []` (deny-all) plus per-host `to:` blocks is IP/CIDR-based, not FQDN. Production teams on OVN-Kubernetes can use `EgressFirewall` for FQDN (`k8s.ovn.org/v1` `allow docs.openshift.com`) but with known DNS-TTL race (30-min poll) — not recommended for deny-critical FQDN control per `fips-agents` decision doc. Recommendation: emit strict `NetworkPolicy egress: []` default + explicit `to` blocks by resolved IP where the MCP server's upstream hosts are known and stable (`api.github.com` is CloudFront-fronted — advise pinning + `egress: []` review rather than fragile FQDN). For zero-egress sandboxes, `NetworkPolicy` alone is sufficient; OPA/Rego sidecar proxy is overkill per `fips-agents/code-sandbox` analysis (adds 2-3 containers, `NET_ADMIN` init, Rego bundle sync, no material new layer for `egress: []`).
+- **Distribution signal this is worth doing:** Azure MCP 2.0 docs explicitly target "centrally managed deployments with consistent policy, security controls, and configuration" — policy-as-manifest is the enforcement story those teams need after the gateway has handled auth.
+
+### Positioning (keep, don't blur)
+
+> **MintMCP's gateway controls *who* can call the server (OAuth, RBAC, observability). Warden's container mode controls *what the server can technically do once called*, at the OS/kernel level. Complementary layers, not head-on competition.**
+
+The `mintmcp.com/docs/architecture` page sells authentication/routing/logging on Fly.io Machines; `druce.ai` positions MintMCP as "managed-and-compliant first" vs `ibm-contextforge` (self-hosted open source) vs `docker-mcp-gateway` (developer isolation). Warden has no managed data plane — its value is the *strongest local technical boundary* for a given deployment target. Keep the line sharp in copy.
+
+### What stays out
+
+No hosted control plane. No multi-tenant auth. No CRD/operator in v1 — just a manifest emitter (`warden k8s render --policy policy.yaml --out k8s/`) plus a docs page referencing the `fips-agents/code-sandbox` pattern (Landlock + NetworkPolicy + seccomp) as the hardening baseline.
+
+### Acceptance
+
+- `warden k8s render` emits `NetworkPolicy` + `Deployment` `securityContext` hardenings that `go test` validates against a fixture `policy.yaml`; `docker build` snippet for non-K8s hosts.
+- Tests assert FQDN limitations are surfaced as warnings, not silently emitted as ineffective policy.
+
+**Evidence tag:** `Validated` for core motivation (Azure remote docs + K8s seccomp/NetworkPolicy sources exist); FQDN expressiveness limits are a known gap — mark emitter as `conditional` where upstream hosts are CDN-fronted.
+
+---
+
+## 4 — Longer-term bet — AI browser & computer-use agents (flagged as stretch, companion product)
+
+### Why it's on the radar
+
+- Employees are almost certainly already using Atlas/Comet/Dia whether IT approved or not (`dope.security` shadow-IT framing + `axis-intelligence.com` risk guide). Browser agents sit at the intersection of identity, data, and app access — the natural enforcement point shifting from network-perimeter to browser-level controls (`layerxsecurity.com/learn/best-agentic-browser-security-platforms/` 2026-03-20 trend: agentic-identity detection as baseline).
+- Documented harm class is real: prompt-injection → exfil (Brave Comet screenshot attack Oct 2025, Felou bypass; Axis Risk 4 data leakage via AI context transmission; CVE-2025-47241 whitelist bypass across 1,500+ projects; Socket.dev enterprise-extension token harvest; PiunikaWeb BioShocking puzzle-game credential leak 2026-06-25).
+
+### Why it's genuinely different engineering
+
+- Warden's current architecture is **namespace-based process sandboxing** (`bwrap` `ARCHITECTURE.md:1` flow: `CLI → Policy → Backend → Server` with loopback proxy bridge `/.warden/host-proxy/egress.sock` `internal/sandbox/linux/linux.go:206`). Isolating a **whole graphical browser session** is a different boundary: existing approaches use **disposable microVMs (Firecracker/Kata/libkrun) or gVisor** kernel boundary, not `--unshare-*` (`sandboxreview.com` 2026-08-12 tiers: *"shell-execution/code-running servers need microVM or gVisor"*, browser/file-manipulation servers are execution-capable regardless of name; Daytona <90ms cold starts vs multi-second containers for per-turn agent sandboxes).
+- ChatGPT Atlas as a standalone is already sunset (Aug 9 2026) — the browser-agent surface going forward is Comet (free worldwide + Android), Gemini in Chrome (3B install base, Auto Browse Jan 28 2026), and Dia. Chasing Atlas integration specifically is chasing a shipped-and-folded product.
+
+### Recommendation
+
+Treat as a **possible future companion product under the same trust/brand, not a near-term feature to bolt onto the existing codebase.** Keep on the radar, don't dilute the current roadmap. If pursued, companion would be a browser-session isolator (microVM per session, not a policy.yaml extension) and would need a separate threat model from Warden's filesystem/network/env boundary.
+
+**Evidence tag:** `Speculative` — market urgency is sourced, technical mismatch is sourced, but Warden-team position on microVM vs gVisor vs docs-only recommendation is open.
+
+**Open questions (Browser agents):**
+- Whether microVM/gVisor isolation should be a Warden-native backend vs documented recommendation + `wrap` via gateway (Daytona pattern) — no team position found.
+- Whether enterprise willingness to pay for browser isolation (vs free Comet + Gemini) supports a companion product — no pricing signal found.
+- Whether the `Ninth Circuit Amazon v. Perplexity` (heard 2026-06-11) precedent enabling/disabling autonomous shopping/account access shifts demand for browser-agent controls — pending ruling.
+
+---
+
+## Sequencing & where to fold this
+
+Prioritized in the order requested (easiest real win → market expansion → team deployment → flagged bet):
+
+```
+Now:   1. Warden for CI/CD (warden-action)         ← smallest lift, bwrap reuse, secrets-scanner tie-in
+Next:  2. Warden Client Proxy (localhost MITM)       ← biggest TAM unlock, MCP JSON-RPC proxy
+Then:  3. Warden Container/K8s mode (policy→manifest)← team remote-hosted, complementary to MintMCP
+Later: 4. Browser agents — flagged future bet        ← companion product, microVM boundary, do not bolt on
+```
+
+**Milestone mapping (no collision with existing M0–M8):**
+
+- If `docs/scaling-roadmap.md` exists, fold sections 1–3 there in this order and append to `warden-starter/warden/ROADMAP.md:155` as **M9 CI Action → M10 Client Proxy → M11 Container/K8s** (or keep scaling's `M9 usability + M10 hardening` and slot CI as `M9a`). Reserve `M12` for Polish/distribution (Homebrew tap publication `warden-starter/warden/build/brew.sh` already generates formula but per `REMAINING_WORK.md:139` P3.5 no tap repo yet).
+- Keep browser agents as an **appendix / future-bet** section — not a numbered milestone.
+- Competitive positioning sentence (Warden *what it can do* vs MintMCP *who can call it*) belongs in `README.md` + landing CTA row, not buried in a doc.
+
+**Collateral to ship alongside:**
+
+- `docs/ci-action.md` + example `.github/workflows/` using `testdata/compat` fixtures
+- `docs/client-proxy.md` + `mcp:` schema extension + `warden proxy --help` output
+- `docs/container-k8s.md` + `warden k8s render` reference + `fips-agents/code-sandbox` attribution
+- `docs/browser-agents.md` one-pager explicitly marked *"Companion product, not on current roadmap"*
+
+**What not to build yet (from research):**
+
+- No paywall / license server that phones home (Infisical `LICENSE_KEY` pattern conflicts with `single static binary, no daemon` promise).
+- No multi-tenant gateway / SSO control plane — that's MintMCP's lane; Warden wins on the kernel boundary.
+- No semantic classifier proxy requiring a model dependency (>120ms) — SHIELDMCP is the ceiling, Warden ships regex+entropy only.
+- No FQDN NetworkPolicy presented as deny-critical enforcement — surface the DNS-TTL race warning.
+
+---
+
+## Cross-cutting tensions to keep explicit
+
+1. **Wildcard openness vs secrets hygiene.** Client Proxy's `deny_patterns` and CI's `env.allow` filtering must apply before egress; Container mode's strict `egress: []` vs FQDN gap must not silently widen. Wildcard hosts (Playwright `schema-gap` `docs/compatibility.md:86`) if later added require explicit `--allow-wildcard` audit warning + redaction — policy registry should discourage wildcards in published policies.
+2. **Build vs sell timing.** CI Action and Client Proxy can ship as Community (no tier split); monetization (if any) remains docs-only until beta + install signals — same discipline as the prior monetization draft.
+3. **Content vs credibility.** Ship docs that cite the compatibility matrix `testdata/compat/matrix.yaml:540` and the actual `BuildBwrapArgs`/`BuildDockerArgs`/`policy.Validate` behaviour; do not publish triage posts until regression fixtures exist.
+
+---
 
 ## Sources (full)
 
-Product Hunt launch guides (`producthunt.com/launch/how-product-hunt-works`, `…/preparing-for-launch`, `help.producthunt.com/en/articles/479557-how-to-post-a-product`, Launchory 2026-07-25), DevHunt (`runany.dev/blog/devhunt-launch-platform` 2026-07-11, BetaList `betalist.com/startups/devhunt`, `firsto.co/projects/devhunt`), HN (`news.ycombinator.com/showhn.html`, Show HN pack `showhn.md` `gravity≈1.8`, Dan King 2026-04-23 188k posts dataset), MCP spec 2026-07-28 (`modelcontextprotocol.io`), NSA CSI 2026-06-02 (`media.defense.gov … CSI_MCP_SECURITY.PDF`), SHIELDMCP 80+ techniques (`aclanthology.org/2026.acl-industry.58.pdf`), SandboxReview tiering + Daytona 90ms (`sandboxreview.com`), MCP-SandboxScan WASM/WASI (`arxiv.org/pdf/2601.01241v1`), Docker MCP guide + 43% injection 150+ catalog (`docker.com/blog/mcp-security-explained`), Hackmamba technical content + SEO/GEO/AEO (`hackmamba.io`), Docsio dev marketing (`docsio.co`), HackerContent (`hackercontent.com`), Otrenix 2026 guide (`otrenix.com`), Semgrep pricing (`semgrep.dev/pricing`, `aicodereview.cc`), Snyk plans + Vendr medians (`snyk.io/plans`, `vendr.com/marketplace/snyk`, `konvu.com`), Infisical/Doppler/Vault pricing + identity vs seat analysis (`infisical.com/pricing`, `doppler.com/pricing`, `merginit.com`, `nomadlab.cc`, `envmanager.com`, `talescale.com`/`blog/pricing-v4`), API Radar Show HN (`news.ycombinator.com/item?id=44720248`), Gecko Launch HN (`…44747204`).
-
----
-
-*Generated 2026-09-06 from current web research, separate per domain. Claims without source are marked open questions; do not treat as fact.*
+- **Warden internals:** `warden-starter/warden/ARCHITECTURE.md:1`, `warden-starter/warden/ROADMAP.md:1`, `warden-starter/warden/docs/compatibility.md:1`, `warden-starter/warden/internal/policy/policy.go:27`, `warden-starter/warden/internal/sandbox/linux/linux.go:40`, `warden-starter/warden/internal/proxy/proxy.go:56`, `warden-starter/warden/internal/sandbox/docker/docker.go:1`, `warden-starter/warden/REMAINING_WORK.md:1`
+- **Remote MCP as default (2026):** `openhelm.ai/blog/best-remote-mcp-servers-2026` (2026-07-10), `apiscout.dev/guides/top-apis-with-mcp-endpoints-2026` (2026-04-09), `hidekazu-konishi.com/entry/mcp_server_ecosystem_reference_2026.html` (catalog 2026, transports + auth + spec rev table), `mcpplaygroundonline.com/blog/awesome-mcp-servers` (2026-01-13 updated 2026-07-18, 30 remote count), `mcpservers.org/remote-mcp-servers` (293 directory), `reskilll.com/remote-mcp-servers-2026-deploy-once-use-anywhere` (2026-08-07 shift table), `linear.app/docs/mcp` + `developers.notion.com/docs/mcp` + `docs.stripe.com/mcp` + `developers.cloudflare.com/agents/model-context-protocol/` + `github.com/github/github-mcp-server` vendor sources
+- **Azure MCP Server 2.0 (2026-04-10):** `devblogs.microsoft.com/azure-sdk/announcing-azure-mcp-server-2-0-stable-release/`, `learn.microsoft.com/en-us/azure/developer/azure-mcp-server/how-to/deploy-remote-mcp-server-copilot-studio` (2026-07-10), `learn.microsoft.com/en-us/azure/developer/azure-mcp-server/how-to/deploy-remote-mcp-server-microsoft-foundry` (2026-02-27), `nerova.ai/news/azure-mcp-server-2-0-stable-agentic-cloud-automation-april-2026` (2026-07-13), `chatforest.com/reviews/azure-mcp-servers/` (Build 2026 review)
+- **MintMCP Gateway:** `mintmcp.com/docs/architecture`, `mintmcp.com/mcp-gateway`, `mintmcp.com/blog/mintmcp-vs-portkey` (2026-05-14), `jenova.ai/en/resources/enterprise-mcp-infrastructure-how-mintmcp-solves-ai-tool-governance-at-scale` (2025-10-22), `druce.ai/governance/wiki/vendors/mintmcp` (2026-06-28), `businesswire.com/news/home/20260205079173/en/MintMCP-Launches-Enterprise-Governance-Platform-for-AI-Agents-and-MCP-Servers` (2026-02-05)
+- **CI / agentic coding (2026):** `aiforanything.io/blog/claude-code-github-actions-cicd-integration-guide-2026` (2026-05-15), `baeseokjae.github.io/posts/claude-code-github-actions-2026/` (2026-04-24), `fast.io/resources/claude-code-github-action-setup-guide` (2026-06-30), `code.claude.com/docs/en/github-actions`, `microsoft.com/en-us/security/blog/2026/06/05/securing-ci-cd-in-agentic-world-claude-code-github-action-case/` (CI exfil vuln, HackerOne disclosure Apr 29 → mitigation May 5 2026, Agents Rule of Two)
+- **Sandbox primitives:** `github.com/containers/bubblewrap` (user namespaces, `PR_SET_NO_NEW_PRIVS`, `--new-session` CVE-2017-5226, seccomp limitations), `kubernetes.io/docs/tutorials/security/seccomp/` + `kubernetes.io/docs/reference/node/seccomp/` (seccomp stable since v1.19), `fips-agents/code-sandbox/docs/sandbox-egress-networkpolicy-vs-opa.md` (2026-04-14 NetworkPolicy `egress: []` vs OPA sidecar, OVN ACL enforcement, FQDN TTL race), `fips-agents/code-sandbox` (Landlock LSM, NetworkPolicy, Kata/gVisor tiers)
+- **Browser / computer-use agents (2026):** `techtimes.com/articles/318528/20260616/ai-browser-comparison-2026-atlas-vs-comet-vs-dia-ranked-security-use-case.htm` (2026-06-17), `axis-intelligence.com/browser-agent-security-risk-guide/` (2026-03-31 + CVE-2025-47241, extension token harvest Jan 2026), `piunikaweb.com/2026/06/25/chatgpt-atlas-perplexity-comet-ai-browsers-leaking-credentials/` (2026-06-25 BioShocking), `dope.security/post/ai-browser-governance-2026` (2026-07-14), `layerxsecurity.com/learn/best-agentic-browser-security-platforms/` (2026-03-20), `tech-insider.org/ca/chatgpt-atlas-vs-perplexity-comet-vs-gemini-chrome-2026` (2026-09-04 Atlas sunset Aug 9 2026), `sandboxreview.com` (2026-08-12 isolation tiers + microVM/gVisor vs containers), `openai.com/index/continuously-hardening-chatgpt-atlas-against-prompt-injection-attacks/` + `openai.com/index/introducing-chatgpt-atlas/` (Oct 2025)
+- **MCP ecosystem context:** `modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices` (SHOULD sandbox, minimal privileges), `docker.com/blog/mcp-security-explained` (2025-09-16, 43% command injection), `aclanthology.org/2026.acl-industry.58.pdf` SHIELDMCP (80+ techniques, 3-stage proxy)

@@ -1,5 +1,38 @@
+import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+
+const SITE_URL = "https://warden-six-rouge.vercel.app";
+
+export const metadata: Metadata = {
+  title: "Documentation",
+  description:
+    "Warden documentation — install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
+  alternates: {
+    canonical: `${SITE_URL}/docs`,
+  },
+  openGraph: {
+    title: "Documentation — Warden",
+    description:
+      "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
+    url: `${SITE_URL}/docs`,
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "Warden Documentation",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Documentation — Warden",
+    description:
+      "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
+    images: [`${SITE_URL}/og-image.png`],
+  },
+};
 
 const CARDS = [
   {

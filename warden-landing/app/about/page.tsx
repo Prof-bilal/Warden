@@ -1,5 +1,38 @@
+import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+
+const SITE_URL = "https://warden-six-rouge.vercel.app";
+
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "About Warden — an open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
+  alternates: {
+    canonical: `${SITE_URL}/about`,
+  },
+  openGraph: {
+    title: "About Warden — A Sandbox Runtime for MCP Servers",
+    description:
+      "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
+    url: `${SITE_URL}/about`,
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "About Warden",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About Warden — A Sandbox Runtime for MCP Servers",
+    description:
+      "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
+    images: [`${SITE_URL}/og-image.png`],
+  },
+};
 
 const REPO = "https://github.com/Prof-bilal/Warden";
 
@@ -34,7 +67,7 @@ export default function About() {
           <h2 className="text-[1.375rem] font-medium text-paper">Why not just use Docker?</h2>
           <p className="mt-3 leading-[1.65] text-muted">
             You can — Warden uses it as a fallback. But Docker is heavyweight
-            for “run one script with a restricted home directory”: slow cold
+            for &ldquo;run one script with a restricted home directory&rdquo;: slow cold
             starts, a daemon dependency, and a far bigger trust boundary than
             a namespace sandbox needs. Warden is a single static binary over
             OS-native primitives, so sandboxing a server costs almost nothing.

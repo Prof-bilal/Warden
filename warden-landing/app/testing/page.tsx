@@ -1,6 +1,39 @@
+import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+
+const SITE_URL = "https://warden-six-rouge.vercel.app";
+
+export const metadata: Metadata = {
+  title: "Cross-Platform Testing",
+  description:
+    "Test Warden on Linux, macOS, Windows, and Docker. All 10 core tests pass on every platform with identical security guarantees.",
+  alternates: {
+    canonical: `${SITE_URL}/testing`,
+  },
+  openGraph: {
+    title: "Cross-Platform Testing — Warden",
+    description:
+      "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
+    url: `${SITE_URL}/testing`,
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "Warden Cross-Platform Testing",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cross-Platform Testing — Warden",
+    description:
+      "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
+    images: [`${SITE_URL}/og-image.png`],
+  },
+};
 
 const PLATFORMS = [
   {
@@ -158,4 +191,3 @@ export default function TestingPage() {
     </main>
   );
 }
-

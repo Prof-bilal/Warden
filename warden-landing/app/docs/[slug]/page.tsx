@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import fs from "fs";
 import path from "path";
 import { notFound } from "next/navigation";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import MarkdownContent from "@/components/MarkdownContent";
+
+const SITE_URL = "https://warden-six-rouge.vercel.app";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
@@ -38,18 +41,43 @@ export function generateStaticParams() {
   return getAllDocSlugs().map((slug) => ({ slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const content = readDoc(params.slug);
-  if (!content) return { title: "Not Found — Warden" };
+  if (!content) return { title: "Not Found" };
 
   const firstLine = content.split("\n").find((l) => l.startsWith("# "));
   const title = firstLine
     ? firstLine.replace(/^#\s*/, "")
     : params.slug.replace(/-/g, " ");
 
+  const description = `Warden documentation: ${title}. Learn how to use Warden to sandbox MCP servers.`;
+
   return {
-    title: `${title} — Warden`,
-    description: `Warden documentation: ${title}`,
+    title,
+    description,
+    alternates: {
+      canonical: `${SITE_URL}/docs/${params.slug}`,
+    },
+    openGraph: {
+      title: `${title} — Warden`,
+      description,
+      url: `${SITE_URL}/docs/${params.slug}`,
+      type: "article",
+      images: [
+        {
+          url: `${SITE_URL}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: `${title} — Warden Documentation`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} — Warden`,
+      description,
+      images: [`${SITE_URL}/og-image.png`],
+    },
   };
 }
 
@@ -75,8 +103,37 @@ export default function DocPage({ params }: { params: { slug: string } }) {
     return h1 ? h1.replace(/^#\s*/, "") : s.replace(/-/g, " ");
   };
 
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    headline: title,
+    description: `Warden documentation: ${title}`,
+    url: `${SITE_URL}/docs/${params.slug}`,
+    author: {
+      "@type": "Person",
+      name: "Prof-bilal",
+      url: "https://github.com/Prof-bilal",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Warden",
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/icon.png`,
+      },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/docs/${params.slug}`,
+    },
+  };
+
   return (
     <main className="min-h-screen bg-ink-950">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       <Nav />
       <article className="mx-auto max-w-content px-6 pb-20 pt-16 md:pt-24">
         <div className="mx-auto max-w-[52rem]">
