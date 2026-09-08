@@ -4,11 +4,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 )
+
+func TestMain(m *testing.M) {
+	if os.Getenv("WARDEN_DOCKER_BRIDGE") == "" && runtime.GOOS == "linux" {
+		wd, _ := os.Getwd()
+		bridgeSrc := filepath.Join(wd, "..", "..", "..", "cmd", "warden")
+		if info, err := os.Stat(bridgeSrc); err == nil && info.IsDir() {
+			dir, err := os.MkdirTemp("", "warden-test-bridge-*")
+			if err == nil {
+				bridge := filepath.Join(dir, "warden")
+				cmd := exec.Command("go", "build", "-o", bridge, bridgeSrc)
+				cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+				if _, err := cmd.CombinedOutput(); err == nil {
+					os.Setenv("WARDEN_DOCKER_BRIDGE", bridge)
+				}
+			}
+		}
+	}
+	os.Exit(m.Run())
+}
 
 func requireDocker(t *testing.T) {
 	t.Helper()

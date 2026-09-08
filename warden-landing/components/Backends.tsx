@@ -1,12 +1,12 @@
 const BACKENDS = [
-  { platform: "Linux", mechanism: "bubblewrap (unprivileged namespaces)", status: "Ready" },
-  { platform: "macOS", mechanism: "sandbox-exec, with Docker fallback", status: "Ready" },
-  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Ready" },
+  { platform: "Linux", mechanism: "bubblewrap (unprivileged namespaces)", status: "Verified" },
+  { platform: "macOS", mechanism: "sandbox-exec, with Docker fallback", status: "Code-complete" },
+  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Code-complete" },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
-  Ready: "text-grant bg-grant-subtle",
-  "In progress": "text-progress bg-progress-subtle",
+  Verified: "text-grant bg-grant-subtle",
+  "Code-complete": "text-progress bg-progress-subtle",
 };
 
 export default function Backends() {
@@ -35,8 +35,10 @@ export default function Backends() {
         </div>
 
         <p className="mt-6 max-w-[36rem] text-[0.8125rem] leading-[1.6] text-muted/80">
-          Windows requires an elevated (Administrator) shell to attach the WFP
-          filters and ETW audit session. Without elevation, Warden fails closed
+          Linux is fully verified with escape tests passing on real hardware.
+          macOS and Windows are code-complete with unit tests; real-machine
+          verification requires the respective platforms. Windows requires an
+          elevated (Administrator) shell for WFP + ETW. Warden fails closed
           with a clear message rather than running unaudited. See the
           {" "}<a className="underline decoration-muted/40 hover:text-paper" href="/docs/install">install docs</a>{" "}
           and the {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK</a>{" "}

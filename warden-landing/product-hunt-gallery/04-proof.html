@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1270, height=760" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .content { flex-direction: column; gap: 14px; padding-top: 18px; }
+  h2 { font-size: 34px; }
+  .lead { font-size: 13px; line-height: 1.65; color: var(--muted); max-width: 760px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { border: 1px solid var(--ink-700); background: var(--ink-900); border-radius: 10px; padding: 10px 12px; }
+  .card b { font-size: 12px; color: var(--paper); }
+  .card span { display: block; margin-top: 4px; font-size: 12px; line-height: 1.55; color: var(--muted); }
+  .verified { font-size: 11px; line-height: 1.6; color: rgba(141,149,165,.9); margin-top: 6px; }
+  .granted { color: var(--grant); }
+  .progress { color: var(--progress); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><i></i> Warden</div>
+    <div class="badge">04 / 06 · Proof — by design, not by accident</div>
+  </div>
+
+  <div class="content">
+    <div>
+      <h2>It blocks attacks by design, not by accident.</h2>
+      <p class="lead">Six hard invariants, verified by the test suite — including escape tests that confirm the sandbox actually prevents the access it claims to block.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card"><b>Fail-closed by default</b><span>Refuses to start without a valid sandbox backend. No backend, no run.</span></div>
+      <div class="card"><b>Deny-by-default filesystem</b><span>Only explicitly granted paths are visible. Everything else is invisible.</span></div>
+      <div class="card"><b>Network at kernel level</b><span>Egress proxy blocks every hostname not in the policy. DNS after allowlist.</span></div>
+      <div class="card"><b>Environment filtering</b><span>Only env.allow names forwarded. Empty allowlist = empty environment.</span></div>
+      <div class="card"><b>Fail-closed on every platform</b><span>Linux, macOS, Windows, Docker — each requires its primitives or the run is refused.</span></div>
+      <div class="card"><b>Kernel resource limits</b><span>Wall-clock timeout, memory RSS sampling, kill-on-close via Job Objects.</span></div>
+    </div>
+
+    <div class="verified">
+      <span class="granted">Verified on Linux (Arch x86_64):</span> 7 escape tests pass — read grants accessible, unlisted paths invisible, writes outside grants denied, fail-closed without bwrap.
+      <br/><span class="progress">Code-complete, verification pending:</span> macOS (Seatbelt) and Windows (AppContainer + WFP + ETW) — unit tests pass; real-machine escape tests require their platforms.
+    </div>
+
+    <div class="disclaimer">Only claims backed by committed test fixtures and source code. Attack-simulation benchmarks are not included until a reproducible harness is committed. See ROADMAP.md.</div>
+  </div>
+</div>
+</body>
+</html>
