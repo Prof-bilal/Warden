@@ -1,7 +1,7 @@
 const BACKENDS = [
   { platform: "Linux", mechanism: "bubblewrap (unprivileged namespaces)", status: "Verified" },
   { platform: "macOS", mechanism: "sandbox-exec, with Docker fallback", status: "Code-complete" },
-  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Code-complete" },
+  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Verified" },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
@@ -35,10 +35,10 @@ export default function Backends() {
         </div>
 
         <p className="mt-6 max-w-[36rem] text-[0.8125rem] leading-[1.6] text-muted/80">
-          Linux is fully verified with escape tests passing on real hardware.
-          macOS and Windows are code-complete with unit tests; real-machine
-          verification requires the respective platforms. Windows requires an
-          elevated (Administrator) shell for WFP + ETW. Warden fails closed
+          Linux and Windows are fully verified with escape tests passing on
+          real hardware. macOS is code-complete with unit tests; real-machine
+          verification requires macOS hardware. Windows requires an elevated
+          (Administrator) shell for WFP + ETW. Warden fails closed
           with a clear message rather than running unaudited. See the
           {" "}<a className="underline decoration-muted/40 hover:text-paper" href="/docs/install">install docs</a>{" "}
           and the {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK</a>{" "}

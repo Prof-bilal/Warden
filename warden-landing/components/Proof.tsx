@@ -64,9 +64,8 @@ export default function Proof() {
           </p>
           <p className="mt-3 text-[0.8125rem] leading-[1.6] text-muted">
             <span className="text-progress">Code-complete, verification pending:</span>{" "}
-            macOS (Seatbelt) and Windows (AppContainer + WFP + ETW) backends
-            implemented with unit tests; real-machine escape tests require their
-            respective platforms.
+            macOS (Seatbelt) — unit tests pass; real-machine escape tests require
+            macOS hardware.
           </p>
         </div>
 

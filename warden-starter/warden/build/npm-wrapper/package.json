@@ -1,6 +1,6 @@
 {
   "name": "warden-sandbox-cli",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "npm wrapper for the Warden sandbox CLI",
   "bin": {
     "warden": "./bin/warden"

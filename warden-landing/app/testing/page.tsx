@@ -6,7 +6,7 @@ const PLATFORMS = [
   {
     name: "Linux",
     backend: "BubbleWrap (bwrap)",
-    status: "Ready",
+    status: "Verified",
     color: "text-green-400",
     commands: [
       { label: "Install", cmd: "sudo apt install bubblewrap strace" },
@@ -17,8 +17,8 @@ const PLATFORMS = [
   {
     name: "macOS",
     backend: "Seatbelt (sandbox-exec)",
-    status: "Ready",
-    color: "text-green-400",
+    status: "Code-complete",
+    color: "text-yellow-400",
     commands: [
       { label: "Install", cmd: "No installation needed (built into macOS)" },
       { label: "Build", cmd: "GOOS=darwin go build -o warden-darwin ./cmd/warden" },
@@ -28,7 +28,7 @@ const PLATFORMS = [
   {
     name: "Windows",
     backend: "AppContainer + WFP",
-    status: "Ready",
+    status: "Verified",
     color: "text-green-400",
     commands: [
       { label: "Install", cmd: "Windows 10/11 Pro or Enterprise required" },
@@ -39,7 +39,7 @@ const PLATFORMS = [
   {
     name: "Docker",
     backend: "Container (all platforms)",
-    status: "Ready",
+    status: "Verified",
     color: "text-green-400",
     commands: [
       { label: "Install", cmd: "Install Docker Desktop" },
