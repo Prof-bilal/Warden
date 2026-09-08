@@ -25,6 +25,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 	"github.com/warden-sandbox/warden/internal/version"
 )
 
@@ -141,7 +142,12 @@ func cmdRun(args []string) {
 
 	exitCode, err := sandbox.Run(cmd, p, backend)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+		var ref sandboxerr.RefuseToRun
+		if errors.As(err, &ref) {
+			fmt.Fprintln(os.Stderr, err)
+		} else {
+			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+		}
 		os.Exit(1)
 	}
 	os.Exit(exitCode)
@@ -195,7 +201,12 @@ func cmdRunWithApproval(policyPath, backend string, cmdTail []string, timeout ti
 			continue
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			var ref sandboxerr.RefuseToRun
+			if errors.As(err, &ref) {
+				fmt.Fprintln(os.Stderr, err)
+			} else {
+				fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
+			}
 			os.Exit(1)
 		}
 		os.Exit(exitCode)

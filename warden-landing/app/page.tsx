@@ -3,6 +3,7 @@ import Hero from "@/components/Hero";
 import Problem from "@/components/Problem";
 import HowItWorks from "@/components/HowItWorks";
 import Backends from "@/components/Backends";
+import Proof from "@/components/Proof";
 import DemoVideo from "@/components/DemoVideo";
 import Windows from "@/components/Windows";
 import Compatibility from "@/components/Compatibility";
@@ -17,6 +18,7 @@ export default function Home() {
       <Problem />
       <HowItWorks />
       <Backends />
+      <Proof />
       <DemoVideo />
       <Windows />
       <Compatibility />

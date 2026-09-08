@@ -246,7 +246,10 @@ func TestRunFailsLoudWithoutBwrap(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when bwrap is missing")
 	}
-	if !strings.Contains(err.Error(), "bwrap not found") {
-		t.Errorf("error should name the missing bwrap: %v", err)
+	if !strings.Contains(err.Error(), "sandbox backend unavailable") {
+		t.Errorf("error should report sandbox backend unavailable: %v", err)
+	}
+	if !strings.Contains(err.Error(), "fails closed by design") {
+		t.Errorf("error should explain fails closed by design: %v", err)
 	}
 }

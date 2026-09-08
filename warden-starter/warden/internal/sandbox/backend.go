@@ -12,6 +12,7 @@ import (
 
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/sandbox/docker"
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 	windowsbackend "github.com/warden-sandbox/warden/internal/sandbox/windows"
 )
 
@@ -78,7 +79,7 @@ func detect() (string, error) {
 		if dockerAvailable() {
 			return BackendDocker, nil
 		}
-		return "", fmt.Errorf("no sandbox backend available on linux: need bwrap (preferred) or docker; refusing to run unsandboxed")
+		return "", sandboxerr.RefuseToRun{Reason: "Warden isn't running with bubblewrap (bwrap) or Docker available on this Linux host"}
 	case "darwin":
 		if seatbeltAvailable() {
 			return BackendSeatbelt, nil
@@ -86,7 +87,7 @@ func detect() (string, error) {
 		if dockerAvailable() {
 			return BackendDocker, nil
 		}
-		return "", fmt.Errorf("no sandbox backend available on macOS: need sandbox-exec (preferred) or docker; refusing to run unsandboxed")
+		return "", sandboxerr.RefuseToRun{Reason: "Warden isn't running with sandbox-exec or Docker available on this macOS host"}
 	case "windows":
 		// AppContainer is the OS-native primitive; Docker is only a fallback.
 		if windowsAvailable() {
@@ -95,12 +96,12 @@ func detect() (string, error) {
 		if dockerAvailable() {
 			return BackendDocker, nil
 		}
-		return "", fmt.Errorf("no sandbox backend available on Windows: need AppContainer support (preferred) or docker; refusing to run unsandboxed")
+		return "", sandboxerr.RefuseToRun{Reason: "Warden isn't running with administrator privileges"}
 	default:
 		if dockerAvailable() {
 			return BackendDocker, nil
 		}
-		return "", fmt.Errorf("no sandbox backend available on %s: need docker; refusing to run unsandboxed", runtime.GOOS)
+		return "", sandboxerr.RefuseToRun{Reason: fmt.Sprintf("no sandbox backend is available on %s", runtime.GOOS)}
 	}
 }
 

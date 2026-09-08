@@ -22,6 +22,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 )
 
 // DefaultImage is used when WARDEN_DOCKER_IMAGE is unset. Host /usr (and
@@ -164,10 +165,10 @@ func isUnder(path, dir string) bool {
 // Run starts cmd inside a Docker container built from the policy.
 func Run(cmd []string, p policy.Policy) (int, error) {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return 0, fmt.Errorf("docker not found: %w (required for the Docker sandbox backend; see ARCHITECTURE.md)", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "Docker is not installed on this host"}
 	}
 	if !Available() {
-		return 0, fmt.Errorf("docker daemon is not usable (docker info failed); required for the Docker sandbox backend")
+		return 0, sandboxerr.RefuseToRun{Reason: "the Docker daemon is not running or not reachable on this host"}
 	}
 	logFile, _, err := audit.OpenDefault()
 	if err != nil {
@@ -191,10 +192,10 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 		return 0, err
 	}
 	if _, err := exec.LookPath("docker"); err != nil {
-		return 0, fmt.Errorf("docker not found: %w (required for the Docker sandbox backend; see ARCHITECTURE.md)", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "Docker is not installed on this host"}
 	}
 	if !Available() {
-		return 0, fmt.Errorf("docker daemon is not usable (docker info failed); required for the Docker sandbox backend")
+		return 0, sandboxerr.RefuseToRun{Reason: "the Docker daemon is not running or not reachable on this host"}
 	}
 	logFile, _, err := audit.OpenDefault()
 	if err != nil {
@@ -207,7 +208,7 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
 	dockerBin, err := exec.LookPath("docker")
 	if err != nil {
-		return 0, fmt.Errorf("docker not found: %w", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "Docker is not installed on this host"}
 	}
 	image := Image()
 	if err := ensureImage(dockerBin, image); err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 	"golang.org/x/sys/windows"
 )
 
@@ -15,7 +16,9 @@ import (
 // failClose returns a fatal error for the security gate: the message must
 // make clear that Warden refused to run rather than weaken enforcement.
 func failClose(what string, err error) error {
-	return fmt.Errorf("refusing to run: %s failed: %w (Warden never falls back to an unsandboxed process)", what, err)
+	return sandboxerr.RefuseToRun{
+		Reason: fmt.Sprintf("the %s component failed (%v)", what, err),
+	}
 }
 
 // newUnicodeString converts a Go string to a NUL-terminated UTF-16 buffer

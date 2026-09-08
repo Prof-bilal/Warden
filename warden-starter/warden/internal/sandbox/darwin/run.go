@@ -17,6 +17,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 )
 
 // LimitExceededError reports an enforced policy limit.
@@ -37,7 +38,7 @@ func (e *LimitExceededError) Error() string {
 // allow/deny decisions are still recorded by the egress proxy.
 func Run(cmd []string, p policy.Policy) (int, error) {
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
-		return 0, fmt.Errorf("sandbox-exec not found: %w (required for the Seatbelt sandbox backend; see ARCHITECTURE.md)", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "sandbox-exec is not installed on this macOS host"}
 	}
 	logFile, _, err := audit.OpenDefault()
 	if err != nil {
@@ -70,7 +71,7 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
 	sandboxExec, err := exec.LookPath("sandbox-exec")
 	if err != nil {
-		return 0, fmt.Errorf("sandbox-exec not found: %w", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "sandbox-exec is not installed on this macOS host"}
 	}
 
 	eg, err := proxy.Start(p.Network.Allow, logger)

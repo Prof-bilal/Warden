@@ -21,6 +21,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 )
 
 // runtimeBase are read-only mounts every sandboxed process gets, because a
@@ -138,7 +139,7 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 	// Check the core backend before opening persistent state so a missing
 	// bwrap always reports the real, actionable failure.
 	if _, err := exec.LookPath("bwrap"); err != nil {
-		return 0, fmt.Errorf("bwrap not found: %w (required for the Linux sandbox backend; see ARCHITECTURE.md)", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "bubblewrap (bwrap) is not installed on this Linux host"}
 	}
 	logFile, _, err := audit.OpenDefault()
 	if err != nil {
@@ -175,7 +176,7 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
-		return 0, fmt.Errorf("bwrap not found: %w (required for the Linux sandbox backend; see ARCHITECTURE.md)", err)
+		return 0, sandboxerr.RefuseToRun{Reason: "bubblewrap (bwrap) is not installed on this Linux host"}
 	}
 
 	args, err := BuildBwrapArgs(cmd, p)

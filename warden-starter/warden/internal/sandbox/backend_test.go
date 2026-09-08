@@ -1,16 +1,20 @@
 package sandbox
 
 import (
+	"errors"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
 )
 
 func TestResolveAutoPrefersNative(t *testing.T) {
 	name, err := Resolve("auto")
 	if err != nil {
 		// On exotic hosts with neither native nor docker this is correct.
-		if !strings.Contains(err.Error(), "refusing to run unsandboxed") {
+		var ref sandboxerr.RefuseToRun
+		if !errors.As(err, &ref) {
 			t.Fatalf("Resolve(auto) = %v", err)
 		}
 		return
@@ -105,6 +109,29 @@ func TestResolveAliases(t *testing.T) {
 	if runtime.GOOS == "windows" && windowsAvailable() {
 		if name, err := Resolve("appcontainer"); err != nil || name != BackendWindows {
 			t.Fatalf("Resolve(appcontainer) = %q, %v", name, err)
+		}
+	}
+}
+
+func TestRefusalMessageContainsFailClosedByDesign(t *testing.T) {
+	// This test ensures the "fails closed by design" framing cannot be
+	// silently removed in a future edit. Every RefuseToRun error must
+	// explain that Warden's refusal is intentional.
+	reasons := []string{
+		"Warden isn't running with administrator privileges",
+		"Warden isn't running with bubblewrap (bwrap) or Docker available on this Linux host",
+		"Warden isn't running with sandbox-exec or Docker available on this macOS host",
+		"Docker is not installed on this host",
+		"the Docker daemon is not running or not reachable on this host",
+	}
+	for _, reason := range reasons {
+		err := sandboxerr.RefuseToRun{Reason: reason}
+		msg := err.Error()
+		if !strings.Contains(msg, "fails closed by design") {
+			t.Errorf("RefuseToRun(%q) missing 'fails closed by design':\n%s", reason, msg)
+		}
+		if !strings.Contains(msg, "✗ Warden refused to start") {
+			t.Errorf("RefuseToRun(%q) missing '✗ Warden refused to start':\n%s", reason, msg)
 		}
 	}
 }
