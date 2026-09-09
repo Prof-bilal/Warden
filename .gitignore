@@ -1,0 +1,28 @@
+# Marketing folder (not pushed to GitHub)
+marketing/
+
+# Node modules
+node_modules/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Go build binary
+warden-starter/warden/warden

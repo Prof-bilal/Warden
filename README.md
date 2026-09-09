@@ -76,6 +76,37 @@ a daemon dependency, and a much bigger trust boundary than a namespace
 sandbox needs. Warden aims to be a single static binary with near-zero
 overhead, so sandboxing an MCP server is no harder than running it.
 
+## Prerequisites
+
+### Linux
+
+`strace` is required for `warden trace` mode (generates starter policies by watching system calls).
+
+```bash
+# Arch Linux
+sudo pacman -S strace
+
+# Ubuntu/Debian
+sudo apt install strace
+
+# Fedora
+sudo dnf install strace
+```
+
+Other Linux dependencies:
+- `bubblewrap` — sandbox backend
+- `Node.js` or `Python` — to run MCP servers
+
+### macOS
+
+- `sandbox-exec` (built-in) — sandbox backend
+- Xcode Command Line Tools: `xcode-select --install`
+
+### Windows
+
+- `AppContainer` support (Windows 10+)
+- Elevated shell (Administrator) for network filtering
+
 ## Contributing
 
 This project is just getting started — see [ROADMAP.md](./ROADMAP.md) for
