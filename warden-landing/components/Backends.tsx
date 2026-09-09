@@ -24,7 +24,7 @@ export default function Backends() {
 
         <div className="mt-10 divide-y divide-ink-800 border-y border-ink-800">
           {BACKENDS.map((b) => (
-            <div key={b.platform} className="grid grid-cols-[8rem_1fr_7rem] items-center gap-4 py-4">
+            <div key={b.platform} className="flex flex-col gap-2 py-4 md:grid md:grid-cols-[8rem_1fr_7rem] md:items-center md:gap-4">
               <span className="text-[0.9375rem] text-paper">{b.platform}</span>
               <span className="font-mono text-[0.8125rem] text-muted">{b.mechanism}</span>
               <span className={`w-fit rounded-sm px-2.5 py-1 text-[0.75rem] ${STATUS_STYLE[b.status]}`}>

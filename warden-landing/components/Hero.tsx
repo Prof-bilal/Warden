@@ -37,7 +37,7 @@ export default function Hero() {
       />
 
       {/* 1280px max-width container — InvisibleTech page model */}
-      <div className="relative mx-auto max-w-[1280px] px-6 pb-16 pt-10 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
+      <div className="relative mx-auto max-w-[1280px] px-4 pb-12 pt-8 sm:px-6 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
         {/* ── Eyebrow: 6px dot + Apkpraktikal-style mono small caps, wide tracking ── */}
         <div className="flex items-center gap-2.5">
           <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-blueprint" aria-hidden />
@@ -50,7 +50,7 @@ export default function Hero() {
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
           {/* Left: Two-tone headline — Apk Galeria → Newsreader, negative tracking */}
           <div>
-            <h1 className="hero-display max-w-[900px] text-[2.6rem] font-normal leading-[0.95] tracking-[-0.02em] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
+            <h1 className="hero-display max-w-[900px] text-[2rem] font-normal leading-[0.95] tracking-[-0.02em] sm:text-[2.6rem] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
               {/* first phrase in paper (primary), second phrase in muted — the InvisibleTech call-and-response */}
               <span className="block text-paper">
                 Your MCP servers
