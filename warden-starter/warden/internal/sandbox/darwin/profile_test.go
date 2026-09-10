@@ -29,7 +29,7 @@ func TestBuildSeatbeltProfileDenyDefaultAndGrants(t *testing.T) {
 		`(allow file-read* (subpath "/allowed/read"))`,
 		`(allow file-read* (subpath "/allowed/write"))`,
 		`(allow file-write* (subpath "/allowed/write"))`,
-		`(allow network-outbound (remote ip "127.0.0.1:18080"))`,
+		`(allow network-outbound (remote ip "localhost:18080"))`,
 		`(allow file-read* (literal "/tmp/warden-proxy/egress.sock"))`,
 		`(allow file-write* (literal "/tmp/warden-proxy/egress.sock"))`,
 	} {

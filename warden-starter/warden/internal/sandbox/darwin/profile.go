@@ -100,9 +100,9 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	}
 
 	b.WriteString("; Egress: only the local proxy bridge and its Unix socket\n")
-	b.WriteString("(allow network-outbound (remote ip \"127.0.0.1:18080\"))\n")
-	b.WriteString("(allow network-bind (local ip \"127.0.0.1:18080\"))\n")
-	b.WriteString("(allow network-inbound (local ip \"127.0.0.1:18080\"))\n")
+	b.WriteString("(allow network-outbound (remote ip \"localhost:18080\"))\n")
+	b.WriteString("(allow network-bind (local ip \"localhost:18080\"))\n")
+	b.WriteString("(allow network-inbound (local ip \"localhost:18080\"))\n")
 	b.WriteString("(allow network-outbound (remote unix-socket))\n")
 	writeLiteralAllow(&b, "file-read*", socketPath)
 	writeLiteralAllow(&b, "file-write*", socketPath)

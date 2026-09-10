@@ -73,6 +73,20 @@ jobs:
             if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
           }
 
+  # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
+  # escape and lifecycle tests execute for real instead of skipping.
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -v -tags darwin ./internal/sandbox/darwin/...
+      - run: go test ./...
+
   cross-build:
     runs-on: ubuntu-latest
     strategy:
