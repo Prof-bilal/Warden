@@ -278,3 +278,10 @@ body {
   margin-top: 0.35em;
   margin-bottom: 0;
 }
+
+/* ── Docs sidebar ────────────────────────────────────────────── */
+
+.docs-sidebar {
+  border-right: 1px solid #1e242e;
+  padding-right: 1.5rem;
+}

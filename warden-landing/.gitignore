@@ -6,3 +6,7 @@ out
 *.tsbuildinfo
 next-env.d.ts
 product-hunt-gallery/
+.freebuff
+.cursor
+.codex
+.claude

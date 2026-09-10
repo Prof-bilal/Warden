@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Github, Star } from "lucide-react";
 import SandboxVisualizer from "@/components/SandboxVisualizer";
+import Eyebrow from "@/components/Eyebrow";
 
 const INSTALL_CMD =
   "curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64";
@@ -39,12 +40,7 @@ export default function Hero() {
       {/* 1280px max-width container — InvisibleTech page model */}
       <div className="relative mx-auto max-w-[1280px] px-4 pb-12 pt-8 sm:px-6 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
         {/* ── Eyebrow: 6px dot + Apkpraktikal-style mono small caps, wide tracking ── */}
-        <div className="flex items-center gap-2.5">
-          <span className="h-[6px] w-[6px] shrink-0 rounded-full bg-blueprint" aria-hidden />
-          <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-muted md:text-[0.75rem] md:tracking-[0.12em]">
-            SANDBOX RUNTIME — FOR MCP SERVERS
-          </span>
-        </div>
+        <Eyebrow>SANDBOX RUNTIME — FOR MCP SERVERS</Eyebrow>
 
         {/* ── Two-column editorial rhythm: headline ~55% / intro ~45%, gap 24-64px ── */}
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
@@ -83,7 +79,7 @@ export default function Hero() {
             <div className="mt-8 flex flex-col gap-3">
               <button
                 onClick={handleNpmCopy}
-                className="group flex w-full items-center justify-between gap-4 rounded-full border border-ink-600 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-paper transition-colors hover:border-ink-500 hover:bg-ink-800 md:px-5 md:py-3 md:text-[0.875rem]"
+                className="group flex min-w-0 w-full items-center justify-between gap-4 overflow-hidden rounded-full border border-ink-600 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-paper transition-colors hover:border-ink-500 hover:bg-ink-800 md:px-5 md:py-3 md:text-[0.875rem]"
                 aria-label="Copy npm install command"
               >
                 <span className="truncate">
@@ -99,7 +95,7 @@ export default function Hero() {
 
               <button
                 onClick={handleCopy}
-                className="group flex w-full items-center justify-between gap-4 rounded-full border border-ink-700 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-muted transition-colors hover:border-ink-600 hover:text-paper md:px-5 md:py-3 md:text-[0.875rem]"
+                className="group flex min-w-0 w-full items-center justify-between gap-4 overflow-hidden rounded-full border border-ink-700 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-muted transition-colors hover:border-ink-600 hover:text-paper md:px-5 md:py-3 md:text-[0.875rem]"
                 aria-label="Copy curl install command"
               >
                 <span className="truncate">
@@ -116,6 +112,37 @@ export default function Hero() {
               <p className="px-1 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-muted/80">
                 Works with any MCP client · No daemon · Linux today, macOS next
               </p>
+            </div>
+
+            {/* ProductHunt + GitHub badges */}
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <a
+                href="https://www.producthunt.com/products/warden-6?utm_source=other&utm_medium=social"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2.5 rounded-full border border-ink-700 bg-ink-900 px-4 py-2 text-[0.8125rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800"
+              >
+                <span className="text-base">🏷️</span>
+                <span className="leading-tight">
+                  <span className="block text-[0.625rem] uppercase tracking-[0.08em] text-muted">
+                    Featured on
+                  </span>
+                  <span className="font-medium">Product Hunt</span>
+                </span>
+              </a>
+              <a
+                href="https://github.com/Prof-bilal/Warden"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-ink-700 bg-ink-900 px-4 py-2 text-[0.8125rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800"
+              >
+                <Github size={14} className="text-muted" />
+                <span className="font-medium">Warden</span>
+                <span className="flex items-center gap-1 rounded-full bg-ink-800 px-2 py-0.5 text-[0.6875rem] text-muted">
+                  <Star size={11} />
+                  Star
+                </span>
+              </a>
             </div>
           </div>
         </div>

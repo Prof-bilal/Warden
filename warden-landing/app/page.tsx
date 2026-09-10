@@ -5,7 +5,7 @@ import Problem from "@/components/Problem";
 import HowItWorks from "@/components/HowItWorks";
 import Backends from "@/components/Backends";
 import Proof from "@/components/Proof";
-import DemoVideo from "@/components/DemoVideo";
+import Testimonials from "@/components/Testimonials";
 import Windows from "@/components/Windows";
 import Compatibility from "@/components/Compatibility";
 import Cta from "@/components/Cta";
@@ -83,7 +83,7 @@ export default function Home() {
       <HowItWorks />
       <Backends />
       <Proof />
-      <DemoVideo />
+      <Testimonials />
       <Windows />
       <Compatibility />
       <Cta />

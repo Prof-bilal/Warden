@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import DocsSidebar from "@/components/DocsSidebar";
 
 const SITE_URL = "https://warden-six-rouge.vercel.app";
 
@@ -106,35 +107,55 @@ export default function Docs() {
   return (
     <main className="min-h-screen bg-ink-950">
       <Nav />
-      <section className="mx-auto max-w-content px-6 pb-20 pt-16 md:pt-24">
-        <div className="max-w-[38rem]">
-          <h1 className="text-[2.5rem] font-medium leading-[1.08] tracking-[-0.02em] text-paper">
-            Docs.
-          </h1>
-          <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
-            Install it, run your first sandboxed server, then go deep on the
-            policy schema. Start with Install and Quickstart — in that order.
-          </p>
-        </div>
+      <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
+        {/* Breadcrumb — icons.devigner.cc style */}
+        <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
+          <span className="hover:text-paper transition-colors">
+            <a href="/">Warden</a>
+          </span>
+          <span className="mx-1.5 text-ink-600">/</span>
+          <span className="text-paper">Docs</span>
+        </nav>
 
-        <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">
-          {CARDS.map((c) => (
-            <a
-              key={c.title}
-              href={c.href}
-              className="group bg-ink-950 p-7 transition-colors hover:bg-ink-900"
-            >
-              <h2 className="text-[1.125rem] font-medium text-paper">
-                {c.title}
-                <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5">
-                  →
-                </span>
-              </h2>
-              <p className="mt-2 text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
-            </a>
-          ))}
+        {/* Sidebar + Content layout */}
+        <div className="flex gap-12">
+          {/* Sidebar */}
+          <aside className="hidden w-56 shrink-0 lg:block">
+            <div className="sticky top-24">
+              <DocsSidebar />
+            </div>
+          </aside>
+
+          {/* Main content */}
+          <article className="min-w-0 flex-1">
+            <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+              Docs.
+            </h1>
+            <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
+              Install it, run your first sandboxed server, then go deep on the
+              policy schema. Start with Install and Quickstart — in that order.
+            </p>
+
+            <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">
+              {CARDS.map((c) => (
+                <a
+                  key={c.title}
+                  href={c.href}
+                  className="group bg-ink-950 p-7 transition-colors hover:bg-ink-900"
+                >
+                  <h2 className="text-[1.125rem] font-medium text-paper">
+                    {c.title}
+                    <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5">
+                      →
+                    </span>
+                  </h2>
+                  <p className="mt-2 text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
+                </a>
+              ))}
+            </div>
+          </article>
         </div>
-      </section>
+      </div>
       <Footer />
     </main>
   );
