@@ -1,18 +1,32 @@
-// Profile generation is pure Go, so these tests run on every OS (they do
-// not need sandbox-exec; the darwin-tagged integration tests exercise the
-// real backend).
+// Profile generation is pure Go, so these tests run on every OS that
+// shares POSIX path semantics (they do not need sandbox-exec; the
+// darwin-tagged integration tests exercise the real backend). The Seatbelt
+// profile requires POSIX-absolute paths by design, so the path-shaped test
+// cases cannot run on Windows.
 
 package darwin
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 )
 
+// skipOnWindows reports why the path-shaped profile tests cannot run there:
+// filepath.IsAbs("/usr/bin/true") is false on Windows, so the constructor's
+// POSIX-absolute requirement (correct for Seatbelt) reads as an error.
+func skipOnWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Seatbelt profiles use POSIX-absolute paths; not meaningful on Windows")
+	}
+}
+
 func TestBuildSeatbeltProfileDenyDefaultAndGrants(t *testing.T) {
+	skipOnWindows(t)
 	readDir := "/allowed/read"
 	writeDir := "/allowed/write"
 	socket := "/tmp/warden-proxy/egress.sock"
@@ -49,6 +63,7 @@ func TestBuildSeatbeltProfileDenyDefaultAndGrants(t *testing.T) {
 // Seatbelt only accepts * or localhost as the host part of a network
 // address, so no generated rule may contain an IP literal.
 func TestBuildSeatbeltProfileNoIPLiterals(t *testing.T) {
+	skipOnWindows(t)
 	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, "/tmp/warden-proxy/egress.sock")
 	if err != nil {
 		t.Fatal(err)
@@ -66,6 +81,7 @@ func TestBuildSeatbeltProfileNoIPLiterals(t *testing.T) {
 // made the sandbox abort the target before any policy denial could be
 // observed (and made denial tests pass for the wrong reason).
 func TestBuildSeatbeltProfileStartupPrimitives(t *testing.T) {
+	skipOnWindows(t)
 	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, "/tmp/warden-proxy/egress.sock")
 	if err != nil {
 		t.Fatal(err)
@@ -89,6 +105,7 @@ func TestBuildSeatbeltProfileStartupPrimitives(t *testing.T) {
 // TestBuildSeatbeltProfileMapsWriteGrantImages: a target binary inside a
 // write grant (e.g. a built binary in the project dir) must be mappable.
 func TestBuildSeatbeltProfileMapsWriteGrantImages(t *testing.T) {
+	skipOnWindows(t)
 	writeDir := "/allowed/write"
 	profile, err := BuildSeatbeltProfile([]string{writeDir + "/server"}, policy.Policy{
 		Filesystem: policy.Filesystem{Write: []string{writeDir}},
@@ -102,6 +119,7 @@ func TestBuildSeatbeltProfileMapsWriteGrantImages(t *testing.T) {
 }
 
 func TestBuildSeatbeltProfileRejectsConflicts(t *testing.T) {
+	skipOnWindows(t)
 	dir := "/tmp/conflict"
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
@@ -116,6 +134,7 @@ func TestBuildSeatbeltProfileRejectsConflicts(t *testing.T) {
 }
 
 func TestBuildSeatbeltProfileRejectsWriteIntoRuntimeBase(t *testing.T) {
+	skipOnWindows(t)
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
 			Write: []string{"/usr/local"},
@@ -128,6 +147,7 @@ func TestBuildSeatbeltProfileRejectsWriteIntoRuntimeBase(t *testing.T) {
 }
 
 func TestBuildSeatbeltProfileRequiresAbsoluteSocket(t *testing.T) {
+	skipOnWindows(t)
 	_, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, "relative.sock")
 	if err == nil {
 		t.Fatal("expected absolute socket error")
@@ -135,6 +155,7 @@ func TestBuildSeatbeltProfileRequiresAbsoluteSocket(t *testing.T) {
 }
 
 func TestBuildSeatbeltProfileIncludesExeParent(t *testing.T) {
+	skipOnWindows(t)
 	exe := "/opt/custom/bin/server"
 	profile, err := BuildSeatbeltProfile([]string{exe}, policy.Policy{}, "/tmp/warden/egress.sock")
 	if err != nil {

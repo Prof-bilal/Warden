@@ -42,29 +42,93 @@ func TestMain(m *testing.M) {
 }
 
 // requireSandboxExec proves sandbox-exec can actually run a target process
-// under a real profile. It uses the production profile generator, executes
-// a target that prints a marker, and FAILS (never skips) when the host
-// cannot run sandboxed targets — a skip here is what made previous CI green
-// while every real assertion was silently untested.
+// through the production profile and bridge chain. It FAILS (never skips)
+// when the host cannot run sandboxed targets — a skip here is what made
+// previous CI green while every real assertion was silently untested.
+//
+// The failure path runs a diagnostic ladder so a red run explains itself:
+//
+//	A. a minimal hand-written profile executing /bin/true directly (isolates
+//	   sandbox-exec/host from the generated profile),
+//	B. the production profile executing /bin/true directly, no bridge (so a
+//	   failure here is the generated profile, not the bridge or env filter),
+//	C. the full Run() path (generated profile + in-process bridge + sh),
+//
+// and on any failure dumps recent kernel sandbox denials from the unified
+// log.
 func requireSandboxExec(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
 		t.Fatalf("sandbox-exec not installed: %v", err)
 	}
+
+	// A: minimal permissive profile, direct exec, no bridge.
+	minProfile := "(version 1)\n(deny default)\n" +
+		"(allow process-exec)\n(allow process-fork)\n" +
+		"(allow file-read* (subpath \"/\"))\n" +
+		"(allow file-write* (subpath \"/dev/null\"))\n"
+	minPath := filepath.Join(t.TempDir(), "minimal.sb")
+	if err := os.WriteFile(minPath, []byte(minProfile), 0o644); err != nil {
+		t.Fatalf("write minimal profile: %v", err)
+	}
+	if out, err := exec.Command("sandbox-exec", "-f", minPath, "/bin/true").CombinedOutput(); err != nil {
+		t.Fatalf("preflight A: sandbox-exec cannot exec /bin/true under a minimal profile: %v\noutput:\n%s\n%s",
+			err, out, sandboxDenialLog())
+	}
+
+	// B: production profile, direct exec, no bridge, no env filtering.
+	// The socket path is a fixture string; no proxy is started for this step.
+	tmp := t.TempDir()
+	profile, err := BuildSeatbeltProfile([]string{"/bin/true"}, policy.Policy{}, filepath.Join(tmp, "egress.sock"))
+	if err != nil {
+		t.Fatalf("preflight B: build profile: %v", err)
+	}
+	profilePath := filepath.Join(tmp, "production.sb")
+	if err := os.WriteFile(profilePath, []byte(profile), 0o644); err != nil {
+		t.Fatalf("write production profile: %v", err)
+	}
+	if out, err := exec.Command("sandbox-exec", "-f", profilePath, "/bin/true").CombinedOutput(); err != nil {
+		t.Fatalf("preflight B: production profile cannot exec /bin/true directly: %v\nprofile:\n%s\noutput:\n%s\n%s",
+			err, profile, out, sandboxDenialLog())
+	}
+
+	// C: the real chain — generated profile, in-process bridge,
+	// marker-printing target. This is the failure mode that used to be
+	// invisible (silent child death, exit -1).
 	dir := t.TempDir()
 	script := writeScript(t, dir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\n")
 	code, out, err := runSandboxed(t, []string{"/bin/sh", script}, policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{dir}},
 	})
 	if err != nil {
-		t.Fatalf("sandbox preflight: sandbox-exec failed to run a target: %v\noutput:\n%s", err, out)
+		t.Fatalf("preflight C: full Run() chain failed: %v\noutput:\n%s\n%s", err, out, sandboxDenialLog())
 	}
 	if code != 0 {
-		t.Fatalf("sandbox preflight: target exited %d, want 0\noutput:\n%s", code, out)
+		t.Fatalf("preflight C: target exited %d, want 0\noutput:\n%s\n%s", code, out, sandboxDenialLog())
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("sandbox preflight: startup marker missing — target never really ran\noutput:\n%s", out)
+		t.Fatalf("preflight C: startup marker missing — target never really ran\noutput:\n%s\n%s", out, sandboxDenialLog())
 	}
+}
+
+// sandboxDenialLog returns recent kernel sandbox denial messages, or a
+// note that the log could not be read. It is diagnostics for test output,
+// never an assertion.
+func sandboxDenialLog() string {
+	out, err := exec.Command("log", "show", "--last", "30s",
+		"--predicate", `eventMessage CONTAINS "Sandbox"`,
+		"--style", "compact").Output()
+	if err != nil {
+		return fmt.Sprintf("(unified log unavailable: %v)", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) > 40 {
+		lines = append(lines[:40], "...(truncated)")
+	}
+	if len(lines) == 1 && lines[0] == "" {
+		return "(no sandbox denial messages in the last 30s)"
+	}
+	return "kernel sandbox log (last 30s):\n" + strings.Join(lines, "\n")
 }
 
 const startupMarker = "WARDEN_SANDBOX_UP"
