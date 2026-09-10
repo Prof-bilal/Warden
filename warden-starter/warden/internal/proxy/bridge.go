@@ -10,6 +10,33 @@ import (
 	"syscall"
 )
 
+// ParseBridgeArgs parses __proxy-bridge command-line arguments
+// (--socket PATH --listen ADDR -- target...) using the same rules as the
+// warden binary's cmdProxyBridge. It exists so the in-process bridge (used
+// by the darwin integration tests via TestMain) and the CLI entry point
+// cannot drift apart.
+func ParseBridgeArgs(args []string) (socket, listen string, target []string, err error) {
+	i := 0
+	for i < len(args) && args[i] != "--" {
+		if i+1 >= len(args) {
+			return "", "", nil, fmt.Errorf("flag requires a value")
+		}
+		switch args[i] {
+		case "--socket":
+			socket = args[i+1]
+		case "--listen":
+			listen = args[i+1]
+		default:
+			return "", "", nil, fmt.Errorf("unknown flag %q", args[i])
+		}
+		i += 2
+	}
+	if socket == "" || listen == "" || i == len(args) || i+1 == len(args) {
+		return "", "", nil, fmt.Errorf("missing socket, listen address, or command")
+	}
+	return socket, listen, args[i+1:], nil
+}
+
 // RunBridge runs inside the sandbox network namespace.  It exposes a
 // loopback-only HTTP proxy endpoint and forwards every accepted connection to
 // the host-side policy proxy over its bind-mounted Unix socket.  The target

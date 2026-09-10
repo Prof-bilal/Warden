@@ -20,8 +20,32 @@ var runtimeReadPaths = []string{
 	"/System",
 	"/Library/Frameworks",
 	"/Library/Apple",
+	"/opt/homebrew",
+	"/usr/local",
 	"/private/var/db/dyld",
 	"/dev",
+	"/private/tmp",
+	"/tmp",
+	"/var/folders",
+	"/private/var/folders",
+}
+
+// exeImagePaths are the directories the dynamic loader maps executable
+// images (dylibs, frameworks) from. dyld uses mmap(PROT_EXEC) for these,
+// which Seatbelt classifies as file-map-executable, not file-read*. Without
+// this rule a (deny default) profile aborts the target before main() runs.
+// The scratch dirs are included because intermediaries live there too: the
+// proxy bridge (the warden binary or a `go test` binary) and any
+// build-output target are executed from TMPDIR, not just /usr or /System.
+var exeImagePaths = []string{
+	"/usr",
+	"/bin",
+	"/sbin",
+	"/System",
+	"/Library/Frameworks",
+	"/Library/Apple",
+	"/opt/homebrew",
+	"/usr/local",
 	"/private/tmp",
 	"/tmp",
 	"/var/folders",
@@ -69,11 +93,34 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(version 1)\n")
 	b.WriteString("(deny default)\n")
 	b.WriteString("; Process lifecycle\n")
-	b.WriteString("(allow process*)\n")
-	b.WriteString("(allow signal)\n")
+	b.WriteString("(allow process-exec)\n")
+	b.WriteString("(allow process-fork)\n")
+	b.WriteString("(allow signal (target same-sandbox))\n")
+	b.WriteString("(allow process-info* (target same-sandbox))\n")
 	b.WriteString("(allow sysctl-read)\n")
 	b.WriteString("(allow mach-lookup)\n")
 	b.WriteString("(allow file-read-metadata)\n")
+	// Root and per-component metadata traversal is blanket-allowed above;
+	// stat("/") is what dyld and libc need to resolve absolute paths. It
+	// does not permit listing or reading "/" contents.
+	b.WriteString("; Device basics every process needs (null, zero, urandom, own tty/fds)\n")
+	b.WriteString("(allow file-read* file-write-data (literal \"/dev/null\"))\n")
+	b.WriteString("(allow file-read* (literal \"/dev/zero\"))\n")
+	b.WriteString("(allow file-read* (literal \"/dev/urandom\"))\n")
+	b.WriteString("(allow file-read* (literal \"/dev/random\"))\n")
+	b.WriteString("(allow file-ioctl (regex \"^/dev/ttys[0-9]+\"))\n")
+	b.WriteString("(allow file-read* file-write* (subpath \"/dev/fd\"))\n")
+	// /etc is required for user/group/resolver lookups; machine config, not
+	// user data. Apple's own profiles and other sandbox-exec users (mise,
+	// Codex) grant this in deny-default profiles.
+	b.WriteString("; /etc for resolver, passwd and group lookups\n")
+	b.WriteString("(allow file-read* (subpath \"/etc\"))\n")
+	b.WriteString("(allow file-read* (subpath \"/private/etc\"))\n")
+	// dyld maps system images with mmap(PROT_EXEC) => file-map-executable.
+	b.WriteString("; Runtime image mapping for the dynamic loader\n")
+	for _, path := range exeImagePaths {
+		writeSubpathAllow(&b, "file-map-executable", path)
+	}
 	b.WriteString("; Pseudo / runtime paths\n")
 	for _, path := range runtimeReadPaths {
 		writeSubpathAllow(&b, "file-read*", path)
@@ -91,12 +138,16 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	for _, path := range p.Filesystem.Write {
 		writeSubpathAllow(&b, "file-read*", path)
 		writeSubpathAllow(&b, "file-write*", path)
+		// The target's own image may live inside a write grant (e.g. a
+		// built binary in the project dir): mapping it is required to exec.
+		writeSubpathAllow(&b, "file-map-executable", path)
 	}
 
-	// Ensure the executable's parent directory is readable.
+	// Ensure the executable's parent directory is readable and mappable.
 	parent := filepath.Dir(exe)
 	if mode[parent] == "" && !isRuntimePath(parent) {
 		writeSubpathAllow(&b, "file-read*", parent)
+		writeSubpathAllow(&b, "file-map-executable", parent)
 	}
 
 	b.WriteString("; Egress: only the local proxy bridge and its Unix socket\n")

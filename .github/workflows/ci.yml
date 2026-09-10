@@ -85,7 +85,22 @@ jobs:
       - run: go clean -cache
       - run: go build ./...
       - run: go vet ./...
-      - run: go test -v -count=1 ./internal/sandbox/darwin/...
+      - name: Seatbelt integration tests (must actually run)
+        id: darwin
+        shell: bash
+        run: go test -v -count=1 -timeout=60s ./internal/sandbox/darwin/... 2>&1 | tee darwin-test.log
+      - name: Assert Seatbelt tests executed (no silent skips)
+        if: always() && steps.darwin.outcome != 'cancelled'
+        shell: bash
+        run: |
+          if grep -q '^--- SKIP:' darwin-test.log; then
+            echo "Seatbelt tests skipped on a runner that has sandbox-exec — a real failure was masked"
+            exit 1
+          fi
+          if ! grep -q '^--- PASS: TestSeatbelt' darwin-test.log; then
+            echo "No TestSeatbelt integration tests actually executed"
+            exit 1
+          fi
       - run: go test -count=1 ./...
 
   cross-build:

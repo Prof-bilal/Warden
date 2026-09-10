@@ -1,4 +1,6 @@
-//go:build darwin
+// Profile generation is pure Go, so these tests run on every OS (they do
+// not need sandbox-exec; the darwin-tagged integration tests exercise the
+// real backend).
 
 package darwin
 
@@ -40,6 +42,62 @@ func TestBuildSeatbeltProfileDenyDefaultAndGrants(t *testing.T) {
 	// Write grant must not appear as the only permission on a non-granted path.
 	if strings.Contains(profile, `(allow file-write* (subpath "/allowed/read"))`) {
 		t.Fatal("read grant incorrectly also writable")
+	}
+}
+
+// TestBuildSeatbeltProfileNoIPLiterals guards the original macOS 26 bug:
+// Seatbelt only accepts * or localhost as the host part of a network
+// address, so no generated rule may contain an IP literal.
+func TestBuildSeatbeltProfileNoIPLiterals(t *testing.T) {
+	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, "/tmp/warden-proxy/egress.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, banned := range []string{"127.0.0.1", "0.0.0.0", "::1"} {
+		if strings.Contains(profile, banned) {
+			t.Fatalf("profile contains unsupported IP literal %q\n%s", banned, profile)
+		}
+	}
+}
+
+// TestBuildSeatbeltProfileStartupPrimitives asserts the operations a
+// deny-default profile needs before the target's main() runs: exec/fork,
+// root path resolution, dyld image mapping, and /dev basics. Their absence
+// made the sandbox abort the target before any policy denial could be
+// observed (and made denial tests pass for the wrong reason).
+func TestBuildSeatbeltProfileStartupPrimitives(t *testing.T) {
+	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, "/tmp/warden-proxy/egress.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"(allow process-exec)",
+		"(allow process-fork)",
+		"(allow file-read-metadata)",
+		`(allow file-map-executable (subpath "/usr"))`,
+		`(allow file-map-executable (subpath "/System"))`,
+		`(allow file-read* (subpath "/etc"))`,
+		`(allow file-read* file-write-data (literal "/dev/null"))`,
+		`(allow file-read* (literal "/dev/urandom"))`,
+	} {
+		if !strings.Contains(profile, want) {
+			t.Fatalf("profile missing startup primitive %q\n%s", want, profile)
+		}
+	}
+}
+
+// TestBuildSeatbeltProfileMapsWriteGrantImages: a target binary inside a
+// write grant (e.g. a built binary in the project dir) must be mappable.
+func TestBuildSeatbeltProfileMapsWriteGrantImages(t *testing.T) {
+	writeDir := "/allowed/write"
+	profile, err := BuildSeatbeltProfile([]string{writeDir + "/server"}, policy.Policy{
+		Filesystem: policy.Filesystem{Write: []string{writeDir}},
+	}, "/tmp/warden-proxy/egress.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(profile, `(allow file-map-executable (subpath "/allowed/write"))`) {
+		t.Fatalf("write grant not mappable as executable image\n%s", profile)
 	}
 }
 
@@ -86,5 +144,9 @@ func TestBuildSeatbeltProfileIncludesExeParent(t *testing.T) {
 	want := `(allow file-read* (subpath "` + parent + `"))`
 	if !strings.Contains(profile, want) {
 		t.Fatalf("profile missing exe parent grant %q\n%s", want, profile)
+	}
+	wantMap := `(allow file-map-executable (subpath "` + parent + `"))`
+	if !strings.Contains(profile, wantMap) {
+		t.Fatalf("profile missing exe parent map grant %q\n%s", wantMap, profile)
 	}
 }

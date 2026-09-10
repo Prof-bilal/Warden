@@ -3,40 +3,94 @@
 package darwin
 
 import (
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/policy"
+	"github.com/warden-sandbox/warden/internal/proxy"
 )
 
+// TestMain turns this test binary into a real __proxy-bridge when it is
+// re-exec'd with that argument. darwin.Run uses os.Executable() as the
+// bridge executable, so under `go test` the child must handle the bridge
+// protocol in-process — otherwise the nested binary is just the test binary
+// run with unknown flags.
+func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == "__proxy-bridge" {
+		socket, listen, target, err := proxy.ParseBridgeArgs(os.Args[2:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test bridge: %v\n", err)
+			os.Exit(2)
+		}
+		code, err := proxy.RunBridge(socket, listen, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "test bridge: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(code)
+	}
+	os.Exit(m.Run())
+}
+
+// requireSandboxExec proves sandbox-exec can actually run a target process
+// under a real profile. It uses the production profile generator, executes
+// a target that prints a marker, and FAILS (never skips) when the host
+// cannot run sandboxed targets — a skip here is what made previous CI green
+// while every real assertion was silently untested.
 func requireSandboxExec(t *testing.T) {
 	t.Helper()
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
-		t.Skip("sandbox-exec not installed — skipping Seatbelt integration test")
+		t.Fatalf("sandbox-exec not installed: %v", err)
 	}
-	// Verify sandbox-exec can actually run a binary. On macOS 26+, dyld
-	// rejects executables without LC_UUID (Go < 1.24 omits it). Rather than
-	// getting confusing -1 exits, skip with a clear message.
-	cmd := exec.Command("sandbox-exec", "-f", "/dev/null", "/usr/bin/true")
-	if err := cmd.Run(); err == nil {
-		return // sandbox-exec works (profile is invalid but /dev/null may be accepted)
+	dir := t.TempDir()
+	script := writeScript(t, dir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\n")
+	code, out, err := runSandboxed(t, []string{"/bin/sh", script}, policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{dir}},
+	})
+	if err != nil {
+		t.Fatalf("sandbox preflight: sandbox-exec failed to run a target: %v\noutput:\n%s", err, out)
 	}
-	// /dev/null is not a valid profile; try with a minimal deny-default profile.
-	profile := "(version 1)\n(deny default)\n(allow process*)\n"
-	tmp := filepath.Join(t.TempDir(), "test.sb")
-	if err := os.WriteFile(tmp, []byte(profile), 0o644); err != nil {
-		t.Skipf("cannot write test profile: %v — skipping", err)
+	if code != 0 {
+		t.Fatalf("sandbox preflight: target exited %d, want 0\noutput:\n%s", code, out)
 	}
-	cmd = exec.Command("sandbox-exec", "-f", tmp, "/usr/bin/true")
-	if err := cmd.Run(); err != nil {
-		t.Skipf("sandbox-exec cannot run binaries on this host (%v) — skipping", err)
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("sandbox preflight: startup marker missing — target never really ran\noutput:\n%s", out)
 	}
 }
 
-// writeFixture writes an executable script into dir and returns its path.
-func writeFixture(t *testing.T, dir, name, body string) string {
+const startupMarker = "WARDEN_SANDBOX_UP"
+
+// denyRoot returns a directory outside every always-granted path so
+// Seatbelt denials can actually fire there. Tests must not place
+// denial-assertion fixtures under t.TempDir(): /var/folders (and /tmp) are
+// unconditionally granted as scratch space, so a denial could never fire
+// and the test would pass for the wrong reason. The package cwd lives
+// under the checkout (never granted by the profile).
+func denyRoot(t *testing.T) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("resolve cwd: %v", err)
+	}
+	dir := filepath.Join(cwd, "testdata", "deny", t.Name()+"-"+fmt.Sprint(os.Getpid()))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("create deny fixture dir: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(filepath.Dir(dir)) })
+	return dir
+}
+
+// writeScript writes an executable script into dir and returns its path.
+func writeScript(t *testing.T, dir, name, body string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
@@ -45,26 +99,56 @@ func writeFixture(t *testing.T, dir, name, body string) string {
 	return path
 }
 
+// runSandboxed invokes Run with stdout/stderr captured so tests can assert
+// on the target's output. It is bridge infrastructure, not part of the
+// security assertions.
+func runSandboxed(t *testing.T, cmd []string, p policy.Policy) (int, string, error) {
+	t.Helper()
+	devNull, err := os.OpenFile(os.DevNull, os.O_RDONLY, 0)
+	if err != nil {
+		t.Fatalf("open devnull: %v", err)
+	}
+	defer devNull.Close()
+
+	// Run targets the real process stdio; swap them for the duration.
+	oldIn, oldOut, oldErr := os.Stdin, os.Stdout, os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdin, os.Stdout, os.Stderr = devNull, w, w
+	code, runErr := func() (int, error) {
+		defer func() { os.Stdin, os.Stdout, os.Stderr = oldIn, oldOut, oldErr }()
+		return Run(cmd, p)
+	}()
+	w.Close()
+	data, _ := io.ReadAll(r)
+	r.Close()
+	return code, string(data), runErr
+}
+
 func TestSeatbeltBlocksUngrantedRead(t *testing.T) {
 	requireSandboxExec(t)
 
-	secretDir := t.TempDir()
+	// The secret lives outside every granted path so the read denial can
+	// actually fire (t.TempDir() under /var/folders is always granted).
+	secretDir := denyRoot(t)
 	if err := os.WriteFile(filepath.Join(secretDir, "secret.txt"), []byte("nope"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	scriptDir := t.TempDir()
-	script := filepath.Join(scriptDir, "probe.sh")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\ncat \"$1\"\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	script := writeScript(t, scriptDir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\ncat \"$1\"\n")
 
 	// Grant only the script dir — reading secretDir must fail.
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
 	}
-	code, err := Run([]string{"/bin/sh", script, filepath.Join(secretDir, "secret.txt")}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", script, filepath.Join(secretDir, "secret.txt")}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
 	}
 	if code == 0 {
 		t.Fatal("expected non-zero exit when reading ungranted path")
@@ -79,19 +163,23 @@ func TestSeatbeltAllowsGrantedRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	scriptDir := t.TempDir()
-	script := filepath.Join(scriptDir, "probe.sh")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\ncat \"$1\"\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	script := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\necho "+startupMarker+"\ncat \"$1\"\n")
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{dataDir, scriptDir}},
 	}
-	code, err := Run([]string{"/bin/sh", script, filepath.Join(dataDir, "ok.txt")}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", script, filepath.Join(dataDir, "ok.txt")}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
 	}
 	if code != 0 {
-		t.Fatalf("exit %d, want 0", code)
+		t.Fatalf("exit %d, want 0\noutput:\n%s", code, out)
+	}
+	if !strings.Contains(out, "allowed") {
+		t.Fatalf("granted read did not return file contents\noutput:\n%s", out)
 	}
 }
 
@@ -100,22 +188,26 @@ func TestSeatbeltWriteGrantWritable(t *testing.T) {
 
 	writeDir := t.TempDir()
 	scriptDir := t.TempDir()
-	sh := writeFixture(t, scriptDir, "probe.sh", "#!/bin/sh\necho made > \"$1/f.txt\" && cat \"$1/f.txt\"\n")
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\necho "+startupMarker+"\necho made > \"$1/f.txt\" && cat \"$1/f.txt\"\n")
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
 			Write: []string{writeDir},
 			Read:  []string{scriptDir},
 		},
 	}
-	code, err := Run([]string{"/bin/sh", sh, writeDir}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh, writeDir}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
 	}
 	if code != 0 {
-		t.Fatalf("exit %d, want 0", code)
+		t.Fatalf("exit %d, want 0\noutput:\n%s", code, out)
 	}
-	if _, err := os.Stat(filepath.Join(writeDir, "f.txt")); err != nil {
-		t.Errorf("file not created in write grant: %v", err)
+	if data, err := os.ReadFile(filepath.Join(writeDir, "f.txt")); err != nil || string(data) != "made\n" {
+		t.Errorf("file not created in write grant: %v (%q)", err, string(data))
 	}
 }
 
@@ -123,22 +215,28 @@ func TestSeatbeltWriteOutsideGrantDenied(t *testing.T) {
 	requireSandboxExec(t)
 
 	writeDir := t.TempDir()
-	deniedDir := t.TempDir()
+	// The denied dir sits outside every granted path so the write denial
+	// can actually fire (t.TempDir() under /var/folders is always granted).
+	deniedDir := denyRoot(t)
 	if err := os.WriteFile(filepath.Join(deniedDir, "keep.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	scriptDir := t.TempDir()
-	sh := writeFixture(t, scriptDir, "probe.sh", "#!/bin/sh\necho evil > \"$1/keep.txt\"\n")
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\necho "+startupMarker+"\necho evil > \"$1/keep.txt\"\n")
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{
 			Write: []string{writeDir},
 			Read:  []string{scriptDir},
 		},
 	}
-	code, err := Run([]string{"/bin/sh", sh, deniedDir}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh, deniedDir}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
 	}
 	if code == 0 {
 		t.Fatal("expected nonzero exit writing outside grant")
@@ -152,16 +250,19 @@ func TestSeatbeltExitCodePropagated(t *testing.T) {
 	requireSandboxExec(t)
 
 	scriptDir := t.TempDir()
-	sh := writeFixture(t, scriptDir, "probe.sh", "#!/bin/sh\nexit 42\n")
+	sh := writeScript(t, scriptDir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\nexit 42\n")
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
 	}
-	code, err := Run([]string{"/bin/sh", sh}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
 	}
 	if code != 42 {
-		t.Errorf("exit code = %d, want 42", code)
+		t.Fatalf("exit code = %d, want 42\noutput:\n%s", code, out)
 	}
 }
 
@@ -169,7 +270,8 @@ func TestSeatbeltEnvPassthrough(t *testing.T) {
 	requireSandboxExec(t)
 
 	scriptDir := t.TempDir()
-	sh := writeFixture(t, scriptDir, "probe.sh", "#!/bin/sh\n/usr/bin/env\n")
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\necho "+startupMarker+"\nprintf 'ALLOWED=%s\\nSECRET=%s\\n' \"$WARDEN_TEST_ALLOWED\" \"$WARDEN_TEST_SECRET\"\n")
 
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
@@ -179,18 +281,27 @@ func TestSeatbeltEnvPassthrough(t *testing.T) {
 	t.Setenv("WARDEN_TEST_ALLOWED", "yes")
 	t.Setenv("WARDEN_TEST_SECRET", "nope")
 
-	code, err := Run([]string{"/bin/sh", sh}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
 	}
 	if code != 0 {
-		t.Fatalf("exit %d, want 0", code)
+		t.Fatalf("exit %d, want 0\noutput:\n%s", code, out)
+	}
+	if !strings.Contains(out, "ALLOWED=yes") {
+		t.Errorf("allowed env var missing in sandbox\noutput:\n%s", out)
+	}
+	if strings.Contains(out, "SECRET=nope") {
+		t.Errorf("forbidden env var leaked into sandbox\noutput:\n%s", out)
 	}
 }
 
 func TestSeatbeltFailsClosedWithoutSandboxExec(t *testing.T) {
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
-		t.Skip("sandbox-exec not installed — nothing to hide")
+		t.Skip("sandbox-exec not installed — nothing to prove")
 	}
 	old := os.Getenv("PATH")
 	os.Setenv("PATH", "/nonexistent-path-xyz")
@@ -206,13 +317,180 @@ func TestSeatbeltTimeoutKillsProcess(t *testing.T) {
 	requireSandboxExec(t)
 
 	scriptDir := t.TempDir()
-	sh := writeFixture(t, scriptDir, "probe.sh", "#!/bin/sh\nsleep 30\n")
+	sh := writeScript(t, scriptDir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\nsleep 30\n")
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
 		Limits:     policy.Limits{TimeoutS: 1},
 	}
-	code, err := Run([]string{"/bin/sh", sh}, p)
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — timeout not proven\noutput:\n%s", out)
+	}
 	if err == nil && code == 0 {
 		t.Fatal("expected non-zero exit or error for timeout")
+	}
+}
+
+// TestSeatbeltNetworkAllowedViaProxy proves the Seatbelt profile permits
+// loopback egress to the bridge only, and that the egress proxy enforces
+// network.allow: a proxy request flows end-to-end through the bridge.
+func TestSeatbeltNetworkAllowedViaProxy(t *testing.T) {
+	requireSandboxExec(t)
+
+	// Host-side fake upstream the egress proxy will dial.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "EGRESS-OK")
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	scriptDir := t.TempDir()
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\ncommand -v curl >/dev/null 2>&1 || { echo NO_CURL; exit 9; }\necho "+startupMarker+"\nexec curl -sS --max-time 10 -x http://127.0.0.1:18080 "+u.Host+"\n")
+
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
+		Network:    policy.Network{Allow: []string{u.Hostname()}},
+	}
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	if err != nil {
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "NO_CURL") {
+		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
+	}
+	if code != 0 {
+		t.Fatalf("exit %d, want 0\noutput:\n%s", code, out)
+	}
+	if !strings.Contains(out, "EGRESS-OK") {
+		t.Fatalf("allowed network request did not reach upstream via proxy\noutput:\n%s", out)
+	}
+}
+
+// TestSeatbeltNetworkDeniedByPolicy proves a non-allowlisted destination is
+// actually blocked by the egress proxy (proxy error), not by startup
+// failure: the marker and the denial both appear.
+func TestSeatbeltNetworkDeniedByPolicy(t *testing.T) {
+	requireSandboxExec(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "SHOULD-NOT-LEAK")
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	scriptDir := t.TempDir()
+	// --fail: a proxy 403 must exit nonzero, otherwise a denied request
+	// looks like success with an error page on stdout.
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\ncommand -v curl >/dev/null 2>&1 || { echo NO_CURL; exit 9; }\necho "+startupMarker+"\nexec curl -fsS --max-time 10 -x http://127.0.0.1:18080 "+u.Host+"\n")
+
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
+		Network:    policy.Network{Allow: []string{"allowed.example.invalid"}},
+	}
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	if err != nil {
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "NO_CURL") {
+		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+	}
+	if strings.Contains(out, "SHOULD-NOT-LEAK") {
+		t.Fatalf("non-allowlisted destination was reachable\noutput:\n%s", out)
+	}
+	if code == 0 {
+		t.Fatalf("expected nonzero exit from denied proxy request\noutput:\n%s", out)
+	}
+}
+
+// TestSeatbeltDirectIPIsNotDialable proves raw outbound sockets to arbitrary
+// destinations are denied by Seatbelt itself (no proxy in the middle): the
+// target starts, the connect fails. --noproxy neutralizes the HTTP_PROXY/
+// ALL_PROXY variables Warden injects, so curl attempts a direct connection
+// to the httptest server; the profile only allows localhost:18080.
+func TestSeatbeltDirectIPIsNotDialable(t *testing.T) {
+	requireSandboxExec(t)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "DIRECT-LEAK")
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	scriptDir := t.TempDir()
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\ncommand -v curl >/dev/null 2>&1 || { echo NO_CURL; exit 9; }\necho "+startupMarker+"\nexec curl --noproxy '*' -sS --max-time 10 "+u.Host+"\n")
+
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
+		Network:    policy.Network{Allow: []string{u.Hostname()}},
+	}
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	if err != nil {
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "NO_CURL") {
+		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+	}
+	if strings.Contains(out, "DIRECT-LEAK") {
+		t.Fatalf("direct non-proxy egress escaped the sandbox\noutput:\n%s", out)
+	}
+	if code == 0 {
+		t.Fatalf("direct connect outside the bridge unexpectedly succeeded\noutput:\n%s", out)
+	}
+}
+
+// TestSeatbeltLoopbackBeyondBridgeIsDenied proves network-inbound is scoped
+// to the bridge port: the sandboxed process may not itself listen on an
+// arbitrary loopback port and accept connections from the host.
+func TestSeatbeltLoopbackBeyondBridgeIsDenied(t *testing.T) {
+	requireSandboxExec(t)
+
+	// Free port for the probe to attempt to listen on.
+	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("pick port: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+
+	scriptDir := t.TempDir()
+	sh := writeScript(t, scriptDir, "probe.sh",
+		"#!/bin/sh\ncommand -v nc >/dev/null 2>&1 || { echo NO_NC; exit 9; }\necho "+startupMarker+"\nnc -l "+fmt.Sprint(port)+" >/dev/null 2>&1 &\nNC_PID=$!\nsleep 2\nif kill -0 $NC_PID 2>/dev/null; then echo LISTEN_ALIVE; kill $NC_PID 2>/dev/null; exit 7; fi\necho LISTEN_DEAD\n")
+
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
+	}
+	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	if err != nil {
+		t.Fatalf("Run: %v\noutput:\n%s", err, out)
+	}
+	if strings.Contains(out, "NO_NC") {
+		t.Fatalf("nc not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+	}
+	if strings.Contains(out, "LISTEN_ALIVE") {
+		t.Fatalf("sandboxed process could listen on a non-bridge loopback port\noutput:\n%s", out)
 	}
 }

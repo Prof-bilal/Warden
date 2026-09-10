@@ -1064,29 +1064,12 @@ func followLog(path string, offset int64) error {
 }
 
 func cmdProxyBridge(args []string) {
-	var socket, listen string
-	i := 0
-	for i < len(args) && args[i] != "--" {
-		if i+1 >= len(args) {
-			fmt.Fprintln(os.Stderr, "warden proxy bridge: flag requires a value")
-			os.Exit(2)
-		}
-		switch args[i] {
-		case "--socket":
-			socket = args[i+1]
-		case "--listen":
-			listen = args[i+1]
-		default:
-			fmt.Fprintf(os.Stderr, "warden proxy bridge: unknown flag %q\n", args[i])
-			os.Exit(2)
-		}
-		i += 2
-	}
-	if i == len(args) || socket == "" || listen == "" || i+1 == len(args) {
-		fmt.Fprintln(os.Stderr, "warden proxy bridge: missing socket, listen address, or command")
+	socket, listen, target, err := proxy.ParseBridgeArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy bridge: %v\n", err)
 		os.Exit(2)
 	}
-	code, err := proxy.RunBridge(socket, listen, args[i+1:])
+	code, err := proxy.RunBridge(socket, listen, target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden proxy bridge: %v\n", err)
 		os.Exit(1)
