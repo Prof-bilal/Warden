@@ -1389,7 +1389,7 @@ func cmdK8sDocker(p policy.Policy, image, platform string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf(strings.Join(cmd, " ") + "\n")
+	fmt.Print(strings.Join(cmd, " ") + "\n")
 }
 
 func cmdK8sValidate(p policy.Policy) {
