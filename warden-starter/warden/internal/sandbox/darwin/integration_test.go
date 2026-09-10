@@ -62,24 +62,26 @@ func requireSandboxExec(t *testing.T) {
 		t.Fatalf("sandbox-exec not installed: %v", err)
 	}
 
-	// A: minimal permissive profile, direct exec, no bridge.
+	// A: minimal permissive profile, direct exec, no bridge. /usr/bin/true,
+	// not /bin/true: macOS has no /bin/true (unlike Linux).
 	minProfile := "(version 1)\n(deny default)\n" +
 		"(allow process-exec)\n(allow process-fork)\n" +
 		"(allow file-read* (subpath \"/\"))\n" +
+		"(allow file-map-executable (subpath \"/\"))\n" +
 		"(allow file-write* (subpath \"/dev/null\"))\n"
 	minPath := filepath.Join(t.TempDir(), "minimal.sb")
 	if err := os.WriteFile(minPath, []byte(minProfile), 0o644); err != nil {
 		t.Fatalf("write minimal profile: %v", err)
 	}
-	if out, err := exec.Command("sandbox-exec", "-f", minPath, "/bin/true").CombinedOutput(); err != nil {
-		t.Fatalf("preflight A: sandbox-exec cannot exec /bin/true under a minimal profile: %v\noutput:\n%s\n%s",
+	if out, err := exec.Command("sandbox-exec", "-f", minPath, "/usr/bin/true").CombinedOutput(); err != nil {
+		t.Fatalf("preflight A: sandbox-exec cannot exec /usr/bin/true under a minimal profile: %v\noutput:\n%s\n%s",
 			err, out, sandboxDenialLog())
 	}
 
 	// B: production profile, direct exec, no bridge, no env filtering.
 	// The socket path is a fixture string; no proxy is started for this step.
 	tmp := t.TempDir()
-	profile, err := BuildSeatbeltProfile([]string{"/bin/true"}, policy.Policy{}, filepath.Join(tmp, "egress.sock"))
+	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, filepath.Join(tmp, "egress.sock"))
 	if err != nil {
 		t.Fatalf("preflight B: build profile: %v", err)
 	}
@@ -87,8 +89,8 @@ func requireSandboxExec(t *testing.T) {
 	if err := os.WriteFile(profilePath, []byte(profile), 0o644); err != nil {
 		t.Fatalf("write production profile: %v", err)
 	}
-	if out, err := exec.Command("sandbox-exec", "-f", profilePath, "/bin/true").CombinedOutput(); err != nil {
-		t.Fatalf("preflight B: production profile cannot exec /bin/true directly: %v\nprofile:\n%s\noutput:\n%s\n%s",
+	if out, err := exec.Command("sandbox-exec", "-f", profilePath, "/usr/bin/true").CombinedOutput(); err != nil {
+		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\n%s",
 			err, profile, out, sandboxDenialLog())
 	}
 
@@ -116,7 +118,7 @@ func requireSandboxExec(t *testing.T) {
 // never an assertion.
 func sandboxDenialLog() string {
 	out, err := exec.Command("log", "show", "--last", "30s",
-		"--predicate", `eventMessage CONTAINS "Sandbox"`,
+		"--predicate", `eventMessage CONTAINS "deny(1)"`,
 		"--style", "compact").Output()
 	if err != nil {
 		return fmt.Sprintf("(unified log unavailable: %v)", err)
