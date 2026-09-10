@@ -480,7 +480,7 @@ func TestSeatbeltLoopbackBeyondBridgeIsDenied(t *testing.T) {
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
 	}
-	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
+	_, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
 	if err != nil {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
