@@ -41,6 +41,10 @@ type Policy struct {
 
 	// Limits constrains address-space use and wall-clock execution time.
 	Limits Limits `yaml:"limits"`
+
+	// MCP contains configuration for MCP client proxy mode (optional).
+	// When present, enables MCP proxy functionality with specified settings.
+	MCP *MCP `yaml:"mcp,omitempty"`
 }
 
 // Filesystem is the filesystem section of a policy.
@@ -68,6 +72,30 @@ type Env struct {
 type Limits struct {
 	MemoryMB int `yaml:"memory_mb,omitempty"`
 	TimeoutS int `yaml:"timeout_s,omitempty"`
+}
+
+// MCP is the MCP proxy section of a policy. When present, enables MCP
+// client proxy functionality with the specified configuration.
+type MCP struct {
+	// Upstream specifies the MCP server to proxy to.
+	// Examples: "https://mcp.github.com", "stdio:npx @modelcontextprotocol/server-github"
+	Upstream string `yaml:"upstream"`
+
+	// AllowTools lists MCP tool names that are allowed to be called.
+	// Empty list means all tools are allowed. Deny-by-default when specified.
+	AllowTools []string `yaml:"allow_tools,omitempty"`
+
+	// DenyPatterns lists regex patterns that will block requests/responses
+	// containing matching content. Used for preventing secret exfiltration.
+	DenyPatterns []string `yaml:"deny_patterns,omitempty"`
+
+	// MaxPayloadKB sets the maximum size of individual MCP messages in KB.
+	// Zero means no limit. Used to prevent resource exhaustion.
+	MaxPayloadKB int `yaml:"max_payload_kb,omitempty"`
+
+	// AuditRequests enables logging of all MCP requests/responses for debugging.
+	// Should be used carefully as it may log sensitive data.
+	AuditRequests bool `yaml:"audit_requests,omitempty"`
 }
 
 // Load reads and parses a policy file from path, resolves relative paths
@@ -226,6 +254,15 @@ func validateHost(host string) error {
 	name := host
 	if strings.HasSuffix(name, ".") || len(name) > 253 {
 		return fmt.Errorf("%q is not a valid hostname", host)
+	}
+	// A leading wildcard label (e.g. "*.github.com") grants a subdomain
+	// pattern; it is validated as a wildcarded hostname rather than a
+	// literal DNS label.
+	if strings.HasPrefix(name, "*.") {
+		name = name[2:]
+		if name == "" {
+			return fmt.Errorf("%q is not a valid hostname", host)
+		}
 	}
 	for _, label := range strings.Split(name, ".") {
 		if err := validateLabel(label); err != nil {

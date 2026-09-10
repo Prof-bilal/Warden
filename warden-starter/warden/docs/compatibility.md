@@ -85,11 +85,15 @@ Every non-pass row gets a class, per the M8 triage rule:
 
 ### Schema gaps (access the schema cannot express yet)
 
-- **No wildcard hosts.** A browser-automation server (Playwright) visits
-  arbitrary domains; `network.allow` only accepts bare hostnames, so there
-  is no honest policy for it. `TestDocumentedSchemaGaps` locks this in:
-  adding wildcard support must update the matrix, fixtures, and this page
-  together.
+- **Wildcard hosts.** Previously `network.allow` only accepted bare
+  hostnames, leaving no honest policy for a browser-automation server
+  (Playwright) that visits arbitrary domains. The schema now accepts a
+  single leading wildcard label (`*.example.com`), which grants a subdomain
+  pattern — the exact gap Playwright hit. The fixture in
+  `testdata/compat/playwright/policy.yaml` can now record the subdomain
+  grant it previously had to pin to a single host. (A full `*` grant —
+  any domain — is still deliberately rejected: it is equivalent to no
+  sandbox at all.)
 - **No unix-socket grants.** The Docker daemon socket and browser IPC
   sockets have no scoped-down representation in the schema.
 

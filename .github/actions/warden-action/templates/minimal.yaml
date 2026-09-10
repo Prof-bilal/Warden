@@ -1,0 +1,51 @@
+# Minimal CI Policy Template
+# Use this as a starting point for CI/CD workflows
+
+command: ["bash", "-c", "echo 'Replace with your command'"]
+
+filesystem:
+  read:
+    - "."                    # Repository access
+    - "/usr/bin"             # System binaries
+    - "/bin"                 # Core binaries
+    - "/usr/lib"             # System libraries
+    - "/lib"                 # Core libraries
+    - "/lib64"               # 64-bit libraries
+    - "/etc/ssl"             # SSL certificates
+    - "/etc/ca-certificates" # CA certificates
+    
+  write:
+    - "./tmp"                # Project temp files
+    - "/tmp"                 # System temp files
+
+network:
+  allow: []                  # No network by default - add as needed
+
+env:
+  allow:
+    # Essential variables
+    - "PATH"
+    - "HOME"
+    - "USER"
+    - "PWD"
+    - "TERM"
+    
+    # CI context
+    - "CI"
+    - "GITHUB_ACTIONS" 
+    - "RUNNER_OS"
+    - "GITHUB_REPOSITORY"
+    - "GITHUB_SHA"
+    - "GITHUB_REF"
+
+limits:
+  memory_mb: 256
+  timeout_s: 300
+
+# Usage:
+# 1. Copy this template
+# 2. Update the command
+# 3. Add required network endpoints to network.allow
+# 4. Add required secrets to env.allow (be explicit!)
+# 5. Adjust filesystem paths as needed
+# 6. Set appropriate limits for your use case

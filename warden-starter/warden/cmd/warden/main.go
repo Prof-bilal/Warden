@@ -17,13 +17,17 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
+	"github.com/warden-sandbox/warden/internal/container"
+	"github.com/warden-sandbox/warden/internal/mcpproxy"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
@@ -34,7 +38,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "version", "help"}
+var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "help"}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -75,6 +79,18 @@ func main() {
 			os.Exit(0)
 		}
 		cmdGateway(os.Args[2:])
+	case "proxy":
+		if hasHelpFlag(os.Args[2:]) {
+			printProxyHelp()
+			os.Exit(0)
+		}
+		cmdProxy(os.Args[2:])
+	case "k8s":
+		if hasHelpFlag(os.Args[2:]) {
+			printK8sHelp()
+			os.Exit(0)
+		}
+		cmdK8s(os.Args[2:])
 	case "doctor":
 		if hasHelpFlag(os.Args[2:]) {
 			printDoctorHelp()
@@ -155,6 +171,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  logs       Inspect the audit log")
 	fmt.Fprintln(os.Stderr, "  doctor     Check sandbox readiness")
 	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
+	fmt.Fprintln(os.Stderr, "  proxy      Run MCP client proxy with filtering")
+	fmt.Fprintln(os.Stderr, "  k8s        Generate container/K8s manifests from policy")
 	fmt.Fprintln(os.Stderr, "  version    Show version")
 	fmt.Fprintln(os.Stderr, "  help       Show help for a command")
 	fmt.Fprintln(os.Stderr, "")
@@ -196,6 +214,10 @@ func printCommandHelp(cmd string) {
 		printVersionHelp()
 	case "gateway":
 		printGatewayUsage()
+	case "proxy":
+		printProxyHelp()
+	case "k8s":
+		printK8sHelp()
 	case "help":
 		printUsage()
 	default:
@@ -1070,4 +1092,412 @@ func cmdProxyBridge(args []string) {
 		os.Exit(1)
 	}
 	os.Exit(code)
+}
+
+func printProxyHelp() {
+	title := "WARDEN PROXY"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Run MCP client proxy with policy-based filtering and auditing.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy <file> [options]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --policy <file>            MCP proxy policy file (required)")
+	fmt.Fprintln(os.Stderr, "  --listen <addr>            Listen address (default: localhost:8765)")
+	fmt.Fprintln(os.Stderr, "  --upstream <url>           Override upstream from policy")
+	fmt.Fprintln(os.Stderr, "  --help                     Show this help")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml")
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --listen :9000")
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --upstream https://api.github.com/mcp")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Policy Format:"))
+	fmt.Fprintln(os.Stderr, "  mcp:")
+	fmt.Fprintln(os.Stderr, "    upstream: \"https://mcp.github.com\"")
+	fmt.Fprintln(os.Stderr, "    allow_tools: [\"list_repos\", \"get_file\"]")
+	fmt.Fprintln(os.Stderr, "    deny_patterns: [\"ghp_[A-Za-z0-9]{36}\"]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  The proxy filters MCP messages and blocks sensitive patterns")
+	fmt.Fprintln(os.Stderr, "  before they leave your machine. All activity is audited.")
+}
+
+func cmdProxy(args []string) {
+	policyPath, listen, upstreamOverride, err := parseProxyArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
+		printProxyHelp()
+		os.Exit(2)
+	}
+
+	p, err := policy.Load(policyPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
+		os.Exit(2)
+	}
+
+	if p.MCP == nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: policy file must contain 'mcp' section\n")
+		os.Exit(2)
+	}
+
+	// Override upstream if provided via command line
+	if upstreamOverride != "" {
+		p.MCP.Upstream = upstreamOverride
+	}
+
+	if p.MCP.Upstream == "" {
+		fmt.Fprintf(os.Stderr, "warden proxy: policy must specify mcp.upstream\n")
+		os.Exit(2)
+	}
+
+	// Set up audit logging
+	auditFile, auditPath, err := audit.OpenDefault()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: failed to set up audit logging: %v\n", err)
+		os.Exit(1)
+	}
+	defer auditFile.Close()
+
+	// Build the MCP proxy policy from the loaded policy, honoring the CLI
+	// override for --upstream. Network allowlist comes from the standard
+	// policy section so `network.allow` still gates remote egress.
+	mcpPolicy := mcpproxy.MCPPolicy{
+		Upstream:      p.MCP.Upstream,
+		AllowTools:    p.MCP.AllowTools,
+		DenyPatterns:  p.MCP.DenyPatterns,
+		AllowHosts:    p.Network.Allow,
+		MaxPayloadKB:  p.MCP.MaxPayloadKB,
+		AuditRequests: p.MCP.AuditRequests,
+	}
+
+	server, err := mcpproxy.NewProxyServer(mcpPolicy, audit.New(auditFile))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
+		os.Exit(1)
+	}
+	defer server.Close()
+
+	if err := server.Start(listen); err != nil {
+		fmt.Fprintf(os.Stderr, "warden proxy: failed to start: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ warden proxy listening on %s\n", server.Addr())
+	fmt.Fprintf(os.Stderr, "  upstream:  %s\n", p.MCP.Upstream)
+	if len(p.MCP.AllowTools) > 0 {
+		fmt.Fprintf(os.Stderr, "  tools:     %v\n", p.MCP.AllowTools)
+	}
+	if len(p.MCP.DenyPatterns) > 0 {
+		fmt.Fprintf(os.Stderr, "  deny:      %v\n", p.MCP.DenyPatterns)
+	}
+	fmt.Fprintf(os.Stderr, "  audit log: %s\n", auditPath)
+	fmt.Fprintf(os.Stderr, "  (ctrl-C to stop)\n")
+
+	// Block until interrupted. The proxy server goroutines shut down with
+	// the process when this returns to main.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	<-sig
+	fmt.Fprintln(os.Stderr, "\nwarden proxy: shutting down")
+}
+
+func parseProxyArgs(args []string) (policyPath, listen, upstream string, err error) {
+	listen = "localhost:8765" // default
+	
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--policy" || arg == "-policy":
+			if i+1 >= len(args) {
+				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			if policyPath != "" {
+				return "", "", "", fmt.Errorf("--policy specified twice")
+			}
+			policyPath = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--policy="):
+			if policyPath != "" {
+				return "", "", "", fmt.Errorf("--policy specified twice")
+			}
+			policyPath = strings.TrimPrefix(arg, "--policy=")
+		case arg == "--listen" || arg == "-listen":
+			if i+1 >= len(args) {
+				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			listen = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--listen="):
+			listen = strings.TrimPrefix(arg, "--listen=")
+		case arg == "--upstream" || arg == "-upstream":
+			if i+1 >= len(args) {
+				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			upstream = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--upstream="):
+			upstream = strings.TrimPrefix(arg, "--upstream=")
+		case strings.HasPrefix(arg, "-"):
+			return "", "", "", fmt.Errorf("unknown flag %q (want --policy, --listen, or --upstream)", arg)
+		default:
+			return "", "", "", fmt.Errorf("unexpected argument %q", arg)
+		}
+	}
+	
+	if policyPath == "" {
+		return "", "", "", fmt.Errorf("missing required flag --policy")
+	}
+	
+	return policyPath, listen, upstream, nil
+}
+
+func printK8sHelp() {
+	title := "WARDEN K8S"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Generate container and Kubernetes manifests from Warden policies.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden k8s <command> --policy <file> [options]")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
+	fmt.Fprintln(os.Stderr, "  render       Generate K8s YAML manifests")
+	fmt.Fprintln(os.Stderr, "  docker       Generate Docker run command")
+	fmt.Fprintln(os.Stderr, "  validate     Validate policy for container deployment")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --policy <file>        Warden policy file (required)")
+	fmt.Fprintln(os.Stderr, "  --image <image>        Container image to use")
+	fmt.Fprintln(os.Stderr, "  --namespace <ns>       K8s namespace (default: default)")
+	fmt.Fprintln(os.Stderr, "  --output <file>        Output file (default: stdout)")
+	fmt.Fprintln(os.Stderr, "  --platform <platform>  Target platform (docker, kubernetes)")
+	fmt.Fprintln(os.Stderr, "  --help                 Show this help")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden k8s render --policy policy.yaml --image myapp:latest")
+	fmt.Fprintln(os.Stderr, "  warden k8s docker --policy policy.yaml --image myapp:latest")
+	fmt.Fprintln(os.Stderr, "  warden k8s validate --policy policy.yaml")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Policy Translation:"))
+	fmt.Fprintln(os.Stderr, "  filesystem.read    → readOnlyRootFilesystem + volume mounts")
+	fmt.Fprintln(os.Stderr, "  filesystem.write   → emptyDir/hostPath volumes")
+	fmt.Fprintln(os.Stderr, "  network.allow      → NetworkPolicy egress rules")
+	fmt.Fprintln(os.Stderr, "  env.allow          → container env variables")
+	fmt.Fprintln(os.Stderr, "  limits             → resource limits/requests")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  Generated manifests include:")
+	fmt.Fprintln(os.Stderr, "  - readOnlyRootFilesystem: true")
+	fmt.Fprintln(os.Stderr, "  - runAsNonRoot: true")
+	fmt.Fprintln(os.Stderr, "  - capabilities: drop ALL")
+	fmt.Fprintln(os.Stderr, "  - seccompProfile: RuntimeDefault")
+}
+
+func cmdK8s(args []string) {
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "warden k8s: missing command (render, docker, validate)\n")
+		printK8sHelp()
+		os.Exit(2)
+	}
+
+	command := args[0]
+	policyPath, image, namespace, outputFile, platform, err := parseK8sArgs(args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		printK8sHelp()
+		os.Exit(2)
+	}
+
+	p, err := policy.Load(policyPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		os.Exit(2)
+	}
+
+	switch command {
+	case "render":
+		cmdK8sRender(p, image, namespace, outputFile, platform)
+	case "docker":
+		cmdK8sDocker(p, image, platform)
+	case "validate":
+		cmdK8sValidate(p)
+	default:
+		fmt.Fprintf(os.Stderr, "warden k8s: unknown command %q (want render, docker, validate)\n", command)
+		os.Exit(2)
+	}
+}
+
+func cmdK8sRender(p policy.Policy, image, namespace, outputFile, platform string) {
+	if image == "" {
+		fmt.Fprintf(os.Stderr, "warden k8s: render requires --image\n")
+		os.Exit(2)
+	}
+
+	opts := container.TranslateOptions{
+		Image:        image,
+		Namespace:    namespace,
+		Platform:     "kubernetes",
+		EmitWarnings: true,
+	}
+
+	manifests, err := container.GenerateKubernetesManifests(p, opts)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		os.Exit(1)
+	}
+
+	out, err := container.RenderKubernetesYAML(manifests)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		os.Exit(1)
+	}
+
+	if outputFile != "" {
+		if err := os.WriteFile(outputFile, []byte(out), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "warden k8s: write output: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("✓ wrote Kubernetes manifests to %s\n", outputFile)
+	} else {
+		fmt.Print(out)
+	}
+
+	// Surface FQDN-limitation warnings on stderr so they are visible without
+	// contaminating the YAML written to stdout/file.
+	for _, w := range container.ValidateKubernetesPolicy(p) {
+		fmt.Fprintf(os.Stderr, "⚠️  %s\n", w)
+	}
+}
+
+func cmdK8sDocker(p policy.Policy, image, platform string) {
+	if image == "" {
+		fmt.Fprintf(os.Stderr, "warden k8s: docker requires --image\n")
+		os.Exit(2)
+	}
+
+	cmd, err := container.RenderDockerCommand(p, container.TranslateOptions{Image: image, Platform: platform})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf(strings.Join(cmd, " ") + "\n")
+}
+
+func cmdK8sValidate(p policy.Policy) {
+	fmt.Printf("🔍 Validating policy for container deployment...\n\n")
+
+	// Check basic structure
+	fmt.Printf("📋 Policy Structure:\n")
+	if len(p.Command) > 0 {
+		fmt.Printf("✅ Command specified: %v\n", p.Command)
+	} else {
+		fmt.Printf("⚠️  No command specified - will need to be provided at runtime\n")
+	}
+
+	fmt.Printf("✅ Filesystem: %d read, %d write paths\n", len(p.Filesystem.Read), len(p.Filesystem.Write))
+	fmt.Printf("✅ Network: %d allowed hosts\n", len(p.Network.Allow))
+	fmt.Printf("✅ Environment: %d allowed variables\n", len(p.Env.Allow))
+
+	// Delegate container-compatibility checks to the container package so the
+	// CLI and `go test` exercise the same translation logic.
+	fmt.Printf("\n🔧 Container Compatibility:\n")
+	warnings := container.ValidateKubernetesPolicy(p)
+	for _, w := range warnings {
+		fmt.Printf("⚠️  %s\n", w)
+	}
+	if p.Limits.MemoryMB == 0 {
+		fmt.Printf("⚠️  No memory limit specified - recommended for K8s deployment\n")
+	}
+	if len(warnings) == 0 && p.Limits.MemoryMB > 0 {
+		fmt.Printf("✅ Policy is fully compatible with container deployment\n")
+	}
+
+	fmt.Printf("\n🛡️  Security Assessment:\n")
+	fmt.Printf("✅ Read-only root filesystem will be enforced\n")
+	fmt.Printf("✅ Capability dropping will be applied\n")
+	fmt.Printf("✅ Non-root execution will be enforced\n")
+	fmt.Printf("✅ Seccomp filtering will be applied\n")
+
+	fmt.Printf("\n🎯 Deployment Readiness:\n")
+	if len(warnings) > 0 || p.Limits.MemoryMB == 0 {
+		fmt.Printf("⚠️  Policy has compatibility warnings - review before deployment\n")
+	} else {
+		fmt.Printf("✅ Policy is ready for container deployment\n")
+	}
+}
+
+func parseK8sArgs(args []string) (policyPath, image, namespace, outputFile, platform string, err error) {
+	namespace = "default" // default
+	platform = "kubernetes" // default
+	
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--policy" || arg == "-policy":
+			if i+1 >= len(args) {
+				return "", "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			if policyPath != "" {
+				return "", "", "", "", "", fmt.Errorf("--policy specified twice")
+			}
+			policyPath = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--policy="):
+			if policyPath != "" {
+				return "", "", "", "", "", fmt.Errorf("--policy specified twice")
+			}
+			policyPath = strings.TrimPrefix(arg, "--policy=")
+		case arg == "--image":
+			if i+1 >= len(args) {
+				return "", "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			image = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--image="):
+			image = strings.TrimPrefix(arg, "--image=")
+		case arg == "--namespace":
+			if i+1 >= len(args) {
+				return "", "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			namespace = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--namespace="):
+			namespace = strings.TrimPrefix(arg, "--namespace=")
+		case arg == "--output":
+			if i+1 >= len(args) {
+				return "", "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			outputFile = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--output="):
+			outputFile = strings.TrimPrefix(arg, "--output=")
+		case arg == "--platform":
+			if i+1 >= len(args) {
+				return "", "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			platform = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--platform="):
+			platform = strings.TrimPrefix(arg, "--platform=")
+		case strings.HasPrefix(arg, "-"):
+			return "", "", "", "", "", fmt.Errorf("unknown flag %q", arg)
+		default:
+			return "", "", "", "", "", fmt.Errorf("unexpected argument %q", arg)
+		}
+	}
+	
+	if policyPath == "" {
+		return "", "", "", "", "", fmt.Errorf("missing required flag --policy")
+	}
+	
+	return policyPath, image, namespace, outputFile, platform, nil
 }

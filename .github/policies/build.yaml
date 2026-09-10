@@ -1,0 +1,101 @@
+# Build Policy for GitHub Actions
+# This policy allows typical build operations while restricting access
+# to sensitive files and unauthorized network connections.
+
+command: ["bash", "-c"]
+
+filesystem:
+  read:
+    # Repository and system files
+    - "."
+    - "/tmp"
+    - "/usr"
+    - "/bin"
+    - "/lib"
+    - "/lib64"
+    - "/etc/ssl"
+    - "/etc/ca-certificates"
+    - "/etc/passwd"
+    - "/etc/group"
+    
+  write:
+    # Build outputs and caches
+    - "./dist"
+    - "./build"
+    - "./out"
+    - "./target"
+    - "./node_modules"
+    - "./vendor"
+    - "./.next"
+    - "./tmp"
+    - "/tmp"
+    - "./.cache"
+    - "./coverage"
+
+network:
+  allow:
+    # Package registries
+    - "registry.npmjs.org"
+    - "registry.yarnpkg.com"
+    - "cdn.jsdelivr.net"
+    - "unpkg.com"
+    
+    # Python packages
+    - "pypi.org"
+    - "files.pythonhosted.org"
+    
+    # Go modules
+    - "proxy.golang.org"
+    - "sum.golang.org"
+    
+    # Git repositories
+    - "github.com"
+    - "gitlab.com"
+    - "bitbucket.org"
+    
+    # CDNs and essential services
+    - "codeload.github.com"
+    - "objects.githubusercontent.com"
+
+env:
+  allow:
+    # Build environment
+    - "NODE_ENV"
+    - "CI"
+    - "GITHUB_ACTIONS"
+    - "RUNNER_OS"
+    
+    # Language-specific
+    - "NODE_OPTIONS"
+    - "NPM_CONFIG_CACHE"
+    - "YARN_CACHE_FOLDER"
+    - "PYTHONPATH"
+    - "GOPATH"
+    - "GOCACHE"
+    - "CARGO_HOME"
+    - "RUSTUP_HOME"
+    
+    # Essential system variables
+    - "PATH"
+    - "HOME"
+    - "USER"
+    - "PWD"
+    - "TERM"
+    - "LANG"
+    - "LC_ALL"
+    
+    # GitHub context (for build info)
+    - "GITHUB_REPOSITORY"
+    - "GITHUB_SHA"
+    - "GITHUB_REF"
+
+limits:
+  memory_mb: 2048
+  timeout_s: 1800  # 30 minutes max
+
+# Notes:
+# - This policy allows typical build operations for web/mobile apps
+# - Network access restricted to known package registries and CDNs
+# - No access to secrets like API keys or database credentials
+# - Write access focused on build outputs and temporary directories
+# - Generous memory and time limits for complex builds

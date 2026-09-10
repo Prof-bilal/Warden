@@ -1,0 +1,220 @@
+name: 'Warden Sandbox Action'
+description: 'Run commands inside Warden sandbox with policy enforcement in CI/CD'
+author: 'Warden Security'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  policy:
+    description: 'Path to Warden policy.yaml file'
+    required: true
+  run:
+    description: 'Command to run inside the sandbox'
+    required: true
+  backend:
+    description: 'Sandbox backend (auto, linux, docker)'
+    required: false
+    default: 'auto'
+  approve:
+    description: 'Enable interactive approval mode'
+    required: false
+    default: 'false'
+  warden-version:
+    description: 'Warden release tag to download from GitHub Releases (default: latest). When unset, a checked-in dist/warden-linux-amd64 binary is preferred.'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Working directory for the command'
+    required: false
+    default: '.'
+
+outputs:
+  exit-code:
+    description: 'Exit code of the sandboxed command'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate environment
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" != "Linux" ]]; then
+          echo "::error::Warden Action currently supports Linux runners only"
+          exit 1
+        fi
+        
+        # Check for required tools
+        if ! command -v strace &> /dev/null; then
+          echo "::error::strace is required but not installed. Install with: apt-get update && apt-get install -y strace"
+          exit 1
+        fi
+        
+        # Check for bubblewrap availability (required for Linux backend)
+        if ! command -v bwrap &> /dev/null; then
+          echo "::warning::bubblewrap not found, will attempt installation"
+        fi
+
+    - name: Install Warden
+      shell: bash
+      run: |
+        # Install the Warden binary. We prefer the checked-in dist binary that
+        # matches the exact commit being reviewed, then fall back to a pinned
+        # GitHub release. Both paths fail closed with a clear action message.
+        WARDEN_VERSION="${{ inputs.warden-version }}"
+        BIN_NAME="warden-linux-amd64"
+        TARGET="/usr/local/bin/warden"
+
+        # 1) Repo-local dist binary (matches this commit; dist/ is committed).
+        if [[ -x "dist/$BIN_NAME" ]]; then
+          echo "::notice::Using checked-in dist/$BIN_NAME"
+          sudo install -m 0755 "dist/$BIN_NAME" "$TARGET"
+          warden version
+          exit 0
+        fi
+
+        # 2) Download a release binary from GitHub Releases.
+        REPO="${{ github.repository }}"
+        if [[ -z "$WARDEN_VERSION" || "$WARDEN_VERSION" == "latest" ]]; then
+          RELEASE_URL="https://github.com/${REPO}/releases/latest/download/${BIN_NAME}"
+        else
+          RELEASE_URL="https://github.com/${REPO}/releases/download/${WARDEN_VERSION}/${BIN_NAME}"
+        fi
+
+        echo "::notice::Downloading Warden from $RELEASE_URL"
+        TMP="$(mktemp)"
+        if ! curl -fsSL -o "$TMP" "$RELEASE_URL"; then
+          rm -f "$TMP"
+          echo "::error::Could not download the Warden binary. Commit dist/warden-linux-amd64 to the repo, or pass a valid warden-version tag (e.g. v0.1.9)."
+          exit 1
+        fi
+
+        sudo install -m 0755 "$TMP" "$TARGET"
+        rm -f "$TMP"
+
+        warden version
+
+    - name: Install bubblewrap if needed
+      shell: bash
+      run: |
+        if ! command -v bwrap &> /dev/null; then
+          echo "::notice::Installing bubblewrap"
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap
+        fi
+
+    - name: Validate Warden setup
+      shell: bash
+      run: |
+        echo "::group::Warden doctor check"
+        warden doctor || {
+          echo "::error::Warden sandbox check failed. The runner environment may not support sandboxing."
+          exit 1
+        }
+        echo "::endgroup::"
+
+    - name: Validate policy file
+      shell: bash
+      run: |
+        # The policy input may be a file path or inline YAML content.
+        # Inline YAML (contains a newline) is written to a temp file so the
+        # rest of the action treats it exactly like a committed policy.
+        POLICY_INPUT="${{ inputs.policy }}"
+        WORKING_DIR="${{ inputs.working-directory }}"
+
+        cd "$WORKING_DIR"
+
+        if [[ "$POLICY_INPUT" == *$'\n'* ]]; then
+          POLICY_PATH="$RUNNER_TEMP/warden-inline-policy.yaml"
+          printf '%s\n' "$POLICY_INPUT" > "$POLICY_PATH"
+          echo "::notice::Using inline policy (written to $POLICY_PATH)"
+        else
+          POLICY_PATH="$POLICY_INPUT"
+          if [[ ! -f "$POLICY_PATH" ]]; then
+            echo "::error::Policy file not found: $POLICY_PATH"
+            exit 1
+          fi
+          echo "::notice::Using policy: $POLICY_PATH"
+        fi
+        echo "WARDEN_POLICY_PATH=$POLICY_PATH" >> "$GITHUB_ENV"
+
+        # Validate policy syntax (dry run)
+        echo "::group::Policy validation"
+        if ! warden run --policy "$POLICY_PATH" --help > /dev/null 2>&1; then
+          echo "::error::Policy file validation failed"
+          exit 1
+        fi
+        echo "::endgroup::"
+
+    - name: Run command in sandbox
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set +e  # Don't exit on command failure - we want to capture exit code
+        
+        POLICY_PATH="${WARDEN_POLICY_PATH:-${{ inputs.policy }}}"
+        COMMAND="${{ inputs.run }}"
+        BACKEND="${{ inputs.backend }}"
+        APPROVE="${{ inputs.approve }}"
+        
+        # Build warden command
+        WARDEN_CMD="warden run --policy '$POLICY_PATH'"
+        
+        if [[ "$BACKEND" != "auto" ]]; then
+          WARDEN_CMD="$WARDEN_CMD --backend '$BACKEND'"
+        fi
+        
+        if [[ "$APPROVE" == "true" ]]; then
+          WARDEN_CMD="$WARDEN_CMD --approve"
+        fi
+        
+        WARDEN_CMD="$WARDEN_CMD -- $COMMAND"
+        
+        echo "::group::Warden execution"
+        echo "::notice::Running: $WARDEN_CMD"
+        
+        # Execute the command and capture exit code
+        eval "$WARDEN_CMD"
+        EXIT_CODE=$?
+        
+        echo "::endgroup::"
+        
+        # Set output
+        echo "exit-code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+        
+        # Handle exit code
+        if [[ $EXIT_CODE -ne 0 ]]; then
+          echo "::error::Sandboxed command failed with exit code $EXIT_CODE"
+          exit $EXIT_CODE
+        fi
+        
+        echo "::notice::Sandboxed command completed successfully"
+
+    - name: Upload audit logs
+      shell: bash
+      if: always()
+      run: |
+        # Find the latest audit log
+        AUDIT_DIR="$HOME/.local/state/warden"
+        if [[ -d "$AUDIT_DIR" ]] && [[ -f "$AUDIT_DIR/audit.jsonl" ]]; then
+          echo "::notice::Audit log available at $AUDIT_DIR/audit.jsonl"
+          
+          # For security, we should be careful about what we log
+          # Only show basic stats, not full content which might contain secrets
+          if [[ -s "$AUDIT_DIR/audit.jsonl" ]]; then
+            EVENTS_COUNT=$(wc -l < "$AUDIT_DIR/audit.jsonl")
+            echo "::notice::Recorded $EVENTS_COUNT audit events"
+            
+            # Show any blocked attempts (these are security-relevant).
+            # Audit records mark denied accesses with "allowed":false; the
+            # resource field names the blocked path or host.
+            if grep -q '"allowed":false' "$AUDIT_DIR/audit.jsonl"; then
+              echo "::warning::Some operations were blocked by the sandbox policy"
+              echo "::group::Blocked operations summary"
+              grep '"allowed":false' "$AUDIT_DIR/audit.jsonl" | jq -r '.resource // .reason' | sort | uniq -c | head -10
+              echo "::endgroup::"
+            fi
+          fi
+        else
+          echo "::notice::No audit log generated"
+        fi

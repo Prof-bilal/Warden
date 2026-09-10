@@ -174,14 +174,25 @@ func TestFixturePoliciesGrantWhatManifestClaims(t *testing.T) {
 	}
 }
 
-// TestDocumentedSchemaGaps locks in the M8 triage outcome: wildcard hosts
-// are rejected by the schema (playwright's core gap). If wildcard support is
-// ever added, this test forces the matrix, fixtures, and docs to be updated
-// together instead of silently changing allowlist semantics.
-func TestDocumentedSchemaGaps(t *testing.T) {
-	var p policy.Policy
-	if _, err := p.AddHost("*.example.com"); err == nil {
-		t.Fatalf("AddHost accepted wildcard %q: schema now allows wildcards — update matrix.yaml, fixtures, and docs/compatibility.md", "*.example.com")
+// TestWildcardHostSemantics pins the schema's wildcard grant behavior: a
+// single leading wildcard label is a subdomain pattern (added to close the
+// Playwright gap — see docs/compatibility.md), while anything broader or
+// malformed stays rejected. Deny-by-default never silently changes.
+func TestWildcardHostSemantics(t *testing.T) {
+	// A single leading wildcard label is a subdomain pattern.
+	p := policy.Policy{}
+	if _, err := p.AddHost("*.Example.com"); err != nil {
+		t.Fatalf("AddHost(*.example.com) = %v — wildcard support must update matrix, fixtures, and docs/compatibility.md together", err)
+	}
+	if len(p.Network.Allow) != 1 || p.Network.Allow[0] != "*.example.com" {
+		t.Fatalf("AddHost(*.example.com) mangled grant: %v", p.Network.Allow)
+	}
+	// Anything broader or malformed remains rejected.
+	for _, bad := range []string{"*", "*.*.example.com", "a*.example.com", "*example.com", "*.", "example.*"} {
+		p2 := policy.Policy{}
+		if _, err := p2.AddHost(bad); err == nil {
+			t.Fatalf("AddHost(%q) accepted — broader wildcard semantics silently changed", bad)
+		}
 	}
 }
 

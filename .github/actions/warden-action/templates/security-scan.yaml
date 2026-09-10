@@ -1,0 +1,66 @@
+# Security Scanning Policy Template
+# For running security tools like gitleaks, semgrep, etc.
+
+command: ["bash", "-c"]
+
+filesystem:
+  read:
+    - "."                    # Full repository access for scanning
+    - "/usr/bin"
+    - "/bin"
+    - "/usr/lib"
+    - "/lib"
+    - "/lib64"
+    - "/etc/ssl"
+    - "/etc/ca-certificates"
+    - "/usr/share"           # Tool configuration
+    
+  write:
+    - "./tmp"
+    - "./security-reports"   # Scan results
+    - "./sarif-results"      # SARIF format reports
+    - "/tmp"
+
+network:
+  allow:
+    # Common security tool endpoints
+    - "api.github.com"       # For GitHub integration
+    - "registry.npmjs.org"   # If scanning package files
+    - "semgrep.dev"          # Semgrep rules
+    - "github.com"           # Rule updates
+
+env:
+  allow:
+    # System essentials
+    - "PATH"
+    - "HOME"
+    - "USER"
+    - "PWD"
+    - "TERM"
+    
+    # CI environment
+    - "CI"
+    - "GITHUB_ACTIONS"
+    - "RUNNER_OS"
+    - "GITHUB_REPOSITORY"
+    - "GITHUB_SHA"
+    - "GITHUB_REF"
+    - "GITHUB_EVENT_NAME"
+    
+    # Security tool integration
+    - "GITHUB_TOKEN"         # For GitHub API access
+    - "SEMGREP_APP_TOKEN"    # If using Semgrep Cloud
+    
+    # Language environments (if needed)
+    - "NODE_ENV"
+    - "PYTHONPATH"
+
+limits:
+  memory_mb: 1024
+  timeout_s: 900            # 15 minutes for security scans
+
+# Common security tools this supports:
+# - gitleaks detect --source . --report-format sarif --report-path ./security-reports/gitleaks.sarif
+# - semgrep --config=auto --sarif --output=./security-reports/semgrep.sarif .
+# - bandit -r . -f json -o ./security-reports/bandit.json
+# - npm audit --json > ./security-reports/npm-audit.json

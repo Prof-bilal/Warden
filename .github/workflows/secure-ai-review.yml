@@ -1,0 +1,77 @@
+name: Secure AI Code Review
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better context
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace bubblewrap jq
+      
+      - name: Run AI code review
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/policies/ai-review.yaml
+          run: |
+            # Example: AI review command
+            echo "Running secure AI code review..."
+            # This would be replaced with actual AI tool like:
+            # claude -p "Review this PR for security issues" --max-turns 3
+            echo "AI review would run here with restricted access"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Check audit results
+        if: always()
+        run: |
+          echo "Reviewing security audit..."
+          if [ -f ~/.local/state/warden/audit.jsonl ]; then
+            echo "Audit events recorded:"
+            wc -l ~/.local/state/warden/audit.jsonl
+            
+            # Check for any blocked operations
+            if grep -q '"allowed":false' ~/.local/state/warden/audit.jsonl 2>/dev/null; then
+              echo "⚠️  Some operations were blocked by security policy"
+              echo "Blocked operations:"
+              grep '"allowed":false' ~/.local/state/warden/audit.jsonl | jq -r '.resource // .reason' | head -5
+            else
+              echo "✅ All operations were within policy"
+            fi
+          fi
+
+  build-test:
+    runs-on: ubuntu-latest
+    needs: ai-review
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Secure build
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/policies/build.yaml
+          run: |
+            echo "Running secure build process..."
+            # Example build commands with restricted access
+            if [ -f package.json ]; then
+              npm ci --only=production
+              npm run build
+            fi
+        env:
+          NODE_ENV: production

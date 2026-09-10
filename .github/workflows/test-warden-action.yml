@@ -1,0 +1,393 @@
+name: Test Warden GitHub Action
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/actions/warden-action/**'
+      - '.github/workflows/test-warden-action.yml'
+  pull_request:
+    paths:
+      - '.github/actions/warden-action/**'
+
+jobs:
+  test-basic-functionality:
+    runs-on: ubuntu-latest
+    name: Test Basic Functionality
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace bubblewrap jq python3-yaml
+      
+      - name: Test minimal policy
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          run: |
+            echo "Testing basic sandbox functionality"
+            echo "Working directory: $(pwd)"
+            echo "User: $(whoami)"
+            ls -la . | head -5
+      
+      - name: Verify audit log creation
+        run: |
+          AUDIT_FILE="$HOME/.local/state/warden/audit.jsonl"
+          if [ -f "$AUDIT_FILE" ]; then
+            echo "✅ Audit log created"
+            echo "Events: $(wc -l < "$AUDIT_FILE")"
+          else
+            echo "❌ Audit log not found"
+            exit 1
+          fi
+
+  test-policy-validation:
+    runs-on: ubuntu-latest
+    name: Test Policy Validation
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test policy validator
+        run: |
+          # Test with valid policy
+          echo "Testing valid policy..."
+          python3 .github/actions/warden-action/scripts/validate-policy.py \
+            .github/policies/ai-review.yaml
+          
+          # Test with invalid policy
+          echo "Testing invalid policy..."
+          cat > invalid-policy.yaml << 'EOF'
+          filesystem:
+            write: ["/"]  # Should fail
+          network:
+            allow: ["*"]  # Should fail
+          env:
+            allow: ["*"]  # Should fail
+          EOF
+          
+          if python3 .github/actions/warden-action/scripts/validate-policy.py invalid-policy.yaml; then
+            echo "❌ Validator should have rejected invalid policy"
+            exit 1
+          else
+            echo "✅ Validator correctly rejected invalid policy"
+          fi
+
+  test-policy-generation:
+    runs-on: ubuntu-latest
+    name: Test Policy Generation
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test policy generator
+        run: |
+          # Test AI review policy generation
+          .github/actions/warden-action/scripts/generate-ci-policy.sh \
+            --type ai-review \
+            --output test-ai-policy.yaml \
+            --validate
+          
+          # Test build policy generation
+          .github/actions/warden-action/scripts/generate-ci-policy.sh \
+            --type build \
+            --command "npm install" \
+            --output test-build-policy.yaml \
+            --validate
+          
+          # Verify files were created
+          [ -f test-ai-policy.yaml ] || exit 1
+          [ -f test-build-policy.yaml ] || exit 1
+          
+          echo "✅ Policy generation successful"
+
+  test-security-scenarios:
+    runs-on: ubuntu-latest  
+    name: Test Security Scenarios
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y strace bubblewrap
+      
+      - name: Test filesystem isolation
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          run: |
+            # This should work (allowed path)
+            ls . > /tmp/test.txt
+            echo "✅ Can access allowed paths"
+            
+            # This should be blocked (not in policy)
+            if [ -r /etc/shadow ]; then
+              echo "❌ SECURITY ISSUE: Can read /etc/shadow"
+              exit 1
+            else
+              echo "✅ Cannot read sensitive files (correctly blocked)"
+            fi
+      
+      - name: Test network isolation  
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          run: |
+            # This should be blocked (no network allowed in minimal policy)
+            if curl -s --connect-timeout 5 google.com > /dev/null 2>&1; then
+              echo "❌ SECURITY ISSUE: Network access not blocked"
+              exit 1
+            else
+              echo "✅ Network access correctly blocked"
+            fi
+      
+      - name: Test environment isolation
+        env:
+          SECRET_VAR: "this-should-not-be-accessible"
+          ALLOWED_VAR: "this-is-allowed"
+        uses: ./.github/actions/warden-action
+        with:
+          policy: |
+            command: ["bash", "-c"]
+            filesystem:
+              read: ["."]
+              write: ["/tmp"]
+            network:
+              allow: []
+            env:
+              allow: ["ALLOWED_VAR", "PATH"]
+            limits:
+              memory_mb: 256
+              timeout_s: 60
+          run: |
+            # This should work
+            if [ "$ALLOWED_VAR" = "this-is-allowed" ]; then
+              echo "✅ Can access allowed environment variable"
+            else
+              echo "❌ Cannot access allowed environment variable"
+              exit 1
+            fi
+            
+            # This should be blocked
+            if [ -n "$SECRET_VAR" ]; then
+              echo "❌ SECURITY ISSUE: Can access blocked environment variable"
+              exit 1
+            else
+              echo "✅ Blocked environment variable correctly filtered"
+            fi
+
+  test-real-world-scenarios:
+    runs-on: ubuntu-latest
+    name: Test Real World Scenarios
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Test NPM build scenario
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/policies/build.yaml
+          run: |
+            # Create a minimal package.json
+            cat > package.json << 'EOF'
+            {
+              "name": "test-build",
+              "version": "1.0.0",
+              "scripts": {
+                "build": "echo 'Build successful' > dist/output.txt"
+              }
+            }
+            EOF
+            
+            mkdir -p dist
+            npm run build
+            
+            # Verify build output
+            if [ -f dist/output.txt ]; then
+              echo "✅ Build completed successfully"
+              cat dist/output.txt
+            else
+              echo "❌ Build output not found"
+              exit 1
+            fi
+      
+      - name: Test security scanning scenario
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/actions/warden-action/templates/security-scan.yaml
+          run: |
+            # Create test files for scanning
+            echo "password = 'secret123'" > test-file.py
+            echo "api_key = 'sk-test123'" > test-file.js
+            
+            # Run basic security checks (without external tools)
+            echo "Simulating security scan..."
+            
+            # Check for common patterns
+            if grep -r "password.*=" . --exclude-dir=.git; then
+              echo "⚠️  Found potential password in code"
+            fi
+            
+            if grep -r "api_key.*=" . --exclude-dir=.git; then
+              echo "⚠️  Found potential API key in code"
+            fi
+            
+            echo "✅ Security scan simulation completed"
+
+  test-error-handling:
+    runs-on: ubuntu-latest
+    name: Test Error Handling
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Test invalid policy file
+        continue-on-error: true
+        id: invalid-policy
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./non-existent-policy.yaml
+          run: echo "This should fail"
+      
+      - name: Verify invalid policy failure
+        if: steps.invalid-policy.outcome != 'failure'
+        run: |
+          echo "❌ Action should have failed with invalid policy"
+          exit 1
+      
+      - name: Test malformed policy
+        continue-on-error: true
+        id: malformed-policy
+        uses: ./.github/actions/warden-action
+        with:
+          policy: |
+            invalid yaml content
+            this is not valid
+          run: echo "This should fail"
+      
+      - name: Verify malformed policy failure  
+        if: steps.malformed-policy.outcome != 'failure'
+        run: |
+          echo "❌ Action should have failed with malformed policy"
+          exit 1
+
+  test-audit-logging:
+    runs-on: ubuntu-latest
+    name: Test Audit Logging
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Run with audit logging
+        uses: ./.github/actions/warden-action
+        with:
+          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          run: |
+            # Generate various audit events
+            ls -la .
+            echo "test" > /tmp/audit-test.txt
+            cat /tmp/audit-test.txt
+            pwd
+            whoami
+      
+      - name: Analyze audit log
+        run: |
+          AUDIT_FILE="$HOME/.local/state/warden/audit.jsonl"
+          
+          if [ ! -f "$AUDIT_FILE" ]; then
+            echo "❌ Audit log not found"
+            exit 1
+          fi
+          
+          # Count events
+          TOTAL_EVENTS=$(wc -l < "$AUDIT_FILE")
+          echo "Total audit events: $TOTAL_EVENTS"
+          
+          # Check for specific event types
+          if grep -q '"type":"file"' "$AUDIT_FILE"; then
+            echo "✅ File access events logged"
+          fi
+          
+          # Check for blocked events (denied accesses are logged with allowed=false)
+          BLOCKED_EVENTS=$(grep -c '"allowed":false' "$AUDIT_FILE" || true)
+          echo "Blocked events: $BLOCKED_EVENTS"
+          
+          # Show recent events
+          echo "Recent audit events:"
+          tail -5 "$AUDIT_FILE" | jq -r '"\(.timestamp) \(.type) \(.resource // .reason)"' 2>/dev/null || tail -5 "$AUDIT_FILE"
+
+  summary:
+    runs-on: ubuntu-latest
+    name: Test Summary
+    needs: [test-basic-functionality, test-policy-validation, test-policy-generation, test-security-scenarios, test-real-world-scenarios, test-error-handling, test-audit-logging]
+    if: always()
+    
+    steps:
+      - name: Test Results Summary
+        run: |
+          echo "🧪 Warden GitHub Action Test Results"
+          echo "=================================="
+          echo ""
+          
+          # Check job results
+          if [ "${{ needs.test-basic-functionality.result }}" = "success" ]; then
+            echo "✅ Basic functionality tests passed"
+          else
+            echo "❌ Basic functionality tests failed"
+          fi
+          
+          if [ "${{ needs.test-policy-validation.result }}" = "success" ]; then
+            echo "✅ Policy validation tests passed"
+          else
+            echo "❌ Policy validation tests failed"
+          fi
+          
+          if [ "${{ needs.test-policy-generation.result }}" = "success" ]; then
+            echo "✅ Policy generation tests passed"
+          else
+            echo "❌ Policy generation tests failed"
+          fi
+          
+          if [ "${{ needs.test-security-scenarios.result }}" = "success" ]; then
+            echo "✅ Security scenario tests passed"
+          else
+            echo "❌ Security scenario tests failed"
+          fi
+          
+          if [ "${{ needs.test-real-world-scenarios.result }}" = "success" ]; then
+            echo "✅ Real world scenario tests passed"
+          else
+            echo "❌ Real world scenario tests failed"
+          fi
+          
+          if [ "${{ needs.test-error-handling.result }}" = "success" ]; then
+            echo "✅ Error handling tests passed"
+          else
+            echo "❌ Error handling tests failed"
+          fi
+          
+          if [ "${{ needs.test-audit-logging.result }}" = "success" ]; then
+            echo "✅ Audit logging tests passed"
+          else
+            echo "❌ Audit logging tests failed"
+          fi
+          
+          echo ""
+          echo "🎉 GitHub Action testing completed"
