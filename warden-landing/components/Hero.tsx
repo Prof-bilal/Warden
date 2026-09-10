@@ -110,7 +110,7 @@ export default function Hero() {
               </button>
 
               <p className="px-1 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-muted/80">
-                Works with any MCP client · No daemon · Linux today, macOS next
+                Works with any MCP client · No daemon · Linux · macOS · Windows
               </p>
             </div>
 

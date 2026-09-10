@@ -2,10 +2,9 @@
 
 ## Day-one options
 
-> **Note:** Homebrew (`warden-sandbox/warden`) and npm
-> (`@warden-sandbox/mcp-warden`) distribution is coming soon. Until then,
-> install from a GitHub Release or build from source — both give you the
-> same single static binary.
+> **Note:** Homebrew (`warden-sandbox/warden`) distribution is coming soon.
+> For now, install via npm, GitHub Release, or build from source — all give
+> you the same single static binary.
 
 ### Option A — GitHub Release (easiest)
 
@@ -64,7 +63,7 @@ if you hit that error.
 
 ## What a successful install looks like
 
-When installed via `npm` (`npm i -g @warden-sandbox/cli` or `npx`) the
+When installed via `npm` (`npm i -g warden-sandbox-cli` or `npx`) the
 installer shows a polished, non-blocking progress sequence. In a TTY it
 animates briefly with a braille spinner; in CI or when piped it falls back
 to deterministic bracketed lines so logs stay clean. No spinner is left
