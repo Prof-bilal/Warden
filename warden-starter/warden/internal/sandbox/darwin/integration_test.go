@@ -16,6 +16,23 @@ func requireSandboxExec(t *testing.T) {
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
 		t.Skip("sandbox-exec not installed — skipping Seatbelt integration test")
 	}
+	// Verify sandbox-exec can actually run a binary. On macOS 26+, dyld
+	// rejects executables without LC_UUID (Go < 1.24 omits it). Rather than
+	// getting confusing -1 exits, skip with a clear message.
+	cmd := exec.Command("sandbox-exec", "-f", "/dev/null", "/usr/bin/true")
+	if err := cmd.Run(); err == nil {
+		return // sandbox-exec works (profile is invalid but /dev/null may be accepted)
+	}
+	// /dev/null is not a valid profile; try with a minimal deny-default profile.
+	profile := "(version 1)\n(deny default)\n(allow process*)\n"
+	tmp := filepath.Join(t.TempDir(), "test.sb")
+	if err := os.WriteFile(tmp, []byte(profile), 0o644); err != nil {
+		t.Skipf("cannot write test profile: %v — skipping", err)
+	}
+	cmd = exec.Command("sandbox-exec", "-f", tmp, "/usr/bin/true")
+	if err := cmd.Run(); err != nil {
+		t.Skipf("sandbox-exec cannot run binaries on this host (%v) — skipping", err)
+	}
 }
 
 // writeFixture writes an executable script into dir and returns its path.
