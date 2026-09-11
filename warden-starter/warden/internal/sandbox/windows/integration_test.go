@@ -38,13 +38,19 @@ func requireAppContainer(t *testing.T) {
 	// Prove execution via a granted write the test verifies on the host
 	// (Run() passes stdio through but returns only the exit code).
 	writeDir := t.TempDir()
-	probe := filepath.Join(writeDir, "startup-probe.cmd")
-	marker := filepath.Join(writeDir, "started.marker")
+	// Resolve to full path to avoid 8.3 short name issues with Windows ACL functions
+	fullPath, err := filepath.Abs(writeDir)
+	if err != nil {
+		t.Fatalf("failed to resolve temp directory path: %v", err)
+	}
+	
+	probe := filepath.Join(fullPath, "startup-probe.cmd")
+	marker := filepath.Join(fullPath, "started.marker")
 	body := "@echo off\r\necho " + startupMarkerWindows + "> \"" + marker + "\"\r\n"
 	if err := os.WriteFile(probe, []byte(body), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{writeDir}}}
+	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{fullPath}}}
 	code, err := Run([]string{comspec, "/c", probe}, p)
 	if err != nil {
 		t.Fatalf("positive control: AppContainer sandbox cannot start a target: %v", err)
@@ -80,7 +86,18 @@ func comspec(t *testing.T) string {
 
 func TestEscapeUngrantedReadDenied(t *testing.T) {
 	grantedDir := t.TempDir()
+	// Resolve to full path to avoid 8.3 short name issues
+	grantedDir, err := filepath.Abs(grantedDir)
+	if err != nil {
+		t.Fatalf("failed to resolve granted directory path: %v", err)
+	}
+	
 	secretDir := t.TempDir()
+	secretDir, err = filepath.Abs(secretDir)
+	if err != nil {
+		t.Fatalf("failed to resolve secret directory path: %v", err)
+	}
+	
 	secret := filepath.Join(secretDir, "secret.txt")
 	if err := os.WriteFile(secret, []byte("classified"), 0o600); err != nil {
 		t.Fatal(err)
@@ -103,6 +120,12 @@ func TestEscapeUngrantedReadDenied(t *testing.T) {
 
 func TestGrantedPathReadable(t *testing.T) {
 	grantedDir := t.TempDir()
+	// Resolve to full path to avoid 8.3 short name issues
+	grantedDir, err := filepath.Abs(grantedDir)
+	if err != nil {
+		t.Fatalf("failed to resolve granted directory path: %v", err)
+	}
+	
 	want := filepath.Join(grantedDir, "in.txt")
 	if err := os.WriteFile(want, []byte("allowed"), 0o600); err != nil {
 		t.Fatal(err)
@@ -199,6 +222,12 @@ func TestEscapeNetworkBlockedAudited(t *testing.T) {
 
 func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {
 	grantedDir := t.TempDir()
+	// Resolve to full path to avoid 8.3 short name issues
+	grantedDir, err := filepath.Abs(grantedDir)
+	if err != nil {
+		t.Fatalf("failed to resolve granted directory path: %v", err)
+	}
+	
 	probe := filepath.Join(grantedDir, "sleep.cmd")
 	if err := os.WriteFile(probe, []byte("@echo off\r\nping -n 200 127.0.0.1 >nul\r\n"), 0o700); err != nil {
 		t.Fatal(err)
