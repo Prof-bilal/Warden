@@ -90,8 +90,44 @@ func requireSandboxExec(t *testing.T) {
 		t.Fatalf("write production profile: %v", err)
 	}
 	if out, err := exec.Command("sandbox-exec", "-f", profilePath, "/usr/bin/true").CombinedOutput(); err != nil {
-		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\n%s",
-			err, profile, out, sandboxDenialLog())
+		// The child died before main(), so its own output is empty: run a
+		// one-shot bisect — each variant is the production profile plus one
+		// candidate grant class. A variant that suddenly works names the
+		// missing grant in the failure message below.
+		bisect := []struct{ name, extra string }{
+			{"with broad /System file-read*", "(allow file-read* (subpath \"/System\"))\n"},
+			{"with broad /usr file-read*", "(allow file-read* (subpath \"/usr\"))\n"},
+			{"with broad / file-map-executable", "(allow file-map-executable (subpath \"/\"))\n"},
+			{"with file-map-executable everywhere file-read* is granted", "(allow file-map-executable (subpath \"/usr\")) (allow file-map-executable (subpath \"/bin\")) (allow file-map-executable (subpath \"/sbin\")) (allow file-map-executable (subpath \"/System\")) (allow file-map-executable (subpath \"/private/var/db/dyld\"))\n"},
+			{"with /var/db subpath read", "(allow file-read* (subpath \"/var/db\")) (allow file-read* (subpath \"/private/var/db\"))\n"},
+			{"with /Library/Apple subpath read", "(allow file-read* (subpath \"/Library/Apple\"))\n"},
+			{"with /dev/dtracehelper full access", "(allow file-read* file-write* file-ioctl (literal \"/dev/dtracehelper\"))\n"},
+			{"with /private/var/db/os_log", "(allow file-read* (subpath \"/private/var/db/os_log\"))\n"},
+			{"with /System/Volumes/Data", "(allow file-read* (subpath \"/System/Volumes/Data\"))\n"},
+			{"with /usr/libexec", "(allow file-read* (subpath \"/usr/libexec\"))\n"},
+		}
+		variants := make([]string, 0, len(bisect))
+		for _, v := range bisect {
+			vprof := profile + "\n" + v.extra
+			vpath := filepath.Join(tmp, "bisect-"+strings.ReplaceAll(strings.ReplaceAll(v.name, " ", "-"), "/", "_")+".sb")
+			if err := os.WriteFile(vpath, []byte(vprof), 0o644); err != nil {
+				t.Fatalf("write bisect profile: %v", err)
+			}
+			vout, verr := exec.Command("sandbox-exec", "-f", vpath, "/usr/bin/true").CombinedOutput()
+			status := "FAIL"
+			if verr == nil {
+				status = "OK <-- missing grant found"
+			}
+			variants = append(variants, fmt.Sprintf("  [%s] %s => err=%v out=%q", status, v.name, verr, strings.TrimSpace(string(vout))))
+		}
+		// Also dump any macOS crash reports for /usr/bin/true from the last
+		// minute — dyld aborts leave exact denial records there.
+		crash := "(none)"
+		if c, err := exec.Command("/bin/sh", "-c", `ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -3`).Output(); err == nil {
+			crash = strings.TrimSpace(string(c))
+		}
+		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\nbisect variants:\n%s\nrecent crash reports: %s\n%s",
+			err, profile, out, strings.Join(variants, "\n"), crash, sandboxDenialLog())
 	}
 
 	// C: the real chain — generated profile, in-process bridge,

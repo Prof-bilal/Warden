@@ -23,6 +23,9 @@ var runtimeReadPaths = []string{
 	"/opt/homebrew",
 	"/usr/local",
 	"/private/var/db/dyld",
+	"/private/var/db/timezone",
+	"/Library/Preferences/Logging",
+	"/System/Library/CoreServices",
 	"/dev",
 	"/private/tmp",
 	"/tmp",
@@ -43,7 +46,12 @@ var exeImagePaths = []string{
 	"/sbin",
 	"/System",
 	"/Library/Frameworks",
-	"/Library/Apple",
+	"/Library/Apple/usr/lib",
+	"/Library/Apple/System/Library/Frameworks",
+	"/Library/Apple/System/Library/PrivateFrameworks",
+	"/System/Library/Extensions",
+	"/System/Library/PrivateFrameworks",
+	"/System/Library/SubFrameworks",
 	"/opt/homebrew",
 	"/usr/local",
 	"/private/tmp",
@@ -100,6 +108,9 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(allow sysctl-read)\n")
 	b.WriteString("(allow mach-lookup)\n")
 	b.WriteString("(allow file-read-metadata)\n")
+	b.WriteString("(allow ipc-posix-shm-read*)\n")
+	b.WriteString("(allow ipc-posix-sem)\n")
+	b.WriteString("(allow iokit-open (iokit-registry-entry-class \"RootDomainUserClient\"))\n")
 	// Root and per-component metadata traversal is blanket-allowed above;
 	// stat("/") is what dyld and libc need to resolve absolute paths. It
 	// does not permit listing or reading "/" contents.
@@ -121,10 +132,18 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	for _, path := range exeImagePaths {
 		writeSubpathAllow(&b, "file-map-executable", path)
 	}
+	// dyld maps the *main executable* itself via file-map-executable too
+	// (it revalidates the mapped image), even when the binary is already
+	// file-readable. Without this the child aborts before main() exactly
+	// like a missing dylib grant.
+	writeSubpathAllow(&b, "file-map-executable", exe)
+	writeLiteralAllow(&b, "file-map-executable", exe)
 	b.WriteString("; Pseudo / runtime paths\n")
 	for _, path := range runtimeReadPaths {
 		writeSubpathAllow(&b, "file-read*", path)
 	}
+	b.WriteString("(allow file-read-metadata (subpath \"/var\"))\n")
+	b.WriteString("(allow file-read-metadata (subpath \"/private/var\"))\n")
 	// Writable scratch space for temp files.
 	writeSubpathAllow(&b, "file-write*", "/tmp")
 	writeSubpathAllow(&b, "file-write*", "/private/tmp")
@@ -149,6 +168,9 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 		writeSubpathAllow(&b, "file-read*", parent)
 		writeSubpathAllow(&b, "file-map-executable", parent)
 	}
+	// The Go runtime and libSystem probe dtrace at startup; a denied
+	// dtracehelper open aborts dyld before main().
+	b.WriteString("(allow file-read* file-write-data file-ioctl (literal \"/dev/dtracehelper\"))\n")
 
 	b.WriteString("; Egress: only the local proxy bridge and its Unix socket\n")
 	b.WriteString("(allow network-outbound (remote ip \"localhost:18080\"))\n")
