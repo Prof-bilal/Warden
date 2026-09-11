@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/audit"
 )
@@ -135,7 +136,8 @@ func (s *Server) serveConn(conn net.Conn) {
 	defer conn.Close()
 	// A bridge transports one sandbox TCP connection verbatim. HTTP proxy
 	// requests are then parsed and authorized here, outside the namespace.
-	if err := (&http.Server{Handler: s}).Serve(&oneConnListener{conn: conn}); err != nil && err != http.ErrServerClosed {
+	wrapped := &closeNotifyingConn{Conn: conn, done: make(chan struct{})}
+	if err := (&http.Server{Handler: s, ReadHeaderTimeout: 30 * time.Second}).Serve(&oneConnListener{conn: wrapped, done: wrapped.done}); err != nil && err != http.ErrServerClosed {
 		return
 	}
 }
@@ -316,9 +318,16 @@ func copyHeader(dst, src http.Header) {
 	}
 }
 
-// oneConnListener lets net/http parse exactly one proxied connection.
+// oneConnListener lets net/http parse exactly one proxied connection. The
+// second Accept blocks until that connection has actually been finished —
+// closed by the server (plain requests) or by the hijacking handler
+// (CONNECT) — so Serve does not return and trigger the caller's deferred
+// close while the handler goroutine is still relaying data. Without this,
+// the request context is cancelled mid-handler and an allowed proxied
+// request can fail with an empty reply.
 type oneConnListener struct {
 	conn net.Conn
+	done <-chan struct{}
 	once sync.Once
 }
 
@@ -326,12 +335,26 @@ func (l *oneConnListener) Accept() (net.Conn, error) {
 	var c net.Conn
 	l.once.Do(func() { c = l.conn })
 	if c == nil {
+		<-l.done
 		return nil, io.EOF
 	}
 	return c, nil
 }
 func (l *oneConnListener) Close() error   { return nil }
 func (l *oneConnListener) Addr() net.Addr { return l.conn.LocalAddr() }
+
+// closeNotifyingConn signals done exactly once when the connection is
+// closed, whether by net/http or by the hijacking handler.
+type closeNotifyingConn struct {
+	net.Conn
+	once sync.Once
+	done chan struct{}
+}
+
+func (c *closeNotifyingConn) Close() error {
+	c.once.Do(func() { close(c.done) })
+	return c.Conn.Close()
+}
 
 // ValidateURL exists solely to keep URL parsing behavior testable for
 // callers that construct proxy requests programmatically.
