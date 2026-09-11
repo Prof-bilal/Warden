@@ -1,0 +1,74 @@
+#!/bin/sh
+# Warden proof-harness target (plan §6). Harmless by construction: reads and
+# writes only files the harness creates in temp dirs, and curls only loopback
+# addresses (the allowed one is a local python http.server; the blocked one is
+# a .invalid name that can never resolve to a real route).
+#
+# The harness substitutes @TOKENS@ before launch and runs this script INSIDE
+# the sandbox via `warden run`. Every step appends "name:RESULT" to steps.txt;
+# the harness evaluates them against expectations and voids everything if the
+# STARTED marker is missing.
+
+OUT="@OUT@"
+
+echo "@MARKER@" > "$OUT/started.txt"
+
+step() { # step <name> <result>
+	echo "$1:$2" >> "$OUT/steps.txt"
+}
+
+# §6-2: read an allowed file
+if cat "@WORK@/allowed.txt" > "$OUT/read_allowed.txt" 2>/dev/null; then
+	step read_allowed SUCCESS
+else
+	step read_allowed FAILED
+fi
+
+# §6-3: write within the write grant
+if echo "warden-proof-output" > "$OUT/produced.txt" 2>/dev/null; then
+	step write_allowed SUCCESS
+else
+	step write_allowed FAILED
+fi
+
+# §6-4: read a secret file outside every grant — must be BLOCKED
+if cat "@SECRET@/secret.txt" > /dev/null 2>&1; then
+	step read_secret LEAKED
+else
+	step read_secret BLOCKED
+fi
+
+# §6-5: read an unlisted file — must be BLOCKED
+if cat "@DENIED@/unlisted.txt" > /dev/null 2>&1; then
+	step read_unlisted LEAKED
+else
+	step read_unlisted BLOCKED
+fi
+
+# §6-6: connect to an allowed host (host loopback via the egress proxy)
+code=$(curl -s -m 10 -o "$OUT/net_allowed.txt" -w '%{http_code}' "http://127.0.0.1:@PORT@/" 2>/dev/null)
+if [ "$code" = "200" ]; then
+	step net_allowed SUCCESS
+else
+	step net_allowed "FAILED($code)"
+fi
+
+# §6-7: connect to an unlisted host — must be BLOCKED (HTTP 403 from proxy)
+code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "http://@BLOCKED@/" 2>/dev/null)
+if [ "$code" = "403" ]; then
+	step net_blocked BLOCKED
+else
+	step net_blocked "NOT_BLOCKED($code)"
+fi
+
+# §6-8: env — allowlisted var visible, unlisted var absent
+if [ "$GITHUB_TOKEN" = "@TOKEN@" ]; then
+	step env_allowed VISIBLE
+else
+	step env_allowed MISSING
+fi
+if [ -z "$WARDEN_SECRET_ENV" ]; then
+	step env_denied BLOCKED
+else
+	step env_denied LEAKED
+fi

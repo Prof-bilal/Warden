@@ -111,12 +111,26 @@ func cmdDoctor(args []string) {
 	// Policy engine
 	checks = append(checks, ui.Check{Name: "Policy engine", Status: "ok", Detail: "ready (YAML + validation)"})
 
-	// Strace for audit on Linux
+	// Strace for audit on Linux. The native bwrap backend hard-requires
+	// strace at run time (`warden run` refuses to start without it), so its
+	// absence is a FAIL that makes the host NOT READY — matching what run
+	// would actually do. The Docker fallback does its own sandboxing and
+	// never invokes strace, so it is not required there.
+	straceFails := false
 	if runtime.GOOS == "linux" {
 		if _, e := exec.LookPath("strace"); e == nil {
-			checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "ok", Detail: "available"})
+			if backendName == sandbox.BackendLinux {
+				checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "ok", Detail: "available"})
+			} else {
+				checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "info", Detail: "available (not required for the docker backend)"})
+			}
 		} else {
-			checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "warn", Detail: "strace not found", Hint: "Install strace for full file audit: sudo apt install strace"})
+			if backendName == sandbox.BackendLinux {
+				straceFails = true
+				checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "fail", Detail: "strace not found", Hint: "warden run requires strace for file/network auditing on the native Linux backend: sudo apt install strace"})
+			} else {
+				checks = append(checks, ui.Check{Name: "Audit (strace)", Status: "info", Detail: "strace not found (not required for the docker backend)"})
+			}
 		}
 	}
 
@@ -126,10 +140,12 @@ func cmdDoctor(args []string) {
 	// Separate into two visual groups: Environment vs Security posture
 	// For simplicity print all as Environment then synthesize posture checks.
 	// Security posture is derived from backend readiness.
-	ready := backendStatus == "ok"
+	ready := backendStatus == "ok" && !straceFails
 	reason := ""
 	if !ready {
-		if err != nil {
+		if straceFails {
+			reason = "strace is required for `warden run` file/network auditing on the native Linux backend. Install it, or use --backend docker."
+		} else if err != nil {
 			reason = err.Error()
 		} else {
 			reason = "Sandbox backend unavailable. Warden will refuse to run servers without enforcement."
@@ -146,6 +162,13 @@ func cmdDoctor(args []string) {
 
 	// Print using ui helper but with grouped output
 	printDoctorGrouped(checks, posture, ready, reason)
+
+	// Exit codes are machine-readable so scripts and CI can gate on them:
+	//   0 = ready to run, 1 = NOT READY (backend or required tool missing).
+	// Usage errors keep exit 2 above.
+	if !ready {
+		os.Exit(1)
+	}
 }
 
 func mapStatus(ready bool) string {

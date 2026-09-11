@@ -138,6 +138,26 @@ func TestHelpOutput(t *testing.T) {
 			},
 		},
 		{
+			name:     "warden help update",
+			args:     []string{"help", "update"},
+			exitCode: 0,
+			checks: []outputCheck{
+				{field: "stderr", contains: "WARDEN UPDATE"},
+				{field: "stderr", contains: "Usage:"},
+				{field: "stderr", contains: "warden update"},
+				{field: "stderr", contains: "SHA256SUMS"},
+			},
+		},
+		{
+			name:     "warden update --help",
+			args:     []string{"update", "--help"},
+			exitCode: 0,
+			checks: []outputCheck{
+				{field: "stderr", contains: "WARDEN UPDATE"},
+				{field: "stderr", contains: "SHA256SUMS"},
+			},
+		},
+		{
 			name:     "warden version --help",
 			args:     []string{"version", "--help"},
 			exitCode: 0,

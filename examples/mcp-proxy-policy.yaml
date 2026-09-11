@@ -1,0 +1,50 @@
+# Example MCP Proxy Policy
+# This policy configures Warden to act as a client proxy between
+# your MCP client and MCP servers.
+#
+# IMPORTANT (current scope): only "stdio:<command>" upstreams are supported.
+# http:// or https:// upstreams are REJECTED at startup. The stdio subprocess
+# receives only the variables listed in env.allow (deny-by-default), but it is
+# NOT sandboxed — its filesystem/network access are unrestricted.
+
+# The ONLY sandbox section enforced for the stdio subprocess
+env:
+  allow:
+    - "PATH"
+    - "HOME"
+    - "GITHUB_TOKEN"
+
+# MCP proxy configuration
+mcp:
+  # Upstream MCP server (local stdio command). To reach a remote HTTP/SSE
+  # MCP server, bridge it through a stdio MCP proxy such as mcp-remote.
+  upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
+  
+  # Tools that clients are allowed to call
+  allow_tools:
+    - "list_repositories"
+    - "get_file"  
+    - "search_code"
+    - "create_issue"
+  
+  # Patterns to block in request/response payloads
+  deny_patterns:
+    - "ghp_[A-Za-z0-9]{36}"        # GitHub personal access tokens
+    - "sk-[A-Za-z0-9]{48}"         # OpenAI API keys
+    - "AKIA[A-Z0-9]{16}"           # AWS access keys
+    - "xoxb-[0-9]{12}-[0-9]{12}-[a-zA-Z0-9]{24}"  # Slack bot tokens
+    - "[A-Za-z0-9]{32}@[A-Za-z0-9]{32}\\.iam\\.gserviceaccount\\.com"  # GCP service accounts
+  
+  # Maximum payload size in KB to prevent resource exhaustion
+  max_payload_kb: 1024
+  
+  # Log all MCP requests for debugging (use carefully - may log sensitive data)
+  audit_requests: false
+
+# Usage:
+# 1. Save this as mcp-proxy-policy.yaml
+# 2. Run: warden proxy --policy mcp-proxy-policy.yaml
+# 3. Connect your MCP client to the proxy's TCP listener (newline-delimited
+#    JSON-RPC); every message is filtered and audited in both directions.
+# 4. NOTE: filesystem/network/limits sections are NOT enforced for the
+#    subprocess; use `warden run` around `warden proxy` if you need that.

@@ -28,7 +28,7 @@ Each sandbox backend should have an integration test layer that exercises the ac
 - Docker-based fallback tests should run only when `docker info` succeeds
   and the configured image is present (`internal/sandbox/docker`).
 
-These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed.
+These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed. **Escape tests are the exception (plan §5):** before asserting any security result, the backend must prove the target actually started — every backend test file now has a positive-control gate (`requireTargetStarted` on Linux, the marker check inside `requireDocker`/`requireAppContainer`, the `requireSandboxExec` ladder on darwin). The control **fails** (never skips) when the primitive exists but the target cannot start, so a dead sandbox can never be reported as a security PASS. CI mirrors this: the macOS job hard-fails on any Seatbelt skip, and the Linux job now hard-fails if the bwrap escape tests skip or `TestSandboxPositiveControlStartup` does not pass.
 
 ## Escape tests
 

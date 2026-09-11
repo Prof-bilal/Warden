@@ -1,0 +1,22 @@
+# Warden proof-harness policy (plan §6)
+# Grants: read the fixture dir + the target script, write the output dir.
+# Everything else is denied by construction (bind-mount sandbox).
+filesystem:
+  read:
+    - "@WORK@"
+    - "@SCRIPT_DIR@"
+  write:
+    - "@OUT@"
+
+network:
+  allow:
+    - "127.0.0.1"
+
+env:
+  allow:
+    - "PATH"
+    - "GITHUB_TOKEN"
+
+# strace-based file/network auditing; keep high enough to not kill the run
+limits:
+  timeout_s: 120

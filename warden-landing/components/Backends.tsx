@@ -1,12 +1,25 @@
 const BACKENDS = [
-  { platform: "Linux", mechanism: "bubblewrap (unprivileged namespaces)", status: "Verified" },
-  { platform: "macOS", mechanism: "sandbox-exec, with Docker fallback", status: "Code-complete" },
-  { platform: "Windows", mechanism: "AppContainer + WFP + Job Objects + ETW audit", status: "Verified" },
+  {
+    platform: "Linux",
+    mechanism: "bubblewrap (unprivileged namespaces)",
+    status: "Verified on real hardware",
+  },
+  {
+    platform: "macOS",
+    mechanism: "sandbox-exec, with Docker fallback",
+    status: "CI-verified · real-hardware run pending",
+  },
+  {
+    platform: "Windows",
+    mechanism: "AppContainer + WFP + Job Objects + ETW audit",
+    status: "CI-verified (escape tests on Windows runners)",
+  },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
-  Verified: "text-grant bg-grant-subtle",
-  "Code-complete": "text-progress bg-progress-subtle",
+  "Verified on real hardware": "text-grant bg-grant-subtle",
+  "CI-verified · real-hardware run pending": "text-progress bg-progress-subtle",
+  "CI-verified (escape tests on Windows runners)": "text-grant bg-grant-subtle",
 };
 
 export default function Backends() {
@@ -35,11 +48,13 @@ export default function Backends() {
         </div>
 
         <p className="mt-6 max-w-[36rem] text-[0.8125rem] leading-[1.6] text-muted/80">
-          Linux and Windows are fully verified with escape tests passing on
-          real hardware. macOS is code-complete with unit tests; real-machine
-          verification requires macOS hardware. Windows requires an elevated
-          (Administrator) shell for WFP + ETW. Warden fails closed
-          with a clear message rather than running unaudited. See the
+          Verification is machine-checked, not claimed: CI hard-fails if escape
+          tests skip or never prove the sandboxed target actually started.
+          macOS is green in CI (GitHub macOS runners provide sandbox-exec); a
+          real end-user machine run of the proof harness is still pending.
+          Windows escape tests run on GitHub Windows runners; using WFP + ETW
+          locally requires an elevated (Administrator) shell. Warden fails
+          closed with a clear message rather than running unaudited. See the
           {" "}<a className="underline decoration-muted/40 hover:text-paper" href="/docs/install">install docs</a>{" "}
           and the {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK</a>{" "}
           tracker for the exact CI verification state.

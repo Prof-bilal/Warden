@@ -8,61 +8,118 @@ GitHub five minutes ago. Warden runs them in a restricted sandbox instead,
 so a server only ever gets the files, network hosts, and environment
 variables you explicitly grant it.
 
-> Status: early development / pre-alpha. See [ROADMAP.md](./ROADMAP.md) for
-> what's built and what's next. Not ready for production use yet — this repo
-> is currently a design skeleton to build from.
+> **Status:** All backends implemented (Linux, macOS, Windows); npm and GitHub
+> Releases distribution is live. Verification state: Linux verified on real
+> hardware, Windows verified via CI escape tests, macOS CI-green and pending a
+> real-hardware harness run. See
+> [warden-starter/warden/TESTING.md](./warden-starter/warden/TESTING.md) and
+> [warden-starter/warden/REMAINING_WORK.md](./warden-starter/warden/REMAINING_WORK.md)
+> for the exact state.
 
-## The problem
+---
 
-MCP's spec doesn't require any process isolation. The default install path
-for most servers is "run this script with your user's full permissions."
-That means a malicious or buggy MCP server can read your SSH keys, exfiltrate
-data over the network, or write anywhere on disk — and nothing in the
-protocol stops it.
-
-## What Warden does
+## Project Structure
 
 ```
-warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
+warden/
+├── warden-starter/warden/    # Warden CLI — Go backend (the actual sandbox runtime)
+├── warden-landing/           # Landing page — Next.js 14 + TypeScript + Tailwind
+├── docs/                     # Container/k8s mode, MCP client proxy
+├── examples/                 # Example policies (container, MCP proxy)
+├── testdata/proof/           # Proof-harness target fixture
+├── test-mcp-proxy.sh         # MCP proxy acceptance script
+├── ARCHITECTURE.md           # System architecture and design
+├── ROADMAP.md                # Milestones and timeline
+└── README.md                 # This file
 ```
 
-Warden spawns the server inside a sandbox that:
+---
 
-- **Filesystem**: only sees the paths you list, read-only or read-write as you specify. Everything else is invisible, not just "permission denied."
-- **Network**: can only reach the hostnames you allowlist. Everything else is blocked at the sandbox boundary, before DNS even resolves.
-- **Environment**: only receives the environment variables you pass through — no automatic inheritance of your full shell environment.
-- **Stdio**: passed through transparently, so the MCP client (Claude, an IDE, etc.) talks to the sandboxed process exactly like it would an unsandboxed one. Sandboxing is invisible to the protocol.
-- **Audit log**: records every file access attempt and network connection attempt — including blocked ones — so you can see what a server *tried* to do.
+## Getting Started
 
-## Quickstart (target UX — not yet implemented)
+### 1. Warden CLI (Go backend)
+
+The core sandbox runtime. Builds a single static binary.
+
+**Prerequisites:**
+- Go 1.22+
+- `bubblewrap` (Linux), `sandbox-exec` (macOS), or Docker (fallback)
+- `strace` (Linux native backend — required by `warden run` for file/network auditing)
+
+> **Module path note:** the Go module is declared as
+> `github.com/warden-sandbox/warden`, but the repository lives at
+> `github.com/Prof-bilal/Warden`. Until the paths are aligned, `go install
+> github.com/warden-sandbox/warden/cmd/warden@latest` will **not** resolve —
+> install via npm (`npm install -g warden-sandbox-cli`) or build from source
+> below.
 
 ```bash
-# 1. Write a policy describing what the server is allowed to touch
-cat > policy.yaml <<EOF
-command: ["node", "server.js"]
-filesystem:
-  read: ["./data"]
-  write: ["./output"]
-network:
-  allow: ["api.github.com"]
-env:
-  allow: ["GITHUB_TOKEN"]
-limits:
-  memory_mb: 512
-  timeout_s: 300
-EOF
+cd warden-starter/warden
 
-# 2. Run the server inside the sandbox
-warden run --policy policy.yaml
+# Build
+make build          # produces ./warden binary
 
-# 3. Or generate a starter policy by watching what the server does once,
-#    unsandboxed, so you're not writing the policy blind
-warden trace -- node server.js
+# Run tests
+make test
+
+# Build for all platforms
+make build-all      # outputs to dist/
+
+# Development
+make vet            # static analysis
+make fmt            # format code
 ```
 
-## How it works
+**Quick usage after build:**
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full design, but in short:
+```bash
+# Run a server under a policy
+./warden run --policy policy.yaml -- node server.js
+
+# Generate a starter policy by tracing
+./warden trace -- node server.js
+./warden init
+
+# Check sandbox readiness
+./warden doctor
+```
+
+See [warden-starter/warden/README.md](./warden-starter/warden/README.md) for
+full CLI reference, [docs/](./warden-starter/warden/docs/) for detailed guides,
+and [examples/](./warden-starter/warden/examples/) for sample policies.
+
+---
+
+### 2. Warden Landing Page (Next.js frontend)
+
+The marketing/landing site deployed to Vercel.
+
+**Prerequisites:**
+- Node.js 18+
+
+```bash
+cd warden-landing
+
+# Install dependencies
+npm install
+
+# Start dev server (http://localhost:3000)
+npm run dev
+
+# Build for production
+npm run build
+
+# Lint
+npm run lint
+```
+
+See [warden-landing/README.md](./warden-landing/README.md) for deployment notes.
+
+---
+
+## How Warden Works
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full design. In short:
 Warden is a thin CLI over OS-native sandboxing primitives — [bubblewrap](https://github.com/containers/bubblewrap)
 on Linux, `sandbox-exec`/Seatbelt on macOS (with a Docker fallback), and a
 policy engine that translates a simple YAML file into the low-level
@@ -80,7 +137,11 @@ overhead, so sandboxing an MCP server is no harder than running it.
 
 ### Linux
 
-`strace` is required for `warden trace` mode (generates starter policies by watching system calls).
+`strace` is required on Linux for the native (bubblewrap) backend: Warden
+uses it **both** for `warden trace` (policy generation) **and** for the
+file/network audit on every `warden run` — without it, `warden run` refuses
+to start (fail-closed). The Docker fallback (when `bwrap` is unavailable)
+does not require `strace`.
 
 ```bash
 # Arch Linux
@@ -109,11 +170,11 @@ Other Linux dependencies:
 
 ## Contributing
 
-This project is just getting started — see [ROADMAP.md](./ROADMAP.md) for
-the first milestones and [ARCHITECTURE.md](./ARCHITECTURE.md) for the design.
-Good first contributions right now: fleshing out the policy schema, a
-working Linux/bubblewrap prototype for milestone M1, or test MCP servers to
-validate against.
+See [warden-starter/warden/CONTRIBUTING.md](./warden-starter/warden/CONTRIBUTING.md)
+for how to get involved, and
+[warden-starter/warden/REMAINING_WORK.md](./warden-starter/warden/REMAINING_WORK.md)
+for current priorities. Good first contributions: example policies for new
+MCP servers, testing the backends on your platform, or improving the docs.
 
 ## License
 

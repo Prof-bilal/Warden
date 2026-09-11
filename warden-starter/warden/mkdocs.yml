@@ -17,6 +17,7 @@ nav:
   - About: about.md
   - Start:
     - Install: install.md
+    - How to Use Warden: how-to-use.md
     - Quickstart: quickstart.md
     - FAQ: faq.md
   - Reference:
@@ -25,19 +26,23 @@ nav:
     - Example Policies: examples.md
   - Understand:
     - Architecture: architecture.md
-    - Full Design Doc: design.md
     - Security Review: security.md
+    - Proof & Test Results: proof.md
     - Compatibility Matrix: compatibility.md
   - Community:
     - Gateway Integration: gateway.md
     - Interactive Approval: approve.md
     - Beta Program: beta.md
-  - Project:
+  - Archive:
+    - Full Design Doc: design.md
     - Roadmap: roadmap.md
     - Product Requirements: prd.md
     - MVP Scope: mvp.md
+    - About This Project: about.md
+  - Project:
     - Contributing: contributing.md
     - Testing Guide: testing.md
+    - Testing Platforms: testing-platforms.md
     - Code Style: codestyle.md
     - Review Guide: reviewing.md
     - License: license.md

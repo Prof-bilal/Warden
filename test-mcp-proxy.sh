@@ -1,208 +1,149 @@
 #!/bin/bash
-set -e
+# Acceptance test for `warden proxy` (P0-1 fix).
+#
+# Verifies the honest/functional proxy contract:
+#   1. HTTP/SSE upstreams are rejected at startup (fail-closed)
+#   2. A stdio upstream starts a real JSON-RPC bridge on TCP
+#   3. Allowed tool calls are forwarded end-to-end
+#   4. Disallowed tool calls are answered with a JSON-RPC error
+#   5. Unparseable client input gets a parse error (-32700)
+#   6. Every decision lands in the audit log
+#
+# Usage: bash test-mcp-proxy.sh [path-to-warden-binary]
+set -u
 
-# Test script for Warden MCP Proxy functionality
-echo "🧪 Testing Warden MCP Proxy..."
+WARDEN="${1:-}"
+if [ -z "$WARDEN" ] && [ -x "$(pwd)/warden-starter/warden/warden" ]; then
+    WARDEN="$(pwd)/warden-starter/warden/warden"
+fi
+if [ -z "$WARDEN" ]; then
+    WARDEN="$(command -v warden || true)"
+fi
+if [ -z "$WARDEN" ] || [ ! -x "$WARDEN" ]; then
+    echo "❌ warden binary not found (pass it as \$1 or build warden-starter/warden)"
+    exit 1
+fi
+if ! "$WARDEN" proxy --help >/dev/null 2>&1 && ! "$WARDEN" help proxy 2>&1 | grep -q 'MCP'; then
+    echo "❌ $WARDEN does not implement 'warden proxy' (stale/other install?)"
+    exit 1
+fi
 
-# Test directory
 TEST_DIR="/tmp/warden-mcp-proxy-test"
+AUDIT_LOG="${XDG_STATE_HOME:-$HOME/.local/state}/warden/audit.jsonl"
+PASS=0
+FAIL=0
+
+ok()   { PASS=$((PASS + 1)); echo "✅ $1"; }
+bad()  { FAIL=$((FAIL + 1)); echo "❌ $1"; }
+
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
-cd "$TEST_DIR"
 
-echo "📁 Working in $TEST_DIR"
+# send.sh <port> <line> — send one JSON-RPC line to the proxy over a single
+# TCP connection and print the first response line.
+cat > "$TEST_DIR/send.sh" << 'EOF'
+#!/bin/bash
+PORT="$1"; LINE="$2"
+exec 3<>/dev/tcp/127.0.0.1/"$PORT"
+printf '%s\n' "$LINE" >&3
+read -u 3 -t 5 resp
+printf '%s\n' "$resp"
+exec 3<&-
+EOF
 
-# Create test MCP proxy policy
-cat > test-mcp-policy.yaml << 'EOF'
-# Test MCP Proxy Policy
-filesystem:
-  read: ["."]
-  write: ["./tmp"]
+echo "🧪 Testing Warden MCP Proxy (stdio bridge contract)"
+echo "   binary: $WARDEN"
 
-network:
-  allow: ["api.github.com", "mcp.github.com"]
-
+# ---------------------------------------------------------------------------
+echo ""
+echo "🔍 Test 1: HTTP upstream rejected at startup (fail-closed)"
+cat > "$TEST_DIR/http-policy.yaml" << 'EOF'
 env:
-  allow: ["PATH", "HOME", "GITHUB_TOKEN"]
-
-limits:
-  memory_mb: 256
-  timeout_s: 120
-
+  allow: ["PATH"]
 mcp:
   upstream: "https://mcp.github.com/api"
-  allow_tools: ["list_repos", "get_file"]
-  deny_patterns: 
-    - "ghp_[A-Za-z0-9]{36}"
-    - "sk-[a-zA-Z0-9]+"
-  max_payload_kb: 512
-  audit_requests: true
+  allow_tools: ["list_repos"]
 EOF
-
-echo "📄 Created test MCP policy:"
-cat test-mcp-policy.yaml
-
-echo ""
-echo "🔍 Test 1: Policy validation"
-if command -v warden &> /dev/null; then
-    echo "✅ Warden binary found"
-    
-    # Test policy parsing
-    echo "Testing MCP proxy command..."
-    if warden proxy --policy test-mcp-policy.yaml --help > /dev/null 2>&1; then
-        echo "✅ MCP proxy command help works"
-    else
-        echo "⚠️  MCP proxy help failed - expected during development"
-    fi
-    
-    # Test policy validation by running proxy command
-    echo "Testing policy validation..."
-    if timeout 5s warden proxy --policy test-mcp-policy.yaml 2>&1 | grep -q "listening on"; then
-        echo "✅ Policy validation passed (proxy started)"
-    else
-        echo "❌ Policy validation failed"
-    fi
+OUT="$("$WARDEN" proxy --policy "$TEST_DIR/http-policy.yaml" 2>&1)"
+if echo "$OUT" | grep -q 'only "stdio:<command>" is implemented'; then
+    ok "HTTP upstream rejected with clear message"
 else
-    echo "⚠️  Warden binary not found - skipping runtime tests"
+    bad "HTTP upstream rejection message missing; got: $OUT"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "🔍 Test 2: Policy schema validation"
-
-# Test invalid MCP policies
-echo "Testing invalid MCP policy (missing upstream)..."
-cat > invalid-mcp-policy.yaml << 'EOF'
-filesystem:
-  read: ["."]
-network:
-  allow: []
+echo "🔍 Test 2: stdio bridge starts and forwards allowed tool calls"
+cat > "$TEST_DIR/stdio-policy.yaml" << 'EOF'
 env:
   allow: ["PATH"]
 mcp:
-  allow_tools: ["test"]
-  # Missing required upstream
+  upstream: "stdio:cat"
+  allow_tools: ["read_file"]
 EOF
 
-if command -v warden &> /dev/null; then
-    if ! timeout 5s warden proxy --policy invalid-mcp-policy.yaml 2>&1 | grep -q "must specify mcp.upstream"; then
-        echo "❌ Should have failed with missing upstream error"
-    else
-        echo "✅ Correctly rejected policy with missing upstream"
-    fi
+PORT=18777
+"$WARDEN" proxy --policy "$TEST_DIR/stdio-policy.yaml" --listen "127.0.0.1:$PORT" \
+    > "$TEST_DIR/proxy.out" 2>&1 &
+PROXY_PID=$!
+sleep 1
+
+if ! kill -0 "$PROXY_PID" 2>/dev/null; then
+    bad "proxy did not stay up; output: $(cat "$TEST_DIR/proxy.out")"
+    exit 1
+fi
+ok "proxy listening on 127.0.0.1:$PORT (stdio:cat upstream)"
+
+# Allowed tool call must be forwarded and echoed back by the upstream.
+ALLOWED='{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"read_file"}}'
+RESP="$(bash "$TEST_DIR/send.sh" "$PORT" "$ALLOWED")"
+if echo "$RESP" | grep -q '"id":1' && echo "$RESP" | grep -q 'read_file'; then
+    ok "allowed tool call forwarded end-to-end"
+else
+    bad "allowed tool call not forwarded; got: $RESP"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "🔍 Test 3: MCP policy features"
-
-# Test different upstream formats
-echo "Testing upstream format parsing..."
-
-test_upstream() {
-    local upstream="$1"
-    local expected="$2"
-    
-    cat > test-upstream-policy.yaml << EOF
-filesystem:
-  read: ["."]
-network:
-  allow: ["api.github.com"]
-env:
-  allow: ["PATH"]
-mcp:
-  upstream: "$upstream"
-  allow_tools: ["test"]
-EOF
-    
-    if command -v warden &> /dev/null; then
-        if timeout 5s warden proxy --policy test-upstream-policy.yaml 2>&1 | grep -q "$expected"; then
-            echo "✅ $upstream parsed correctly"
-        else
-            echo "⚠️  $upstream parsing result unclear"
-        fi
-    else
-        echo "⚠️  Cannot test $upstream - warden not available"
-    fi
-}
-
-test_upstream "https://mcp.github.com" "https://mcp.github.com"
-test_upstream "stdio:npx @modelcontextprotocol/server-github" "npx @modelcontextprotocol/server-github"
-
-echo ""
-echo "🔍 Test 4: CLI argument parsing"
-
-if command -v warden &> /dev/null; then
-    echo "Testing CLI arguments..."
-    
-    # Test listen address override
-    if timeout 5s warden proxy --policy test-mcp-policy.yaml --listen :9000 2>&1 | grep -q ":9000"; then
-        echo "✅ Listen address override works"
-    else
-        echo "⚠️  Listen address override test inconclusive"
-    fi
-    
-    # Test upstream override
-    if timeout 5s warden proxy --policy test-mcp-policy.yaml --upstream https://api.github.com/mcp 2>&1 | grep -q "https://api.github.com/mcp"; then
-        echo "✅ Upstream override works"
-    else
-        echo "⚠️  Upstream override test inconclusive"
-    fi
+echo "🔍 Test 3: disallowed tool call blocked with JSON-RPC error"
+BLOCKED='{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"delete_everything"}}'
+RESP="$(bash "$TEST_DIR/send.sh" "$PORT" "$BLOCKED")"
+if echo "$RESP" | grep -q '"error"' && echo "$RESP" | grep -q 'blocked by Warden policy'; then
+    ok "blocked tool call answered with policy error (not forwarded)"
+else
+    bad "blocked tool call not answered correctly; got: $RESP"
 fi
 
+# ---------------------------------------------------------------------------
 echo ""
-echo "🔍 Test 5: Security pattern validation"
-
-# Create policy with various security patterns
-cat > security-patterns-policy.yaml << 'EOF'
-filesystem:
-  read: ["."]
-network:
-  allow: ["api.github.com"]
-env:
-  allow: ["PATH"]
-mcp:
-  upstream: "https://api.github.com/mcp"
-  deny_patterns:
-    - "ghp_[A-Za-z0-9]{36}"           # GitHub tokens
-    - "sk-[a-zA-Z0-9]+"               # OpenAI keys
-    - "AKIA[A-Z0-9]{16}"              # AWS keys
-    - "xoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+"  # Slack tokens
-    - "[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{4}"  # Credit cards
-EOF
-
-echo "Created policy with security patterns:"
-echo "  - GitHub tokens (ghp_)"
-echo "  - OpenAI keys (sk-)"
-echo "  - AWS keys (AKIA)"
-echo "  - Slack tokens (xoxb-)"
-echo "  - Credit card patterns"
-
-if command -v warden &> /dev/null; then
-    if timeout 5s warden proxy --policy security-patterns-policy.yaml 2>&1 | grep -q "ghp_"; then
-        echo "✅ Security patterns loaded correctly"
-    else
-        echo "⚠️  Security patterns test inconclusive"
-    fi
+echo "🔍 Test 4: unparseable input rejected (never forwarded)"
+RESP="$(bash "$TEST_DIR/send.sh" "$PORT" 'this is not json')"
+if echo "$RESP" | grep -q '"code":-32700'; then
+    ok "garbage input answered with parse error -32700"
+else
+    bad "garbage input not rejected with -32700; got: $RESP"
 fi
 
-# Cleanup
+kill "$PROXY_PID" 2>/dev/null
+wait "$PROXY_PID" 2>/dev/null
+
+# ---------------------------------------------------------------------------
 echo ""
-echo "🧹 Cleaning up test environment"
-cd /
+echo "🔍 Test 5: decisions audited"
+if [ -f "$AUDIT_LOG" ] \
+    && grep -q '"action":"stdio_proxy"' "$AUDIT_LOG" \
+    && grep -q 'delete_everything' "$AUDIT_LOG"; then
+    ok "audit log contains stdio_proxy and block records"
+else
+    bad "audit log missing proxy decisions ($AUDIT_LOG)"
+fi
+
 rm -rf "$TEST_DIR"
 
 echo ""
-echo "🎉 Warden MCP Proxy tests completed!"
-echo ""
-echo "Summary:"
-echo "- ✅ Policy schema supports MCP configuration"
-echo "- ✅ CLI accepts proxy command with proper arguments"
-echo "- ✅ Policy validation works for MCP sections"
-echo "- ✅ Security patterns can be configured"
-echo "- ✅ Upstream format parsing implemented"
-echo ""
-echo "Next steps for Phase 2.1 implementation:"
-echo "1. Complete MCP JSON-RPC message parsing and filtering"
-echo "2. Implement HTTP/SSE transport handlers"
-echo "3. Add stdio subprocess bridging for local MCP servers"
-echo "4. Build comprehensive MCP message audit logging"
-echo "5. Add pattern-based payload blocking"
+echo "Summary: $PASS passed, $FAIL failed"
+if [ "$FAIL" -ne 0 ]; then
+    exit 1
+fi
+echo "🎉 warden proxy stdio bridge contract verified"
+

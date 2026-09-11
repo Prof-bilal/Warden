@@ -32,8 +32,10 @@ Warden is in **beta**. Implemented and tested:
 | Gateway integration | ✅ Wrap gateway-registered servers |
 | Compatibility matrix | ✅ 18 servers, 14 pass — see [Compatibility](compatibility.md) |
 
-Coming soon: Homebrew tap, npm wrapper publishing, and the external beta
-program ([join it](beta.md)). Track milestones in
+Live now: the [npm wrapper](https://www.npmjs.com/package/warden-sandbox-cli)
+(`warden-sandbox-cli`, auto-downloads the release binary on install), GitHub
+Releases binaries, and the external beta
+program ([join it](beta.md)). Pending: Homebrew tap. Track milestones in
 [roadmap](roadmap.md).
 
 ## Security posture

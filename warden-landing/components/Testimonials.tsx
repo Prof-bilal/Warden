@@ -1,18 +1,18 @@
 const TESTIMONIALS = [
   {
-    quote: "Warden is the first sandbox that actually works for MCP servers. We migrated 12 servers in an afternoon — zero config changes needed.",
-    author: "Sarah Chen",
-    role: "Platform Engineer at Vercel",
+    quote: "Policy as code, kernel-enforced boundaries. The fail-closed design means Warden never runs my MCP servers unsandboxed — even when the sandbox primitive is missing.",
+    author: "The Warden Design Principles",
+    role: "fail-closed by default, verified by tests",
   },
   {
-    quote: "The fail-closed design gave us confidence to run untrusted code in production. The audit trail caught a supply-chain attempt on day one.",
-    author: "Marcus Rodriguez",
-    role: "Security Lead at Linear",
+    quote: "Every denied syscall, blocked connection, and filtered MCP message lands in a JSONL audit log — evidence you can review with `warden logs`.",
+    author: "Warden Audit Trail",
+    role: "every decision logged, allowed or blocked",
   },
   {
-    quote: "Finally, a sandbox that doesn't fight you. Policy as code, kernel-enforced boundaries, and it just works with our existing MCP clients.",
-    author: "Priya Sharma",
-    role: "CTO at Warp",
+    quote: "The proxy answers blocked tool calls with a JSON-RPC error instead of forwarding them. Nothing blocked ever reaches the upstream server.",
+    author: "Warden MCP Proxy",
+    role: "stdio JSON-RPC filtering, deny-by-default",
   },
 ];
 
@@ -21,11 +21,12 @@ export default function Testimonials() {
     <section className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
         <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
-          Trusted by teams running MCP at scale.
+          Why teams choose Warden for MCP sandboxing.
         </h2>
         <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
-          Engineers from high-assurance environments share why they chose
-          Warden for sandboxing their MCP infrastructure.
+          The design guarantees behind the project — taken directly from the
+          code and its tests, not from customer quotes. Real user stories will
+          be added here as they come in.
         </p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

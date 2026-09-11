@@ -28,7 +28,28 @@ jobs:
           go-version: '1.26.x'
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./...
+      - name: bwrap escape tests (must actually run)
+        id: bwrap
+        run: go test -v -count=1 ./internal/sandbox/linux/... 2>&1 | tee linux-test.log
+      - name: Assert bwrap escape tests executed (no silent skips)
+        # Mirrors the macOS/Windows jobs: the Linux escape tests are the only
+        # machine-check of the bubblewrap backend, so a silent skip on a
+        # runner that should provide bwrap + user namespaces must fail the
+        # job rather than let "Linux verified" stay a manual claim (plan §5).
+        # If the hosted runner cannot run unprivileged user namespaces, move
+        # this job to a privileged container or self-hosted runner — do not
+        # re-enable silent skips.
+        if: always() && steps.bwrap.outcome != 'cancelled'
+        run: |
+          if grep -q '^--- SKIP:' linux-test.log; then
+            echo "bwrap escape tests skipped on a runner that must provide bubblewrap + user namespaces — a real failure was masked"
+            exit 1
+          fi
+          if ! grep -q '^--- PASS: TestSandboxPositiveControlStartup' linux-test.log; then
+            echo "Positive control did not pass: sandboxed target startup was never proven on Linux"
+            exit 1
+          fi
+      - run: go test -count=1 ./...
 
   # GitHub-hosted Windows runners run elevated, so the WFP/AppContainer/ETW
   # escape and lifecycle tests execute for real instead of skipping: this job

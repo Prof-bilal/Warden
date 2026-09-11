@@ -82,7 +82,8 @@ whether your server works before installing:
 
 > **Status:** beta. Core sandboxing (Linux, macOS, Windows, Docker fallback),
 > tracing, approval mode, and gateway integration are implemented and tested.
-> Distribution via Homebrew and npm is coming soon — today, install from a
-> [GitHub Release](https://github.com/Prof-bilal/Warden/releases) or
-> [build from source](install.md#option-b-build-from-source). See the [Roadmap](roadmap.md)
+> Distribution is live: [npm](https://www.npmjs.com/package/warden-sandbox-cli)
+> (`warden-sandbox-cli`) and [GitHub Releases](https://github.com/Prof-bilal/Warden/releases)
+> binaries; Homebrew tap is still pending. You can also
+> [build from source](install.md#option-c-build-from-source). See the [Roadmap](roadmap.md)
 > and [About](about.md) pages for details.

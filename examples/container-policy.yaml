@@ -1,0 +1,75 @@
+# Container Deployment Policy for Warden
+# This policy is designed for deploying MCP servers in Kubernetes or Docker
+# with security-first configuration.
+
+command: ["node", "/app/server.js"]
+
+filesystem:
+  read:
+    # Application code (read-only)
+    - "/app"
+    
+    # System libraries and binaries
+    - "/usr/bin/node"
+    - "/usr/lib"
+    - "/lib"
+    - "/lib64"
+    - "/etc/ssl"
+    - "/etc/ca-certificates"
+    
+    # Node.js modules (if not bundled)
+    - "/app/node_modules"
+    
+  write:
+    # Temporary files only
+    - "/tmp"
+    - "/app/tmp"
+    - "/app/logs"
+
+network:
+  allow:
+    # External APIs the MCP server needs to access
+    - "api.github.com"
+    - "registry.npmjs.org"
+
+env:
+  allow:
+    # Essential Node.js environment
+    - "NODE_ENV"
+    - "PATH"
+    - "HOME"
+    
+    # Application-specific variables
+    - "PORT"
+    - "HOST"
+    
+    # Secrets (should be injected as K8s secrets)
+    - "GITHUB_TOKEN"
+    - "API_KEY"
+
+limits:
+  memory_mb: 512
+  timeout_s: 0  # No timeout for long-running service
+
+# Container deployment notes:
+# 
+# This policy will be translated to:
+# 
+# Kubernetes:
+# - Deployment with readOnlyRootFilesystem: true
+# - SecurityContext with runAsNonRoot: true
+# - Capabilities dropped to minimize attack surface
+# - NetworkPolicy restricting egress to allowed hosts
+# - Resource limits preventing resource exhaustion
+# - EmptyDir volumes for writable directories
+# 
+# Docker:
+# - docker run --read-only --security-opt no-new-privileges:true
+# - --cap-drop ALL for minimal capabilities
+# - --tmpfs /tmp for temporary files
+# - Volume mounts for application code
+# - Memory limits for resource control
+#
+# Usage:
+# warden k8s render --policy container-policy.yaml --image myapp:latest
+# warden k8s docker --policy container-policy.yaml --image myapp:latest

@@ -196,7 +196,7 @@ The compatibility matrix covers 18 MCP servers tested with Warden:
 - Conditional (2): fetch, kubernetes
 - Fail (2): docker, playwright
 
-See [compatibility.md](./compatibility) for the full matrix.
+See [compatibility.md](compatibility.md) for the full matrix.
 
 ## Troubleshooting
 

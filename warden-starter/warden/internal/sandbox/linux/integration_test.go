@@ -16,6 +16,61 @@ import (
 // The integration tests below are escape tests for the real sandbox
 // boundary. They need bwrap + unprivileged user namespaces and are skipped
 // (not failed) on machines without them, per TESTING.md.
+//
+// False-positive hardening (plan §5): every denial test must first prove the
+// target actually STARTED inside the sandbox (positive control) before
+// asserting a security result. runSandbox/runSandboxWithEnv gate on
+// requireTargetStarted — the same startupMarker pattern the darwin tests use —
+// so "target never launched" can never be reported as a sandbox PASS.
+
+// startupMarker is printed by a probe target; seeing it on stdout proves the
+// sandbox launched the child and the child executed.
+const startupMarker = "WARDEN_SANDBOX_UP"
+
+// runBwrapRaw is the low-level bwrap chain without the positive-control gate:
+// requireBwrap + BuildBwrapArgs + exec. Only the positive control and the
+// gated runners below may use it.
+func runBwrapRaw(t *testing.T, p policy.Policy, cmd []string) (string, int, error) {
+	t.Helper()
+	bwrap := requireBwrap(t)
+	args, err := BuildBwrapArgs(cmd, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub := exec.Command(bwrap, append(args, cmd...)...)
+	out, err := sub.CombinedOutput()
+	if err == nil {
+		return string(out), 0, nil
+	}
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		return string(out), 0, err
+	}
+	return string(out), exitErr.ExitCode(), nil
+}
+
+// requireTargetStarted is the positive control (plan §5): it runs a
+// marker-printing script under the production bwrap chain and FAILS (never
+// skips) when the target does not actually start. A security denial asserted
+// without this control could be a dead sandbox passing for the wrong reason —
+// the exact false-positive mode the darwin tests already guard against.
+func requireTargetStarted(t *testing.T) {
+	t.Helper()
+	requireBwrap(t)
+	dir := t.TempDir()
+	script := writeFixture(t, dir, "startup-probe.sh", "#!/bin/sh\necho "+startupMarker+"\n")
+	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{dir}}}
+	out, code, err := runBwrapRaw(t, p, []string{"/usr/bin/sh", script})
+	if err != nil {
+		t.Fatalf("positive control: sandboxed target failed to start: %v\noutput:\n%s", err, out)
+	}
+	if code != 0 {
+		t.Fatalf("positive control: startup probe exited %d, want 0\noutput:\n%s", code, out)
+	}
+	if !strings.Contains(out, startupMarker) {
+		t.Fatalf("positive control: startup marker missing — target never really ran\noutput:\n%s", out)
+	}
+}
 
 func requireBwrap(t *testing.T) string {
 	t.Helper()
@@ -40,30 +95,20 @@ func writeFixture(t *testing.T, dir, name, body string) string {
 }
 
 // runSandbox runs cmd inside a sandbox built from p and returns output and
-// exit code.
+// exit code. It first proves the target can start (positive control, plan §5)
+// so a dead sandbox can never be reported as a security PASS.
 func runSandbox(t *testing.T, p policy.Policy, cmd []string) (string, int, error) {
 	t.Helper()
-	bwrap := requireBwrap(t)
-	args, err := BuildBwrapArgs(cmd, p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sub := exec.Command(bwrap, append(args, cmd...)...)
-	out, err := sub.CombinedOutput()
-	if err == nil {
-		return string(out), 0, nil
-	}
-	exitErr, ok := err.(*exec.ExitError)
-	if !ok {
-		return string(out), 0, err
-	}
-	return string(out), exitErr.ExitCode(), nil
+	requireTargetStarted(t)
+	return runBwrapRaw(t, p, cmd)
 }
 
 // runSandboxWithEnv is like runSandbox but lets the test control the parent
-// environment so env-passthrough behavior can be pinned down.
+// environment so env-passthrough behavior can be pinned down. Like runSandbox,
+// it gates on the positive control first.
 func runSandboxWithEnv(t *testing.T, p policy.Policy, cmd, parentEnv []string) (string, int, error) {
 	t.Helper()
+	requireTargetStarted(t)
 	bwrap := requireBwrap(t)
 	args, err := BuildBwrapArgs(cmd, p)
 	if err != nil {
@@ -80,6 +125,13 @@ func runSandboxWithEnv(t *testing.T, p policy.Policy, cmd, parentEnv []string) (
 		return string(out), 0, err
 	}
 	return string(out), exitErr.ExitCode(), nil
+}
+
+// TestSandboxPositiveControlStartup is the explicit, named positive control:
+// the sandbox must launch a marker-printing target and surface its output.
+// If this fails, every other result from this package is uninterpretable.
+func TestSandboxPositiveControlStartup(t *testing.T) {
+	requireTargetStarted(t)
 }
 
 func TestSandboxReadGrantAccessible(t *testing.T) {

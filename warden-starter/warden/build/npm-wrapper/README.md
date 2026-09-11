@@ -19,8 +19,8 @@ warden run --policy policy.yaml -- node ./my-mcp-server/index.js
 # Trace what a server accesses (unsandboxed)
 warden trace -- node server.js
 
-# Generate a starter policy from a trace
-warden init -- log.json --output policy.yaml
+# Generate a starter policy from a trace log
+warden init --log log.json --output policy.yaml
 ```
 
 ## How it works

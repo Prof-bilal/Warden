@@ -148,7 +148,7 @@ traffic to unauthorized destinations.
 | Docker fallback | Requires a running Docker daemon. The in-container proxy bridge must be a Linux ELF binary — on macOS this requires cross-compilation. |
 | Windows AppContainer | WFP and the ETW audit session require an elevated (admin) process; warden fails closed without it. The kernel (WPP-style) ETW providers accept one enabling session, so another controller holding them (PerfView, an EDR) also fails the run closed. |
 | Windows audit visibility | A denied file open is enforced by the AppContainer token before it reaches the file system, so it produces no ETW event — a denial shows up as an absent allowed operation, not a blocked record. Kernel-Network payloads are captured but not yet decoded; network allow/deny audit comes from the egress proxy and the WFP deny filters. |
-| strace auditing | Adds ~2–5x overhead on Linux; `strace` must be installed. Auditing is optional — runs without a logger fall back to syscall-level denials only. |
+| strace auditing | Adds ~2–5x overhead on Linux; `strace` must be installed. On the native bwrap backend it is **required**: `warden run` refuses to start (fail-closed) without it, because Warden always opens its persistent audit log and traces file/network syscalls from outside the sandbox. The Docker fallback does not use `strace`. |
 | Egress proxy scope | Only intercepts HTTP/HTTPS traffic. Raw TCP and UDP connections cannot be filtered by the proxy. |
 
 ## Security Best Practices for Users

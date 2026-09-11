@@ -193,8 +193,12 @@ Status: READY
 
 When the backend is unavailable it prints `Status: NOT READY` in red,
 the underlying `RefuseToRun` reason, and `Warden fails closed when
-sandboxing is unavailable`. Exit code is always `0`; the status line is
-the signal for scripts.
+sandboxing is unavailable`. The exit code is machine-readable so scripts
+and CI can gate on it:
+
+- `0` — ready to run
+- `1` — NOT READY (sandbox backend or a required tool such as `strace` is missing)
+- `2` — usage error (unexpected arguments)
 
 ## `warden version`
 

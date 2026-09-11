@@ -160,6 +160,9 @@ limits:
   timeout_s: 60
 EOF
 
+    # Create the ./tmp directory that the policy mounts
+    mkdir -p tmp
+
     if warden run --policy test-policy.yaml; then
         echo "✅ Warden execution test passed"
     else
@@ -188,7 +191,8 @@ fi
 echo ""
 echo "🧪 Test 4: Action configuration validation"
 
-ACTION_FILE="../../../../../.github/actions/warden-action/action.yml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ACTION_FILE="$SCRIPT_DIR/.github/actions/warden-action/action.yml"
 if [ -f "$ACTION_FILE" ]; then
     echo "✅ Action file exists"
     

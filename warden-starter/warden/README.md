@@ -8,9 +8,11 @@ GitHub five minutes ago. Warden runs them in a restricted sandbox so a server
 only ever gets the files, network hosts, and environment variables you
 explicitly grant it.
 
-> **Status:** All backends implemented (Linux, macOS, Windows). Distribution
-> tooling (Homebrew, npm) and docs are in place. See [ROADMAP.md](./ROADMAP.md)
-> for what's built and what's next.
+> **Status:** All backends implemented (Linux, macOS, Windows); npm and GitHub
+> Releases distribution is live. Verification state: Linux verified on real
+> hardware, Windows verified via CI escape tests, macOS CI-green and pending a
+> real-hardware harness run. See [TESTING.md](./TESTING.md) and
+> [REMAINING_WORK.md](./REMAINING_WORK.md) for the exact state.
 
 ## Quickstart
 
@@ -50,14 +52,17 @@ for details.
 ## Install
 
 ```bash
-# Manual download — static binaries for Linux, macOS, and Windows:
+# npm (auto-downloads the release binary for your platform):
+npm install -g warden-sandbox-cli
+
+# Or manual download — static binaries for Linux, macOS, and Windows:
 # https://github.com/Prof-bilal/Warden/releases
 ```
 
 Or build from source with Go 1.22+ (`go build -o warden ./cmd/warden`).
-Homebrew and npm distribution is coming soon. Full per-OS guide, including
-required sandbox primitives (`bwrap`, `sandbox-exec`, Docker fallback):
-[Install](./docs/install.md).
+A Homebrew tap is pending. Full per-OS guide, including required sandbox
+primitives (`bwrap`, `sandbox-exec`, Docker fallback) and the strace
+requirement for `warden run` on Linux: [Install](./docs/install.md).
 
 ## What Warden does
 

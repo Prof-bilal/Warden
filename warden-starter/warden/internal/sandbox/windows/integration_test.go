@@ -16,10 +16,48 @@ import (
 // These are escape tests for the real AppContainer boundary. They need a
 // Windows host where the AppContainer/Job Object/WFP primitives are available;
 // per TESTING.md they are skipped (not failed) when the primitive is missing.
+//
+// False-positive hardening (plan §5): requireAppContainer runs a positive
+// control first — the sandbox must actually start a marker-writing target —
+// so a dead backend can never be reported as a security PASS. Like the
+// darwin ladder, the control FAILS (never skips) when the primitive exists
+// but the target cannot start.
+const startupMarkerWindows = "WARDEN_WINDOWS_UP"
+
 func requireAppContainer(t *testing.T) {
 	t.Helper()
 	if !Supported() {
 		t.Skip("AppContainer sandbox not usable on this host — skipping Windows escape test")
+	}
+
+	comspec := os.Getenv("COMSPEC")
+	if comspec == "" || !filepath.IsAbs(comspec) {
+		t.Skip("COMSPEC not set to an absolute path — positive control impossible")
+	}
+
+	// Prove execution via a granted write the test verifies on the host
+	// (Run() passes stdio through but returns only the exit code).
+	writeDir := t.TempDir()
+	probe := filepath.Join(writeDir, "startup-probe.cmd")
+	marker := filepath.Join(writeDir, "started.marker")
+	body := "@echo off\r\necho " + startupMarkerWindows + "> \"" + marker + "\"\r\n"
+	if err := os.WriteFile(probe, []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{writeDir}}}
+	code, err := Run([]string{comspec, "/c", probe}, p)
+	if err != nil {
+		t.Fatalf("positive control: AppContainer sandbox cannot start a target: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("positive control: startup probe exited %d, want 0", code)
+	}
+	data, readErr := os.ReadFile(marker)
+	if readErr != nil {
+		t.Fatalf("positive control: startup marker file missing — target never really ran: %v", readErr)
+	}
+	if !strings.Contains(string(data), startupMarkerWindows) {
+		t.Fatalf("positive control: marker file lacks the startup marker: %q", string(data))
 	}
 }
 

@@ -32,13 +32,14 @@ import (
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
 	"github.com/warden-sandbox/warden/internal/sandbox/sandboxerr"
+	"github.com/warden-sandbox/warden/internal/selfupdate"
 	"github.com/warden-sandbox/warden/internal/ui"
 	"github.com/warden-sandbox/warden/internal/version"
 )
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "help"}
+var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help"}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -103,6 +104,12 @@ func main() {
 			os.Exit(0)
 		}
 		cmdVersion()
+	case "update":
+		if hasHelpFlag(os.Args[2:]) {
+			printUpdateHelp()
+			os.Exit(0)
+		}
+		cmdUpdate()
 	case "help":
 		if len(os.Args) > 2 {
 			printCommandHelp(os.Args[2])
@@ -174,6 +181,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  proxy      Run MCP client proxy with filtering")
 	fmt.Fprintln(os.Stderr, "  k8s        Generate container/K8s manifests from policy")
 	fmt.Fprintln(os.Stderr, "  version    Show version")
+	fmt.Fprintln(os.Stderr, "  update     Update warden to the latest release")
 	fmt.Fprintln(os.Stderr, "  help       Show help for a command")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Get started:"))
@@ -212,6 +220,8 @@ func printCommandHelp(cmd string) {
 		printDoctorHelp()
 	case "version":
 		printVersionHelp()
+	case "update":
+		printUpdateHelp()
 	case "gateway":
 		printGatewayUsage()
 	case "proxy":
@@ -417,6 +427,43 @@ func printVersionHelp() {
 	fmt.Fprintln(os.Stderr, "  warden version")
 	fmt.Fprintln(os.Stderr, "  warden --version")
 	fmt.Fprintln(os.Stderr, "  warden -v")
+}
+
+// printUpdateHelp prints help for `warden update`.
+func printUpdateHelp() {
+	title := "WARDEN UPDATE"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Update warden to the latest GitHub release.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden update")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("How it works:"))
+	fmt.Fprintln(os.Stderr, "  Fetches the latest release metadata from GitHub, downloads the")
+	fmt.Fprintln(os.Stderr, "  binary for this platform, verifies its SHA256 against the")
+	fmt.Fprintln(os.Stderr, "  published SHA256SUMS, and atomically replaces the running")
+	fmt.Fprintln(os.Stderr, "  executable. Fails closed on any verification problem.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  HTTPS-only. The downloaded binary is installed only after its")
+	fmt.Fprintln(os.Stderr, "  checksum matches the release's SHA256SUMS file. No network")
+	fmt.Fprintln(os.Stderr, "  proxy or arbitrary URL is involved.")
+}
+
+// cmdUpdate runs the self-update flow and exits with a script-friendly code:
+// 0 on success or when already current, 1 on failure.
+func cmdUpdate() {
+	// Ensure the stamped version, not the hardcoded dev default, is compared.
+	selfupdate.SetCurrentVersion(version.Version)
+	updated, err := selfupdate.Run(os.Stdout, os.Stderr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden update: %v\n", err)
+		os.Exit(1)
+	}
+	_ = updated
 }
 
 func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []string) {
@@ -1097,17 +1144,21 @@ func printProxyHelp() {
 	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
 	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml")
 	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --listen :9000")
-	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --upstream https://api.github.com/mcp")
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --upstream \"stdio:cat\"")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Policy Format:"))
 	fmt.Fprintln(os.Stderr, "  mcp:")
-	fmt.Fprintln(os.Stderr, "    upstream: \"https://mcp.github.com\"")
+	fmt.Fprintln(os.Stderr, "    upstream: \"stdio:npx @modelcontextprotocol/server-github\"")
 	fmt.Fprintln(os.Stderr, "    allow_tools: [\"list_repos\", \"get_file\"]")
 	fmt.Fprintln(os.Stderr, "    deny_patterns: [\"ghp_[A-Za-z0-9]{36}\"]")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
-	fmt.Fprintln(os.Stderr, "  The proxy filters MCP messages and blocks sensitive patterns")
-	fmt.Fprintln(os.Stderr, "  before they leave your machine. All activity is audited.")
+	fmt.Fprintln(os.Stderr, "  The proxy filters newline-delimited JSON-RPC messages in both directions:")
+	fmt.Fprintln(os.Stderr, "  tool allowlist, deny patterns, and payload size are enforced and audited.")
+	fmt.Fprintln(os.Stderr, "  • stdio upstreams only (HTTP/SSE are rejected as not implemented).")
+	fmt.Fprintln(os.Stderr, "  • The stdio subprocess receives only env.allow variables (deny-by-default),")
+	fmt.Fprintln(os.Stderr, "    but is NOT itself sandboxed. Do not rely on this for filesystem/network")
+	fmt.Fprintln(os.Stderr, "    isolation of the upstream server.")
 }
 
 func cmdProxy(args []string) {
@@ -1148,15 +1199,15 @@ func cmdProxy(args []string) {
 	defer auditFile.Close()
 
 	// Build the MCP proxy policy from the loaded policy, honoring the CLI
-	// override for --upstream. Network allowlist comes from the standard
-	// policy section so `network.allow` still gates remote egress.
+	// override for --upstream. Only local stdio upstreams are supported;
+	// HTTP/SSE upstreams are rejected by NewProxyServer (not implemented).
 	mcpPolicy := mcpproxy.MCPPolicy{
 		Upstream:      p.MCP.Upstream,
 		AllowTools:    p.MCP.AllowTools,
 		DenyPatterns:  p.MCP.DenyPatterns,
-		AllowHosts:    p.Network.Allow,
 		MaxPayloadKB:  p.MCP.MaxPayloadKB,
 		AuditRequests: p.MCP.AuditRequests,
+		EnvAllow:      p.EnvAllowlist(),
 	}
 
 	server, err := mcpproxy.NewProxyServer(mcpPolicy, audit.New(auditFile))
@@ -1181,6 +1232,10 @@ func cmdProxy(args []string) {
 	}
 	fmt.Fprintf(os.Stderr, "  audit log: %s\n", auditPath)
 	fmt.Fprintf(os.Stderr, "  (ctrl-C to stop)\n")
+	fmt.Fprintf(os.Stderr, "  ⚠ experimental: only stdio: upstreams are supported (HTTP/SSE are rejected).\n")
+	fmt.Fprintf(os.Stderr, "    The stdio subprocess gets only env.allow variables (deny-by-default), but its\n")
+	fmt.Fprintf(os.Stderr, "    filesystem and network access are NOT sandboxed yet; Warden filters and\n")
+	fmt.Fprintf(os.Stderr, "    audits the JSON-RPC messages in both directions.\n")
 
 	// Block until interrupted. The proxy server goroutines shut down with
 	// the process when this returns to main.
@@ -1192,7 +1247,7 @@ func cmdProxy(args []string) {
 
 func parseProxyArgs(args []string) (policyPath, listen, upstream string, err error) {
 	listen = "localhost:8765" // default
-	
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
@@ -1232,11 +1287,11 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream string, err err
 			return "", "", "", fmt.Errorf("unexpected argument %q", arg)
 		}
 	}
-	
+
 	if policyPath == "" {
 		return "", "", "", fmt.Errorf("missing required flag --policy")
 	}
-	
+
 	return policyPath, listen, upstream, nil
 }
 
@@ -1419,9 +1474,9 @@ func cmdK8sValidate(p policy.Policy) {
 }
 
 func parseK8sArgs(args []string) (policyPath, image, namespace, outputFile, platform string, err error) {
-	namespace = "default" // default
+	namespace = "default"   // default
 	platform = "kubernetes" // default
-	
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
@@ -1477,10 +1532,10 @@ func parseK8sArgs(args []string) (policyPath, image, namespace, outputFile, plat
 			return "", "", "", "", "", fmt.Errorf("unexpected argument %q", arg)
 		}
 	}
-	
+
 	if policyPath == "" {
 		return "", "", "", "", "", fmt.Errorf("missing required flag --policy")
 	}
-	
+
 	return policyPath, image, namespace, outputFile, platform, nil
 }

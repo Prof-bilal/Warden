@@ -34,3 +34,7 @@ __pycache__/
 
 # Go build binary
 warden-starter/warden/warden
+
+# Proof-harness output (generated artifacts, plan §6)
+evidence/
+warden-starter/warden/site/

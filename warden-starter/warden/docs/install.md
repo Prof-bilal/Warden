@@ -2,11 +2,21 @@
 
 ## Day-one options
 
-> **Note:** Homebrew (`warden-sandbox/warden`) distribution is coming soon.
-> For now, install via npm, GitHub Release, or build from source — all give
-> you the same single static binary.
+> **Note:** Homebrew (`warden-sandbox/warden`) distribution is pending. Today,
+> install via npm, GitHub Release, or build from source — all give you the
+> same single static binary.
 
-### Option A — GitHub Release (easiest)
+### Option A — npm (easiest)
+
+```bash
+npm install -g warden-sandbox-cli
+warden version
+```
+
+The npm postinstall script downloads the prebuilt binary for your platform
+from GitHub Releases (5 binaries + `SHA256SUMS` per release).
+
+### Option B — GitHub Release
 
 Download the binary for your platform from
 [Releases](https://github.com/Prof-bilal/Warden/releases), verify the
@@ -21,7 +31,7 @@ sudo mv warden-linux-amd64 /usr/local/bin/warden
 warden  # prints usage; exit code is 1 with no subcommand, that's normal
 ```
 
-### Option B — Build from source
+### Option C — Build from source
 
 Requires **Go 1.22+**:
 
@@ -38,16 +48,19 @@ The binary alone isn't enough — each platform needs its sandbox primitive:
 
 | OS | Needs | Check |
 |---|---|---|
-| Linux | `bwrap` (bubblewrap) for the native backend; **`strace` required for `warden trace`** | `command -v bwrap strace` |
+| Linux | `bwrap` (bubblewrap) for the native backend; **`strace` required for `warden run` auditing and `warden trace`** | `command -v bwrap strace` |
 | Linux (no bwrap) | Docker daemon — Warden falls back to `--backend docker` | `docker info` |
 | macOS | `sandbox-exec` (ships with macOS) preferred; Docker as fallback | `command -v sandbox-exec` |
 | Windows | AppContainer support (Windows 10+); fails closed without it | built-in |
 | Anywhere without a native backend | Docker daemon | `docker info` |
 
-> **⚠️ Important:** `strace` is required for `warden trace` mode. Without it, you'll get:
+> **⚠️ Important:** `strace` is required on Linux for the native (bubblewrap)
+> backend — Warden uses it for the file/network audit on **every `warden run`**
+> and for `warden trace`. Without it, `warden run` refuses to start (fail-closed):
 > ```
-> warden trace: strace not found: required for trace mode
+> warden run: strace not found: required for complete file/network auditing on Linux
 > ```
+> The Docker fallback does not require `strace` (`--backend docker`).
 
 Install dependencies on common distros:
 
