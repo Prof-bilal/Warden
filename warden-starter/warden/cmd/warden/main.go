@@ -1201,10 +1201,12 @@ func printProxyHelp() {
 	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
 	fmt.Fprintln(os.Stderr, "  The proxy filters newline-delimited JSON-RPC messages in both directions:")
 	fmt.Fprintln(os.Stderr, "  tool allowlist, deny patterns, and payload size are enforced and audited.")
-	fmt.Fprintln(os.Stderr, "  • stdio upstreams only (HTTP/SSE are rejected as not implemented).")
-	fmt.Fprintln(os.Stderr, "  • The stdio subprocess receives only env.allow variables (deny-by-default),")
-	fmt.Fprintln(os.Stderr, "    but is NOT itself sandboxed. Do not rely on this for filesystem/network")
-	fmt.Fprintln(os.Stderr, "    isolation of the upstream server.")
+	fmt.Fprintln(os.Stderr, "  • Upstreams: stdio commands or http(s):// MCP servers (Streamable HTTP")
+	fmt.Fprintln(os.Stderr, "    and SSE). Plain http:// is allowed only for loopback dev servers;")
+	fmt.Fprintln(os.Stderr, "    remote upstreams must use https://.")
+	fmt.Fprintln(os.Stderr, "  • A stdio subprocess receives only env.allow variables (deny-by-default),")
+	fmt.Fprintln(os.Stderr, "    but is NOT itself sandboxed. Wrap `warden proxy` in `warden run` if the")
+	fmt.Fprintln(os.Stderr, "    upstream needs filesystem/network isolation.")
 }
 
 func cmdProxy(args []string) {
@@ -1278,10 +1280,14 @@ func cmdProxy(args []string) {
 	}
 	fmt.Fprintf(os.Stderr, "  audit log: %s\n", auditPath)
 	fmt.Fprintf(os.Stderr, "  (ctrl-C to stop)\n")
-	fmt.Fprintf(os.Stderr, "  ⚠ experimental: only stdio: upstreams are supported (HTTP/SSE are rejected).\n")
-	fmt.Fprintf(os.Stderr, "    The stdio subprocess gets only env.allow variables (deny-by-default), but its\n")
-	fmt.Fprintf(os.Stderr, "    filesystem and network access are NOT sandboxed yet; Warden filters and\n")
-	fmt.Fprintf(os.Stderr, "    audits the JSON-RPC messages in both directions.\n")
+	if strings.HasPrefix(p.MCP.Upstream, "stdio:") {
+		fmt.Fprintf(os.Stderr, "  ⚠ experimental: the stdio subprocess gets only env.allow variables (deny-by-default),\n")
+		fmt.Fprintf(os.Stderr, "    but its filesystem and network access are NOT sandboxed; Warden filters and\n")
+		fmt.Fprintf(os.Stderr, "    audits the JSON-RPC messages in both directions.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "  ⚠ experimental: HTTP/SSE filtering is message-level (tool allowlist, deny\n")
+		fmt.Fprintf(os.Stderr, "    patterns, payload size). TLS is verified; plain http:// is loopback-only.\n")
+	}
 
 	// Block until interrupted. The proxy server goroutines shut down with
 	// the process when this returns to main.

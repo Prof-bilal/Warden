@@ -12,7 +12,7 @@ const TESTIMONIALS = [
   {
     quote: "The proxy answers blocked tool calls with a JSON-RPC error instead of forwarding them. Nothing blocked ever reaches the upstream server.",
     author: "Warden MCP Proxy",
-    role: "stdio JSON-RPC filtering, deny-by-default",
+    role: "JSON-RPC filtering for stdio and HTTPS upstreams, deny-by-default",
   },
 ];
 

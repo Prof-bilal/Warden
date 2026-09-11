@@ -2,10 +2,14 @@
 # This policy configures Warden to act as a client proxy between
 # your MCP client and MCP servers.
 #
-# IMPORTANT (current scope): only "stdio:<command>" upstreams are supported.
-# http:// or https:// upstreams are REJECTED at startup. The stdio subprocess
-# receives only the variables listed in env.allow (deny-by-default), but it is
-# NOT sandboxed — its filesystem/network access are unrestricted.
+# Upstream options:
+#   - "stdio:<command>"        local subprocess (or an mcp-remote bridge)
+#   - "https://host/path"      remote Streamable HTTP / SSE server (TLS verified)
+#   - "http://127.0.0.1:P"     plain HTTP, loopback dev servers only
+#
+# The stdio subprocess receives only the variables listed in env.allow
+# (deny-by-default), but it is NOT sandboxed — its filesystem/network
+# access are unrestricted. Wrap `warden proxy` in `warden run` for that.
 
 # The ONLY sandbox section enforced for the stdio subprocess
 env:
@@ -16,9 +20,10 @@ env:
 
 # MCP proxy configuration
 mcp:
-  # Upstream MCP server (local stdio command). To reach a remote HTTP/SSE
-  # MCP server, bridge it through a stdio MCP proxy such as mcp-remote.
-  upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
+  # Upstream MCP server. Remote HTTPS servers are contacted directly
+  # (Streamable HTTP / SSE); stdio commands run as local subprocesses.
+  upstream: "https://mcp.github.com/mcp"
+  # upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
   
   # Tools that clients are allowed to call
   allow_tools:

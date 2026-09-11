@@ -5,6 +5,8 @@ import Problem from "@/components/Problem";
 import HowItWorks from "@/components/HowItWorks";
 import Backends from "@/components/Backends";
 import Proof from "@/components/Proof";
+import Demo from "@/components/Demo";
+import Capabilities from "@/components/Capabilities";
 import Testimonials from "@/components/Testimonials";
 import Windows from "@/components/Windows";
 import Compatibility from "@/components/Compatibility";
@@ -55,7 +57,7 @@ export default function Home() {
     url: SITE_URL,
     downloadUrl: "https://github.com/Prof-bilal/Warden/releases",
     installUrl: "https://www.npmjs.com/package/warden-sandbox-cli",
-    softwareVersion: "0.3.0",
+    softwareVersion: "0.1.13",
     license: "https://opensource.org/licenses/MIT",
     offers: {
       "@type": "Offer",
@@ -83,6 +85,8 @@ export default function Home() {
       <HowItWorks />
       <Backends />
       <Proof />
+      <Demo />
+      <Capabilities />
       <Testimonials />
       <Windows />
       <Compatibility />

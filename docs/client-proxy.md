@@ -27,20 +27,23 @@ Claude Desktop ──► Warden Proxy ──► Remote MCP Server
 - **Tool Filtering**: Restrict which MCP tools can be called
 - **Pattern Blocking**: Block requests/responses containing sensitive patterns (API keys, tokens, etc.)
 - **Audit Logging**: Complete logging of all MCP communications
-- **Transport Support**: stdio MCP servers only (HTTP/SSE upstreams are rejected as not implemented)
+- **Transport Support**: stdio subprocesses **and** remote HTTP/SSE upstreams (Streamable HTTP). Plain `http://` is loopback-only; remote upstreams must use `https://` (TLS verified)
 
 ## Quick Start
 
 ### 1. Create MCP Proxy Policy
 
-Only stdio upstreams are supported today. A remote HTTP/SSE server can be
-reached through a stdio MCP proxy bridge (e.g. `mcp-remote`), which itself is
-spawned as a subprocess:
+Any MCP server works: a local stdio command, or a remote Streamable HTTP/SSE
+endpoint (directly, or bridged via `mcp-remote` if you prefer a stdio hop):
 
 ```yaml
 # mcp-proxy-policy.yaml
 mcp:
-  upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
+  # Option A — remote HTTPS upstream (Streamable HTTP / SSE):
+  upstream: "https://mcp.github.com/mcp"
+
+  # Option B — local stdio command (or a stdio bridge to a remote server):
+  # upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
 
   allow_tools:
     - "list_repositories"
@@ -53,7 +56,7 @@ mcp:
     - "AKIA[A-Z0-9]{16}"           # AWS keys
 
 env:
-  allow: ["PATH", "HOME", "GITHUB_TOKEN"]  # the subprocess gets only these (deny-by-default)
+  allow: ["PATH", "HOME", "GITHUB_TOKEN"]  # stdio subprocess gets only these (deny-by-default)
 ```
 
 ### 2. Start the Proxy
@@ -64,9 +67,9 @@ warden proxy --policy mcp-proxy-policy.yaml --listen localhost:8765
 
 ### 3. Configure Your Client
 
-The proxy speaks newline-delimited JSON-RPC over TCP (stdio-style framing),
-not HTTP. Point your MCP client at the proxy through a stdio-to-TCP bridge,
-or use clients that can connect directly. Example with `socat`/`ncat` for a
+The proxy speaks newline-delimited JSON-RPC over TCP (stdio-style framing).
+Point your MCP client at the proxy through a stdio-to-TCP bridge, or use
+clients that can connect directly. Example with `socat`/`ncat` for a
 manual test:
 
 ```bash
@@ -75,8 +78,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
   timeout 2 bash -c 'cat > /dev/tcp/127.0.0.1/8765 & cat < /dev/tcp/127.0.0.1/8765'
 ```
 
-Direct HTTP/SSE client connections to the proxy are **not** supported yet —
-see [Implementation Status](#implementation-status).
+> The proxy's *client-facing* listener is the same for every upstream type;
+> what changed is the *upstream* side: `https://` upstreams are now contacted
+> over real HTTP/SSE instead of being rejected.
 
 ## Policy Configuration
 
@@ -84,9 +88,11 @@ see [Implementation Status](#implementation-status).
 
 ```yaml
 mcp:
-  # Required: Upstream MCP server. Only "stdio:<command>" is implemented;
-  # http:// or https:// upstreams are rejected at startup.
-  upstream: "stdio:npx @modelcontextprotocol/server-github"
+  # Required: Upstream MCP server. Three forms are accepted:
+  #   "stdio:<command>"          — local subprocess bridge
+  #   "https://host/path"        — remote Streamable HTTP upstream (TLS verified)
+  #   "http://127.0.0.1:PORT"    — plain HTTP allowed for loopback dev servers only
+  upstream: "https://mcp.github.com/mcp"
   
   # Optional: Allowed tool names (deny-by-default if specified)
   allow_tools:
@@ -177,23 +183,31 @@ mcp:
 
 ## Transport Types
 
-### HTTP/HTTPS Remote Servers
+### HTTP/HTTPS Remote Servers (implemented)
 
 ```yaml
 mcp:
   upstream: "https://mcp.github.com/api"
 ```
 
-The proxy forwards HTTP requests to the remote server with filtering applied.
+The proxy POSTs each filtered JSON-RPC message upstream (Streamable HTTP
+convention: `Accept: application/json, text/event-stream`) and relays the
+response through the same inbound filter. TLS certificates are verified
+(TLS 1.2+ minimum); a plain `http://` upstream is accepted only for loopback
+hosts (`127.0.0.1`, `localhost`), so dev servers work while remote traffic is
+never sent unencrypted.
 
-### Server-Sent Events (SSE)
+### Server-Sent Events (SSE) (implemented)
 
 ```yaml
 mcp:
   upstream: "https://mcp.github.com/stream"
 ```
 
-For streaming MCP communications over SSE.
+Client requests ride POST bodies; the response's SSE `data:` lines are
+filtered and relayed. The upstream's GET event stream (server→client
+notifications) is held open for the session and relayed through the same
+inbound filter, and is torn down promptly when the client disconnects.
 
 ### Stdio Local Servers
 
@@ -202,7 +216,8 @@ mcp:
   upstream: "stdio:npx @modelcontextprotocol/server-github"
 ```
 
-The proxy spawns the local MCP server as a subprocess and bridges stdio communication.
+The proxy spawns the local MCP server as a subprocess and bridges stdio
+communication.
 
 ## Use Cases
 
@@ -313,20 +328,95 @@ Client Request
 **Working today (verified by unit and end-to-end tests):**
 - `warden proxy` runs a real stdio JSON-RPC bridge: spawns the upstream
   subprocess, relays newline-delimited JSON-RPC in both directions
+- **Remote HTTP/SSE upstreams** (Streamable HTTP): POST-per-message with
+  SSE-framed responses, plus the server→client GET event stream — all
+  filtered, all audited, TLS verified, plain http:// loopback-only
+- **`Mcp-Session-Id` handling**: the id issued on the initialize response is
+  captured and replayed on every subsequent request, so session-based servers
+  (Microsoft Learn, GitHub, …) keep one upstream session per client connection
 - Tool allowlist, deny patterns, and payload-size enforcement in both directions
-- Env filtering: the subprocess receives only `env.allow` variables (deny-by-default)
-- JSON-RPC errors for blocked (code `-32001`) and unparseable (code `-32700`) messages
+- Env filtering: the stdio subprocess receives only `env.allow` variables (deny-by-default)
+- JSON-RPC errors for blocked (`-32001`) and unparseable (`-32700`) messages;
+  `-32603` when the upstream itself fails (fail-closed, never a silent hang)
 - Audit logging for every allow/block decision (`mcp_message`, `mcp_block`,
   `stdio_proxy` events)
-- HTTP/SSE upstreams are **rejected at startup** (fail-closed, not silently broken)
 
 **Not implemented / limitations:**
-- HTTP and SSE transports (upstream and client-facing) — rejected, not faked
 - Sandbox isolation of the stdio subprocess (filesystem/network are unrestricted)
 - Direct MCP-client protocols (the TCP listener speaks JSON-RPC lines, not HTTP)
+- OAuth token minting: the proxy is a pass-through; it forwards whatever auth
+  your client establishes (for stdio bridges, `env.allow` governs token reachability)
 
 **Known safe by design:** every blocked message is answered with a JSON-RPC
-error and audited; nothing blocked is ever forwarded.
+error and audited; nothing blocked is ever forwarded — including on the HTTP
+path, where a filtered payload never leaves loopback.
+
+## Live Interop Results
+
+The HTTP/SSE transport was verified against real, public MCP servers on
+2026-09-11 (`warden-sandbox-cli` 0.1.13, local build from this tree). The
+client below spoke plain newline-delimited JSON-RPC to `warden proxy`; the
+proxy handled the Streamable HTTP framing, TLS, and session management.
+
+Upstreams tested:
+
+| Upstream | Transport notes | Result |
+|---|---|---|
+| `https://mcp.deepwiki.com/mcp` (DeepWiki) | No session id; POST responses are `text/event-stream` frames | 5/5 pass |
+| `https://learn.microsoft.com/api/mcp` (Microsoft Learn) | Issues `Mcp-Session-Id`; session replay verified across tools/list + tools/call | 4/4 pass |
+| `https://api.githubcopilot.com/mcp/` (GitHub) | Requires OAuth Bearer (401 without token) — out of proxy scope, fail-closed as designed | not proxied |
+| Dead host (`*.invalid`) | DNS failure surfaces as JSON-RPC `-32603` to the client, no hang | pass (fail-closed) |
+
+Test matrix against DeepWiki (policy: allowlist = `read_wiki_structure`,
+`ask_question`; deny pattern = `ghp_[A-Za-z0-9]{36}`):
+
+| # | Scenario | Expected | Result |
+|---|---|---|---|
+| 1 | `initialize` handshake | `serverInfo.name = DeepWiki` relayed | PASS |
+| 2 | `tools/list` (discovery passes the filter) | 3 tools listed | PASS |
+| 3 | `tools/call read_wiki_structure` (allowlisted) | forwarded, result relayed | PASS |
+| 4 | `tools/call read_wiki_contents` (NOT allowlisted) | `-32001 blocked by Warden policy: tool ... not in allow list`; upstream never contacted | PASS |
+| 5 | allowlisted call whose payload contains a `ghp_…` token | `-32001 … blocked pattern: ghp_[A-Za-z0-9]{36}`; payload never leaves loopback | PASS |
+
+Corresponding audit trail (`warden logs`) for the same session — every
+decision recorded, allowed and blocked:
+
+```json
+{"type":"mcp_proxy","action":"mcp_message","resource":"tools/call","allowed":true,"reason":"direction=outbound id=3"}
+{"type":"mcp_proxy","action":"mcp_block","resource":"tools/call","allowed":false,"reason":"tool \"read_wiki_contents\" not in allow list"}
+{"type":"mcp_proxy","action":"mcp_block","resource":"tools/call","allowed":false,"reason":"message contains blocked pattern: ghp_[A-Za-z0-9]{36}"}
+```
+
+What the live run changed in the implementation (interop fixes, each now
+pinned by the unit/e2e test suite):
+
+1. **SSE-framed POST responses.** Production servers answer POSTs with
+   `Content-Type: text/event-stream` bodies, not raw JSON lines. The proxy
+   now dispatches on the response media type and runs SSE-framed bodies
+   through the same `data:`-line filter (caught live: both earlier attempts
+   would have been dropped as "unparseable").
+2. **`Mcp-Session-Id` replay.** Session-minting servers (Microsoft Learn)
+   reject post-initialize calls that omit the id. The initialize response's
+   id is captured once per proxy process and replayed on every subsequent
+   POST and GET.
+3. **GET-without-session is spec-legal.** Opening the server→client event
+   stream on a server that issues no session id returns HTTP 406 — treated
+   as "no GET stream", not a failure; POST responses still deliver results.
+
+Reproduction sketch (any MCP client that speaks newline-delimited JSON-RPC
+over TCP, e.g. a stdio bridge):
+
+```bash
+cat > mcp-proxy-policy.yaml <<'YAML'
+mcp:
+  upstream: "https://mcp.deepwiki.com/mcp"
+  allow_tools: ["read_wiki_structure", "ask_question"]
+  deny_patterns: ["ghp_[A-Za-z0-9]{36}"]
+  max_payload_kb: 256
+YAML
+warden proxy --policy mcp-proxy-policy.yaml --listen 127.0.0.1:8765
+# then send JSON-RPC lines to 127.0.0.1:8765 (initialize first)
+```
 
 ## Troubleshooting
 
