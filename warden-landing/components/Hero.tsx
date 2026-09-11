@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, Github, Star } from "lucide-react";
 import SandboxVisualizer from "@/components/SandboxVisualizer";
 import Eyebrow from "@/components/Eyebrow";
+import SocialProof from "@/components/SocialProof";
 
 const INSTALL_CMD =
   "curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64";
@@ -114,36 +115,8 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* ProductHunt + GitHub badges */}
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a
-                href="https://www.producthunt.com/products/warden-6?utm_source=other&utm_medium=social"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2.5 rounded-full border border-ink-700 bg-ink-900 px-4 py-2 text-[0.8125rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800"
-              >
-                <span className="text-base">🏷️</span>
-                <span className="leading-tight">
-                  <span className="block text-[0.625rem] uppercase tracking-[0.08em] text-muted">
-                    Featured on
-                  </span>
-                  <span className="font-medium">Product Hunt</span>
-                </span>
-              </a>
-              <a
-                href="https://github.com/Prof-bilal/Warden"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-ink-700 bg-ink-900 px-4 py-2 text-[0.8125rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800"
-              >
-                <Github size={14} className="text-muted" />
-                <span className="font-medium">Warden</span>
-                <span className="flex items-center gap-1 rounded-full bg-ink-800 px-2 py-0.5 text-[0.6875rem] text-muted">
-                  <Star size={11} />
-                  Star
-                </span>
-              </a>
-            </div>
+            {/* npm/GitHub live counts + ProductHunt badge */}
+            <SocialProof />
           </div>
         </div>
 
