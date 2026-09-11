@@ -66,7 +66,14 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Update package.json version from tag
-        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          CURRENT="$(node -p "require('./package.json').version")"
+          if [[ "$CURRENT" == "$VERSION" ]]; then
+            echo "package.json already at $VERSION — skipping npm version"
+          else
+            npm version "$VERSION" --no-git-tag-version
+          fi
 
       - name: Verify package tarball integrity
         run: |

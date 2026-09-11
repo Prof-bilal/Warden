@@ -3,7 +3,7 @@
   "version": "0.1.13",
   "description": "npm wrapper for the Warden sandbox CLI",
   "bin": {
-    "warden": "./bin/warden"
+    "warden": "bin/warden"
   },
   "files": [
     "bin/",
