@@ -179,7 +179,11 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(allow network-outbound (remote unix-socket))\n")
 	writeLiteralAllow(&b, "file-read*", socketPath)
 	writeLiteralAllow(&b, "file-write*", socketPath)
-	writeLiteralAllow(&b, "file-read*", filepath.Dir(socketPath))
+	// The socket's directory: lookup/traversal only. SBPL subpath already
+	// matches the directory itself, so no file-read* literal is emitted for
+	// it — a read literal on a directory is at best redundant and trips
+	// aborts in dyld's path validation on macOS 26.
+	writeLiteralAllow(&b, "file-read-metadata", filepath.Dir(socketPath))
 	writeSubpathAllow(&b, "file-read*", filepath.Dir(socketPath))
 
 	return b.String(), nil

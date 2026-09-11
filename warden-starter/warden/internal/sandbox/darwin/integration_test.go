@@ -167,10 +167,10 @@ func requireSandboxExec(t *testing.T) {
 			}
 			findings = append(findings, fmt.Sprintf("  [%s] B minus %q => err=%v out=%q", status, g.name, verr, strings.TrimSpace(string(vout))))
 		}
-		// Also dump any macOS crash reports from the last minute — dyld
-		// aborts leave exact denial records there.
+		// Also dump the newest crash report body — dyld aborts record the
+		// exact failing operation there.
 		crash := "(none)"
-		if c, cerr := exec.Command("/bin/sh", "-c", `ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -3`).Output(); cerr == nil {
+		if c, cerr := exec.Command("/bin/sh", "-c", `newest=$(ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -1); echo "report: $newest"; head -c 4000 "$HOME/Library/Logs/DiagnosticReports/$newest" 2>/dev/null`).Output(); cerr == nil {
 			crash = strings.TrimSpace(string(c))
 		}
 		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\nbisect findings:\n%s\nrecent crash reports: %s\n%s",
