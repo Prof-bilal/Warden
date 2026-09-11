@@ -90,44 +90,91 @@ func requireSandboxExec(t *testing.T) {
 		t.Fatalf("write production profile: %v", err)
 	}
 	if out, err := exec.Command("sandbox-exec", "-f", profilePath, "/usr/bin/true").CombinedOutput(); err != nil {
-		// The child died before main(), so its own output is empty: run a
-		// one-shot bisect — each variant is the production profile plus one
-		// candidate grant class. A variant that suddenly works names the
-		// missing grant in the failure message below.
-		bisect := []struct{ name, extra string }{
-			{"with broad /System file-read*", "(allow file-read* (subpath \"/System\"))\n"},
-			{"with broad /usr file-read*", "(allow file-read* (subpath \"/usr\"))\n"},
-			{"with broad / file-map-executable", "(allow file-map-executable (subpath \"/\"))\n"},
-			{"with file-map-executable everywhere file-read* is granted", "(allow file-map-executable (subpath \"/usr\")) (allow file-map-executable (subpath \"/bin\")) (allow file-map-executable (subpath \"/sbin\")) (allow file-map-executable (subpath \"/System\")) (allow file-map-executable (subpath \"/private/var/db/dyld\"))\n"},
-			{"with /var/db subpath read", "(allow file-read* (subpath \"/var/db\")) (allow file-read* (subpath \"/private/var/db\"))\n"},
-			{"with /Library/Apple subpath read", "(allow file-read* (subpath \"/Library/Apple\"))\n"},
-			{"with /dev/dtracehelper full access", "(allow file-read* file-write* file-ioctl (literal \"/dev/dtracehelper\"))\n"},
-			{"with /private/var/db/os_log", "(allow file-read* (subpath \"/private/var/db/os_log\"))\n"},
-			{"with /System/Volumes/Data", "(allow file-read* (subpath \"/System/Volumes/Data\"))\n"},
-			{"with /usr/libexec", "(allow file-read* (subpath \"/usr/libexec\"))\n"},
+		// B is a strict superset of A's grants, yet A runs and B aborts, so
+		// some rule B *adds* offends sandbox-exec. Two probes name it:
+		//
+		// 1. Forward: A + B's network/mach-lookup rules. If this fails, the
+		//    offender is in that block (the only non-filesystem rules B adds).
+		// 2. Reverse: B minus one rule group per variant, plus a safety net
+		//    (A's blanket root map + process-exec/fork) so no variant can
+		//    fail for missing exec mechanics. A variant that RUNS means the
+		//    dropped group contained the offending rule.
+		safety := "(allow process-exec)\n(allow process-fork)\n(allow file-map-executable (subpath \"/\"))\n"
+		findings := make([]string, 0, 20)
+
+		networkBlock := ""
+		for _, ln := range strings.Split(profile, "\n") {
+			if strings.Contains(ln, "network-") || strings.Contains(ln, "mach-lookup") {
+				networkBlock += ln + "\n"
+			}
 		}
-		variants := make([]string, 0, len(bisect))
-		for _, v := range bisect {
-			vprof := profile + "\n" + v.extra
-			vpath := filepath.Join(tmp, "bisect-"+strings.ReplaceAll(strings.ReplaceAll(v.name, " ", "-"), "/", "_")+".sb")
-			if err := os.WriteFile(vpath, []byte(vprof), 0o644); err != nil {
-				t.Fatalf("write bisect profile: %v", err)
+		fpath := filepath.Join(tmp, "bisect-0-forward-a-plus-network.sb")
+		if werr := os.WriteFile(fpath, []byte(minProfile+networkBlock), 0o644); werr != nil {
+			t.Fatalf("write forward bisect profile: %v", werr)
+		}
+		fout, ferr := exec.Command("sandbox-exec", "-f", fpath, "/usr/bin/true").CombinedOutput()
+		fstatus := "FAIL => offender is in the network/mach block"
+		if ferr == nil {
+			fstatus = "OK => offender is a filesystem rule"
+		}
+		findings = append(findings, fmt.Sprintf("  [%s] A + B network/mach rules => err=%v out=%q\nnetwork/mach block:\n%s", fstatus, ferr, strings.TrimSpace(string(fout)), networkBlock))
+
+		groups := []struct {
+			name    string
+			markers []string
+		}{
+			{"process-exec/fork/signal/info", []string{"process-"}},
+			{"sysctl-read", []string{"sysctl-read"}},
+			{"mach-lookup", []string{"mach-lookup"}},
+			{"file-read-metadata", []string{"file-read-metadata"}},
+			{"ipc-posix-shm/sem", []string{"ipc-posix-"}},
+			{"iokit-open", []string{"iokit-open"}},
+			{"/dev basics", []string{"/dev/null", "/dev/zero", "/dev/urandom", "/dev/random", "/dev/ttys", "/dev/fd"}},
+			{"/etc", []string{"subpath \"/etc\"", "subpath \"/private/etc\""}},
+			{"all file-map-executable", []string{"file-map-executable"}},
+			{"runtime file-read* subpaths", []string{"file-read* (subpath"}},
+			{"scratch file-write*", []string{"file-write* (subpath \"/tmp\"", "file-write* (subpath \"/private/tmp\"", "file-write* (subpath \"/var/folders\"", "file-write* (subpath \"/private/var/folders\""}},
+			{"network rules", []string{"network-"}},
+			{"socket path grants", []string{"egress.sock"}},
+			{"dtracehelper", []string{"dtracehelper"}},
+		}
+		drop := func(profile string, markers []string) string {
+			lines := strings.Split(profile, "\n")
+			kept := make([]string, 0, len(lines))
+			for _, ln := range lines {
+				matched := false
+				for _, m := range markers {
+					if strings.Contains(ln, m) {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					kept = append(kept, ln)
+				}
+			}
+			return strings.Join(kept, "\n")
+		}
+		for i, g := range groups {
+			vpath := filepath.Join(tmp, fmt.Sprintf("bisect-%d-minus-%s.sb", i+1, strings.ReplaceAll(strings.ReplaceAll(g.name, " ", "-"), "/", "_")))
+			if werr := os.WriteFile(vpath, []byte(drop(profile, g.markers)+safety), 0o644); werr != nil {
+				t.Fatalf("write reverse bisect profile: %v", werr)
 			}
 			vout, verr := exec.Command("sandbox-exec", "-f", vpath, "/usr/bin/true").CombinedOutput()
 			status := "FAIL"
 			if verr == nil {
-				status = "OK <-- missing grant found"
+				status = "OK <-- offending rule is in this group"
 			}
-			variants = append(variants, fmt.Sprintf("  [%s] %s => err=%v out=%q", status, v.name, verr, strings.TrimSpace(string(vout))))
+			findings = append(findings, fmt.Sprintf("  [%s] B minus %q => err=%v out=%q", status, g.name, verr, strings.TrimSpace(string(vout))))
 		}
-		// Also dump any macOS crash reports for /usr/bin/true from the last
-		// minute — dyld aborts leave exact denial records there.
+		// Also dump any macOS crash reports from the last minute — dyld
+		// aborts leave exact denial records there.
 		crash := "(none)"
-		if c, err := exec.Command("/bin/sh", "-c", `ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -3`).Output(); err == nil {
+		if c, cerr := exec.Command("/bin/sh", "-c", `ls -t ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -3`).Output(); cerr == nil {
 			crash = strings.TrimSpace(string(c))
 		}
-		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\nbisect variants:\n%s\nrecent crash reports: %s\n%s",
-			err, profile, out, strings.Join(variants, "\n"), crash, sandboxDenialLog())
+		t.Fatalf("preflight B: production profile cannot exec /usr/bin/true directly: %v\nprofile:\n%s\noutput:\n%s\nbisect findings:\n%s\nrecent crash reports: %s\n%s",
+			err, profile, out, strings.Join(findings, "\n"), crash, sandboxDenialLog())
 	}
 
 	// C: the real chain — generated profile, in-process bridge,
