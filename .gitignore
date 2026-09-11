@@ -38,3 +38,7 @@ warden-starter/warden/warden
 # Proof-harness output (generated artifacts, plan §6)
 evidence/
 warden-starter/warden/site/
+
+# Local-only telemetry event store (anonymous npm install pings).
+# Never commit real install events.
+warden-landing/data/

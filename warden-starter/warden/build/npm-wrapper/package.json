@@ -7,9 +7,14 @@
   },
   "files": [
     "bin/",
+    "telemetry.js",
     "README.md",
     "LICENSE"
   ],
+  "scripts": {
+    "postinstall": "node telemetry.js",
+    "test": "node --test telemetry.test.js"
+  },
   "engines": {
     "node": ">=18"
   },

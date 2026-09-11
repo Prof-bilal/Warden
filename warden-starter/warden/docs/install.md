@@ -14,7 +14,11 @@ warden version
 ```
 
 The npm postinstall script downloads the prebuilt binary for your platform
-from GitHub Releases (5 binaries + `SHA256SUMS` per release).
+from GitHub Releases (5 binaries + `SHA256SUMS` per release). It also sends
+one anonymous install ping (package version, OS, CPU arch, Node version —
+nothing identifying; see [Anonymous Installation Telemetry](telemetry.md))
+that can never fail the install and is skipped with
+`npm install --ignore-scripts`.
 
 ### Option B — GitHub Release
 

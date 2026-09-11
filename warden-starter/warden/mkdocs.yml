@@ -24,6 +24,7 @@ nav:
     - Schema Reference: schema.md
     - CLI Reference: cli.md
     - Example Policies: examples.md
+    - Installation Telemetry: telemetry.md
   - Understand:
     - Architecture: architecture.md
     - Security Review: security.md
