@@ -83,27 +83,54 @@ var (
 // this host and binds the wfp* proc pointers against it. Both fwpuclnt.dll
 // (the canonical home of the API since Vista) and iphlapi.dll (which also
 // exports the same symbols on stripped server SKUs and the GitHub Actions
-// `windows-latest` runner image, where fwpuclnt.dll is not present) are
-// attempted. The first DLL whose Load() succeeds wins; if neither loads,
-// wfpSupported() reports a clear "no WFP DLL on this host" error rather than
-// panicking later inside a Call. See REMAINING_WORK P0 fwpuclnt follow-up.
+// `windows-latest` runner image) are attempted.
+//
+// Important: Load() succeeding is not enough. On some images fwpuclnt.dll is
+// present but does not export the versioned Fwpm*0 entry points; selecting it
+// then makes every Run fail with "procedure could not be found". We require
+// Find() to succeed for every required symbol before committing to a DLL.
 func initWFP() {
+	required := []string{
+		"FwpmEngineOpen0",
+		"FwpmEngineClose0",
+		"FwpmTransactionBegin0",
+		"FwpmTransactionCommit0",
+		"FwpmTransactionAbort0",
+		"FwpmSublayerAdd0",
+		"FwpmFilterAdd0",
+		"FwpmFreeMemory0",
+		"FwpmFilterDeleteById0",
+	}
 	candidates := []string{"fwpuclnt.dll", "iphlapi.dll"}
 	for _, name := range candidates {
 		d := windows.NewLazySystemDLL(name)
-		if err := d.Load(); err == nil {
-			wfpDLL = d
-			procFwpmEngineOpen = d.NewProc("FwpmEngineOpen0")
-			procFwpmEngineClose = d.NewProc("FwpmEngineClose0")
-			procFwpmTransactionBegin = d.NewProc("FwpmTransactionBegin0")
-			procFwpmTransactionCommit = d.NewProc("FwpmTransactionCommit0")
-			procFwpmTransactionAbort = d.NewProc("FwpmTransactionAbort0")
-			procFwpmSublayerAdd = d.NewProc("FwpmSublayerAdd0")
-			procFwpmFilterAdd = d.NewProc("FwpmFilterAdd0")
-			procFwpmFreeMemory = d.NewProc("FwpmFreeMemory0")
-			procFwpmFilterDeleteById = d.NewProc("FwpmFilterDeleteById0")
-			return
+		if err := d.Load(); err != nil {
+			continue
 		}
+		procs := make([]*windows.LazyProc, len(required))
+		ok := true
+		for i, sym := range required {
+			p := d.NewProc(sym)
+			if err := p.Find(); err != nil {
+				ok = false
+				break
+			}
+			procs[i] = p
+		}
+		if !ok {
+			continue
+		}
+		wfpDLL = d
+		procFwpmEngineOpen = procs[0]
+		procFwpmEngineClose = procs[1]
+		procFwpmTransactionBegin = procs[2]
+		procFwpmTransactionCommit = procs[3]
+		procFwpmTransactionAbort = procs[4]
+		procFwpmSublayerAdd = procs[5]
+		procFwpmFilterAdd = procs[6]
+		procFwpmFreeMemory = procs[7]
+		procFwpmFilterDeleteById = procs[8]
+		return
 	}
 }
 

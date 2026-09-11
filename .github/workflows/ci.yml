@@ -29,16 +29,63 @@ jobs:
       - name: Install sandbox prerequisites
         # Escape tests must actually execute. Missing bubblewrap/user
         # namespaces is a hard failure — never a silent skip (plan §5).
+        #
+        # Ubuntu 24.04 (ubuntu-latest) enables
+        # kernel.apparmor_restrict_unprivileged_userns=1, so plain bwrap fails
+        # with "loopback: Failed RTM_NEWADDR: Operation not permitted" unless
+        # /usr/bin/bwrap has an AppArmor profile that grants userns. Prefer a
+        # scoped bwrap profile over disabling the restriction host-wide.
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y bubblewrap strace
+          sudo apt-get install -y bubblewrap strace apparmor-profiles
           command -v bwrap
           command -v strace
+
+          # Prefer the distro extra profile when present.
+          if [[ -f /usr/share/apparmor/extra-profiles/bwrap-userns-restrict ]]; then
+            sudo cp /usr/share/apparmor/extra-profiles/bwrap-userns-restrict /etc/apparmor.d/bwrap-userns-restrict
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+          # Ensure /usr/bin/bwrap itself may create userns (Ubuntu 24.04+).
+          # Write the profile via a temp file so YAML indentation cannot leak
+          # into the AppArmor source.
+          PROFILE_TMP="$(mktemp)"
+          cat > "$PROFILE_TMP" <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            include if exists <local/bwrap>
+          }
+          EOF
+          # Strip the accidental leading spaces from the YAML block above.
+          sed -i 's/^          //' "$PROFILE_TMP"
+          sudo cp "$PROFILE_TMP" /etc/apparmor.d/bwrap
+          if ! sudo apparmor_parser -r /etc/apparmor.d/bwrap; then
+            cat > "$PROFILE_TMP" <<'EOF'
+          #include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            #include if exists <local/bwrap>
+          }
+          EOF
+            sed -i 's/^          //' "$PROFILE_TMP"
+            sudo cp "$PROFILE_TMP" /etc/apparmor.d/bwrap
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap
+          fi
+          rm -f "$PROFILE_TMP"
+
           # Prove unprivileged user namespaces work on this runner.
           if ! bwrap --unshare-user --unshare-net --uid 0 --gid 0 \
               --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 \
               --ro-bind /bin /bin /bin/true; then
-            echo "::error::bubblewrap user namespaces are unavailable on this runner; Linux escape tests cannot run"
+            echo "::error::bubblewrap user namespaces are unavailable on this runner after AppArmor profile install; Linux escape tests cannot run"
+            echo "::error::sysctl apparmor_restrict_unprivileged_userns=$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo unknown)"
+            echo "::group::aa-status"
+            sudo aa-status 2>/dev/null | head -60 || true
+            echo "::endgroup::"
             exit 1
           fi
       - run: go build ./...

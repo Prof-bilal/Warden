@@ -246,9 +246,9 @@ func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {
 }
 
 // TestWFPDLLProbeResilient is the unit test for the REMAINING_WORK P0 follow-up:
-// on hosts where fwpuclnt.dll is missing (e.g. stripped server SKUs, the GitHub
-// Actions windows-latest runner image), initWFP() must fall back to the
-// iphlapi.dll host or report a clear error rather than panicking inside
+// on hosts where fwpuclnt.dll is missing OR loads but lacks the versioned
+// Fwpm*0 exports (GitHub Actions windows-latest), initWFP() must fall back to
+// iphlapi.dll or report a clear error rather than panicking inside
 // LazyProc.Call. This test exercises the error-reporting path; on a host
 // where WFP is fully available it succeeds without checking anything new.
 func TestWFPDLLProbeResilient(t *testing.T) {
