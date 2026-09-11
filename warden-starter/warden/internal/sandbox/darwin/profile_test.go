@@ -90,6 +90,10 @@ func TestBuildSeatbeltProfileStartupPrimitives(t *testing.T) {
 		"(allow process-exec)",
 		"(allow process-fork)",
 		"(allow file-read-metadata)",
+		// dyld's CacheFinder probes the root directory itself while locating
+		// the shared cache; denial aborts the process before main() on
+		// macOS 26.
+		`(allow file-read* file-test-existence (literal "/"))`,
 		`(allow file-map-executable (subpath "/usr"))`,
 		`(allow file-map-executable (subpath "/System"))`,
 		`(allow file-map-executable (subpath "/Library/Apple/usr/lib"))`,

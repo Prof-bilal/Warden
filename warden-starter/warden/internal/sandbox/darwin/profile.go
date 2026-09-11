@@ -111,9 +111,13 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(allow ipc-posix-shm-read*)\n")
 	b.WriteString("(allow ipc-posix-sem)\n")
 	b.WriteString("(allow iokit-open (iokit-registry-entry-class \"RootDomainUserClient\"))\n")
-	// Root and per-component metadata traversal is blanket-allowed above;
-	// stat("/") is what dyld and libc need to resolve absolute paths. It
-	// does not permit listing or reading "/" contents.
+	// Root and per-component metadata traversal is blanket-allowed above.
+	// dyld's CacheFinder also performs a file-read-data probe of "/" itself
+	// while locating the shared cache and aborts the process (SIGABRT in
+	// dyld4::CacheFinder, before main) when it is denied on macOS 26 — the
+	// same grant ships in Codex's proven macOS 26 platform defaults. This
+	// permits reading the root directory listing but no user data.
+	b.WriteString("(allow file-read* file-test-existence (literal \"/\"))\n")
 	b.WriteString("; Device basics every process needs (null, zero, urandom, own tty/fds)\n")
 	b.WriteString("(allow file-read* file-write-data (literal \"/dev/null\"))\n")
 	b.WriteString("(allow file-read* (literal \"/dev/zero\"))\n")
