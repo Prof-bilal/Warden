@@ -51,6 +51,7 @@ var (
 	// advapi32, not kernel32 — bind them below with the other advapi32
 	// procs so the whole session fails closed if any symbol is missing).
 	procQueryDosDeviceW          = kernel32.NewProc("QueryDosDeviceW")
+	procGetLongPathNameW         = kernel32.NewProc("GetLongPathNameW")
 	procCreateToolhelp32Snapshot = kernel32.NewProc("CreateToolhelp32Snapshot")
 	procProcess32First           = kernel32.NewProc("Process32FirstW")
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
@@ -215,6 +216,21 @@ func _CreateProcessWithTokenW(token windows.Handle, creationFlags uint32, cmdLin
 // (kernel32.QueryDosDeviceW).
 func _QueryDosDeviceW(deviceName *uint16, target *uint16, max uint32) (uint32, error) {
 	r, _, e := procQueryDosDeviceW.Call(uintptr(unsafe.Pointer(deviceName)), uintptr(unsafe.Pointer(target)), uintptr(max))
+	if r == 0 {
+		return 0, lasterr(e)
+	}
+	return uint32(r), nil
+}
+
+// _GetLongPathNameW expands 8.3 short path components (e.g. RUNNER~1) to the
+// long form via kernel32.GetLongPathNameW. Returns the required buffer length
+// including the terminating NUL on success; 0 on failure.
+func _GetLongPathNameW(short, long *uint16, bufLen uint32) (uint32, error) {
+	r, _, e := procGetLongPathNameW.Call(
+		uintptr(unsafe.Pointer(short)),
+		uintptr(unsafe.Pointer(long)),
+		uintptr(bufLen),
+	)
 	if r == 0 {
 		return 0, lasterr(e)
 	}

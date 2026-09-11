@@ -19,28 +19,78 @@ const archName = archMap[arch];
 const ext = platform === "win32" ? ".exe" : "";
 
 const fileName = `warden-${osName}-${archName}${ext}`;
-const url = `https://github.com/Prof-bilal/Warden/releases/download/v${VERSION}/${fileName}`;
+const cacheRoot = path.join(os.homedir(), ".cache", "warden");
 
-const cacheDir = path.join(os.homedir(), ".cache", "warden");
-const binPath = path.join(cacheDir, `${VERSION}`, fileName);
+function compareVersions(a, b) {
+  const norm = (s) =>
+    String(s)
+      .replace(/^v/, "")
+      .split(/[-+]/)[0]
+      .split(".")
+      .map((x) => parseInt(x, 10) || 0);
+  const av = norm(a);
+  const bv = norm(b);
+  const n = Math.max(av.length, bv.length);
+  for (let i = 0; i < n; i++) {
+    const x = av[i] || 0;
+    const y = bv[i] || 0;
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+// Prefer the newest cached binary (so `warden update` sticks), falling back
+// to the package-pinned version directory for a fresh install.
+function resolveBinPath() {
+  let bestVer = VERSION;
+  let bestPath = path.join(cacheRoot, VERSION, fileName);
+  try {
+    const entries = fs.readdirSync(cacheRoot, { withFileTypes: true });
+    for (const ent of entries) {
+      if (!ent.isDirectory()) continue;
+      if (!/^\d+\.\d+/.test(ent.name)) continue;
+      const candidate = path.join(cacheRoot, ent.name, fileName);
+      if (!fs.existsSync(candidate)) continue;
+      if (compareVersions(ent.name, bestVer) >= 0) {
+        bestVer = ent.name;
+        bestPath = candidate;
+      }
+    }
+  } catch {
+    // cache missing — download package version below
+  }
+  return { version: bestVer, binPath: bestPath };
+}
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
     https
-      .get(url, { timeout: 30000 }, (res) => {
+      .get(url, { timeout: 60000 }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          // Drain and follow redirect without holding a write stream open on dest.
+          res.resume();
           download(res.headers.location, dest).then(resolve).catch(reject);
           return;
         }
         if (res.statusCode !== 200) {
+          res.resume();
           reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
           return;
         }
+        const file = fs.createWriteStream(dest);
         res.pipe(file);
-        file.on("finish", () => { file.close(() => resolve()); });
+        file.on("finish", () => {
+          file.close((err) => (err ? reject(err) : resolve()));
+        });
+        file.on("error", (err) => {
+          fs.unlink(dest, () => {});
+          reject(err);
+        });
       })
-      .on("error", (err) => { fs.unlink(dest, () => {}); reject(err); });
+      .on("error", (err) => {
+        fs.unlink(dest, () => {});
+        reject(err);
+      });
   });
 }
 
@@ -50,7 +100,13 @@ function download(url, dest) {
     process.exit(1);
   }
 
+  let { version, binPath } = resolveBinPath();
+
   if (!fs.existsSync(binPath)) {
+    // Fresh install: download the package-pinned release binary.
+    version = VERSION;
+    binPath = path.join(cacheRoot, VERSION, fileName);
+    const url = `https://github.com/Prof-bilal/Warden/releases/download/v${VERSION}/${fileName}`;
     const dir = path.dirname(binPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     console.log(`Downloading warden v${VERSION}...`);

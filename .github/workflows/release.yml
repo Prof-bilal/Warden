@@ -68,6 +68,21 @@ jobs:
       - name: Update package.json version from tag
         run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version
 
+      - name: Verify package tarball integrity
+        run: |
+          set -euo pipefail
+          npm pack
+          TAR="warden-sandbox-cli-${GITHUB_REF_NAME#v}.tgz"
+          echo "Tarball contents:"
+          tar -tf "$TAR"
+          # postinstall requires telemetry.js; bin requires the launcher.
+          tar -tf "$TAR" | grep -qx 'package/telemetry.js'
+          tar -tf "$TAR" | grep -qx 'package/bin/warden'
+          # Metadata must ship the landing homepage, not a GitHub fallback.
+          tar -xOf "$TAR" package/package.json | grep -q 'warden-six-rouge.vercel.app'
+          tar -xOf "$TAR" package/package.json | grep -q 'Prof-bilal/Warden'
+          echo "Tarball integrity OK"
+
       - name: Publish to npm (skip if version already exists)
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

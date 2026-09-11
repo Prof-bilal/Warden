@@ -26,6 +26,21 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
+      - name: Install sandbox prerequisites
+        # Escape tests must actually execute. Missing bubblewrap/user
+        # namespaces is a hard failure — never a silent skip (plan §5).
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap strace
+          command -v bwrap
+          command -v strace
+          # Prove unprivileged user namespaces work on this runner.
+          if ! bwrap --unshare-user --unshare-net --uid 0 --gid 0 \
+              --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 \
+              --ro-bind /bin /bin /bin/true; then
+            echo "::error::bubblewrap user namespaces are unavailable on this runner; Linux escape tests cannot run"
+            exit 1
+          fi
       - run: go build ./...
       - run: go vet ./...
       - name: bwrap escape tests (must actually run)

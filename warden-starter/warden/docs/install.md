@@ -8,17 +8,38 @@
 
 ### Option A — npm (easiest)
 
+Warden is a **global CLI**. Install it with `-g` so the `warden` command is
+on your `PATH`:
+
 ```bash
 npm install -g warden-sandbox-cli
-warden version
+warden --version
+warden help
 ```
 
-The npm postinstall script downloads the prebuilt binary for your platform
-from GitHub Releases (5 binaries + `SHA256SUMS` per release). It also sends
-one anonymous install ping (package version, OS, CPU arch, Node version —
-nothing identifying; see [Anonymous Installation Telemetry](telemetry.md))
-that can never fail the install and is skipped with
-`npm install --ignore-scripts`.
+`npm install -g warden-sandbox-cli` installs the `warden` CLI globally.
+
+A local (project) install is an advanced/development option and does **not**
+put `warden` on your global shell `PATH`:
+
+```bash
+npm install warden-sandbox-cli          # local only
+npx warden --version                    # use via npx
+# warden --version                      # will fail: command not found
+```
+
+On install, the package runs an anonymous telemetry ping (`telemetry.js`) that
+can never fail the install and is skipped with `npm install --ignore-scripts`
+(see [Anonymous Installation Telemetry](telemetry.md)). The platform binary is
+downloaded lazily on first `warden` invocation from GitHub Releases (5 binaries
++ `SHA256SUMS` per release).
+
+Releases that predate `warden update` do not include that command — upgrade
+those installs with:
+
+```bash
+npm install -g warden-sandbox-cli@latest
+```
 
 ### Option B — GitHub Release
 
@@ -80,11 +101,11 @@ if you hit that error.
 
 ## What a successful install looks like
 
-When installed via `npm` (`npm i -g warden-sandbox-cli` or `npx`) the
-installer shows a polished, non-blocking progress sequence. In a TTY it
-animates briefly with a braille spinner; in CI or when piped it falls back
-to deterministic bracketed lines so logs stay clean. No spinner is left
-behind on exit.
+When installed via `npm` (`npm install -g warden-sandbox-cli`) the first
+`warden` invocation downloads the platform binary with a polished,
+non-blocking progress sequence. In a TTY it animates briefly with a braille
+spinner; in CI or when piped it falls back to deterministic bracketed lines
+so logs stay clean. No spinner is left behind on exit.
 
 TTY (interactive):
 

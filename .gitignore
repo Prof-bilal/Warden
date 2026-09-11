@@ -8,6 +8,11 @@ node_modules/
 .next/
 dist/
 build/
+# Exception: the npm publish wrapper is source (not a build artifact).
+# Without this, postinstall's telemetry.js is never published and installs fail.
+!warden-starter/warden/build/
+!warden-starter/warden/build/npm-wrapper/
+!warden-starter/warden/build/npm-wrapper/**
 
 # OS files
 .DS_Store

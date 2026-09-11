@@ -116,6 +116,26 @@ func TestReplace(t *testing.T) {
 	}
 }
 
+func TestValidateVersion(t *testing.T) {
+	ok := []string{"0.1.12", "v0.1.12", "1.0.0", "0.1"}
+	for _, in := range ok {
+		got, err := validateVersion(in)
+		if err != nil {
+			t.Errorf("validateVersion(%q) = %v", in, err)
+			continue
+		}
+		if strings.HasPrefix(got, "v") {
+			t.Errorf("validateVersion(%q) retained v-prefix: %q", in, got)
+		}
+	}
+	bad := []string{"", "latest", "../x", "0.1.12;rm", "0.1.12/x", "abc", "0.1.12-rc1"}
+	for _, in := range bad {
+		if _, err := validateVersion(in); err == nil {
+			t.Errorf("validateVersion(%q) = nil, want error", in)
+		}
+	}
+}
+
 func TestAssetName(t *testing.T) {
 	name, err := assetName()
 	if err != nil {

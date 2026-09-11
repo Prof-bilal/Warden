@@ -50,8 +50,15 @@ const (
 	containerInheritAce = 0x00000002
 )
 
-// Trustee forms (accctrl.h).
-const trusteeIsSid = 3 // TRUSTEE_IS_SID
+// Trustee forms (accctrl.h / golang.org/x/sys/windows).
+// TRUSTEE_IS_SID must be 0. The value 3 is TRUSTEE_IS_OBJECTS_AND_SID, which
+// makes SetEntriesInAcl expect an OBJECTS_AND_SID pointer and returns
+// ERROR_INVALID_PARAMETER (87) when given a raw SID — the failure observed
+// on Windows CI as "SetEntriesInAcl: The parameter is incorrect".
+const (
+	trusteeIsSid     = 0 // TRUSTEE_IS_SID
+	trusteeIsUnknown = 0 // TRUSTEE_IS_UNKNOWN
+)
 
 // _GetNamedSecurityInfoW returns the current security descriptor for a path.
 func _GetNamedSecurityInfoW(path *uint16, objectType, securityInfo uint32, owner, group **windows.SID, dacl, sacl **acl, sd **securityDescriptor) error {
@@ -195,6 +202,10 @@ func grantFilesystemAccess(plan *Plan) error {
 // grantPathACE appends one GRANT_ACCESS ACE per capability SID to path's DACL
 // with the grant's access mask, then writes the merged DACL back.
 func grantPathACE(path string, accessMask uint32, caps []*windows.SID) error {
+	// Expand 8.3 short names (e.g. C:\Users\RUNNER~1\...) before ACL APIs.
+	// GetNamedSecurityInfo accepts short paths, but normalizing avoids
+	// runner-specific TEMP spellings that confuse later path comparisons.
+	path = longPath(path)
 	pathPtr := utf16Ptr(path)
 
 	var dacl *acl
@@ -212,7 +223,11 @@ func grantPathACE(path string, accessMask uint32, caps []*windows.SID) error {
 			grfAccessPermissions: accessMask,
 			grfAccessMode:        grantAccess,
 			grfInheritance:       objectInheritAce | containerInheritAce,
-			trustee:              trustee{trusteeForm: trusteeIsSid, ptstrName: (*uint16)(unsafe.Pointer(sid))},
+			trustee: trustee{
+				trusteeForm: trusteeIsSid,
+				trusteeType: trusteeIsUnknown,
+				ptstrName:   (*uint16)(unsafe.Pointer(sid)),
+			},
 		})
 	}
 

@@ -122,6 +122,9 @@ warden gateway wrap --config <file> --policies <dir> [--output <file>]
 warden doctor
     Check sandbox readiness (backend, namespaces, proxy, policy engine)
 
+warden update [--check] [--version <ver>] [--yes]
+    Update warden via npm registry + verified GitHub Release binary
+
 warden version
     Print the build version (also `--version`)
 ```

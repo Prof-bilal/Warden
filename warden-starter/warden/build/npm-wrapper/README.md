@@ -1,13 +1,46 @@
 # warden-sandbox-cli
 
-npm wrapper for the [Warden](https://github.com/Prof-bilal/Warden) sandbox runtime.
+npm wrapper for the [Warden](https://warden-six-rouge.vercel.app/) sandbox runtime.
 
 Warden runs your MCP servers in a sandbox that only sees what you grant — a folder, a hostname, nothing more.
 
-## Install
+## Install (global CLI)
+
+Warden is intended to be installed as a **global** CLI. This puts the `warden` command on your `PATH`:
 
 ```bash
 npm install -g warden-sandbox-cli
+```
+
+Then verify:
+
+```bash
+warden --version
+warden help
+```
+
+`npm install -g warden-sandbox-cli` installs the `warden` CLI globally. After a successful global install you can run `warden` from any directory.
+
+### Advanced: local (project) install
+
+A local install is supported for development/CI pin scenarios:
+
+```bash
+npm install warden-sandbox-cli
+```
+
+A local install does **not** put `warden` on your global shell `PATH`. Use one of:
+
+```bash
+npx warden --version
+./node_modules/.bin/warden --version
+```
+
+Do not expect this sequence to work as a global command:
+
+```bash
+npm install warden-sandbox-cli   # local install only
+warden --version                # fails: command not found
 ```
 
 ## Usage
@@ -21,6 +54,17 @@ warden trace -- node server.js
 
 # Generate a starter policy from a trace log
 warden init --log log.json --output policy.yaml
+
+# Check for / apply updates (requires a release that includes `warden update`)
+warden update --check
+warden update
+```
+
+Older releases published before `warden update` existed will not recognize that
+command. Upgrade those installs manually:
+
+```bash
+npm install -g warden-sandbox-cli@latest
 ```
 
 ## How it works
@@ -64,6 +108,7 @@ limits:
 
 ## Links
 
+- [Homepage](https://warden-six-rouge.vercel.app/)
 - [GitHub](https://github.com/Prof-bilal/Warden)
 - [Documentation](https://prof-bilal.github.io/Warden/)
 - [Issue tracker](https://github.com/Prof-bilal/Warden/issues)

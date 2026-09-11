@@ -91,3 +91,28 @@ func dosDeviceTarget(drive string) (string, error) {
 	}
 	return stringFromUTF16(buf[:n]), nil
 }
+
+// longPath expands 8.3 short-name components (e.g. C:\Users\RUNNER~1\...) to
+// the long form. On failure it returns the input unchanged so ACL grants still
+// attempt the original path rather than inventing a new one.
+func longPath(path string) string {
+	if path == "" || !strings.Contains(path, "~") {
+		return path
+	}
+	short := utf16Ptr(path)
+	n, err := _GetLongPathNameW(short, nil, 0)
+	if err != nil || n == 0 {
+		return path
+	}
+	buf := make([]uint16, n)
+	n, err = _GetLongPathNameW(short, &buf[0], n)
+	if err != nil || n == 0 {
+		return path
+	}
+	// n is the character count excluding the terminating NUL when the buffer
+	// was large enough.
+	if int(n) < len(buf) {
+		return stringFromUTF16(buf[:n])
+	}
+	return stringFromUTF16(buf)
+}

@@ -1,6 +1,6 @@
 {
   "name": "warden-sandbox-cli",
-  "version": "0.1.10",
+  "version": "0.1.13",
   "description": "npm wrapper for the Warden sandbox CLI",
   "bin": {
     "warden": "./bin/warden"
@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "postinstall": "node telemetry.js",
+    "prepack": "node -e \"const fs=require('fs'); for (const f of ['telemetry.js','bin/warden','README.md','LICENSE']) { if (!fs.existsSync(f)) { console.error('prepack: missing required file '+f); process.exit(1); } }\"",
     "test": "node --test telemetry.test.js"
   },
   "engines": {
@@ -26,6 +27,10 @@
     "warden"
   ],
   "license": "MIT",
+  "homepage": "https://warden-six-rouge.vercel.app/",
+  "bugs": {
+    "url": "https://github.com/Prof-bilal/Warden/issues"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Prof-bilal/Warden.git",

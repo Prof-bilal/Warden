@@ -109,7 +109,7 @@ func main() {
 			printUpdateHelp()
 			os.Exit(0)
 		}
-		cmdUpdate()
+		cmdUpdate(os.Args[2:])
 	case "help":
 		if len(os.Args) > 2 {
 			printCommandHelp(os.Args[2])
@@ -436,34 +436,80 @@ func printUpdateHelp() {
 		title = ui.Bold(ui.Cyan(title))
 	}
 	fmt.Fprintln(os.Stderr, title)
-	fmt.Fprintln(os.Stderr, "Update warden to the latest GitHub release.")
+	fmt.Fprintln(os.Stderr, "Update warden using the npm registry + GitHub Releases.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
 	fmt.Fprintln(os.Stderr, "  warden update")
+	fmt.Fprintln(os.Stderr, "  warden update --check")
+	fmt.Fprintln(os.Stderr, "  warden update --version <version>")
+	fmt.Fprintln(os.Stderr, "  warden update --yes")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Flags:"))
+	fmt.Fprintln(os.Stderr, "  --check              Report current vs latest without installing")
+	fmt.Fprintln(os.Stderr, "  --version <version>  Install a specific published version")
+	fmt.Fprintln(os.Stderr, "  --yes                Skip confirmation (required in non-TTY/CI)")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("How it works:"))
-	fmt.Fprintln(os.Stderr, "  Fetches the latest release metadata from GitHub, downloads the")
-	fmt.Fprintln(os.Stderr, "  binary for this platform, verifies its SHA256 against the")
-	fmt.Fprintln(os.Stderr, "  published SHA256SUMS, and atomically replaces the running")
-	fmt.Fprintln(os.Stderr, "  executable. Fails closed on any verification problem.")
+	fmt.Fprintln(os.Stderr, "  Queries the npm registry for warden-sandbox-cli, downloads the")
+	fmt.Fprintln(os.Stderr, "  matching GitHub Release binary for this platform, verifies its")
+	fmt.Fprintln(os.Stderr, "  SHA256 against the published SHA256SUMS, and installs it into")
+	fmt.Fprintln(os.Stderr, "  the versioned cache (~/.cache/warden/<ver>/). Fails closed on")
+	fmt.Fprintln(os.Stderr, "  any verification problem.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Compatibility:"))
+	fmt.Fprintln(os.Stderr, "  Releases published before `warden update` existed will not")
+	fmt.Fprintln(os.Stderr, "  recognize this command. Upgrade those installs manually:")
+	fmt.Fprintln(os.Stderr, "    npm install -g warden-sandbox-cli@latest")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
-	fmt.Fprintln(os.Stderr, "  HTTPS-only. The downloaded binary is installed only after its")
-	fmt.Fprintln(os.Stderr, "  checksum matches the release's SHA256SUMS file. No network")
-	fmt.Fprintln(os.Stderr, "  proxy or arbitrary URL is involved.")
+	fmt.Fprintln(os.Stderr, "  HTTPS-only to pinned hosts. The downloaded binary is installed")
+	fmt.Fprintln(os.Stderr, "  only after its checksum matches the release's SHA256SUMS file.")
+	fmt.Fprintln(os.Stderr, "  No shell interpolation of version strings. Downgrades refused.")
 }
 
 // cmdUpdate runs the self-update flow and exits with a script-friendly code:
 // 0 on success or when already current, 1 on failure.
-func cmdUpdate() {
+func cmdUpdate(args []string) {
+	opts, err := parseUpdateArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warden update: %v\n", err)
+		os.Exit(2)
+	}
 	// Ensure the stamped version, not the hardcoded dev default, is compared.
 	selfupdate.SetCurrentVersion(version.Version)
-	updated, err := selfupdate.Run(os.Stdout, os.Stderr)
+	updated, err := selfupdate.RunOpts(os.Stdout, os.Stderr, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden update: %v\n", err)
 		os.Exit(1)
 	}
 	_ = updated
+}
+
+func parseUpdateArgs(args []string) (selfupdate.Options, error) {
+	var opts selfupdate.Options
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--check":
+			opts.CheckOnly = true
+		case arg == "--yes" || arg == "-y":
+			opts.Yes = true
+		case arg == "--version" || arg == "-version":
+			if i+1 >= len(args) {
+				return opts, fmt.Errorf("flag %s requires a value", arg)
+			}
+			opts.TargetVersion = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--version="):
+			opts.TargetVersion = strings.TrimPrefix(arg, "--version=")
+		default:
+			return opts, fmt.Errorf("unknown flag %q (want --check, --version, or --yes)", arg)
+		}
+	}
+	if opts.CheckOnly && opts.TargetVersion != "" {
+		return opts, fmt.Errorf("--check and --version cannot be combined")
+	}
+	return opts, nil
 }
 
 func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []string) {

@@ -115,21 +115,20 @@ runs:
 
     - name: Validate policy file
       shell: bash
+      env:
+        # Pass policy via env so multiline inline YAML is not re-parsed by the
+        # shell as code (same transport pattern as the run step below).
+        WARDEN_POLICY_INPUT: ${{ inputs.policy }}
       run: |
-        # The policy input may be a file path or inline YAML content.
-        # Inline YAML (contains a newline) is written to a temp file so the
-        # rest of the action treats it exactly like a committed policy.
-        POLICY_INPUT="${{ inputs.policy }}"
         WORKING_DIR="${{ inputs.working-directory }}"
-
         cd "$WORKING_DIR"
 
-        if [[ "$POLICY_INPUT" == *$'\n'* ]]; then
+        if [[ "$WARDEN_POLICY_INPUT" == *$'\n'* ]]; then
           POLICY_PATH="$RUNNER_TEMP/warden-inline-policy.yaml"
-          printf '%s\n' "$POLICY_INPUT" > "$POLICY_PATH"
+          printf '%s\n' "$WARDEN_POLICY_INPUT" > "$POLICY_PATH"
           echo "::notice::Using inline policy (written to $POLICY_PATH)"
         else
-          POLICY_PATH="$POLICY_INPUT"
+          POLICY_PATH="$WARDEN_POLICY_INPUT"
           if [[ ! -f "$POLICY_PATH" ]]; then
             echo "::error::Policy file not found: $POLICY_PATH"
             exit 1
@@ -149,40 +148,64 @@ runs:
     - name: Run command in sandbox
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      env:
+        # CRITICAL: do not interpolate inputs.run into the shell script body.
+        # Multiline commands, heredocs, quotes, and parentheses must be
+        # preserved byte-for-byte via an env var → script file → warden.
+        WARDEN_COMMAND: ${{ inputs.run }}
       run: |
         set +e  # Don't exit on command failure - we want to capture exit code
         
-        POLICY_PATH="${WARDEN_POLICY_PATH:-${{ inputs.policy }}}"
-        COMMAND="${{ inputs.run }}"
+        POLICY_PATH="${WARDEN_POLICY_PATH:-}"
+        if [[ -z "$POLICY_PATH" ]]; then
+          echo "::error::WARDEN_POLICY_PATH is unset; policy validation step must run first"
+          exit 1
+        fi
         BACKEND="${{ inputs.backend }}"
         APPROVE="${{ inputs.approve }}"
+
+        # Write the user command to a script file so shell metacharacters and
+        # multiline content are never re-parsed by this composite step.
+        # Prefer the working directory (always policy-granted as ".") over
+        # RUNNER_TEMP, which may sit outside the sandbox filesystem grants.
+        SCRIPT="$(pwd)/.warden-action-cmd.sh"
+        # Ensure a trailing newline so the final line always executes.
+        printf '%s\n' "$WARDEN_COMMAND" > "$SCRIPT"
+        chmod +x "$SCRIPT"
         
-        # Build warden command
-        WARDEN_CMD="warden run --policy '$POLICY_PATH'"
+        WARDEN_ARGS=(run --policy "$POLICY_PATH")
         
         if [[ "$BACKEND" != "auto" ]]; then
-          WARDEN_CMD="$WARDEN_CMD --backend '$BACKEND'"
+          WARDEN_ARGS+=(--backend "$BACKEND")
         fi
         
         if [[ "$APPROVE" == "true" ]]; then
-          WARDEN_CMD="$WARDEN_CMD --approve"
+          WARDEN_ARGS+=(--approve)
         fi
         
-        WARDEN_CMD="$WARDEN_CMD -- $COMMAND"
+        # Execute via an absolute shell path so heredocs / operators /
+        # parentheses work as in a normal job. Relative "bash" is rejected by
+        # the sandbox (commands must be absolute). Exit code propagates.
+        SHELL_BIN="$(command -v bash || true)"
+        if [[ -z "$SHELL_BIN" || "$SHELL_BIN" != /* ]]; then
+          SHELL_BIN=/bin/bash
+        fi
+        WARDEN_ARGS+=(-- "$SHELL_BIN" "$SCRIPT")
         
         echo "::group::Warden execution"
-        echo "::notice::Running: $WARDEN_CMD"
+        echo "::notice::Running sandboxed script: $SCRIPT via $SHELL_BIN"
         
-        # Execute the command and capture exit code
-        eval "$WARDEN_CMD"
+        warden "${WARDEN_ARGS[@]}"
         EXIT_CODE=$?
+        
+        rm -f "$SCRIPT"
         
         echo "::endgroup::"
         
         # Set output
         echo "exit-code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
         
-        # Handle exit code
+        # Handle exit code (audit upload runs in a later always() step)
         if [[ $EXIT_CODE -ne 0 ]]; then
           echo "::error::Sandboxed command failed with exit code $EXIT_CODE"
           exit $EXIT_CODE
@@ -194,7 +217,8 @@ runs:
       shell: bash
       if: always()
       run: |
-        # Find the latest audit log
+        # Find the latest audit log. Runs even when the sandboxed command
+        # failed so CI still gets a blocked-access summary.
         AUDIT_DIR="$HOME/.local/state/warden"
         if [[ -d "$AUDIT_DIR" ]] && [[ -f "$AUDIT_DIR/audit.jsonl" ]]; then
           echo "::notice::Audit log available at $AUDIT_DIR/audit.jsonl"

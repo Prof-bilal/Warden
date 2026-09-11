@@ -145,6 +145,7 @@ func TestHelpOutput(t *testing.T) {
 				{field: "stderr", contains: "WARDEN UPDATE"},
 				{field: "stderr", contains: "Usage:"},
 				{field: "stderr", contains: "warden update"},
+				{field: "stderr", contains: "--check"},
 				{field: "stderr", contains: "SHA256SUMS"},
 			},
 		},
@@ -154,6 +155,7 @@ func TestHelpOutput(t *testing.T) {
 			exitCode: 0,
 			checks: []outputCheck{
 				{field: "stderr", contains: "WARDEN UPDATE"},
+				{field: "stderr", contains: "--check"},
 				{field: "stderr", contains: "SHA256SUMS"},
 			},
 		},
