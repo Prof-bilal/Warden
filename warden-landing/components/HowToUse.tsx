@@ -2,31 +2,34 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import StepperDetail from "@/components/StepperDetail";
+import type { StepperItem } from "@/components/StepperDetail";
+import { HowInstall, HowInit, HowRun, HowLogs } from "@/lib/images";
 
-const STEPS = [
+const STEPS: StepperItem[] = [
   {
-    num: "01",
     title: "Install Warden",
-    desc: "Install the CLI globally via npm. Works on Linux, macOS, and Windows.",
-    code: "npm install -g warden-sandbox-cli",
+    summary: "npm install -g warden-sandbox-cli",
+    body: "Install the CLI globally via npm. Works on Linux, macOS, and Windows.",
+    image: <HowInstall />,
   },
   {
-    num: "02",
     title: "Create a policy",
-    desc: "Run the interactive wizard. It asks what the server needs and drafts a deny-by-default YAML policy.",
-    code: "warden init",
+    summary: "warden init",
+    body: "Run the interactive wizard. It asks what the server needs and drafts a deny-by-default YAML policy.",
+    image: <HowInit />,
   },
   {
-    num: "03",
     title: "Run the server sandboxed",
-    desc: "Point Warden at the policy and the server command. The sandbox enforces every grant.",
-    code: "warden run --policy policy.yaml -- npx @modelcontextprotocol/server-filesystem",
+    summary: "warden run --policy policy.yaml -- ...",
+    body: "Point Warden at the policy and the server command. The sandbox enforces every grant.",
+    image: <HowRun />,
   },
   {
-    num: "04",
     title: "Inspect what was blocked",
-    desc: "The audit log records every allow and deny decision. Tail it live or review after the session.",
-    code: "warden logs --tail",
+    summary: "warden logs --tail",
+    body: "The audit log records every allow and deny decision. Tail it live or review after the session.",
+    image: <HowLogs />,
   },
 ];
 
@@ -77,61 +80,9 @@ export default function HowToUse() {
           files beyond the policy, no changes to your existing MCP setup.
         </p>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
-          {STEPS.map((s) => (
-            <div
-              key={s.num}
-              className="flex flex-col rounded-sm border border-ink-700 bg-ink-900 p-5"
-            >
-              <div className="flex items-baseline gap-3">
-                <span className="font-mono text-[0.75rem] text-blueprint">
-                  {s.num}
-                </span>
-                <h3 className="text-[1.0625rem] font-medium text-paper">
-                  {s.title}
-                </h3>
-              </div>
-              <p className="mt-2 text-[0.875rem] leading-[1.55] text-muted">
-                {s.desc}
-              </p>
-              <div className="mt-auto flex items-center gap-2 rounded-sm border border-ink-700 bg-ink-950 px-4 py-3 font-mono text-[0.8125rem] leading-none text-paper">
-                <span className="shrink-0 text-muted">$ </span>
-                <code className="truncate">{s.code}</code>
-                <CopyButton text={s.code} />
-              </div>
-            </div>
-          ))}
+        <div className="mt-10">
+          <StepperDetail sectionLabel="Quick Start" items={STEPS} />
         </div>
-
-        <div className="mt-10 overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
-          <video
-            className="aspect-video w-full"
-            width={1920}
-            height={1080}
-            autoPlay
-            muted
-            loop
-            controls
-            playsInline
-            preload="auto"
-            aria-label="Warden walkthrough: installing, initializing a policy, running a sandboxed server, and inspecting logs"
-          >
-            <source src="/videos/video-WUzScwywMNrDp0UkviOg.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-
-        <p className="mt-8 text-[0.8125rem] leading-[1.6] text-muted/80">
-          Want to see it in action first?{" "}
-          <a href="#demo" className="underline decoration-muted/40 hover:text-paper">
-            Watch the demo above
-          </a>{" "}
-          or check the{" "}
-          <a href="/docs" className="underline decoration-muted/40 hover:text-paper">
-            full documentation
-          </a>
-          .
-        </p>
       </div>
     </section>
   );

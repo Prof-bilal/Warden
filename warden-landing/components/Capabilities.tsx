@@ -1,39 +1,64 @@
-// Capabilities reflect the audited implementation (see future.md audit):
-// only features with committed code + tests are listed here. The MCP proxy
-// note is worded to match docs/client-proxy.md exactly — message-level
-// filtering today; message framing is JSON-RPC lines, not HTTP.
-const GROUPS = [
+import StepperDetail from "@/components/StepperDetail";
+import type { StepperItem } from "@/components/StepperDetail";
+import {
+  CapFilesystem,
+  CapNetwork,
+  CapEnv,
+  CapLimits,
+  CapAudit,
+  CapPolicy,
+  CapProxy,
+  CapCI,
+} from "@/lib/images";
+
+const GROUPS: StepperItem[] = [
   {
-    label: "Filesystem",
+    title: "Filesystem",
+    summary: "Deny-by-default read/write.",
     body: "Deny-by-default read/write grants. Anything unlisted is invisible — not merely unreadable.",
+    image: <CapFilesystem />,
   },
   {
-    label: "Network",
+    title: "Network",
+    summary: "Hostname allowlist.",
     body: "Egress hostname allowlist with DNS blocked before resolution. No grant, no connection.",
+    image: <CapNetwork />,
   },
   {
-    label: "Environment",
+    title: "Environment",
+    summary: "Named variables only.",
     body: "Only named variables pass through. Empty allowlist means an empty environment.",
+    image: <CapEnv />,
   },
   {
-    label: "Limits",
+    title: "Limits",
+    summary: "Timeout + memory caps.",
     body: "Wall-clock timeout and memory caps enforced by the kernel, with process-tree termination.",
+    image: <CapLimits />,
   },
   {
-    label: "Audit",
+    title: "Audit",
+    summary: "JSONL decision log.",
     body: "Every allow/deny decision lands in a JSONL log you can tail with `warden logs`.",
+    image: <CapAudit />,
   },
   {
-    label: "Policy tooling",
+    title: "Policy tooling",
+    summary: "init → trace → doctor.",
     body: "`warden trace` records real access, `warden init` drafts the policy, `warden doctor` verifies readiness.",
+    image: <CapPolicy />,
   },
   {
-    label: "MCP client proxy",
+    title: "MCP client proxy",
+    summary: "JSON-RPC filtering.",
     body: "`warden proxy` filters JSON-RPC in both directions — tool allowlists, secret deny patterns, payload caps — for local stdio and remote HTTPS upstreams.",
+    image: <CapProxy />,
   },
   {
-    label: "CI and deployment",
+    title: "CI and deployment",
+    summary: "GitHub Action + K8s.",
     body: "A GitHub Action wraps CI jobs in the same policy; `warden k8s render` emits hardened Deployment + NetworkPolicy manifests.",
+    image: <CapCI />,
   },
 ];
 
@@ -50,21 +75,9 @@ export default function Capabilities() {
           separately, labeled as roadmap.
         </p>
 
-        <dl className="mt-10 grid gap-x-10 gap-y-6 md:grid-cols-2">
-          {GROUPS.map((g) => (
-            <div
-              key={g.label}
-              className="flex flex-col gap-1 border-t border-ink-800 pt-4"
-            >
-              <dt className="font-mono text-[0.8125rem] uppercase tracking-[0.06em] text-blueprint">
-                {g.label}
-              </dt>
-              <dd className="text-[0.9375rem] leading-[1.55] text-muted">
-                {g.body}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-10">
+          <StepperDetail sectionLabel="Capabilities" items={GROUPS} />
+        </div>
       </div>
     </section>
   );

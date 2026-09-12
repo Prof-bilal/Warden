@@ -1,27 +1,50 @@
-const GUARANTEES = [
+import StepperDetail from "@/components/StepperDetail";
+import type { StepperItem } from "@/components/StepperDetail";
+import {
+  ShieldFailClosed,
+  DenyFilesystem,
+  NetworkEnforced,
+  EnvFilter,
+  PlatformFailClosed,
+  ResourceLimits,
+} from "@/lib/images";
+
+const GUARANTEES: StepperItem[] = [
   {
     title: "Fail-closed by default",
+    summary: "No valid backend = no run.",
     body: "Warden refuses to start without a valid sandbox backend. If enforcement can't be verified, the server never runs.",
+    image: <ShieldFailClosed />,
   },
   {
     title: "Deny-by-default filesystem",
+    summary: "Only granted paths visible.",
     body: "Only explicitly granted paths are visible. Everything else — including the rest of the filesystem, environment variables, and network — is invisible.",
+    image: <DenyFilesystem />,
   },
   {
     title: "Network enforced at the kernel level",
+    summary: "DNS blocked before resolution.",
     body: "An in-process egress proxy blocks every hostname not in the policy. DNS is resolved only after the allowlist check. No policy grant, no connection.",
+    image: <NetworkEnforced />,
   },
   {
     title: "Environment filtering",
+    summary: "Named variables only.",
     body: "Only env.allow names are forwarded. Empty allowlist = empty environment. No secrets leak through ungranted variables.",
+    image: <EnvFilter />,
   },
   {
     title: "Fail-closed on every platform",
+    summary: "Linux, macOS, Windows.",
     body: "Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW), Docker fallback — each requires its primitives to initialize or the run is refused.",
+    image: <PlatformFailClosed />,
   },
   {
     title: "Resource limits enforced by the kernel",
+    summary: "Timeout + memory + kill.",
     body: "Wall-clock timeout, memory RSS sampling with SIGTERM-then-SIGKILL, and kill-on-close via Job Objects on Windows. A runaway process is terminated with its entire tree.",
+    image: <ResourceLimits />,
   },
 ];
 
@@ -38,20 +61,8 @@ export default function Proof() {
           actually prevents the access it claims to block.
         </p>
 
-        <div className="mt-10 grid gap-6 sm:grid-cols-2">
-          {GUARANTEES.map((g) => (
-            <div
-              key={g.title}
-              className="rounded-sm border border-ink-700 bg-ink-900 p-5"
-            >
-              <dt className="font-mono text-[0.875rem] text-blueprint">
-                {g.title}
-              </dt>
-              <dd className="mt-2 text-[0.9375rem] leading-[1.55] text-muted">
-                {g.body}
-              </dd>
-            </div>
-          ))}
+        <div className="mt-10">
+          <StepperDetail sectionLabel="Guarantees" items={GUARANTEES} />
         </div>
 
         {/* What's been verified */}
@@ -69,7 +80,6 @@ export default function Proof() {
           </p>
         </div>
 
-        {/* Honesty disclaimer */}
         <p className="mt-6 text-[0.8125rem] leading-[1.6] text-muted/80">
           We publish only claims backed by committed test fixtures and source
           code. Attack-simulation benchmarks are not included until a
