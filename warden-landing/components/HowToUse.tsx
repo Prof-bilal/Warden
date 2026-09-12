@@ -103,6 +103,24 @@ export default function HowToUse() {
           ))}
         </div>
 
+        <div className="mt-10 overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
+          <video
+            className="aspect-video w-full"
+            width={1920}
+            height={1080}
+            autoPlay
+            muted
+            loop
+            controls
+            playsInline
+            preload="auto"
+            aria-label="Warden walkthrough: installing, initializing a policy, running a sandboxed server, and inspecting logs"
+          >
+            <source src="/videos/video-WUzScwywMNrDp0UkviOg.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+
         <p className="mt-8 text-[0.8125rem] leading-[1.6] text-muted/80">
           Want to see it in action first?{" "}
           <a href="#demo" className="underline decoration-muted/40 hover:text-paper">
