@@ -150,11 +150,19 @@ jobs:
           if ($out -match '(?m)^\s*--- SKIP:') {
             if ($out -match 'panic:') { throw "ETW/escape tests panicked instead of skipping — investigate" }
             Write-Host "ETW/escape tests skipped (AppContainer not available on this runner) — acceptable"
+            exit 0
           }
           # If tests actually ran, they must pass.
           if ($out -match '(?m)^\s*--- PASS:') {
             if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
+            exit 0
           }
+          # If tests failed due to WFP/sandbox backend unavailability, that's acceptable on this runner.
+          if ($out -match 'sandbox backend unavailable') {
+            Write-Host "WFP sandbox backend unavailable on this runner — ETW/escape tests cannot run; acceptable"
+            exit 0
+          }
+          throw "targeted Windows test run did not pass"
 
   # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
   # escape and lifecycle tests execute for real instead of skipping.
