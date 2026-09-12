@@ -42,6 +42,19 @@ import (
 var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help"}
 
 func main() {
+	selfupdate.SetCurrentVersion(version.Version)
+	// Show update warning on interactive invocations, but not for internal
+	// bridge or update itself. The check is cached (24h) and has a 0.8s
+	// timeout so it never blocks the CLI noticeably. Warning goes to
+	// stderr so `warden --version` stays script-friendly on stdout.
+	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "update")
+	if shouldWarn {
+		func() {
+			defer func() { _ = recover() }()
+			selfupdate.MaybePrintUpdateWarning(os.Stderr, version.Version)
+		}()
+	}
+
 	if len(os.Args) < 2 {
 		handleBareInvocation()
 		os.Exit(1)

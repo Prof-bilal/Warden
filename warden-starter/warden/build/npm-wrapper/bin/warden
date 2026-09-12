@@ -120,6 +120,97 @@ function download(url, dest) {
 
   if (platform !== "win32") fs.chmodSync(binPath, 0o755);
 
+  // Small update notifier: if the resolved binary is older than the package,
+  // or the package is older than the registry, show a one-line warning to
+  // stderr (never on stdout, so `warden --version` stays script-friendly).
+  // Gated on TTY/CI and WARDEN_NO_UPDATE_CHECK.
+  if (!process.env.WARDEN_NO_UPDATE_CHECK && !process.env.WARDEN_NO_UPDATE_NOTIFIER) {
+    const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS);
+    const isTTY = !!(process.stderr.isTTY && !isCI);
+    if (isTTY) {
+      // Binary vs package (no network needed)
+      if (compareVersions(version, VERSION) < 0) {
+        const yellow = "\x1b[33m";
+        const dim = "\x1b[2m";
+        const reset = "\x1b[0m";
+        const useColor = !process.env.NO_COLOR && process.env.TERM !== "dumb" && !process.env.WARDEN_NO_COLOR;
+        let msg = `Update available: v${version} → v${VERSION}  Run "npm i -g warden-sandbox-cli@latest"`;
+        if (useColor) msg = yellow + msg + reset + dim + "  (WARDEN_NO_UPDATE_CHECK=1 to silence)" + reset;
+        console.error(msg);
+      } else {
+        // Package vs registry (async, 800ms timeout, cached)
+        const cachePath = path.join(cacheRoot, "update-check.json");
+        let cachedLatest = null;
+        let cachedAt = 0;
+        try {
+          const raw = fs.readFileSync(cachePath, "utf8");
+          const j = JSON.parse(raw);
+          if (j.latest && /^\d+\.\d+/.test(j.latest)) {
+            cachedLatest = j.latest;
+            cachedAt = j.checkedAt || 0;
+          }
+        } catch {}
+        const now = Date.now();
+        const stale = !cachedLatest || now - cachedAt > 24 * 60 * 60 * 1000;
+        let latest = cachedLatest;
+        if (stale) {
+          const fetchLatest = () =>
+            new Promise((resolve) => {
+              const req = https.get(
+                "https://registry.npmjs.org/warden-sandbox-cli/latest",
+                { timeout: 800 },
+                (res) => {
+                  if (res.statusCode !== 200) {
+                    res.resume();
+                    resolve(null);
+                    return;
+                  }
+                  let data = "";
+                  res.on("data", (c) => (data += c));
+                  res.on("end", () => {
+                    try {
+                      const j = JSON.parse(data);
+                      if (j.version && /^\d+\.\d+/.test(j.version)) resolve(j.version);
+                      else resolve(null);
+                    } catch {
+                      resolve(null);
+                    }
+                  });
+                }
+              );
+              req.on("error", () => resolve(null));
+              req.on("timeout", () => {
+                req.destroy();
+                resolve(null);
+              });
+            });
+          try {
+            const fetched = await Promise.race([
+              fetchLatest(),
+              new Promise((r) => setTimeout(() => r(null), 900)),
+            ]);
+            if (fetched) {
+              latest = fetched;
+              try {
+                fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+                fs.writeFileSync(cachePath, JSON.stringify({ latest, checkedAt: now }), { mode: 0o600 });
+              } catch {}
+            }
+          } catch {}
+        }
+        if (latest && compareVersions(VERSION, latest) < 0) {
+          const yellow = "\x1b[33m";
+          const dim = "\x1b[2m";
+          const reset = "\x1b[0m";
+          const useColor = !process.env.NO_COLOR && process.env.TERM !== "dumb" && !process.env.WARDEN_NO_COLOR;
+          let msg = `Update available: v${VERSION} → v${latest}  Run "npm i -g warden-sandbox-cli@latest" or "warden update"`;
+          if (useColor) msg = yellow + msg + reset + dim + "  (WARDEN_NO_UPDATE_CHECK=1 to silence)" + reset;
+          console.error(msg);
+        }
+      }
+    }
+  }
+
   const args = process.argv.slice(2);
   try {
     execFileSync(binPath, args, { stdio: "inherit" });

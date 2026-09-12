@@ -11,6 +11,7 @@
 package selfupdate
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -560,4 +561,141 @@ func isWardenCachePath(path string) bool {
 	}
 	rel, err := filepath.Rel(base, path)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
+// Update warning (non-blocking, cached) — shown on interactive invocations
+// when the running binary is behind the npm registry.
+
+type updateCheckCache struct {
+	Latest    string `json:"latest"`
+	CheckedAt int64  `json:"checkedAt"`
+}
+
+func updateCheckCachePath() (string, error) {
+	base, err := cacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "update-check.json"), nil
+}
+
+func readUpdateCheckCache() (string, int64) {
+	p, err := updateCheckCachePath()
+	if err != nil {
+		return "", 0
+	}
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return "", 0
+	}
+	var c updateCheckCache
+	if err := json.Unmarshal(data, &c); err != nil {
+		return "", 0
+	}
+	if c.Latest == "" {
+		return "", 0
+	}
+	if _, err := validateVersion(c.Latest); err != nil {
+		return "", 0
+	}
+	return c.Latest, c.CheckedAt
+}
+
+func writeUpdateCheckCache(latest string) {
+	p, err := updateCheckCachePath()
+	if err != nil {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(p), 0o700)
+	c := updateCheckCache{Latest: latest, CheckedAt: time.Now().Unix()}
+	data, _ := json.Marshal(c)
+	_ = os.WriteFile(p, data, 0o600)
+}
+
+func fetchLatestWithTimeout(timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, npmLatestURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", userAgent())
+	req.Header.Set("Accept", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d fetching %s", res.StatusCode, npmLatestURL)
+	}
+	var meta npmLatest
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&meta); err != nil {
+		return "", err
+	}
+	return validateVersion(meta.Version)
+}
+
+// MaybePrintUpdateWarning checks whether current is behind the npm latest
+// and, if so, prints a one-line warning to w (typically os.Stderr). It is
+// intentionally quiet: no output on dev builds, CI, non-TTY, when disabled
+// via WARDEN_NO_UPDATE_CHECK, or when the check fails. Results are cached
+// for 24h to avoid hammering the registry on every invocation.
+func MaybePrintUpdateWarning(w io.Writer, current string) {
+	if w == nil {
+		return
+	}
+	if os.Getenv("WARDEN_NO_UPDATE_CHECK") != "" || os.Getenv("WARDEN_NO_UPDATE_NOTIFIER") != "" {
+		return
+	}
+	current = strings.TrimSpace(strings.TrimPrefix(current, "v"))
+	if current == "" || current == "dev" {
+		return
+	}
+	// Don't warn in CI or non-interactive contexts; use same gate as progress UI.
+	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" {
+		return
+	}
+	// Only show in a terminal; otherwise it would pollute piped output.
+	if f, ok := w.(*os.File); ok {
+		if fi, err := f.Stat(); err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+			return
+		}
+	}
+
+	latest, checkedAt := readUpdateCheckCache()
+	now := time.Now().Unix()
+	stale := latest == "" || now-checkedAt > 24*60*60
+	if stale {
+		if fetched, err := fetchLatestWithTimeout(800 * time.Millisecond); err == nil {
+			latest = fetched
+			writeUpdateCheckCache(latest)
+		} else {
+			// On fetch failure, keep using stale cache if available; otherwise be silent.
+			if latest == "" {
+				return
+			}
+		}
+	}
+	if CompareVersions(current, latest) >= 0 {
+		return
+	}
+	// Small, colored warning (falls back to plain when color disabled).
+	yellow := "\x1b[33m"
+	dim := "\x1b[2m"
+	reset := "\x1b[0m"
+	useColor := false
+	if os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb" && os.Getenv("WARDEN_NO_COLOR") == "" {
+		if f, ok := w.(*os.File); ok {
+			if fi, err := f.Stat(); err == nil && fi.Mode()&os.ModeCharDevice != 0 {
+				useColor = true
+			}
+		}
+	}
+	msg := fmt.Sprintf("Update available: v%s → v%s  Run \"warden update\" or \"npm i -g warden-sandbox-cli@latest\"", current, latest)
+	if useColor {
+		msg = yellow + msg + reset + dim + "  (WARDEN_NO_UPDATE_CHECK=1 to silence)" + reset
+	}
+	fmt.Fprintln(w, msg)
 }
