@@ -150,28 +150,36 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	writeSubpathAllow(&b, "file-write*", "/tmp")
 	writeSubpathAllow(&b, "file-write*", "/private/tmp")
 	if tempDir != "/tmp" && tempDir != "/private/tmp" {
-		writeSubpathAllow(&b, "file-read*", tempDir)
-		writeSubpathAllow(&b, "file-map-executable", tempDir)
-		writeSubpathAllow(&b, "file-write*", tempDir)
+		for _, variant := range symlinkVariants(tempDir) {
+			writeSubpathAllow(&b, "file-read*", variant)
+			writeSubpathAllow(&b, "file-map-executable", variant)
+			writeSubpathAllow(&b, "file-write*", variant)
+		}
 	}
 
 	b.WriteString("; Policy filesystem grants\n")
 	for _, path := range p.Filesystem.Read {
-		writeSubpathAllow(&b, "file-read*", path)
+		for _, variant := range symlinkVariants(path) {
+			writeSubpathAllow(&b, "file-read*", variant)
+		}
 	}
 	for _, path := range p.Filesystem.Write {
-		writeSubpathAllow(&b, "file-read*", path)
-		writeSubpathAllow(&b, "file-write*", path)
-		// The target's own image may live inside a write grant (e.g. a
-		// built binary in the project dir): mapping it is required to exec.
-		writeSubpathAllow(&b, "file-map-executable", path)
+		for _, variant := range symlinkVariants(path) {
+			writeSubpathAllow(&b, "file-read*", variant)
+			writeSubpathAllow(&b, "file-write*", variant)
+			// The target's own image may live inside a write grant (e.g. a
+			// built binary in the project dir): mapping it is required to exec.
+			writeSubpathAllow(&b, "file-map-executable", variant)
+		}
 	}
 
 	// Ensure the executable's parent directory is readable and mappable.
 	parent := filepath.Dir(exe)
 	if mode[parent] == "" && !isRuntimePath(parent) {
-		writeSubpathAllow(&b, "file-read*", parent)
-		writeSubpathAllow(&b, "file-map-executable", parent)
+		for _, variant := range symlinkVariants(parent) {
+			writeSubpathAllow(&b, "file-read*", variant)
+			writeSubpathAllow(&b, "file-map-executable", variant)
+		}
 	}
 	// The Go runtime and libSystem probe dtrace at startup; a denied
 	// dtracehelper open aborts dyld before main().
@@ -182,14 +190,18 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(allow network-bind (local ip \"localhost:18080\"))\n")
 	b.WriteString("(allow network-inbound (local ip \"localhost:18080\"))\n")
 	b.WriteString("(allow network-outbound (remote unix-socket))\n")
-	writeLiteralAllow(&b, "file-read*", socketPath)
-	writeLiteralAllow(&b, "file-write*", socketPath)
+	for _, variant := range symlinkVariants(socketPath) {
+		writeLiteralAllow(&b, "file-read*", variant)
+		writeLiteralAllow(&b, "file-write*", variant)
+	}
 	// The socket's directory: lookup/traversal only. SBPL subpath already
 	// matches the directory itself, so no file-read* literal is emitted for
 	// it — a read literal on a directory is at best redundant and trips
 	// aborts in dyld's path validation on macOS 26.
-	writeLiteralAllow(&b, "file-read-metadata", filepath.Dir(socketPath))
-	writeSubpathAllow(&b, "file-read*", filepath.Dir(socketPath))
+	for _, variant := range symlinkVariants(filepath.Dir(socketPath)) {
+		writeLiteralAllow(&b, "file-read-metadata", variant)
+		writeSubpathAllow(&b, "file-read*", variant)
+	}
 
 	return b.String(), nil
 }
@@ -217,4 +229,57 @@ func writeSubpathAllow(b *strings.Builder, action, path string) {
 
 func writeLiteralAllow(b *strings.Builder, action, path string) {
 	fmt.Fprintf(b, "(allow %s (literal %q))\n", action, path)
+}
+
+// symlinkVariants returns the path and its /var vs /private/var and
+// /tmp vs /private/tmp counterparts so Seatbelt grants match regardless of
+// whether the kernel resolves the symlink to the private prefix.
+func symlinkVariants(path string) []string {
+	clean := filepath.Clean(path)
+	variants := []string{clean}
+	seen := map[string]struct{}{clean: {}}
+	add := func(v string) {
+		v = filepath.Clean(v)
+		if _, ok := seen[v]; !ok {
+			variants = append(variants, v)
+			seen[v] = struct{}{}
+		}
+	}
+	// Also try EvalSymlinks if available (best effort).
+	if eval, err := filepath.EvalSymlinks(clean); err == nil {
+		add(eval)
+	}
+	// Explicit /var <-> /private/var and /tmp <-> /private/tmp
+	if strings.HasPrefix(clean, "/var/") {
+		add("/private" + clean)
+	} else if strings.HasPrefix(clean, "/private/var/") {
+		add(strings.TrimPrefix(clean, "/private"))
+	} else if clean == "/var" {
+		add("/private/var")
+	} else if clean == "/private/var" {
+		add("/var")
+	}
+	if strings.HasPrefix(clean, "/tmp/") {
+		add("/private" + clean)
+	} else if strings.HasPrefix(clean, "/private/tmp/") {
+		add(strings.TrimPrefix(clean, "/private"))
+	} else if clean == "/tmp" {
+		add("/private/tmp")
+	} else if clean == "/private/tmp" {
+		add("/tmp")
+	}
+	// For eval'd path, also apply prefix transforms
+	for _, v := range append([]string{}, variants...) {
+		if strings.HasPrefix(v, "/var/") {
+			add("/private" + v)
+		} else if strings.HasPrefix(v, "/private/var/") {
+			add(strings.TrimPrefix(v, "/private"))
+		}
+		if strings.HasPrefix(v, "/tmp/") {
+			add("/private" + v)
+		} else if strings.HasPrefix(v, "/private/tmp/") {
+			add(strings.TrimPrefix(v, "/private"))
+		}
+	}
+	return variants
 }

@@ -22,6 +22,7 @@ func TestBuildBwrapArgsBasic(t *testing.T) {
 		"--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--disable-userns", "--die-with-parent",
 		"--uid", "0", "--gid", "0",
 		"--ro-bind", "/usr", "/usr",
+		"--ro-bind", "/lib", "/lib",
 		"--ro-bind", "/lib64", "/lib64",
 		"--dev", "/dev", "--proc", "/proc", "--size", "67108864", "--tmpfs", "/tmp",
 	} {

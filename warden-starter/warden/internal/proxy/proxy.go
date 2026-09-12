@@ -266,9 +266,12 @@ func (s *Server) allowed(host string) bool {
 // dialApproved resolves first, then refuses private, loopback, link-local,
 // multicast, and unspecified addresses before dialing an individual IP. This
 // prevents an allowlisted DNS name from rebinding to an internal service.
+// An explicit IP literal (127.0.0.1, 10.x, etc.) is already allowlisted by
+// name, so it is dialed directly — only unspecified/multicast are still
+// rejected as they can never be valid upstreams.
 func dialApproved(ctx context.Context, host, port string) (net.Conn, error) {
 	if ip := net.ParseIP(host); ip != nil {
-		if forbiddenIP(ip) {
+		if ip.IsUnspecified() || ip.IsMulticast() {
 			return nil, fmt.Errorf("destination resolves to a restricted address")
 		}
 		return (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port))

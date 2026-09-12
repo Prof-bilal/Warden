@@ -28,8 +28,10 @@ import (
 // dynamically linked binary cannot even start without them. On merged-/usr
 // distributions /lib64 is a symlink into /usr/lib64 and bwrap does not
 // follow symlinks across bind mounts, so each base path must be mounted
-// explicitly at its own location.
-var runtimeBase = []string{"/usr", "/lib64"}
+// explicitly at its own location. Ubuntu 24.04 (noble) places the dynamic
+// linker and glibc in /lib/x86_64-linux-gnu which is behind /lib, so /lib
+// must also be mounted; without it every bwrap invocation fails with exit 1.
+var runtimeBase = []string{"/usr", "/lib", "/lib64"}
 
 // BuildBwrapArgs translates a policy plus a resolved command into the
 // complete bwrap argument list. It is a pure function so the mount logic
