@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" fill="none">
+  <defs>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="#10141A"/>
+
+  <!-- Dot grid -->
+  <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+    <circle cx="12" cy="12" r="0.8" fill="rgba(232,235,239,0.12)"/>
+  </pattern>
+  <rect width="1920" height="1080" fill="url(#dots)"/>
+
+  <!-- Left: Step list -->
+  <!-- Step 01 (active) -->
+  <g>
+    <rect x="80" y="120" width="480" height="88" rx="12" fill="#171C24" stroke="#6E93E8" stroke-width="1.5" filter="url(#glow)"/>
+    <circle cx="128" cy="164" r="20" fill="none" stroke="#6E93E8" stroke-width="1.2"/>
+    <text x="128" y="169" text-anchor="middle" font-family="monospace" font-size="14" fill="#6E93E8">01</text>
+    <text x="164" y="158" font-family="serif" font-size="18" fill="#E8EBEF" font-weight="500">Fail-closed by default</text>
+    <text x="164" y="180" font-family="monospace" font-size="12" fill="#8D95A5">No valid backend = no run.</text>
+  </g>
+
+  <!-- Step 02 (inactive) -->
+  <g opacity="0.5">
+    <rect x="80" y="224" width="480" height="88" rx="12" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+    <circle cx="128" cy="268" r="20" fill="none" stroke="#3A4150" stroke-width="1"/>
+    <text x="128" y="273" text-anchor="middle" font-family="monospace" font-size="14" fill="#8D95A5">02</text>
+    <text x="164" y="262" font-family="serif" font-size="18" fill="#8D95A5" font-weight="500">Deny-by-default filesystem</text>
+    <text x="164" y="284" font-family="monospace" font-size="12" fill="#8D95A5">Only granted paths visible.</text>
+  </g>
+
+  <!-- Step 03 (inactive) -->
+  <g opacity="0.5">
+    <rect x="80" y="328" width="480" height="88" rx="12" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+    <circle cx="128" cy="372" r="20" fill="none" stroke="#3A4150" stroke-width="1"/>
+    <text x="128" y="377" text-anchor="middle" font-family="monospace" font-size="14" fill="#8D95A5">03</text>
+    <text x="164" y="366" font-family="serif" font-size="18" fill="#8D95A5" font-weight="500">Network enforced at kernel level</text>
+    <text x="164" y="388" font-family="monospace" font-size="12" fill="#8D95A5">DNS blocked before resolution.</text>
+  </g>
+
+  <!-- Step 04 (inactive) -->
+  <g opacity="0.5">
+    <rect x="80" y="432" width="480" height="88" rx="12" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+    <circle cx="128" cy="476" r="20" fill="none" stroke="#3A4150" stroke-width="1"/>
+    <text x="128" y="481" text-anchor="middle" font-family="monospace" font-size="14" fill="#8D95A5">04</text>
+    <text x="164" y="470" font-family="serif" font-size="18" fill="#8D95A5" font-weight="500">Environment filtering</text>
+    <text x="164" y="492" font-family="monospace" font-size="12" fill="#8D95A5">Named variables only.</text>
+  </g>
+
+  <!-- Step 05 (inactive) -->
+  <g opacity="0.5">
+    <rect x="80" y="536" width="480" height="88" rx="12" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+    <circle cx="128" cy="580" r="20" fill="none" stroke="#3A4150" stroke-width="1"/>
+    <text x="128" y="585" text-anchor="middle" font-family="monospace" font-size="14" fill="#8D95A5">05</text>
+    <text x="164" y="574" font-family="serif" font-size="18" fill="#8D95A5" font-weight="500">Fail-closed on every platform</text>
+    <text x="164" y="596" font-family="monospace" font-size="12" fill="#8D95A5">Linux, macOS, Windows.</text>
+  </g>
+
+  <!-- Step 06 (inactive) -->
+  <g opacity="0.5">
+    <rect x="80" y="640" width="480" height="88" rx="12" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+    <circle cx="128" cy="684" r="20" fill="none" stroke="#3A4150" stroke-width="1"/>
+    <text x="128" y="689" text-anchor="middle" font-family="monospace" font-size="14" fill="#8D95A5">06</text>
+    <text x="164" y="678" font-family="serif" font-size="18" fill="#8D95A5" font-weight="500">Resource limits enforced</text>
+    <text x="164" y="700" font-family="monospace" font-size="12" fill="#8D95A5">Timeout + memory + kill.</text>
+  </g>
+
+  <!-- Right: Detail panel -->
+  <rect x="620" y="100" width="720" height="640" rx="12" fill="#171C24" stroke="#2A303C" stroke-width="1"/>
+
+  <!-- STEP 1 OF 6 label -->
+  <text x="660" y="148" font-family="monospace" font-size="12" fill="#8D95A5" letter-spacing="0.1em">STEP 1 OF 6</text>
+
+  <!-- Headline -->
+  <text x="660" y="190" font-family="serif" font-size="32" fill="#E8EBEF" font-weight="500">Fail-closed by default</text>
+
+  <!-- Body -->
+  <text x="660" y="224" font-family="sans-serif" font-size="16" fill="#8D95A5">Warden refuses to start without a valid sandbox backend.</text>
+  <text x="660" y="248" font-family="sans-serif" font-size="16" fill="#8D95A5">If enforcement can't be verified, the server never runs.</text>
+
+  <!-- Diagram area -->
+  <rect x="660" y="290" width="640" height="320" rx="8" fill="#10141A" stroke="#2A303C" stroke-width="1"/>
+
+  <!-- Sandbox boundary -->
+  <rect x="820" y="340" width="320" height="220" rx="6" fill="none" stroke="#6E93E8" stroke-width="1.2" stroke-dasharray="6 4"/>
+  <text x="980" y="368" text-anchor="middle" font-family="monospace" font-size="11" fill="#6E93E8">SANDBOX BOUNDARY</text>
+
+  <!-- Server box -->
+  <rect x="920" y="400" width="120" height="60" rx="4" fill="#1E242E" stroke="#3A4150" stroke-width="1"/>
+  <text x="980" y="426" text-anchor="middle" font-family="monospace" font-size="12" fill="#E8EBEF">server</text>
+  <text x="980" y="444" text-anchor="middle" font-family="monospace" font-size="10" fill="#3FB27E">running</text>
+
+  <!-- Granted path -->
+  <line x1="920" y1="430" x2="840" y2="430" stroke="#3FB27E" stroke-width="1.2"/>
+  <circle cx="830" cy="430" r="5" fill="#3FB27E"/>
+  <text x="820" y="410" text-anchor="middle" font-family="monospace" font-size="10" fill="#3FB27E">./data</text>
+
+  <!-- Granted network -->
+  <line x1="1040" y1="430" x2="1120" y2="430" stroke="#3FB27E" stroke-width="1.2"/>
+  <circle cx="1130" cy="430" r="5" fill="#3FB27E"/>
+  <text x="1140" y="410" text-anchor="middle" font-family="monospace" font-size="10" fill="#3FB27E">api.github.com</text>
+
+  <!-- Blocked: SSH -->
+  <line x1="920" y1="400" x2="840" y2="360" stroke="#E2604F" stroke-width="1.2" opacity="0.6"/>
+  <g transform="translate(833,353)">
+    <line x1="-4" y1="-4" x2="4" y2="4" stroke="#E2604F" stroke-width="1.5"/>
+    <line x1="-4" y1="4" x2="4" y2="-4" stroke="#E2604F" stroke-width="1.5"/>
+  </g>
+  <text x="820" y="350" text-anchor="middle" font-family="monospace" font-size="10" fill="#E2604F" opacity="0.7">~/.ssh</text>
+
+  <!-- Blocked: evil.com -->
+  <line x1="1040" y1="460" x2="1120" y2="520" stroke="#E2604F" stroke-width="1.2" opacity="0.6"/>
+  <g transform="translate(1127,527)">
+    <line x1="-4" y1="-4" x2="4" y2="4" stroke="#E2604F" stroke-width="1.5"/>
+    <line x1="-4" y1="4" x2="4" y2="-4" stroke="#E2604F" stroke-width="1.5"/>
+  </g>
+  <text x="1140" y="535" text-anchor="middle" font-family="monospace" font-size="10" fill="#E2604F" opacity="0.7">evil.com</text>
+
+  <!-- Shield icon -->
+  <path d="M960 500 L980 510 V530 C980 545 960 552 960 552 C960 552 940 545 940 530 V510 Z" fill="none" stroke="#6E93E8" stroke-width="1.5"/>
+  <text x="960" y="575" text-anchor="middle" font-family="monospace" font-size="10" fill="#6E93E8">FAIL-CLOSED</text>
+
+  <!-- Progress bars -->
+  <rect x="660" y="660" width="640" height="4" rx="2" fill="#2A303C"/>
+  <rect x="660" y="660" width="107" height="4" rx="2" fill="#6E93E8"/>
+
+  <!-- Cap badges at bottom -->
+  <g transform="translate(80,820)">
+    <rect width="100" height="32" rx="16" fill="#171C24" stroke="#2A303C" stroke-width="1"/>
+    <text x="50" y="21" text-anchor="middle" font-family="monospace" font-size="11" fill="#8D95A5">Guarantees</text>
+  </g>
+  <g transform="translate(200,820)">
+    <rect width="90" height="32" rx="16" fill="#171C24" stroke="#2A303C" stroke-width="1"/>
+    <text x="45" y="21" text-anchor="middle" font-family="monospace" font-size="11" fill="#8D95A5">Verified</text>
+  </g>
+
+  <!-- Footer text -->
+  <text x="960" y="1020" text-anchor="middle" font-family="serif" font-size="28" fill="#E8EBEF" font-weight="500">Your MCP servers</text>
+  <text x="960" y="1020" text-anchor="middle" font-family="serif" font-size="28" fill="#8D95A5"> don't need your whole filesystem.</text>
+  <text x="960" y="1060" text-anchor="middle" font-family="monospace" font-size="11" fill="#8D95A5" letter-spacing="0.08em">WARDEN — SANDBOX RUNTIME FOR MCP SERVERS</text>
+</svg>
