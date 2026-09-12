@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
-import Preview from "@/components/Preview";
-import Problem from "@/components/Problem";
+import BoundaryDemo from "@/components/BoundaryDemo";
 import HowItWorks from "@/components/HowItWorks";
 import Backends from "@/components/Backends";
 import Proof from "@/components/Proof";
 import Demo from "@/components/Demo";
 import HowToUse from "@/components/HowToUse";
 import Capabilities from "@/components/Capabilities";
-import Testimonials from "@/components/Testimonials";
 import Windows from "@/components/Windows";
 import Compatibility from "@/components/Compatibility";
 import Cta from "@/components/Cta";
@@ -83,15 +81,13 @@ export default function Home() {
       />
       <Nav />
       <Hero />
-      <Preview />
-      <Problem />
+      <BoundaryDemo />
       <HowItWorks />
       <Backends />
       <Proof />
       <Demo />
       <HowToUse />
       <Capabilities />
-      <Testimonials />
       <Windows />
       <Compatibility />
       <Cta />

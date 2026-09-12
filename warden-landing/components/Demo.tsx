@@ -1,4 +1,4 @@
-const VIDEO_SRC = "/videos/video-WUzScwywMNrDp0UkviOg.mp4";
+import SandboxPlayer from "@/components/SandboxPlayer";
 
 export default function Demo() {
   return (
@@ -9,7 +9,7 @@ export default function Demo() {
             Watch it enforce a policy.
           </h2>
           <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-            30s · recorded terminal session
+            24s · rendered live in React
           </span>
         </div>
         <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
@@ -18,26 +18,10 @@ export default function Demo() {
           the boundary and written to the audit log.
         </p>
 
-        {/* 16:9 reserve via aspect-[16/9] + intrinsic dimensions: no layout
-            shift when the video loads. preload="none" defers the 4.3MB
-            download until the visitor presses play. */}
-        <div className="mt-10 overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
-          <video
-            className="aspect-video w-full"
-            width={1920}
-            height={1080}
-            autoPlay
-            muted
-            loop
-            controls
-            playsInline
-            preload="auto"
-            aria-label="Warden demo: a recorded session showing a sandboxed MCP server run under a policy, with blocked access attempts stopped and logged"
-          >
-            <source src={VIDEO_SRC} type="video/mp4" />
-            Your browser does not support the video tag. Download the demo:
-            <a href={VIDEO_SRC}>warden demo (MP4)</a>
-          </video>
+        {/* Remotion-style player: the whole "recording" is rendered live in
+            React — seekable, loopable, zero video bytes. */}
+        <div className="mt-10">
+          <SandboxPlayer />
         </div>
       </div>
     </section>
