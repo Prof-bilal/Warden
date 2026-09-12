@@ -80,6 +80,19 @@ func TestCompareVersions(t *testing.T) {
 	}
 }
 
+func TestReportedVersionMatchesExactly(t *testing.T) {
+	for _, output := range []string{"warden version 1.2.3", "warden version v1.2.3"} {
+		if !reportedVersionMatches(output, "1.2.3") {
+			t.Errorf("%q should match", output)
+		}
+	}
+	for _, output := range []string{"warden version 1.2.30", "warden version 11.2.3"} {
+		if reportedVersionMatches(output, "1.2.3") {
+			t.Errorf("%q must not match", output)
+		}
+	}
+}
+
 func TestReplace(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "warden")

@@ -64,6 +64,7 @@ func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
 	// the process off from the host network.
 	args = append(args,
 		"--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net",
+		"--disable-userns", "--die-with-parent",
 		"--uid", "0", "--gid", "0",
 	)
 
@@ -72,7 +73,7 @@ func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
 	// any path under it is mounted, so a bind to /tmp/foo needs a --dir
 	// mountpoint inside the tmpfs (bwrap applies mounts in order and a
 	// tmpfs mounted later would hide the earlier bind).
-	args = append(args, "--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp")
+	args = append(args, "--dev", "/dev", "--proc", "/proc", "--size", "67108864", "--tmpfs", "/tmp")
 
 	// Runtime base (read-only).
 	for _, base := range runtimeBase {
@@ -178,6 +179,10 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	if err != nil {
 		return 0, sandboxerr.RefuseToRun{Reason: "bubblewrap (bwrap) is not installed on this Linux host"}
 	}
+	setpriv, err := exec.LookPath("setpriv")
+	if err != nil {
+		return 0, sandboxerr.RefuseToRun{Reason: "setpriv is not installed; it is required to enforce no_new_privs"}
+	}
 
 	args, err := BuildBwrapArgs(cmd, p)
 	if err != nil {
@@ -218,24 +223,25 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	bridgeArgs := []string{bridgePath, "__proxy-bridge", "--socket", socketPath, "--listen", "127.0.0.1:18080", "--"}
 	bridgeArgs = append(bridgeArgs, cmd...)
 	runArgs := append(args, bridgeArgs...)
-	program := bwrap
+	program := setpriv
+	runArgs = append([]string{"--nnp", bwrap}, runArgs...)
 	tracePath := ""
 	if logger != nil {
 		strace, err := exec.LookPath("strace")
 		if err != nil {
 			return 0, fmt.Errorf("strace not found: required for complete file/network auditing on Linux: %w", err)
 		}
-		trace, err := os.CreateTemp("", "warden-strace-*.log")
+		trace, path, err := audit.OpenRawTrace()
 		if err != nil {
 			return 0, fmt.Errorf("create audit trace: %w", err)
 		}
-		tracePath = trace.Name()
+		tracePath = path
 		if err := trace.Close(); err != nil {
 			return 0, fmt.Errorf("close audit trace: %w", err)
 		}
 		defer os.Remove(tracePath)
 		program = strace
-		runArgs = append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath, bwrap}, runArgs...)
+		runArgs = append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath, setpriv}, runArgs...)
 	}
 	sub := exec.Command(program, runArgs...)
 	sub.Stdin = os.Stdin

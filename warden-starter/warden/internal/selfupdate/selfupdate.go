@@ -402,12 +402,23 @@ func verifyInstalledBinary(binPath, wantVersion string) error {
 		return fmt.Errorf("post-install verification failed (%v): %s", err, strings.TrimSpace(string(out)))
 	}
 	got := strings.TrimSpace(string(out))
-	want := strings.TrimPrefix(wantVersion, "v")
-	// Accept "warden version X", "warden version vX", or a line containing it.
-	if !strings.Contains(got, want) {
+	want := strings.TrimPrefix(strings.TrimSpace(wantVersion), "v")
+	// The version command may include a product prefix, but the version itself
+	// must be a complete token. Substring matching accepts 1.2.30 for 1.2.3.
+	if !reportedVersionMatches(got, want) {
 		return fmt.Errorf("post-install verification: binary reported %q, want version %q", got, want)
 	}
 	return nil
+}
+
+func reportedVersionMatches(output, want string) bool {
+	want = strings.TrimPrefix(strings.TrimSpace(want), "v")
+	for _, field := range strings.Fields(output) {
+		if strings.TrimPrefix(field, "v") == want {
+			return true
+		}
+	}
+	return false
 }
 
 // Run performs the full update flow, writing progress to stderr and the
@@ -529,7 +540,7 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 	// inside the versioned cache (e.g. a manual /usr/local/bin install).
 	if self, err := os.Executable(); err == nil {
 		if self, err = filepath.EvalSymlinks(self); err == nil {
-			if !strings.Contains(self, string(filepath.Separator)+".cache"+string(filepath.Separator)+"warden"+string(filepath.Separator)) {
+			if !isWardenCachePath(self) {
 				if err := Replace(self, bin); err != nil {
 					fmt.Fprintf(stderr, "note: cache install succeeded; could not replace running binary %s: %v\n", self, err)
 				}
@@ -540,4 +551,13 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 	fmt.Fprintf(stdout, "Updated to warden version %s\n", target)
 	fmt.Fprintf(stderr, "Note: if you installed via npm, also run:\n  npm install -g %s@%s\nto update the launcher package metadata.\n", npmPackage, target)
 	return true, nil
+}
+
+func isWardenCachePath(path string) bool {
+	base, err := cacheDir()
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(base, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }

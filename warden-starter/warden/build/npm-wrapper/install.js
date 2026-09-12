@@ -2,6 +2,7 @@
 "use strict";
 
 const https = require("https");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -138,34 +139,67 @@ if (!archName) {
 const ext = platform === "win32" ? ".exe" : "";
 const fileName = `warden-${osName}-${archName}${ext}`;
 const url = `https://github.com/Prof-bilal/Warden/releases/download/v${VERSION}/${fileName}`;
+const sumsURL = `https://github.com/Prof-bilal/Warden/releases/download/v${VERSION}/SHA256SUMS`;
+const TRUSTED_HOSTS = new Set(["github.com", "objects.githubusercontent.com", "github-releases.githubusercontent.com"]);
 
 const binDir = path.join(__dirname, "bin");
 const binPath = path.join(binDir, platform === "win32" ? "warden.exe" : "warden");
 
-function download(url, dest) {
+function trustedURL(raw) {
+  const parsed = new URL(raw);
+  if (parsed.protocol !== "https:" || !TRUSTED_HOSTS.has(parsed.hostname)) {
+    throw new Error(`refusing untrusted download URL: ${parsed.origin}`);
+  }
+  return parsed;
+}
+
+function download(url, redirects = 0) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
+    let parsed;
+    try { parsed = trustedURL(url); } catch (err) { reject(err); return; }
+    if (redirects > 5) { reject(new Error("too many download redirects")); return; }
     https
-      .get(url, { timeout: 30000 }, (res) => {
+      .get(parsed, { timeout: 30000 }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          download(res.headers.location, dest).then(resolve).catch(reject);
+          res.resume();
+          const next = new URL(res.headers.location, parsed).toString();
+          download(next, redirects + 1).then(resolve).catch(reject);
           return;
         }
         if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
+          res.resume();
+          reject(new Error(`HTTP ${res.statusCode} downloading ${parsed}`));
           return;
         }
-        res.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
+        const chunks = [];
+        res.on("data", chunk => chunks.push(chunk));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
       })
-      .on("error", (err) => {
-        fs.unlink(dest, () => {});
-        reject(err);
-      });
+      .on("error", reject);
   });
+}
+
+function verifyChecksum(binary, sums) {
+  const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = sums.toString("utf8").match(new RegExp(`^([a-fA-F0-9]{64})\\s+\\*?${escaped}$`, "m"));
+  if (!match) throw new Error(`SHA256SUMS has no entry for ${fileName}`);
+  const actual = crypto.createHash("sha256").update(binary).digest("hex");
+  if (actual.toLowerCase() !== match[1].toLowerCase()) throw new Error("downloaded binary checksum mismatch");
+}
+
+function writeBinarySafely(dest, binary) {
+  try {
+    if (fs.lstatSync(dest).isSymbolicLink()) throw new Error(`refusing to overwrite symlink ${dest}`);
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+  const tmp = `${dest}.${process.pid}.${crypto.randomBytes(8).toString("hex")}.tmp`;
+  try {
+    fs.writeFileSync(tmp, binary, { flag: "wx", mode: 0o700 });
+    fs.renameSync(tmp, dest);
+  } finally {
+    try { fs.unlinkSync(tmp); } catch {}
+  }
 }
 
 (async () => {
@@ -195,7 +229,9 @@ function download(url, dest) {
     if (tty) {
       const stop = startSpinner(`Installing runtime  ${dim(fileName)}`);
       try {
-        await download(url, binPath);
+        const [binary, sums] = await Promise.all([download(url), download(sumsURL)]);
+        verifyChecksum(binary, sums);
+        writeBinarySafely(binPath, binary);
         stop(true, `Installing runtime  ${dim(fileName)}`);
       } catch (err) {
         stop(false, `Installing runtime  ${dim(fileName)}`);
@@ -207,7 +243,9 @@ function download(url, dest) {
     } else {
       step++; process.stderr.write(`[${step}/${stepsTotal}] Installing runtime... `);
       try {
-        await download(url, binPath);
+        const [binary, sums] = await Promise.all([download(url), download(sumsURL)]);
+        verifyChecksum(binary, sums);
+        writeBinarySafely(binPath, binary);
         process.stderr.write(useColor ? green("OK") : "OK");
         process.stderr.write("\n");
       } catch (err) {

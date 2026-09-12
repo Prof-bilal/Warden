@@ -6,6 +6,7 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -15,10 +16,10 @@ import (
 type ContainerManifest struct {
 	// Docker-specific settings
 	Docker DockerConfig `json:"docker,omitempty"`
-	
+
 	// Kubernetes-specific settings
 	Kubernetes KubernetesConfig `json:"kubernetes,omitempty"`
-	
+
 	// Common settings
 	Seccomp SeccompProfile `json:"seccomp,omitempty"`
 }
@@ -27,25 +28,25 @@ type ContainerManifest struct {
 type DockerConfig struct {
 	// Security options for docker run
 	SecurityOpt []string `json:"security_opt,omitempty"`
-	
+
 	// Read-only root filesystem
 	ReadOnly bool `json:"read_only,omitempty"`
-	
+
 	// Tmpfs mounts for writable areas
 	Tmpfs []string `json:"tmpfs,omitempty"`
-	
+
 	// Volume binds for read-only mounts
 	Volumes []VolumeMount `json:"volumes,omitempty"`
-	
+
 	// Network mode
 	NetworkMode string `json:"network_mode,omitempty"`
-	
+
 	// Capabilities to drop
 	CapDrop []string `json:"cap_drop,omitempty"`
-	
+
 	// Memory limit
 	Memory string `json:"memory,omitempty"`
-	
+
 	// CPU limit
 	CPUs string `json:"cpus,omitempty"`
 }
@@ -54,29 +55,29 @@ type DockerConfig struct {
 type KubernetesConfig struct {
 	// SecurityContext for the pod
 	SecurityContext PodSecurityContext `json:"security_context,omitempty"`
-	
+
 	// Container SecurityContext
 	ContainerSecurityContext ContainerSecurityContext `json:"container_security_context,omitempty"`
-	
+
 	// NetworkPolicy for egress control
 	NetworkPolicy NetworkPolicySpec `json:"network_policy,omitempty"`
-	
+
 	// Resource limits and requests
 	Resources ResourceRequirements `json:"resources,omitempty"`
-	
+
 	// Volume mounts
 	VolumeMounts []VolumeMountSpec `json:"volume_mounts,omitempty"`
-	
+
 	// Volumes
 	Volumes []VolumeSpec `json:"volumes,omitempty"`
 }
 
 // VolumeMount represents a Docker volume mount
 type VolumeMount struct {
-	Source      string `json:"source"`
-	Target      string `json:"target"`
-	ReadOnly    bool   `json:"read_only,omitempty"`
-	Type        string `json:"type,omitempty"` // bind, volume, tmpfs
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"read_only,omitempty"`
+	Type     string `json:"type,omitempty"` // bind, volume, tmpfs
 }
 
 // PodSecurityContext maps to Kubernetes PodSecurityContext
@@ -91,13 +92,13 @@ type PodSecurityContext struct {
 
 // ContainerSecurityContext maps to Kubernetes Container SecurityContext
 type ContainerSecurityContext struct {
-	AllowPrivilegeEscalation *bool                `json:"allow_privilege_escalation,omitempty" yaml:"allowPrivilegeEscalation,omitempty"`
-	ReadOnlyRootFilesystem   *bool                `json:"read_only_root_filesystem,omitempty" yaml:"readOnlyRootFilesystem,omitempty"`
-	RunAsNonRoot             *bool                `json:"run_as_non_root,omitempty" yaml:"runAsNonRoot,omitempty"`
-	RunAsUser                *int64               `json:"run_as_user,omitempty" yaml:"runAsUser,omitempty"`
-	RunAsGroup               *int64               `json:"run_as_group,omitempty" yaml:"runAsGroup,omitempty"`
-	Capabilities             *CapabilitiesSpec    `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
-	SeccompProfile           *SeccompProfileRef   `json:"seccomp_profile,omitempty" yaml:"seccompProfile,omitempty"`
+	AllowPrivilegeEscalation *bool              `json:"allow_privilege_escalation,omitempty" yaml:"allowPrivilegeEscalation,omitempty"`
+	ReadOnlyRootFilesystem   *bool              `json:"read_only_root_filesystem,omitempty" yaml:"readOnlyRootFilesystem,omitempty"`
+	RunAsNonRoot             *bool              `json:"run_as_non_root,omitempty" yaml:"runAsNonRoot,omitempty"`
+	RunAsUser                *int64             `json:"run_as_user,omitempty" yaml:"runAsUser,omitempty"`
+	RunAsGroup               *int64             `json:"run_as_group,omitempty" yaml:"runAsGroup,omitempty"`
+	Capabilities             *CapabilitiesSpec  `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	SeccompProfile           *SeccompProfileRef `json:"seccomp_profile,omitempty" yaml:"seccompProfile,omitempty"`
 }
 
 // CapabilitiesSpec defines container capabilities
@@ -155,9 +156,9 @@ type VolumeMountSpec struct {
 
 // VolumeSpec defines a Kubernetes volume
 type VolumeSpec struct {
-	Name      string          `json:"name" yaml:"name"`
-	HostPath  *HostPathVolume `json:"host_path,omitempty" yaml:"hostPath,omitempty"`
-	EmptyDir  *EmptyDirVolume `json:"empty_dir,omitempty" yaml:"emptyDir,omitempty"`
+	Name      string           `json:"name" yaml:"name"`
+	HostPath  *HostPathVolume  `json:"host_path,omitempty" yaml:"hostPath,omitempty"`
+	EmptyDir  *EmptyDirVolume  `json:"empty_dir,omitempty" yaml:"emptyDir,omitempty"`
 	ConfigMap *ConfigMapVolume `json:"config_map,omitempty" yaml:"configMap,omitempty"`
 }
 
@@ -223,16 +224,16 @@ func TranslatePolicy(p policy.Policy, options TranslateOptions) (*ContainerManif
 type TranslateOptions struct {
 	// Container image to use
 	Image string
-	
+
 	// Working directory inside container
 	WorkingDir string
-	
+
 	// Whether to emit warnings for unsupported features
 	EmitWarnings bool
-	
+
 	// Target platform (docker, kubernetes, podman)
 	Platform string
-	
+
 	// Namespace for Kubernetes resources
 	Namespace string
 }
@@ -323,7 +324,7 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 	volumeIndex := 0
 	for _, readPath := range p.Filesystem.Read {
 		volumeName := fmt.Sprintf("read-volume-%d", volumeIndex)
-		
+
 		// Volume definition
 		volume := VolumeSpec{
 			Name: volumeName,
@@ -333,7 +334,7 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 			},
 		}
 		config.Volumes = append(config.Volumes, volume)
-		
+
 		// Volume mount
 		mount := VolumeMountSpec{
 			Name:      volumeName,
@@ -346,7 +347,7 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 
 	for _, writePath := range p.Filesystem.Write {
 		volumeName := fmt.Sprintf("write-volume-%d", volumeIndex)
-		
+
 		var volume VolumeSpec
 		if strings.HasPrefix(writePath, "/tmp") || writePath == "/tmp" {
 			// Use emptyDir for /tmp
@@ -368,7 +369,7 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 			}
 		}
 		config.Volumes = append(config.Volumes, volume)
-		
+
 		mount := VolumeMountSpec{
 			Name:      volumeName,
 			MountPath: writePath,
@@ -440,7 +441,7 @@ func generateSeccompProfile(p policy.Policy, options TranslateOptions) (*Seccomp
 		"truncate", "ftruncate", "getdents", "getcwd", "chdir", "fchdir",
 		"rename", "mkdir", "rmdir", "creat", "link", "unlink", "symlink",
 		"readlink", "chmod", "fchmod", "chown", "fchown", "lchown", "umask",
-		"gettimeofday", "getrlimit", "getrusage", "sysinfo", "times", "ptrace",
+		"gettimeofday", "getrlimit", "getrusage", "sysinfo", "times",
 		"getuid", "syslog", "getgid", "setuid", "setgid", "geteuid", "getegid",
 		"setpgid", "getppid", "getpgrp", "setsid", "setreuid", "setregid",
 		"getgroups", "setgroups", "setresuid", "getresuid", "setresgid",
@@ -451,9 +452,9 @@ func generateSeccompProfile(p policy.Policy, options TranslateOptions) (*Seccomp
 		"setpriority", "sched_setparam", "sched_getparam", "sched_setscheduler",
 		"sched_getscheduler", "sched_get_priority_max", "sched_get_priority_min",
 		"sched_rr_get_interval", "mlock", "munlock", "mlockall", "munlockall",
-		"vhangup", "modify_ldt", "pivot_root", "prctl", "arch_prctl",
-		"adjtimex", "setrlimit", "chroot", "sync", "acct", "settimeofday",
-		"mount", "umount2", "swapon", "swapoff", "reboot", "sethostname",
+		"vhangup", "modify_ldt", "prctl", "arch_prctl",
+		"adjtimex", "setrlimit", "sync", "acct", "settimeofday",
+		"swapon", "swapoff", "reboot", "sethostname",
 		"setdomainname", "iopl", "ioperm", "create_module", "init_module",
 		"delete_module", "get_kernel_syms", "query_module", "quotactl",
 		"nfsservctl", "getpmsg", "putpmsg", "afs_syscall", "tuxcall",
@@ -470,17 +471,17 @@ func generateSeccompProfile(p policy.Policy, options TranslateOptions) (*Seccomp
 		"clock_getres", "clock_nanosleep", "exit_group", "epoll_wait",
 		"epoll_ctl", "tgkill", "utimes", "vserver", "mbind", "set_mempolicy",
 		"get_mempolicy", "mq_open", "mq_unlink", "mq_timedsend", "mq_timedreceive",
-		"mq_notify", "mq_getsetattr", "kexec_load", "waitid", "add_key",
+		"mq_notify", "mq_getsetattr", "waitid", "add_key",
 		"request_key", "keyctl", "ioprio_set", "ioprio_get", "inotify_init",
 		"inotify_add_watch", "inotify_rm_watch", "migrate_pages", "openat",
 		"mkdirat", "mknodat", "fchownat", "futimesat", "newfstatat", "unlinkat",
 		"renameat", "linkat", "symlinkat", "readlinkat", "fchmodat", "faccessat",
-		"pselect6", "ppoll", "unshare", "set_robust_list", "get_robust_list",
+		"pselect6", "ppoll", "set_robust_list", "get_robust_list",
 		"splice", "tee", "sync_file_range", "vmsplice", "move_pages",
 		"utimensat", "epoll_pwait", "signalfd", "timerfd_create", "eventfd",
 		"fallocate", "timerfd_settime", "timerfd_gettime", "accept4", "signalfd4",
 		"eventfd2", "epoll_create1", "dup3", "pipe2", "inotify_init1",
-		"preadv", "pwritev", "rt_tgsigqueueinfo", "perf_event_open",
+		"preadv", "pwritev", "rt_tgsigqueueinfo",
 	}
 
 	profile.Syscalls = append(profile.Syscalls, SyscallRule{
@@ -565,8 +566,6 @@ func SaveSeccompProfile(profile SeccompProfile, path string) error {
 	return writeFile(path, data, 0o644)
 }
 
-// writeFile is a helper function for writing files (would use os.WriteFile in real implementation)
 func writeFile(path string, data []byte, perm int) error {
-	// This would be implemented using os.WriteFile
-	return fmt.Errorf("file writing not implemented in this demo")
+	return os.WriteFile(path, data, os.FileMode(perm))
 }

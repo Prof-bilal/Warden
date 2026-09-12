@@ -5,6 +5,7 @@ package proxy
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -74,7 +75,7 @@ func Start(allow []string, logger *audit.Logger) (*Server, error) {
 	}
 	s := &Server{listener: l, path: path, allow: make(map[string]struct{}), audit: logger}
 	for _, host := range allow {
-		s.allow[strings.ToLower(host)] = struct{}{}
+		s.allow[normalizeHost(host)] = struct{}{}
 	}
 	go s.serve()
 	return s, nil
@@ -91,7 +92,7 @@ func StartTCP(allow []string, logger *audit.Logger) (*Server, error) {
 	}
 	s := &Server{listener: l, allow: make(map[string]struct{}), audit: logger}
 	for _, host := range allow {
-		s.allow[strings.ToLower(host)] = struct{}{}
+		s.allow[normalizeHost(host)] = struct{}{}
 	}
 	go s.serve()
 	return s, nil
@@ -195,7 +196,7 @@ func (s *Server) approverFor(host, port string) bool {
 // net.Dial performs DNS resolution only after the allow check, which is the
 // crucial ordering that prevents blocked hostnames leaking in DNS queries.
 func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, host, port string) {
-	upstream, err := (&net.Dialer{}).DialContext(r.Context(), "tcp", net.JoinHostPort(host, port))
+	upstream, err := dialApproved(r.Context(), host, port)
 	if err != nil {
 		s.log("connect", net.JoinHostPort(host, port), false, err.Error())
 		http.Error(w, "Warden proxy could not reach allowed host", http.StatusBadGateway)
@@ -243,10 +244,60 @@ func (s *Server) proxyRequest(w http.ResponseWriter, r *http.Request, host, port
 }
 
 func (s *Server) allowed(host string) bool {
+	host = normalizeHost(host)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	_, ok := s.allow[strings.ToLower(host)]
-	return ok
+	if _, ok := s.allow[host]; ok {
+		return true
+	}
+	// A wildcard covers subdomains, never its apex.
+	for suffix := host; ; {
+		i := strings.IndexByte(suffix, '.')
+		if i < 0 {
+			return false
+		}
+		suffix = suffix[i+1:]
+		if _, ok := s.allow["*."+suffix]; ok && host != suffix {
+			return true
+		}
+	}
+}
+
+// dialApproved resolves first, then refuses private, loopback, link-local,
+// multicast, and unspecified addresses before dialing an individual IP. This
+// prevents an allowlisted DNS name from rebinding to an internal service.
+func dialApproved(ctx context.Context, host, port string) (net.Conn, error) {
+	if ip := net.ParseIP(host); ip != nil {
+		if forbiddenIP(ip) {
+			return nil, fmt.Errorf("destination resolves to a restricted address")
+		}
+		return (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), port))
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, addr := range addrs {
+		if forbiddenIP(addr.IP) {
+			lastErr = fmt.Errorf("destination resolves to a restricted address")
+			continue
+		}
+		conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(addr.IP.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+	}
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("destination has no usable addresses")
+}
+
+func forbiddenIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() || ip.IsUnspecified() || ip.IsPrivate()
 }
 
 // SetApprover installs the interactive-approval callback (M7). A nil
@@ -263,7 +314,11 @@ func (s *Server) SetApprover(a Approver) {
 func (s *Server) Grant(host string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.allow[strings.ToLower(host)] = struct{}{}
+	s.allow[normalizeHost(host)] = struct{}{}
+}
+
+func normalizeHost(host string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
 }
 
 // IsAllowed reports whether host is currently allowlisted (policy grants
@@ -293,6 +348,9 @@ func destination(r *http.Request) (host, port string, err error) {
 			return "", "", fmt.Errorf("empty host or port")
 		}
 		return host, port, nil
+	}
+	if r.Method == http.MethodConnect && !strings.Contains(authority, ":") {
+		return authority, "443", nil
 	}
 	if strings.Contains(authority, ":") { // malformed or unbracketed IPv6
 		return "", "", fmt.Errorf("invalid host:port %q", authority)

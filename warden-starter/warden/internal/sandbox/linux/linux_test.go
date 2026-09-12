@@ -19,11 +19,11 @@ func TestBuildBwrapArgsBasic(t *testing.T) {
 
 	text := strings.Join(args, " ")
 	for _, want := range []string{
-		"--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net",
+		"--unshare-user", "--unshare-ipc", "--unshare-pid", "--unshare-net", "--disable-userns", "--die-with-parent",
 		"--uid", "0", "--gid", "0",
 		"--ro-bind", "/usr", "/usr",
 		"--ro-bind", "/lib64", "/lib64",
-		"--dev", "/dev", "--proc", "/proc", "--tmpfs", "/tmp",
+		"--dev", "/dev", "--proc", "/proc", "--size", "67108864", "--tmpfs", "/tmp",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("args %q missing %q", text, want)

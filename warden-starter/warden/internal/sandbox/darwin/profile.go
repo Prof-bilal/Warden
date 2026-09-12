@@ -5,6 +5,7 @@ package darwin
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -29,8 +30,6 @@ var runtimeReadPaths = []string{
 	"/dev",
 	"/private/tmp",
 	"/tmp",
-	"/var/folders",
-	"/private/var/folders",
 }
 
 // exeImagePaths are the directories the dynamic loader maps executable
@@ -56,8 +55,6 @@ var exeImagePaths = []string{
 	"/usr/local",
 	"/private/tmp",
 	"/tmp",
-	"/var/folders",
-	"/private/var/folders",
 }
 
 // BuildSeatbeltProfile translates a policy into an SBPL (Seatbelt) profile.
@@ -98,6 +95,9 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	}
 
 	var b strings.Builder
+	// macOS puts per-user temporary files under /var/folders. Grant only the
+	// current process's concrete temporary directory, never every user's tree.
+	tempDir := filepath.Clean(os.TempDir())
 	b.WriteString("(version 1)\n")
 	b.WriteString("(deny default)\n")
 	b.WriteString("; Process lifecycle\n")
@@ -146,13 +146,14 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	for _, path := range runtimeReadPaths {
 		writeSubpathAllow(&b, "file-read*", path)
 	}
-	b.WriteString("(allow file-read-metadata (subpath \"/var\"))\n")
-	b.WriteString("(allow file-read-metadata (subpath \"/private/var\"))\n")
 	// Writable scratch space for temp files.
 	writeSubpathAllow(&b, "file-write*", "/tmp")
 	writeSubpathAllow(&b, "file-write*", "/private/tmp")
-	writeSubpathAllow(&b, "file-write*", "/var/folders")
-	writeSubpathAllow(&b, "file-write*", "/private/var/folders")
+	if tempDir != "/tmp" && tempDir != "/private/tmp" {
+		writeSubpathAllow(&b, "file-read*", tempDir)
+		writeSubpathAllow(&b, "file-map-executable", tempDir)
+		writeSubpathAllow(&b, "file-write*", tempDir)
+	}
 
 	b.WriteString("; Policy filesystem grants\n")
 	for _, path := range p.Filesystem.Read {

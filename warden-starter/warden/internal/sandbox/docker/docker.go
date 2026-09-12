@@ -93,8 +93,12 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		"--rm",
 		"-i",
 		"--network", "none",
+		"--cap-drop", "ALL",
+		"--security-opt", "no-new-privileges=true",
+		"--pids-limit", "256",
+		"--ulimit", "nofile=1024:1024",
 		"--read-only",
-		"--tmpfs", "/tmp:rw,mode=1777",
+		"--tmpfs", "/tmp:rw,mode=1777,nosuid,nodev,noexec,size=64m",
 		"--tmpfs", "/run:rw,mode=755",
 	)
 	if p.Limits.MemoryMB > 0 {

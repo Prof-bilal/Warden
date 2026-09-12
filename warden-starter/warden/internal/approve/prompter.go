@@ -201,8 +201,9 @@ func (p *Prompter) askLocked(question, options string) (string, error) {
 			}
 			return strings.TrimSpace(r.line), nil
 		case <-time.After(p.timeout):
-			// The reader goroutine leaks, blocked on the terminal; it dies
-			// with the process and never touches shared state.
+			// Closing the descriptor unblocks the reader instead of leaving a
+			// goroutine parked on an abandoned terminal read.
+			_ = tty.Close()
 			fmt.Fprintln(tty, "\nwarden approval: timed out waiting for an answer")
 			return "", fmt.Errorf("timed out after %s", p.timeout)
 		}

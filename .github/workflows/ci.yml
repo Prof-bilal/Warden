@@ -163,6 +163,12 @@ jobs:
             exit 0
           }
           throw "targeted Windows test run did not pass"
+          # PowerShell preserves a native command's non-zero exit code in
+          # $LASTEXITCODE without automatically failing this script. Do not
+          # let a run where every discovered test failed pass the assertion.
+          if ($out -notmatch '(?m)^\s*--- PASS:' -and $out -notmatch '(?m)^\s*--- SKIP:') {
+            throw "all targeted Windows tests failed; output above"
+          }
 
   # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
   # escape and lifecycle tests execute for real instead of skipping.

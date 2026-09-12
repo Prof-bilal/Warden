@@ -3,6 +3,7 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,7 @@ func TestDestination(t *testing.T) {
 		{"connect", http.MethodConnect, "", "api.example.test:8443", "api.example.test", "8443"},
 		{"http default port", http.MethodGet, "http://api.example.test/path", "", "api.example.test", "80"},
 		{"https default port", http.MethodGet, "https://api.example.test/path", "", "api.example.test", "443"},
+		{"connect default port", http.MethodConnect, "", "api.example.test", "api.example.test", "443"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -30,6 +32,31 @@ func TestDestination(t *testing.T) {
 				t.Fatalf("destination = %q, %q, %v", host, port, err)
 			}
 		})
+	}
+}
+
+func TestAllowedNormalizesAndMatchesWildcards(t *testing.T) {
+	s := &Server{allow: map[string]struct{}{"*.github.com": {}, "api.example.com": {}}}
+	for _, host := range []string{"api.github.com", "A.B.GITHUB.COM", "API.EXAMPLE.COM."} {
+		if !s.allowed(host) {
+			t.Errorf("%q should be allowed", host)
+		}
+	}
+	for _, host := range []string{"github.com", "notgithub.com"} {
+		if s.allowed(host) {
+			t.Errorf("%q should not be allowed", host)
+		}
+	}
+}
+
+func TestForbiddenIP(t *testing.T) {
+	for _, raw := range []string{"127.0.0.1", "10.0.0.1", "169.254.1.1", "::1", "fc00::1"} {
+		if !forbiddenIP(net.ParseIP(raw)) {
+			t.Errorf("%s should be forbidden", raw)
+		}
+	}
+	if forbiddenIP(net.ParseIP("8.8.8.8")) {
+		t.Fatal("public address should not be forbidden")
 	}
 }
 

@@ -1,6 +1,8 @@
 package container
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -17,6 +19,33 @@ func testPolicy() policy.Policy {
 		Network:    policy.Network{Allow: []string{"api.github.com"}},
 		Env:        policy.Env{Allow: []string{"GITHUB_TOKEN"}},
 		Limits:     policy.Limits{MemoryMB: 512, TimeoutS: 60},
+	}
+}
+
+func TestSeccompProfileOmitsDangerousSyscalls(t *testing.T) {
+	p, err := generateSeccompProfile(testPolicy(), TranslateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(p.Syscalls[0].Names, ",")
+	for _, name := range []string{"ptrace", "kexec_load", "perf_event_open", "unshare", "mount", "pivot_root", "chroot"} {
+		if strings.Contains(joined, name) {
+			t.Errorf("profile allows %s", name)
+		}
+	}
+}
+
+func TestSaveSeccompProfileWritesFile(t *testing.T) {
+	p, err := generateSeccompProfile(testPolicy(), TranslateOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "seccomp.json")
+	if err := SaveSeccompProfile(*p, path); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(path); err != nil || info.Size() == 0 {
+		t.Fatalf("profile not written: %v", err)
 	}
 }
 

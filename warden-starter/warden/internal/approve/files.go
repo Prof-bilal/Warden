@@ -32,6 +32,9 @@ func SaveHostGrant(policyPath, host string) error {
 // saves it back. Write grants inside the runtime base (/usr, /lib64, ...)
 // are refused: no backend could honor them, so approving would be a lie.
 func SaveFileGrant(policyPath, grant string, write bool) error {
+	if write && (grant == "/tmp" || policy.Within(grant, "/tmp")) {
+		return fmt.Errorf("refusing to persist writable temporary-path grant %q", grant)
+	}
 	if write {
 		for _, base := range []string{"/usr", "/lib", "/lib64", "/bin", "/proc", "/dev", "/sys"} {
 			if grant == base || policy.Within(grant, base) {

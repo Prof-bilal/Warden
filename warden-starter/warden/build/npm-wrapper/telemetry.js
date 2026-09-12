@@ -49,7 +49,7 @@ async function main() {
   let url;
   try {
     url = new URL(TELEMETRY_URL); // validate scheme/host once
-    if (url.protocol !== "https:" && url.protocol !== "http:") return;
+    if (url.protocol !== "https:") return;
   } catch {
     return;
   }

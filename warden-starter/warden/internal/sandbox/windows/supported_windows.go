@@ -6,11 +6,8 @@ import "golang.org/x/sys/windows"
 
 // Supported reports whether the AppContainer sandbox backend can run on this
 // host: it requires the lowbox token API and the ability to open our own
-// process token. Detection is a lightweight probe; full enforcement still fails
-// closed inside Run. WFP availability is checked separately at the point
-// where egress filters are installed (installWFPEgress), not here, so a
-// host with AppContainer but without the WFP user-mode DLL can still run
-// ETW-audited sandboxes.
+// process token and WFP egress filtering. Detection is a lightweight probe;
+// full enforcement still fails closed inside Run.
 func Supported() bool {
 	if err := procNtCreateLowBoxToken.Find(); err != nil {
 		return false
@@ -20,5 +17,5 @@ func Supported() bool {
 		return false
 	}
 	token.Close()
-	return true
+	return wfpSupported() == nil
 }

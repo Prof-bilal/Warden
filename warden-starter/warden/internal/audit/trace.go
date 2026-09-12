@@ -18,11 +18,10 @@ func Trace(cmd, env []string, stdin io.Reader, stdout, stderr io.Writer, logger 
 	if err != nil {
 		return 0, fmt.Errorf("strace not found: required for trace mode: %w", err)
 	}
-	f, err := os.CreateTemp("", "warden-trace-*.log")
+	f, path, err := OpenRawTrace()
 	if err != nil {
 		return 0, fmt.Errorf("create trace file: %w", err)
 	}
-	path := f.Name()
 	if err := f.Close(); err != nil {
 		return 0, fmt.Errorf("close trace file: %w", err)
 	}

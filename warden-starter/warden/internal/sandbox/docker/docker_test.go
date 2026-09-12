@@ -34,6 +34,9 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	for _, want := range []string{
 		"--network none",
 		"--read-only",
+		"--cap-drop ALL",
+		"--security-opt no-new-privileges=true",
+		"--pids-limit 256",
 		"--memory 256m",
 		readDir + ":" + readDir + ":ro",
 		writeDir + ":" + writeDir + ":rw",

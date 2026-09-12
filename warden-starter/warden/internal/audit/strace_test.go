@@ -33,7 +33,17 @@ func TestImportStraceRecordsAllowedAndBlockedAccesses(t *testing.T) {
 	if events[1].Allowed || events[1].Resource != "/hidden/file" {
 		t.Errorf("blocked open event = %+v", events[1])
 	}
-	if events[2].Allowed || events[2].Type != "network" || events[2].Resource != "8.8.8.8" {
+	if events[2].Allowed || events[2].Type != "network" || events[2].Resource != "8.8.8.8:53" {
 		t.Errorf("blocked connect event = %+v", events[2])
+	}
+}
+
+func TestParseStraceLineUsesOnlyTheSyscallResult(t *testing.T) {
+	ev, ok := ParseStraceLine(`openat(AT_FDCWD, ") = -1 injected", O_RDONLY) = 3`)
+	if !ok || !ev.Allowed {
+		t.Fatalf("event = %+v, parsed = %v; want successful event", ev, ok)
+	}
+	if _, ok := ParseStraceLine(`openat(AT_FDCWD, "/tmp/x", O_RDONLY <unfinished ...>`); ok {
+		t.Fatal("unfinished syscall must not produce an event")
 	}
 }

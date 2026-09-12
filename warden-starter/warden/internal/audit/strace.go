@@ -4,8 +4,15 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
+	"regexp"
 	"strconv"
 	"strings"
+)
+
+var (
+	sockaddrIPv4 = regexp.MustCompile(`sin_port=htons\(([0-9]+)\).*inet_addr\("([^"]+)"\)`)
+	sockaddrIPv6 = regexp.MustCompile(`sin6_port=htons\(([0-9]+)\).*inet_pton\(AF_INET6, "([^"]+)"`)
 )
 
 // ImportStrace converts strace's %file and %network records to Warden audit
@@ -38,6 +45,14 @@ func ImportStrace(r io.Reader, logger *Logger) error {
 // (returning -1) becomes Allowed=false; callers decide what a failure means
 // (genuine ENOENT vs. a sandbox denial) from the resource and policy.
 func ParseStraceLine(line string) (Event, bool) {
+	// An unfinished syscall has no result yet; the corresponding resumed line
+	// is the only record that can truthfully be audited.
+	if strings.Contains(line, "<unfinished ...>") {
+		return Event{}, false
+	}
+	if strings.Contains(line, "<... ") && strings.Contains(line, " resumed>") {
+		return Event{}, false
+	}
 	if strings.Contains(line, "+++ exited") || strings.Contains(line, "--- SIG") {
 		return Event{}, false
 	}
@@ -53,10 +68,11 @@ func ParseStraceLine(line string) (Event, bool) {
 		return Event{}, false
 	}
 	resource := syscallResource(action, line[open+1:])
-	allowed := !strings.Contains(line, ") = -1 ")
+	result := syscallResult(line)
+	allowed := !strings.HasPrefix(result, "-1 ")
 	reason := "syscall succeeded"
 	if !allowed {
-		reason = syscallResult(line)
+		reason = result
 	}
 	return Event{Type: eventType(action), Action: action, Resource: resource, Allowed: allowed, Reason: reason}, true
 }
@@ -80,6 +96,14 @@ func eventType(action string) string {
 }
 
 func syscallResource(action, args string) string {
+	if eventType(action) == "network" {
+		if m := sockaddrIPv4.FindStringSubmatch(args); len(m) == 3 {
+			return net.JoinHostPort(m[2], m[1])
+		}
+		if m := sockaddrIPv6.FindStringSubmatch(args); len(m) == 3 {
+			return net.JoinHostPort(m[2], m[1])
+		}
+	}
 	// %file calls carry their pathname as the first quoted argument (or the
 	// second for *at variants). Network calls include a printable address.
 	if first := strings.IndexByte(args, '"'); first >= 0 {

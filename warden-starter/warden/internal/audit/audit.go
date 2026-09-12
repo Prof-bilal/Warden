@@ -112,6 +112,16 @@ func StateDir() (string, error) {
 // enforcement audit log, a trace session is safe to hand directly to init
 // without accidentally collecting grants from another server.
 func OpenTrace() (*os.File, string, error) {
+	return openTraceFile(".jsonl")
+}
+
+// OpenRawTrace creates an owner-only temporary strace destination under
+// Warden state, rather than in the shared system temporary directory.
+func OpenRawTrace() (*os.File, string, error) {
+	return openTraceFile(".strace")
+}
+
+func openTraceFile(extension string) (*os.File, string, error) {
 	dir, err := StateDir()
 	if err != nil {
 		return nil, "", err
@@ -120,7 +130,7 @@ func OpenTrace() (*os.File, string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, "", fmt.Errorf("create trace directory: %w", err)
 	}
-	path := filepath.Join(dir, time.Now().UTC().Format("20060102T150405.000000000Z")+".jsonl")
+	path := filepath.Join(dir, time.Now().UTC().Format("20060102T150405.000000000Z")+extension)
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return nil, "", fmt.Errorf("create trace log: %w", err)
