@@ -6,6 +6,7 @@ import HowItWorks from "@/components/HowItWorks";
 import Backends from "@/components/Backends";
 import Proof from "@/components/Proof";
 import Demo from "@/components/Demo";
+import HowToUse from "@/components/HowToUse";
 import Capabilities from "@/components/Capabilities";
 import Testimonials from "@/components/Testimonials";
 import Windows from "@/components/Windows";
@@ -86,6 +87,7 @@ export default function Home() {
       <Backends />
       <Proof />
       <Demo />
+      <HowToUse />
       <Capabilities />
       <Testimonials />
       <Windows />

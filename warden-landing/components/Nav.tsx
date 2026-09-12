@@ -6,6 +6,7 @@ import { Github, Menu, X } from "lucide-react";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how-to-use", label: "How to use" },
   { href: "/#backends", label: "Backends" },
   { href: "/#proof", label: "Proof" },
   { href: "/#compatibility", label: "Compatibility" },

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Github, Star } from "lucide-react";
-import SandboxVisualizer from "@/components/SandboxVisualizer";
+import { Check, Copy } from "lucide-react";
 import Eyebrow from "@/components/Eyebrow";
 import SocialProof from "@/components/SocialProof";
 
@@ -124,11 +123,25 @@ export default function Hero() {
         <div className="mt-12 md:mt-16 lg:mt-20">
           {/* subtle hairline divider before demo — editorial rhythm, 80px gap */}
           <div className="mb-8 hidden h-px bg-ink-800 lg:block" aria-hidden />
-          <div className="overflow-hidden rounded-[12px]">
-            <SandboxVisualizer />
+          <div className="overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
+            <video
+              className="aspect-video w-full"
+              width={1920}
+              height={1080}
+              autoPlay
+              muted
+              loop
+              controls
+              playsInline
+              preload="auto"
+              aria-label="Warden demo: interactive sandbox visualizer showing policy grants and access attempts"
+            >
+              <source src="/videos/video-9ReotrYUC6t1GFvpAcsf.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
           </div>
           <p className="mt-3 text-center font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-            Interactive — toggle a grant and watch the matching attempt change
+            Watch the sandbox enforce a policy in real time
           </p>
         </div>
       </div>

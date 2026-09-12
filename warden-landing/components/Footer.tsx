@@ -7,6 +7,9 @@ export default function Footer() {
           <a href="/#how-it-works" className="transition-colors hover:text-paper">
             How it works
           </a>
+          <a href="/#how-to-use" className="transition-colors hover:text-paper">
+            How to use
+          </a>
           <a href="/about" className="transition-colors hover:text-paper">
             About
           </a>

@@ -1,4 +1,4 @@
-const VIDEO_SRC = "/videos/video-9ReotrYUC6t1GFvpAcsf.mp4";
+const VIDEO_SRC = "/videos/video-WUzScwywMNrDp0UkviOg.mp4";
 
 export default function Demo() {
   return (
@@ -26,10 +26,13 @@ export default function Demo() {
             className="aspect-video w-full"
             width={1920}
             height={1080}
+            autoPlay
+            muted
+            loop
             controls
-            preload="none"
             playsInline
-            aria-label="Warden demo: a 30-second recorded session showing a sandboxed MCP server run under a policy, with blocked access attempts stopped and logged"
+            preload="auto"
+            aria-label="Warden demo: a recorded session showing a sandboxed MCP server run under a policy, with blocked access attempts stopped and logged"
           >
             <source src={VIDEO_SRC} type="video/mp4" />
             Your browser does not support the video tag. Download the demo:
