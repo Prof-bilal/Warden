@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import Eyebrow from "@/components/Eyebrow";
-import SocialProof from "@/components/SocialProof";
 
 const INSTALL_CMD =
   "curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64";
@@ -113,9 +112,6 @@ export default function Hero() {
                 Works with any MCP client · No daemon · Linux · macOS · Windows
               </p>
             </div>
-
-            {/* npm/GitHub live counts + ProductHunt badge */}
-            <SocialProof />
           </div>
         </div>
 
