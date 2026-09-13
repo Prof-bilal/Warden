@@ -16,29 +16,30 @@ const GITHUB_URL =
   "https://api.github.com/repos/Prof-bilal/Warden";
 const NPM_URL =
   process.env.WARDEN_STATS_NPM_URL ||
-  "https://api.npmjs.org/downloads/point/last-month/warden-sandbox-cli";
+  "https://api.npmjs.org/downloads/point/2024-01-01:2026-09-13/warden-sandbox-cli";
 
-const UPSTREAM_TIMEOUT_MS = 5000;
+const UPSTREAM_TIMEOUT_MS = 10000;
 
-// Fetch JSON from an upstream stats API. Never throws: any network error,
-// non-2xx status, or bad JSON degrades to null so the hero still renders
-// (badges fall back to their static labels).
 async function getJson(url: string): Promise<unknown | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: controller.signal,
-      next: { revalidate: 3600 },
-      headers: { "User-Agent": "warden-landing-stats" },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as unknown;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        next: { revalidate: 3600 },
+        headers: { "User-Agent": "warden-landing-stats" },
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as unknown;
+    } catch {
+      if (attempt === 0) continue;
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  return null;
 }
 
 export async function GET() {
