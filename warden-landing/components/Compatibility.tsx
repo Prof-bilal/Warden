@@ -21,7 +21,7 @@ const GROUPS = [
   },
   {
     verdict: "2 conditional",
-    detail: "Fetch and Kubernetes — need per-deployment hosts",
+    detail: "Fetch and Kubernetesneed per-deployment hosts",
     tone: "progress" as const,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -33,7 +33,7 @@ const GROUPS = [
     iconClass: "text-progress border-progress/30 bg-progress-subtle",
   },
   {
-    verdict: "2 fail — documented",
+    verdict: "2 faildocumented",
     detail:
       "Docker socket and Playwright wildcards can't be sandboxed honestly",
     tone: "deny" as const,
@@ -64,7 +64,7 @@ export default function Compatibility() {
             </h2>
             <p className="mt-4 text-[1rem] leading-[1.65] text-muted">
               Every server ships with the exact policy it needed, pinned as a
-              regression fixture — so an update can&apos;t silently break what
+              regression fixtureso an update can&apos;t silently break what
               used to work.
             </p>
             <a
@@ -121,7 +121,7 @@ export default function Compatibility() {
                 <p className="text-[0.75rem] leading-[1.5] text-muted">
                   <span className="text-paper/85">One policy, every layer.</span>{" "}
                   Filesystem, network, environment, and audit are enforced
-                  together — the same policy shape protects all 18 servers.
+                  togetherthe same policy shape protects all 18 servers.
                 </p>
               </div>
             </div>

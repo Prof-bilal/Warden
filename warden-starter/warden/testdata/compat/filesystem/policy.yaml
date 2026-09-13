@@ -1,4 +1,4 @@
-# Fixture policy — @modelcontextprotocol/server-filesystem (compat: pass)
+# Fixture policy@modelcontextprotocol/server-filesystem (compat: pass)
 # Relative paths resolve against THIS directory (testdata/compat/filesystem).
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:

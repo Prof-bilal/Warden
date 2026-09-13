@@ -1,4 +1,4 @@
-# Fixture policy — community tavily-mcp web search (compat: pass)
+# Fixture policycommunity tavily-mcp web search (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []

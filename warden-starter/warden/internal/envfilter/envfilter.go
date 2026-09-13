@@ -1,6 +1,6 @@
 // Package envfilter implements the policy's environment passthrough rule:
 // only names listed in env.allow are forwarded from the parent process into
-// the sandbox. Deny by default — an empty allowlist means an empty
+// the sandbox. Deny by defaultan empty allowlist means an empty
 // environment.
 package envfilter
 
@@ -10,7 +10,7 @@ import (
 
 // Filter returns the subset of environment entries (name=value, from
 // os.Environ-style slice) whose names are in allow, with duplicates keeping
-// their last value — matching how a POSIX shell presents the environment to
+// their last valuematching how a POSIX shell presents the environment to
 // a child.
 func Filter(parent []string, allow []string) []string {
 	allowed := make(map[string]bool, len(allow))

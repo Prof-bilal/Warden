@@ -12,7 +12,7 @@ const GUARANTEES: StepperItem[] = [
   {
     title: "Deny-by-default filesystem",
     summary: "Only granted paths visible.",
-    body: "Only explicitly granted paths are visible. Everything else — including the rest of the filesystem, environment variables, and network — is invisible.",
+    body: "Only explicitly granted paths are visible. Everything elseincluding the rest of the filesystem, environment variables, and networkis invisible.",
     image: <Diagram src="/diagrams/deny-by-default-filesystem.jpeg" alt="Deny-by-default filesystem architecture: only granted paths are visible to the sandbox" />,
   },
   {
@@ -30,7 +30,7 @@ const GUARANTEES: StepperItem[] = [
   {
     title: "Fail-closed on every platform",
     summary: "Linux, macOS, Windows.",
-    body: "Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW), Docker fallback — each requires its primitives to initialize or the run is refused.",
+    body: "Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW), Docker fallbackeach requires its primitives to initialize or the run is refused.",
     image: <Diagram src="/diagrams/cross-platform.jpeg" alt="Cross-platform security architecture covering Linux, macOS and Windows" />,
   },
   {
@@ -50,7 +50,7 @@ export default function Proof() {
         </h2>
         <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
           Warden enforces six hard invariants. Every one of them is verified by
-          the test suite — including escape tests that confirm the sandbox
+          the test suiteincluding escape tests that confirm the sandbox
           actually prevents the access it claims to block.
         </p>
 
@@ -62,13 +62,13 @@ export default function Proof() {
         <div className="mt-10 border-y border-ink-800 py-6">
           <p className="text-[0.8125rem] leading-[1.6] text-muted">
             <span className="text-grant">Verified on Linux (Arch x86_64):</span>{" "}
-            7 escape tests pass — read grants accessible, unlisted paths invisible,
+            7 escape tests passread grants accessible, unlisted paths invisible,
             write grants writable, writes outside grants denied, exit codes
             propagated, environment passthrough filtered, fail-closed without bwrap.
           </p>
           <p className="mt-3 text-[0.8125rem] leading-[1.6] text-muted">
             <span className="text-progress">Code-complete, verification pending:</span>{" "}
-            macOS (Seatbelt) — unit tests pass; real-machine escape tests require
+            macOS (Seatbelt)unit tests pass; real-machine escape tests require
             macOS hardware.
           </p>
         </div>

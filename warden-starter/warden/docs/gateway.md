@@ -14,7 +14,7 @@ prefix for every local server.
 
 Only **stdio** entries (a local command) can be sandboxed. Remote entries
 (`type`/`url`, `endpoint`, `http_url`, non-stdio `transport`) are skipped with
-a reason — there is no local process to confine.
+a reasonthere is no local process to confine.
 
 ## Workflow
 
@@ -50,15 +50,15 @@ spawns `warden run` with those values in its environment, and Warden forwards
 only the names in the policy's `env.allow` to the sandboxed server. Policies
 never store secrets.
 
-`wrap` fails closed when any stdio server lacks a policy — run `gateway init`
+`wrap` fails closed when any stdio server lacks a policyrun `gateway init`
 first. Remote entries pass through untouched.
 
 ## Environment templates
 
 Gateway `env` values may reference the parent environment:
 
-- `${NAME}` — required; missing variable is an error, never an empty secret.
-- `${NAME:-default}` — optional fallback.
+- `${NAME}`required; missing variable is an error, never an empty secret.
+- `${NAME:-default}`optional fallback.
 
 For `gateway run`, pre-existing process env wins over the gateway default, so
 `export GITHUB_TOKEN=...` overrides the file. For `wrap`, expansion happens
@@ -72,4 +72,4 @@ when the gateway spawns the server (i.e. inside `warden gateway run` semantics
 - Only `env` names enter the policy; values live in the gateway config and
   the runtime environment.
 - A missing policy, an unknown `--server`, or a remote `--server` is a
-  hard error — Warden never runs the server unsandboxed.
+  hard errorWarden never runs the server unsandboxed.

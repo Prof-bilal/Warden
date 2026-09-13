@@ -607,7 +607,7 @@ func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []str
 	}
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Dim(sep))
-	// Sandbox active line — green, not just color
+	// Sandbox active linegreen, not just color
 	fmt.Fprintf(os.Stderr, "%s %s\n", ui.Green(ui.CheckMark()), ui.Green("Sandbox active"))
 	fmt.Fprintf(os.Stderr, "%s\n", ui.Dim("Warden fails closed when sandboxing is unavailable."))
 	fmt.Fprintln(os.Stderr, "")

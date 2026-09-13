@@ -78,7 +78,7 @@ func TestProxyApproverAllowSessionGrantsOnce(t *testing.T) {
 	}
 
 	// No listener on 127.0.0.1:1, so an approved request fails at dial with
-	// 502 — the point is it got past the allowlist, not that it connected.
+	// 502the point is it got past the allowlist, not that it connected.
 	if w := connect(); w.Code != http.StatusBadGateway {
 		t.Fatalf("first status = %d, want %d", w.Code, http.StatusBadGateway)
 	}

@@ -3,12 +3,12 @@
 **A lightweight sandbox runtime for MCP servers.**
 
 MCP servers routinely run as a plain Node or Python process on your machine
-with full filesystem and network access — even ones you just cloned from
+with full filesystem and network accesseven ones you just cloned from
 GitHub five minutes ago. Warden runs them in a restricted sandbox instead,
 so a server only ever gets the files, network hosts, and environment
 variables you explicitly grant it.
 
-> **Status: alpha.** Warden works today — the npm package (`warden-sandbox-cli`),
+> **Status: alpha.** Warden works todaythe npm package (`warden-sandbox-cli`),
 > GitHub Releases binaries, and docs are live. Verification state, honestly:
 > **Linux verified on real hardware** (escape tests, CI, proof harness);
 > **Windows verified via CI** (AppContainer/WFP/ETW escape tests on GitHub
@@ -23,7 +23,7 @@ variables you explicitly grant it.
 MCP's spec doesn't require any process isolation. The default install path
 for most servers is "run this script with your user's full permissions."
 That means a malicious or buggy MCP server can read your SSH keys, exfiltrate
-data over the network, or write anywhere on disk — and nothing in the
+data over the network, or write anywhere on diskand nothing in the
 protocol stops it.
 
 ## What Warden does
@@ -36,9 +36,9 @@ Warden spawns the server inside a sandbox that:
 
 - **Filesystem**: only sees the paths you list, read-only or read-write as you specify. Everything else is invisible, not just "permission denied."
 - **Network**: can only reach the hostnames you allowlist. Everything else is blocked at the sandbox boundary, before DNS even resolves.
-- **Environment**: only receives the environment variables you pass through — no automatic inheritance of your full shell environment.
+- **Environment**: only receives the environment variables you pass throughno automatic inheritance of your full shell environment.
 - **Stdio**: passed through transparently, so the MCP client (Claude, an IDE, etc.) talks to the sandboxed process exactly like it would an unsandboxed one. Sandboxing is invisible to the protocol.
-- **Audit log**: records every file access attempt and network connection attempt — including blocked ones — so you can see what a server *tried* to do.
+- **Audit log**: records every file access attempt and network connection attemptincluding blocked onesso you can see what a server *tried* to do.
 
 ## Quickstart
 
@@ -71,7 +71,7 @@ warden trace -- node server.js
 ## How it works
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full design, but in short:
-Warden is a thin CLI over OS-native sandboxing primitives — [bubblewrap](https://github.com/containers/bubblewrap)
+Warden is a thin CLI over OS-native sandboxing primitives[bubblewrap](https://github.com/containers/bubblewrap)
 on Linux, `sandbox-exec`/Seatbelt on macOS (with a Docker fallback), and a
 policy engine that translates a simple YAML file into the low-level
 namespace/seccomp/network rules each platform actually needs.
@@ -79,7 +79,7 @@ namespace/seccomp/network rules each platform actually needs.
 ## Why not just use Docker?
 
 You can, and Warden's macOS fallback does. But Docker is heavyweight for
-"run one npm script with a restricted home directory" — slow cold starts,
+"run one npm script with a restricted home directory"slow cold starts,
 a daemon dependency, and a much bigger trust boundary than a namespace
 sandbox needs. Warden aims to be a single static binary with near-zero
 overhead, so sandboxing an MCP server is no harder than running it.

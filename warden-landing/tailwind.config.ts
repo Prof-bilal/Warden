@@ -35,7 +35,7 @@ const config: Config = {
       },
       maxWidth: {
         content: "72rem",
-        display: "80rem", // 1280px — InvisibleTech page max-width
+        display: "80rem", // 1280pxInvisibleTech page max-width
       },
       letterSpacing: {
         tighter: "-0.03em", // display 64px

@@ -60,7 +60,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
       canonical: `${SITE_URL}/docs/${params.slug}`,
     },
     openGraph: {
-      title: `${title} — Warden`,
+      title: `${title}Warden`,
       description,
       url: `${SITE_URL}/docs/${params.slug}`,
       type: "article",
@@ -69,13 +69,13 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
           url: `${SITE_URL}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `${title} — Warden Documentation`,
+          alt: `${title}Warden Documentation`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} — Warden`,
+      title: `${title}Warden`,
       description,
       images: [`${SITE_URL}/og-image.png`],
     },
@@ -171,7 +171,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
       />
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        {/* Breadcrumb — icons.devigner.cc style */}
+        {/* Breadcrumbicons.devigner.cc style */}
         <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
           <span className="hover:text-paper transition-colors">
             <a href="/">Warden</a>

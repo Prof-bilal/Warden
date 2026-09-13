@@ -123,7 +123,7 @@ export function NetworkEnforced() {
       <text x="153" y="154" textAnchor="middle" fontSize="7.5" fill="#6E93E8" fontFamily="var(--font-geist-mono)" opacity="0.85">dns resolves only after</text>
       <text x="153" y="164" textAnchor="middle" fontSize="7.5" fill="#6E93E8" fontFamily="var(--font-geist-mono)" opacity="0.85">the allowlist check</text>
 
-      <text x="160" y="192" textAnchor="middle" fontSize="8" fill="#8D95A5" fontFamily="var(--font-geist-mono)" letterSpacing="1">NO GRANT ⇒ NO CONNECTION — NOT EVEN DNS</text>
+      <text x="160" y="192" textAnchor="middle" fontSize="8" fill="#8D95A5" fontFamily="var(--font-geist-mono)" letterSpacing="1">NO GRANT ⇒ NO CONNECTIONNOT EVEN DNS</text>
     </svg>
   );
 }
@@ -204,7 +204,7 @@ export function PlatformFailClosed() {
       ))}
 
       <text x="160" y="172" textAnchor="middle" fontSize="8" fill="#8D95A5" fontFamily="var(--font-geist-mono)" letterSpacing="1">ONE POLICY · NATIVE ENFORCEMENT PER OS</text>
-      <text x="160" y="188" textAnchor="middle" fontSize="8" fill="#E2604F" fontFamily="var(--font-geist-mono)" opacity="0.8">backend missing? refuse to run — never fallback silently</text>
+      <text x="160" y="188" textAnchor="middle" fontSize="8" fill="#E2604F" fontFamily="var(--font-geist-mono)" opacity="0.8">backend missing? refuse to runnever fallback silently</text>
     </svg>
   );
 }

@@ -13,7 +13,7 @@ const { describe, it } = require("node:test");
 const DIR = __dirname;
 
 // The helpers are pure TS with no imports; load them by stripping types
-// with a small transpile (good enough for these three functions — if the
+// with a small transpile (good enough for these three functionsif the
 // lib grows real imports, switch to a TS runner instead).
 function loadStatsLib() {
   const src = fs.readFileSync(path.join(DIR, "lib", "stats.ts"), "utf8");

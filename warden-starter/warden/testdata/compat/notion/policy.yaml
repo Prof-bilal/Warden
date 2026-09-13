@@ -1,4 +1,4 @@
-# Fixture policy — community notion-mcp (compat: pass)
+# Fixture policycommunity notion-mcp (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []

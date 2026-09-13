@@ -114,7 +114,7 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	// Root and per-component metadata traversal is blanket-allowed above.
 	// dyld's CacheFinder also performs a file-read-data probe of "/" itself
 	// while locating the shared cache and aborts the process (SIGABRT in
-	// dyld4::CacheFinder, before main) when it is denied on macOS 26 — the
+	// dyld4::CacheFinder, before main) when it is denied on macOS 26the
 	// same grant ships in Codex's proven macOS 26 platform defaults. This
 	// permits reading the root directory listing but no user data.
 	b.WriteString("(allow file-read* file-test-existence (literal \"/\"))\n")
@@ -196,7 +196,7 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	}
 	// The socket's directory: lookup/traversal only. SBPL subpath already
 	// matches the directory itself, so no file-read* literal is emitted for
-	// it — a read literal on a directory is at best redundant and trips
+	// ita read literal on a directory is at best redundant and trips
 	// aborts in dyld's path validation on macOS 26.
 	for _, variant := range symlinkVariants(filepath.Dir(socketPath)) {
 		writeLiteralAllow(&b, "file-read-metadata", variant)

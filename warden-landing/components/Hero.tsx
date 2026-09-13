@@ -25,24 +25,24 @@ export default function Hero() {
   }
 
   return (
-    // InvisibleTech editorial hero — layout + font only, colors preserved from warden (ink/paper/muted)
+    // InvisibleTech editorial herolayout + font only, colors preserved from warden (ink/paper/muted)
     <section className="relative overflow-hidden border-b border-ink-700 bg-ink-950">
-      {/* graph-paper dot grid — very faint, masked to top, no color takeover */}
+      {/* graph-paper dot gridvery faint, masked to top, no color takeover */}
       <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-[0.18]" aria-hidden />
-      {/* subtle top fade wash — uses existing ink-900 at low opacity, not a new palette */}
+      {/* subtle top fade washuses existing ink-900 at low opacity, not a new palette */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-ink-900/30 to-transparent"
         aria-hidden
       />
 
-      {/* 1280px max-width container — InvisibleTech page model */}
+      {/* 1280px max-width containerInvisibleTech page model */}
       <div className="relative mx-auto max-w-[1280px] px-4 pb-12 pt-8 sm:px-6 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
         {/* ── Two-column editorial rhythm: headline ~55% / intro ~45%, gap 24-64px ── */}
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
-          {/* Left: Two-tone headline — Apk Galeria → Newsreader, negative tracking */}
+          {/* Left: Two-tone headlineApk Galeria → Newsreader, negative tracking */}
           <div>
             <h1 className="hero-display max-w-[900px] text-[1.625rem] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[2.6rem] sm:leading-[0.95] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
-              {/* first phrase in paper (primary), second phrase in muted — the InvisibleTech call-and-response */}
+              {/* first phrase in paper (primary), second phrase in mutedthe InvisibleTech call-and-response */}
               <span className="inline-block break-words rounded-[6px] bg-grant-subtle px-2 pb-0.5 text-grant">
                 Your MCP servers
               </span>
@@ -58,14 +58,14 @@ export default function Hero() {
 
           </div>
 
-          {/* Right: supporting body + CTAs — right column at ~45% width on desktop */}
+          {/* Right: supporting body + CTAsright column at ~45% width on desktop */}
           <div className="flex max-w-[32rem] flex-col lg:ml-auto lg:max-w-[30rem]">
             <p className="hero-display text-[1.0625rem] font-normal leading-[1.65] text-muted md:text-[1.125rem] md:leading-[1.7]">
               Warden creates a secure sandbox for AI tools, giving them access only to the files and
               resources you allow. Everything else stays blocked.
             </p>
 
-            {/* Install pills — 9999px radius, hairline border, mono, no shadow, comfortable 24px element gap */}
+            {/* Install pills9999px radius, hairline border, mono, no shadow, comfortable 24px element gap */}
             <div className="mt-8 flex flex-col gap-3">
               <button
                 onClick={handleNpmCopy}
@@ -107,9 +107,9 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Visualizer — 12px card radius (InvisibleTech cards), 80px section gap above */}
+        {/* Visualizer12px card radius (InvisibleTech cards), 80px section gap above */}
         <div className="mt-12 md:mt-16 lg:mt-20">
-          {/* subtle hairline divider before demo — editorial rhythm, 80px gap */}
+          {/* subtle hairline divider before demoeditorial rhythm, 80px gap */}
           <div className="mb-8 hidden h-px bg-ink-800 lg:block" aria-hidden />
           <div className="overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
             <video

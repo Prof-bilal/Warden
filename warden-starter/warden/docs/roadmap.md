@@ -3,7 +3,7 @@
 Rough milestones, roughly in order. Each one should leave you with something
 you could actually demo, not just an internal refactor.
 
-## M0 — Repo groundwork
+## M0Repo groundwork
 - [x] Folder structure, README, architecture doc (this scaffold)
 - [x] Pick and reserve the project name (check GitHub/npm/crates.io/Homebrew
       for collisions before publishing anything)
@@ -11,7 +11,7 @@ you could actually demo, not just an internal refactor.
 - [x] `CONTRIBUTING.md` + issue templates
 - [x] CI skeleton (lint + build, even before there's real logic to test)
 
-## M1 — Linux prototype (prove the core idea works)
+## M1Linux prototype (prove the core idea works)
 - [x] Policy struct + YAML parsing, with schema validation and clear error
       messages on malformed policies
 - [x] Shell out to `bwrap` with bind mounts derived from `filesystem.read`
@@ -26,30 +26,30 @@ you could actually demo, not just an internal refactor.
 
 **Known limitations (M1):** No network enforcement, no resource limits.
 
-## M2 — Network enforcement
+## M2Network enforcement
 - [x] Local egress proxy with hostname allowlist
 - [x] Network namespace setup that forces the sandboxed process through the
       proxy (no direct egress path)
 - [x] Block DNS resolution for non-allowlisted hosts (not just the TCP
-      connect — prevents leakage via DNS queries themselves)
+      connectprevents leakage via DNS queries themselves)
 - [x] Audit logger: structured log of every file/network attempt, allowed
       or blocked
 
-## M3 — Usability layer
-- [x] `warden trace` — run unsandboxed but instrumented, log all access
+## M3Usability layer
+- [x] `warden trace`run unsandboxed but instrumented, log all access
       attempts
-- [x] `warden init` — generate a starter policy.yaml from a trace log
-- [x] `warden logs` — tail/inspect the audit log
+- [x] `warden init`generate a starter policy.yaml from a trace log
+- [x] `warden logs`tail/inspect the audit log
 - [x] Resource limits: memory and wall-clock timeout enforcement, process
       killed cleanly on breach
 
-## M4 — macOS support
+## M4macOS support
 - [x] `sandbox-exec`/Seatbelt backend
 - [x] Docker fallback backend for when native sandboxing isn't available
 - [x] Backend auto-detection (`warden run` picks the best available backend
       unless `--backend` is passed explicitly)
 
-## M5 — Windows support
+## M5Windows support
 - [x] AppContainer backend with restricted token and explicit filesystem
       capabilities derived from the policy
 - [x] Windows Filtering Platform (WFP) egress filtering and blocked DNS resolution
@@ -61,7 +61,7 @@ you could actually demo, not just an internal refactor.
 network filtering, auditing, or Job Object setup cannot be applied. A plain
 `CreateProcess` fallback is never acceptable.
 
-## M6 — Polish & distribution
+## M6Polish & distribution
 - [x] Package as a single static binary (Homebrew tap formula, npm wrapper
       for Node users, plus manual download links in GitHub Releases)
 - [x] Docs site with a policy schema reference and worked examples
@@ -69,21 +69,21 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
 - [x] Example gallery: policies for 5 popular MCP servers (filesystem,
       GitHub, Slack, PostgreSQL, Brave Search) so people can copy-paste
       rather than write a policy from scratch
-- [x] Security review pass — documented threat model (7 categories),
+- [x] Security review passdocumented threat model (7 categories),
       known-limitations table, and best-practices section in
       [docs/security.md](security.md)
 
-## M7 — Stretch goals (post-1.0)
-- [x] Interactive approval mode — prompt the user the first time a server
+## M7Stretch goals (post-1.0)
+- [x] Interactive approval modeprompt the user the first time a server
       requests an access not in the policy, rather than hard-failing
       (`warden run --approve`: network prompts apply live via the egress
       proxy; filesystem prompts save to the policy and restart. Seatbelt /
-      Docker / Windows support network approval only — no live filesystem
+      Docker / Windows support network approval onlyno live filesystem
       signal there. See docs/approve.md.)
 - [x] Integration with MCP gateways (e.g. wrap servers registered in a
       gateway config automatically)
 
-## M8 — Real-world MCP server compatibility testing
+## M8Real-world MCP server compatibility testing
 - [x] Build a compatibility matrix: run Warden against the 15-20 most-used
       public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
       Google Drive, a couple of the popular community ones) and record
@@ -91,14 +91,14 @@ network filtering, auditing, or Job Object setup cannot be applied. A plain
       (18 servers in [`testdata/compat/matrix.yaml`](compatibility.md#manifest),
       published in [`docs/compatibility.md`](compatibility.md):
       14 pass, 2 conditional, 2 fail)
-- [x] For every failure, classify it — is it a Warden bug, a policy-schema
+- [x] For every failure, classify itis it a Warden bug, a policy-schema
       gap (some access pattern the schema can't express yet), or a server
       doing something inherently incompatible with sandboxing (e.g.
       expecting arbitrary filesystem access by design)?
       (see [docs/compatibility.md](compatibility.md#failures-classified))
 - [x] Recruit a small external beta group of MCP server maintainers/users
       (5-10 people) to run their own servers under Warden and report
-      friction — this is the first real signal on whether the policy
+      frictionthis is the first real signal on whether the policy
       schema is usable by people who didn't design it
       (program + report template: [`docs/beta.md`](beta.md),
       [compatibility report template](beta.md#report-template))

@@ -10,7 +10,7 @@ import (
 
 func TestStarterFromAuditIsConservative(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+		t.Skip("POSIX paths not absolute on Windowsskip POSIX grant logic tests")
 	}
 	p := StarterFromAudit([]audit.Event{
 		{Type: "file", Action: "openat", Resource: "/work/input.txt", Allowed: true},

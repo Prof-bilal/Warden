@@ -13,7 +13,7 @@
 // Security invariants:
 //
 //   - Prompts go to the controlling terminal (/dev/tty), never to the
-//     server's stdin/stdout/stderr — stdio belongs to the MCP client and
+//     server's stdin/stdout/stderrstdio belongs to the MCP client and
 //     must stay protocol-clean.
 //   - No terminal, unreadable answer, timeout, or save failure all resolve
 //     to Deny (fail closed), and every decision is audit-logged.

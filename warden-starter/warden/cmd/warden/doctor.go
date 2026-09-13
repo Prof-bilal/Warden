@@ -113,7 +113,7 @@ func cmdDoctor(args []string) {
 
 	// Strace for audit on Linux. The native bwrap backend hard-requires
 	// strace at run time (`warden run` refuses to start without it), so its
-	// absence is a FAIL that makes the host NOT READY — matching what run
+	// absence is a FAIL that makes the host NOT READYmatching what run
 	// would actually do. The Docker fallback does its own sandboxing and
 	// never invokes strace, so it is not required there.
 	straceFails := false

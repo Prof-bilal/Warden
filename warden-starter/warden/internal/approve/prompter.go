@@ -57,7 +57,7 @@ func NewPrompter(policyPath string, timeout time.Duration, logger *audit.Logger)
 // NetworkApprover returns the proxy.Approver closure for this run. It
 // prompts once per host; later requests are resolved from memory (granted
 // hosts also sit in the proxy allowlist, so they never reach this closure
-// again — the cache here mainly suppresses re-prompts for denials and wins
+// againthe cache here mainly suppresses re-prompts for denials and wins
 // races between concurrent first requests).
 func (p *Prompter) NetworkApprover() proxy.Approver {
 	return func(host, port string) proxy.Decision { return p.DecideNetwork(host, port) }

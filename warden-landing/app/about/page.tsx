@@ -7,12 +7,12 @@ const SITE_URL = "https://warden-six-rouge.vercel.app";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "About Warden — an open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
+    "About Wardenan open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
   alternates: {
     canonical: `${SITE_URL}/about`,
   },
   openGraph: {
-    title: "About Warden — A Sandbox Runtime for MCP Servers",
+    title: "About WardenA Sandbox Runtime for MCP Servers",
     description:
       "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
     url: `${SITE_URL}/about`,
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About Warden — A Sandbox Runtime for MCP Servers",
+    title: "About WardenA Sandbox Runtime for MCP Servers",
     description:
       "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
     images: [`${SITE_URL}/og-image.png`],
@@ -58,7 +58,7 @@ export default function About() {
           <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
             Modern AI tooling runs third-party code with first-party trust.
             MCP servers install with a one-liner and inherit everything you
-            can do. Warden exists to make the safe path the easy path — with
+            can do. Warden exists to make the safe path the easy pathwith
             a policy file small enough to read in one sitting.
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function About() {
         <div className="mt-14 max-w-[44rem]">
           <h2 className="text-[1.375rem] font-medium text-paper">Why not just use Docker?</h2>
           <p className="mt-3 leading-[1.65] text-muted">
-            You can — Warden uses it as a fallback. But Docker is heavyweight
+            You canWarden uses it as a fallback. But Docker is heavyweight
             for &ldquo;run one script with a restricted home directory&rdquo;: slow cold
             starts, a daemon dependency, and a far bigger trust boundary than
             a namespace sandbox needs. Warden is a single static binary over
@@ -90,7 +90,7 @@ export default function About() {
           <h2 className="text-[1.375rem] font-medium text-paper">Security posture</h2>
           <p className="mt-3 leading-[1.65] text-muted">
             Deny-by-default on filesystem, network, and environment. No silent
-            fallback to unsandboxed runs — a missing backend fails loudly.
+            fallback to unsandboxed runsa missing backend fails loudly.
             Every blocked access is logged. Known limitations (no CPU
             throttling, no wildcard hosts, no unix-socket grants) are
             documented, not buried.
@@ -109,7 +109,7 @@ export default function About() {
               Docs →
             </a>
           </div>
-          <p className="mt-8 text-[0.8125rem] text-muted">warden — MIT licensed</p>
+          <p className="mt-8 text-[0.8125rem] text-muted">wardenMIT licensed</p>
         </div>
       </section>
       <Footer />

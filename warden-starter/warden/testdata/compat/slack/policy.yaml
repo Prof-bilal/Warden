@@ -1,4 +1,4 @@
-# Fixture policy — @modelcontextprotocol/server-slack (compat: pass)
+# Fixture policy@modelcontextprotocol/server-slack (compat: pass)
 # Canonical write-only cache dir: a write grant subsumes reads underneath
 # it, so no duplicate read grant (see policy.Normalize).
 command: ["/usr/bin/node", "./server/dist/index.js"]

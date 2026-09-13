@@ -19,7 +19,7 @@ export default function Demo() {
         </p>
 
         {/* Remotion-style player: the whole "recording" is rendered live in
-            React — seekable, loopable, zero video bytes. */}
+            Reactseekable, loopable, zero video bytes. */}
         <div className="mt-10">
           <SandboxPlayer />
         </div>

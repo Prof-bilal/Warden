@@ -85,7 +85,7 @@ The server only sees `./data` (read), `./output` (write), `api.github.com` (netw
 
 | Feature | Description |
 |---------|-------------|
-| **Deny by default** | Paths don't exist unless granted — not "permission denied" |
+| **Deny by default** | Paths don't exist unless grantednot "permission denied" |
 | **OS-native** | bubblewrap (Linux), Seatbelt (macOS), AppContainer (Windows) |
 | **No Docker required** | Native sandboxing first, Docker only as fallback |
 | **Auto-generate policies** | `warden trace` + `warden init` watches and generates policies |

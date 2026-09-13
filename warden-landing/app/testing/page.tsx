@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     canonical: `${SITE_URL}/testing`,
   },
   openGraph: {
-    title: "Cross-Platform Testing — Warden",
+    title: "Cross-Platform TestingWarden",
     description:
       "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
     url: `${SITE_URL}/testing`,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cross-Platform Testing — Warden",
+    title: "Cross-Platform TestingWarden",
     description:
       "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
     images: [`${SITE_URL}/og-image.png`],
@@ -105,7 +105,7 @@ export default function TestingPage() {
             Test Warden on every platform.
           </h1>
           <p className="mt-5 max-w-[38rem] text-[1.0625rem] leading-[1.65] text-muted">
-            Linux, macOS, Windows — same policy file, same security guarantees.
+            Linux, macOS, Windowssame policy file, same security guarantees.
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Link href="/docs/testing-platforms" className="rounded-sm border border-blueprint px-5 py-2.5 text-[0.9375rem] font-medium text-paper transition-colors hover:bg-blueprint hover:text-ink-950">
@@ -145,7 +145,7 @@ export default function TestingPage() {
         <h2 className="text-[1.375rem] font-medium text-paper">Test results</h2>
         <p className="mt-2 text-[0.9375rem] text-muted">
           All 10 core tests pass on every platform in local runs. The Windows
-          CI job is the authoritative cross-machine verification — its current
+          CI job is the authoritative cross-machine verificationits current
           status (and the small set of remaining cross-platform test-debt
           items) is tracked in the
           {" "}<a className="underline decoration-muted/40 hover:text-paper" href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md">REMAINING_WORK.md</a>{" "}

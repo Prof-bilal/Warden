@@ -563,7 +563,7 @@ func isWardenCachePath(path string) bool {
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
 }
 
-// Update warning (non-blocking, cached) — shown on interactive invocations
+// Update warning (non-blocking, cached)shown on interactive invocations
 // when the running binary is behind the npm registry.
 
 type updateCheckCache struct {

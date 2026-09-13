@@ -16,7 +16,7 @@ const SITE_URL = "https://warden-six-rouge.vercel.app";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Warden — A Sandbox Runtime for MCP Servers",
+    default: "WardenA Sandbox Runtime for MCP Servers",
     template: "%s | Warden",
   },
   description:
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Warden",
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenA Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
     images: [
@@ -65,14 +65,14 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden — A Sandbox Runtime for MCP Servers",
+        alt: "WardenA Sandbox Runtime for MCP Servers",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenA Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
     images: [`${SITE_URL}/og-image.png`],

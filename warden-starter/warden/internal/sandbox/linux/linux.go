@@ -136,7 +136,7 @@ func isUnder(path, dir string) bool {
 // protocol-level difference.
 //
 // It returns the sandboxed process's exit code, or an error if the process
-// could not be started at all. A missing bwrap is an error — Warden never
+// could not be started at all. A missing bwrap is an errorWarden never
 // falls back to running the command unsandboxed.
 func Run(cmd []string, p policy.Policy) (int, error) {
 	// Check the core backend before opening persistent state so a missing

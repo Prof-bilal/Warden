@@ -34,7 +34,7 @@ func (e *LimitExceededError) Error() string {
 // Network egress is forced through the host-side proxy via a loopback bridge;
 // Seatbelt denies all other network destinations. File denials are enforced
 // by Seatbelt (EPERM); structured file-deny audit events are not available
-// without a macOS tracing primitive comparable to Linux strace — network
+// without a macOS tracing primitive comparable to Linux stracenetwork
 // allow/deny decisions are still recorded by the egress proxy.
 func Run(cmd []string, p policy.Policy) (int, error) {
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {

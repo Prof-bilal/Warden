@@ -1,4 +1,4 @@
-# Example Warden policy — PostgreSQL database MCP server
+# Example Warden policyPostgreSQL database MCP server
 # Copy this and adjust hostnames, paths, and credentials as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -8,7 +8,7 @@ command: ["/usr/bin/node", "./server/dist/index.js"]
 
 filesystem:
   # PostgreSQL client libraries read .pgpass and .postgresql for credentials
-  # and SSL config. Grant only the exact paths you need — never the whole home.
+  # and SSL config. Grant only the exact paths you neednever the whole home.
   read:
     - "./config/.pgpass"
     - "./config/.postgresql"
@@ -17,7 +17,7 @@ filesystem:
 
 network:
   # Allow connections to the database host(s) only. Replace with your
-  # actual hostnames; wildcard hosts are not supported — list each one.
+  # actual hostnames; wildcard hosts are not supportedlist each one.
   allow:
     - "localhost"
     - "db.internal.example.com"

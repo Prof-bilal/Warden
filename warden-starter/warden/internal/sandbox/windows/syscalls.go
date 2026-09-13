@@ -26,7 +26,7 @@ var (
 	advapi32 = windows.NewLazySystemDLL("advapi32.dll")
 	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
 
-	// wfpDLL is set by initWFP() — either fwpuclnt.dll (the canonical home of
+	// wfpDLL is set by initWFP()either fwpuclnt.dll (the canonical home of
 	// the WFP user-mode API) or iphlapi.dll (which also exports the same
 	// symbols on stripped Windows images, including the GitHub Actions
 	// `windows-latest` runner which doesn't ship fwpuclnt.dll). Selecting at
@@ -48,7 +48,7 @@ var (
 	procEnableTraceEx2          = advapi32.NewProc("EnableTraceEx2")
 
 	// kernel32 (process/enumeration helpers only; ETW consumer APIs are
-	// advapi32, not kernel32 — bind them below with the other advapi32
+	// advapi32, not kernel32bind them below with the other advapi32
 	// procs so the whole session fails closed if any symbol is missing).
 	procQueryDosDeviceW          = kernel32.NewProc("QueryDosDeviceW")
 	procGetLongPathNameW         = kernel32.NewProc("GetLongPathNameW")
@@ -57,7 +57,7 @@ var (
 	procProcess32Next            = kernel32.NewProc("Process32NextW")
 
 	// advapi32 ETW consumer APIs were previously bound to kernel32, which
-	// does not export them — on real Windows that caused TestEtwSessionLifecycle
+	// does not export themon real Windows that caused TestEtwSessionLifecycle
 	// to panic with "procedure could not be found" instead of failing closed.
 	procOpenTraceW   = advapi32.NewProc("OpenTraceW")
 	procProcessTrace = advapi32.NewProc("ProcessTrace")
@@ -66,7 +66,7 @@ var (
 	// WFP procs. Bound lazily after initWFP() picks the right DLL.
 	// Versioned names (FwpmXxx0) are used because the C-header #define macros
 	// (FwpmEngineOpen without the "0" suffix) are not present in the export
-	// table — using unversioned names causes "procedure could not be found"
+	// tableusing unversioned names causes "procedure could not be found"
 	// at Call time, which would have panicked under the old single-DLL binding.
 	procFwpmEngineOpen        *windows.LazyProc
 	procFwpmEngineClose       *windows.LazyProc
@@ -298,5 +298,5 @@ func _Process32Next(snapshot windows.Handle, entry *processEntry32W) error {
 // host or report the issue; the run fails closed with this message rather
 // than panicking inside LazyProc.Call (the original REMAINING_WORK P0 bug).
 var errWFPDLLMissing = errors.New(
-	"neither fwpuclnt.dll nor iphlapi.dll could be loaded — the Windows Filtering Platform user-mode API is unavailable on this host",
+	"neither fwpuclnt.dll nor iphlapi.dll could be loadedthe Windows Filtering Platform user-mode API is unavailable on this host",
 )

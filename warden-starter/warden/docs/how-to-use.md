@@ -22,7 +22,7 @@ another route? See [Install](install.md) for GitHub Release downloads and
 building from source.
 
 **What just happened:** you have a single static `warden` binary on your
-PATH. It is not yet a sandbox — the next step checks your OS can actually
+PATH. It is not yet a sandboxthe next step checks your OS can actually
 isolate processes.
 
 ## 2. Check your machine is sandbox-ready
@@ -41,7 +41,7 @@ Exit code `0` means ready, `1` means NOT READY (with the missing piece named
 — e.g. `bwrap` or `strace`), `2` means you used the command wrong.
 
 **Why:** Warden refuses to run a server unsandboxed. `doctor` tells you
-*before* you try whether this host can enforce a policy — on Linux it checks
+*before* you try whether this host can enforce a policyon Linux it checks
 bubblewrap and user namespaces, and whether `strace` is present (required for
 `warden run` auditing on the native backend; [why](security.md#known-limitations)).
 
@@ -66,10 +66,10 @@ EOF
 **Why:** the policy is the entire security contract. Whatever is not granted
 here does not exist for the server: unlisted files are invisible, unlisted
 hosts are unreachable, unlisted env vars are stripped. Don't guess what the
-server needs — [trace it first](#5-dont-guess-trace-instead) or copy a fixture from
+server needs[trace it first](#5-dont-guess-trace-instead) or copy a fixture from
 the [compatibility matrix](compatibility.md).
 
-**What just happened:** nothing yet — but every path, host, and variable in
+**What just happened:** nothing yetbut every path, host, and variable in
 this file is now an explicit allowlist entry. Relative paths resolve against
 the policy file's own directory.
 
@@ -82,12 +82,12 @@ warden run --policy ./policy.yaml
 Expected: your MCP client (Claude Desktop, an IDE, `mcp-remote`, etc.)
 connects over stdio exactly as before. The server cannot tell it's sandboxed.
 
-**Why:** `warden run` starts the server inside the OS sandbox — bubblewrap
+**Why:** `warden run` starts the server inside the OS sandboxbubblewrap
 namespaces on Linux, Seatbelt on macOS, AppContainer on Windows, Docker as a
-fallback — with the policy grants and nothing more. If the sandbox cannot be
+fallbackwith the policy grants and nothing more. If the sandbox cannot be
 initialized, Warden exits with an error instead of running unsandboxed.
 
-## 5. Don't guess — trace instead
+## 5. Don't guesstrace instead
 
 ```bash
 warden trace -- /usr/bin/node ./server/dist/index.js
@@ -96,11 +96,11 @@ warden init
 
 **Why:** `trace` runs the server *unsandboxed* once and records every file,
 network, and environment access. `warden init` turns that record into a
-conservative starter policy — it only grants accesses that were observed to
+conservative starter policyit only grants accesses that were observed to
 succeed. Review the generated policy (trace ran with your full permissions),
 tighten anything too broad, then `warden run` with it.
 
-## 6. Try something forbidden — and watch it fail
+## 6. Try something forbiddenand watch it fail
 
 Point your MCP client at a file outside the grant (say `~/notes.md`), or from
 inside the server try to read a secret:
@@ -122,7 +122,7 @@ Expected output (real records, from the proof harness):
 ```
 
 **What just happened:** the access attempt was denied at the sandbox
-boundary and — critically — **recorded**. Blocked attempts name the exact
+boundary andcritically**recorded**. Blocked attempts name the exact
 path or host, so widening a policy is mechanical: add the grant, re-run.
 Silent failures are the enemy; Warden's audit log is the antidote.
 
@@ -135,7 +135,7 @@ Every field in `policy.yaml` maps to a real enforcement mechanism:
 - `network.allow` → egress proxy allowlist + network namespace isolation
 - `env.allow` → environment filter applied before the process starts
 - `limits` → memory cap and timeout where the platform supports it (not on
-  macOS/Docker — see the [limitations table](security.md#known-limitations))
+  macOS/Dockersee the [limitations table](security.md#known-limitations))
 
 Field-by-field reference: [Schema Reference](schema.md).
 
@@ -161,7 +161,7 @@ that proves the target really started. It writes `results.jsonl`,
 
 ## Next steps
 
-- [Schema Reference](schema.md) — every policy field and its enforcement notes
-- [CLI Reference](cli.md) — every command and flag
-- [Compatibility Matrix](compatibility.md) — which real MCP servers work, with exact policies
-- [Security Review](security.md) — the threat model and known gaps
+- [Schema Reference](schema.md)every policy field and its enforcement notes
+- [CLI Reference](cli.md)every command and flag
+- [Compatibility Matrix](compatibility.md)which real MCP servers work, with exact policies
+- [Security Review](security.md)the threat model and known gaps

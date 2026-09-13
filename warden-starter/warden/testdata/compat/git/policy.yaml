@@ -1,4 +1,4 @@
-# Fixture policy — @modelcontextprotocol/server-git (compat: pass)
+# Fixture policy@modelcontextprotocol/server-git (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []

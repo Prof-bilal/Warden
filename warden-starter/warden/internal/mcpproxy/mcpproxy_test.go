@@ -179,7 +179,7 @@ func TestNewProxyServerAcceptsHTTPUpstreams(t *testing.T) {
 func TestNewProxyServerRejectsInsecureHTTPUpstreams(t *testing.T) {
 	// Plain http:// is allowed only for loopback (local dev servers).
 	// A remote plain-http upstream would put MCP traffic and any forwarded
-	// tokens on the wire unencrypted — refuse it.
+	// tokens on the wire unencryptedrefuse it.
 	_, err := NewProxyServer(MCPPolicy{Upstream: "http://mcp.example.com/mcp"}, audit.New(nil))
 	if err == nil {
 		t.Fatal("plain http:// to a remote host must be rejected")
@@ -631,7 +631,7 @@ func TestHTTPTransportUpstreamOutageFailsClosed(t *testing.T) {
 
 // TestSSETransportRelaysServerEvents covers the SSE transport end to end:
 // client POSTs are forwarded, the SSE-framed POST response is relayed to the
-// client, and the server's unsolicited GET event stream is relayed too — all
+// client, and the server's unsolicited GET event stream is relayed tooall
 // after the same inbound/outbound filtering as the stdio bridge.
 func TestSSETransportRelaysServerEvents(t *testing.T) {
 	var mu sync.Mutex

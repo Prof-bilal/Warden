@@ -16,14 +16,14 @@ import Footer from "@/components/Footer";
 const SITE_URL = "https://warden-six-rouge.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Warden — A Sandbox Runtime for MCP Servers",
+  title: "WardenA Sandbox Runtime for MCP Servers",
   description:
     "Warden runs MCP servers in a restricted sandbox, so a server only ever gets the files, hosts, and environment variables you explicitly grant it. Open-source, fail-closed, audited.",
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenA Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
     url: SITE_URL,
@@ -32,13 +32,13 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden — A Sandbox Runtime for MCP Servers",
+        alt: "WardenA Sandbox Runtime for MCP Servers",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenA Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
     images: [`${SITE_URL}/og-image.png`],

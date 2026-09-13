@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 
 /**
- * Inline code chip that copies its text on click — for code snippets
+ * Inline code chip that copies its text on clickfor code snippets
  * inside tables and prose. Shows a small ✓ badge on copy (no layout
  * shift: the badge is absolutely positioned).
  */

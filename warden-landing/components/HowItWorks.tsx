@@ -15,7 +15,7 @@ limits:
   timeout_s: 300`;
 
 const FIELDS = [
-  { field: "command", note: "how Warden starts the server — nothing else runs." },
+  { field: "command", note: "how Warden starts the servernothing else runs." },
   {
     field: "filesystem",
     note: "read and write are separate grants; anything not listed is invisible, not just unreadable.",
@@ -24,7 +24,7 @@ const FIELDS = [
     field: "network",
     note: "only these hostnames resolve. DNS for anything else fails before a connection is even attempted.",
   },
-  { field: "env", note: "only these variables are passed through — no inherited shell environment." },
+  { field: "env", note: "only these variables are passed throughno inherited shell environment." },
   { field: "limits", note: "the process is killed if either bound is crossed." },
 ];
 

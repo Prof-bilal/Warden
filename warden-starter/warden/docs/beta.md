@@ -23,7 +23,7 @@ which access pattern had no honest grant, and where they gave up.
    ```bash
    warden run --policy ./policy.yaml
    ```
-4. File a compatibility report (below) — one per server.
+4. File a compatibility report (below)one per server.
 
 No NDA, no private channel: reports are public GitHub issues so the whole
 community sees the friction log.
@@ -38,9 +38,9 @@ Every report must include:
 - verdict: works / works-with-hacks / blocked,
 - the exact policy used (attach `policy.yaml`),
 - for every failure, your best-guess class:
-  - **Warden bug** — it should work but doesn't,
-  - **schema gap** — no honest grant expresses what the server needs,
-  - **inherent** — the server needs something sandboxing forbids by design
+  - **Warden bug**it should work but doesn't,
+  - **schema gap**no honest grant expresses what the server needs,
+  - **inherent**the server needs something sandboxing forbids by design
     (arbitrary filesystem/URL access, daemon sockets),
 - the friction narrative: what was confusing, what you tried, where the
   docs/schema failed you.
@@ -70,7 +70,7 @@ labels: compatibility
 ## Policy
 
 <!-- Attach the exact policy.yaml you ran with. Values are never stored in
-     the policy — only env NAMES — so it is safe to paste. -->
+     the policyonly env NAMESso it is safe to paste. -->
 
 ```yaml
 # paste policy.yaml here
@@ -92,7 +92,7 @@ labels: compatibility
 ## Friction narrative
 
 <!-- What was confusing? What did you try? Where did the docs or schema
-     fail you? This is the most valuable section — be specific. -->
+     fail you? This is the most valuable sectionbe specific. -->
 ```
 
 ## What maintainers do with reports

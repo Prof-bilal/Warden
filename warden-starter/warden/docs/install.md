@@ -3,10 +3,10 @@
 ## Day-one options
 
 > **Note:** Homebrew (`warden-sandbox/warden`) distribution is pending. Today,
-> install via npm, GitHub Release, or build from source — all give you the
+> install via npm, GitHub Release, or build from sourceall give you the
 > same single static binary.
 
-### Option A — npm (easiest)
+### Option Anpm (easiest)
 
 Warden is a **global CLI**. Install it with `-g` so the `warden` command is
 on your `PATH`:
@@ -32,14 +32,14 @@ The platform binary is
 downloaded lazily on first `warden` invocation from GitHub Releases (5 binaries
 + `SHA256SUMS` per release).
 
-Releases that predate `warden update` do not include that command — upgrade
+Releases that predate `warden update` do not include that commandupgrade
 those installs with:
 
 ```bash
 npm install -g warden-sandbox-cli@latest
 ```
 
-### Option B — GitHub Release
+### Option BGitHub Release
 
 Download the binary for your platform from
 [Releases](https://github.com/Prof-bilal/Warden/releases), verify the
@@ -54,7 +54,7 @@ sudo mv warden-linux-amd64 /usr/local/bin/warden
 warden  # prints usage; exit code is 1 with no subcommand, that's normal
 ```
 
-### Option C — Build from source
+### Option CBuild from source
 
 Requires **Go 1.22+**:
 
@@ -67,18 +67,18 @@ go build -o warden ./cmd/warden
 
 ## Per-OS prerequisites
 
-The binary alone isn't enough — each platform needs its sandbox primitive:
+The binary alone isn't enougheach platform needs its sandbox primitive:
 
 | OS | Needs | Check |
 |---|---|---|
 | Linux | `bwrap` (bubblewrap) for the native backend; **`strace` required for `warden run` auditing and `warden trace`** | `command -v bwrap strace` |
-| Linux (no bwrap) | Docker daemon — Warden falls back to `--backend docker` | `docker info` |
+| Linux (no bwrap) | Docker daemonWarden falls back to `--backend docker` | `docker info` |
 | macOS | `sandbox-exec` (ships with macOS) preferred; Docker as fallback | `command -v sandbox-exec` |
 | Windows | AppContainer support (Windows 10+); fails closed without it | built-in |
 | Anywhere without a native backend | Docker daemon | `docker info` |
 
 > **⚠️ Important:** `strace` is required on Linux for the native (bubblewrap)
-> backend — Warden uses it for the file/network audit on **every `warden run`**
+> backendWarden uses it for the file/network audit on **every `warden run`**
 > and for `warden trace`. Without it, `warden run` refuses to start (fail-closed):
 > ```
 > warden run: strace not found: required for complete file/network auditing on Linux
@@ -93,7 +93,7 @@ sudo dnf install bubblewrap strace      # Fedora
 sudo pacman -S bubblewrap strace        # Arch
 ```
 
-If **no** backend is available, Warden refuses to run — it never silently
+If **no** backend is available, Warden refuses to runit never silently
 falls back to unsandboxed execution. See the [FAQ](faq.md#warden-run-refuses-to-start)
 if you hit that error.
 
@@ -132,7 +132,7 @@ TTY (interactive):
 
     warden init
     warden run --policy policy.yaml -- <server>
-    warden doctor  — check sandbox readiness
+    warden doctor check sandbox readiness
 
   Security:
     Warden fails closed when sandboxing is unavailable.
@@ -141,7 +141,7 @@ TTY (interactive):
 CI / non-TTY fallback:
 
 ```
-WARDEN — MCP Server Sandbox  v0.1.0
+WARDENMCP Server Sandbox  v0.1.0
 [1/4] Checking platform... OK
 [2/4] Installing runtime... OK
 [3/4] Installing CLI... OK
@@ -164,7 +164,7 @@ with `WARDEN_NO_FIRST_RUN=1`. See [CLI Reference](cli.md#cli-experience).
 ## Verify your install
 
 From the repo checkout, run a no-op command under the strictest fixture
-policy (the `time` server needs nothing at all — adjust the binary path to
+policy (the `time` server needs nothing at alladjust the binary path to
 your OS, e.g. `/bin/true` on macOS):
 
 ```bash

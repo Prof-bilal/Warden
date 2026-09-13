@@ -1,4 +1,4 @@
-# Example Warden policy — @modelcontextprotocol/server-slack
+# Example Warden policy@modelcontextprotocol/server-slack
 # Copy this and adjust the command path and token name as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your

@@ -8,7 +8,7 @@ export default function Cta() {
           Try it against a server you didn&apos;t write.
         </h2>
         <p className="mx-auto mt-3 max-w-[26rem] text-[1rem] leading-[1.6] text-muted">
-          That&apos;s the real test — not the one that already trusts you.
+          That&apos;s the real testnot the one that already trusts you.
         </p>
         <a
           href="https://github.com/Prof-bilal/Warden"

@@ -276,7 +276,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 // resolveBridgeExecutable returns a Linux ELF warden binary that can run
 // inside the container as the proxy bridge. On Linux hosts the current
 // executable works. On other hosts (e.g. macOS talking to Docker Desktop's
-// Linux VM), the Darwin binary cannot execute in the container — callers
+// Linux VM), the Darwin binary cannot execute in the containercallers
 // must set WARDEN_DOCKER_BRIDGE to a Linux-built warden.
 func resolveBridgeExecutable() (string, error) {
 	if v := strings.TrimSpace(os.Getenv("WARDEN_DOCKER_BRIDGE")); v != "" {

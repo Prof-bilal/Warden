@@ -1,4 +1,4 @@
-# Fixture policy — @modelcontextprotocol/server-sequential-thinking (compat: pass)
+# Fixture policy@modelcontextprotocol/server-sequential-thinking (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []

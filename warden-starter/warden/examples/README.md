@@ -2,7 +2,7 @@
 
 Copy any of these policies as a starting point for your own MCP server, then
 adjust the `command` path, grants, and env allowlist to match your setup.
-Relative paths in these files are resolved against this directory — not your
+Relative paths in these files are resolved against this directorynot your
 shell's current working directory.
 
 > **Tip:** The easiest way to get a policy right is to run
@@ -14,12 +14,12 @@ shell's current working directory.
 
 | Server | File | What it covers |
 |---|---|---|
-| **Filesystem** | [filesystem-mcp-server.yaml](./filesystem-mcp-server.yaml) | Local file read/write — no network |
+| **Filesystem** | [filesystem-mcp-server.yaml](./filesystem-mcp-server.yaml) | Local file read/writeno network |
 | **GitHub** | [github-mcp-server.yaml](./github-mcp-server.yaml) | REST + GraphQL against `api.github.com`, needs `GITHUB_TOKEN` |
 | **Slack** | [slack-mcp-server.yaml](./slack-mcp-server.yaml) | API + web UI, needs `SLACK_BOT_TOKEN` and `SLACK_TEAM_ID` |
 | **PostgreSQL** | [postgres-mcp-server.yaml](./postgres-mcp-server.yaml) | Database connections, `.pgpass` / `.postgresql` credentials |
 | **Brave Search** | [brave-search-mcp-server.yaml](./brave-search-mcp-server.yaml) | Search API only, needs `BRAVE_API_KEY` |
-| **Comprehensive reference** | [policy.example.yaml](./policy.example.yaml) | Full schema with annotations for every field — use as a template |
+| **Comprehensive reference** | [policy.example.yaml](./policy.example.yaml) | Full schema with annotations for every fielduse as a template |
 
 ## Common patterns
 
@@ -34,13 +34,13 @@ command: ["/usr/bin/node", "./path/to/your/server.js"]
 ```
 
 The executable **must be an absolute path** inside the sandbox because Warden
-bind-mounts only the paths you list — a bare name like `node` would resolve
+bind-mounts only the paths you lista bare name like `node` would resolve
 nowhere.
 
 ### Home directory grants
 
 Several examples pass `HOME` through `env.allow` and grant read access to
-`~/.config`-style paths. This is intentional — many Node.js and Python
+`~/.config`-style paths. This is intentionalmany Node.js and Python
 libraries expect `HOME` to be set. **Do not combine `HOME` with a broad
 `filesystem.read` grant** (especially `~/.ssh`); see [Security Review](../docs/security.md#5-credential-exposure)
 for details.
@@ -48,14 +48,14 @@ for details.
 ### Empty allowlists are explicit
 
 Notice that `network.allow: []` and `env.allow: []` appear in the filesystem
-example. An empty list is *not* the same as omitting the key — the former
+example. An empty list is *not* the same as omitting the keythe former
 explicitly denies everything, the latter falls back to the default (which
 varies by field). Being explicit in your policy makes intent clear and helps
 `warden init` produce a correct starter.
 
 ## Next steps
 
-- Check the [Compatibility Matrix](../docs/compatibility.md) — 18 tested
+- Check the [Compatibility Matrix](../docs/compatibility.md)18 tested
   servers with exact policies under [`testdata/compat/`](../testdata/compat/).
 - Read the [Schema Reference](../docs/schema.md) to understand every field.
 - Run `warden trace -- <your-server>` to see what a server actually touches.

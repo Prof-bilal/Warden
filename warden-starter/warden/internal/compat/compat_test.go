@@ -143,7 +143,7 @@ func TestFixturePoliciesGrantWhatManifestClaims(t *testing.T) {
 			}
 			for _, denied := range e.ProbeDenyFile {
 				if policy.CoversFile(p, denied) {
-					t.Errorf("probe deny file %q IS covered — sandbox leak in fixture policy", denied)
+					t.Errorf("probe deny file %q IS coveredsandbox leak in fixture policy", denied)
 				}
 			}
 			allowSet := map[string]bool{}
@@ -158,7 +158,7 @@ func TestFixturePoliciesGrantWhatManifestClaims(t *testing.T) {
 			// Deny-by-default spot checks: these must never be allowlisted.
 			for _, blocked := range []string{"evil.example.com", "169.254.169.254"} {
 				if allowSet[blocked] {
-					t.Errorf("blocked host %q is allowlisted — deny-by-default violation", blocked)
+					t.Errorf("blocked host %q is allowlisteddeny-by-default violation", blocked)
 				}
 			}
 			envSet := map[string]bool{}
@@ -176,13 +176,13 @@ func TestFixturePoliciesGrantWhatManifestClaims(t *testing.T) {
 
 // TestWildcardHostSemantics pins the schema's wildcard grant behavior: a
 // single leading wildcard label is a subdomain pattern (added to close the
-// Playwright gap — see docs/compatibility.md), while anything broader or
+// Playwright gapsee docs/compatibility.md), while anything broader or
 // malformed stays rejected. Deny-by-default never silently changes.
 func TestWildcardHostSemantics(t *testing.T) {
 	// A single leading wildcard label is a subdomain pattern.
 	p := policy.Policy{}
 	if _, err := p.AddHost("*.Example.com"); err != nil {
-		t.Fatalf("AddHost(*.example.com) = %v — wildcard support must update matrix, fixtures, and docs/compatibility.md together", err)
+		t.Fatalf("AddHost(*.example.com) = %vwildcard support must update matrix, fixtures, and docs/compatibility.md together", err)
 	}
 	if len(p.Network.Allow) != 1 || p.Network.Allow[0] != "*.example.com" {
 		t.Fatalf("AddHost(*.example.com) mangled grant: %v", p.Network.Allow)
@@ -191,7 +191,7 @@ func TestWildcardHostSemantics(t *testing.T) {
 	for _, bad := range []string{"*", "*.*.example.com", "a*.example.com", "*example.com", "*.", "example.*"} {
 		p2 := policy.Policy{}
 		if _, err := p2.AddHost(bad); err == nil {
-			t.Fatalf("AddHost(%q) accepted — broader wildcard semantics silently changed", bad)
+			t.Fatalf("AddHost(%q) acceptedbroader wildcard semantics silently changed", bad)
 		}
 	}
 }

@@ -22,7 +22,7 @@ banners are semantic and degrade gracefully.
 - **Colors:** Green marks success/allowed/sandbox-active, red marks
   blocked/denied/errors, cyan is used for structural headings/paths/metadata,
   and normal foreground is used for body text. Colors are semantic and never
-  the sole signal — every state also has a text marker (`✓`/`✗` + `ALLOWED`/
+  the sole signalevery state also has a text marker (`✓`/`✗` + `ALLOWED`/
   `BLOCKED` where applicable) for accessibility.
 
 - **Color control:** Honors `NO_COLOR=1` (https://no-color.org),
@@ -49,8 +49,8 @@ banners are semantic and degrade gracefully.
 
 - **Fail-closed messaging:** When a backend cannot be initialized, Warden
   prints `✗ Warden refused to start: sandbox backend unavailable` with the
-  specific reason and `fails closed by design — it will never run your
-  MCP server without a working sandbox`. This is not just UI — it reflects
+  specific reason and `fails closed by designit will never run your
+  MCP server without a working sandbox`. This is not just UIit reflects
   the `sandboxerr.RefuseToRun` error that prevents any unsandboxed fallback.
 
 ## `warden run`
@@ -67,9 +67,9 @@ warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker]
 |---|---|
 | `--policy <file>` | **Required.** Policy YAML. Relative `filesystem` grants resolve against this file's directory. |
 | `--backend <name>` | Force a backend. Default `auto`. Aliases: `bwrap` → linux; `macos`, `darwin`, `sandbox-exec` → seatbelt; `appcontainer`, `lowbox` → windows. Unknown or unavailable backends fail closed. |
-| `--approve` | Interactive approval: prompt on first out-of-policy access instead of hard-failing. Network approvals apply live; filesystem approvals are saved to the policy and the server restarts. Requires a terminal — fails closed without one. |
+| `--approve` | Interactive approval: prompt on first out-of-policy access instead of hard-failing. Network approvals apply live; filesystem approvals are saved to the policy and the server restarts. Requires a terminalfails closed without one. |
 | `--approve-timeout <dur>` | Per-prompt timeout (e.g. `30s`, `2m`). Zero waits indefinitely; expiry denies. Requires `--approve`. |
-| `-- <command...>` | Command to sandbox. Optional separator — everything after the flags is the command anyway; `--` lets the command itself start with a flag-like token. |
+| `-- <command...>` | Command to sandbox. Optional separatoreverything after the flags is the command anyway; `--` lets the command itself start with a flag-like token. |
 
 Command resolution: the CLI tail wins, otherwise the policy's `command:` is
 used, otherwise the run fails with a usage error. Bare executable names
@@ -78,7 +78,7 @@ unresolvable; prefer absolute paths in checked-in policies. Exit code: the
 sandboxed process's exit code, `1` on runtime failure, `2` on usage/policy
 errors.
 
-**Run output:** `warden run` never prints the large banner — it prioritizes
+**Run output:** `warden run` never prints the large bannerit prioritizes
 runtime information. When stderr is a TTY (and `CI` is not set and
 `WARDEN_QUIET` is empty) it prints a compact pre-launch summary to stderr
 only (so MCP stdio is untouched):
@@ -106,7 +106,7 @@ Environment
 ✓ Sandbox active
 ```
 
-Only information from the loaded policy is shown — no permissions are
+Only information from the loaded policy is shownno permissions are
 invented. In CI / piped / `WARDEN_QUIET=1` the summary is suppressed so
 `warden run` stays silent apart from the sandboxed process's own stdio.
 Security events are recorded to the audit log (`warden logs`) as structured
@@ -196,9 +196,9 @@ the underlying `RefuseToRun` reason, and `Warden fails closed when
 sandboxing is unavailable`. The exit code is machine-readable so scripts
 and CI can gate on it:
 
-- `0` — ready to run
-- `1` — NOT READY (sandbox backend or a required tool such as `strace` is missing)
-- `2` — usage error (unexpected arguments)
+- `0`ready to run
+- `1`NOT READY (sandbox backend or a required tool such as `strace` is missing)
+- `2`usage error (unexpected arguments)
 
 ## `warden version`
 
@@ -222,7 +222,7 @@ Wrap gateway-registered servers so the gateway launches each one sandboxed:
 ```bash
 warden gateway init --config <file> --policies <dir>
 # Per-server deny-by-default policies (<name>.yaml). Remote (SSE/HTTP)
-# servers are skipped — no local process to sandbox. Never overwrites.
+# servers are skippedno local process to sandbox. Never overwrites.
 
 warden gateway run --config <file> --policies <dir> --server <name> \
     [--backend ...] [--approve] [--approve-timeout <dur>] -- [extra args...]

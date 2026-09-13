@@ -37,8 +37,8 @@ func waitWithLimits(cmd *exec.Cmd, limits policy.Limits) (error, *LimitExceededE
 
 // waitWithLimitsCtx behaves like waitWithLimits but additionally aborts when
 // ctx ends (interactive approval mode requesting a restart after a
-// filesystem grant). restarted reports that cancellation — not process exit
-// or a limit breach — ended the wait; the caller must terminate the group
+// filesystem grant). restarted reports that cancellationnot process exit
+// or a limit breachended the wait; the caller must terminate the group
 // (done here) and translate the outcome, typically into a respawn.
 func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context) (runErr error, limitErr *LimitExceededError, restarted bool) {
 	if limits.MemoryMB == 0 && limits.TimeoutS == 0 && ctx == nil {

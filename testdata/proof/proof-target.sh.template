@@ -31,14 +31,14 @@ else
 	step write_allowed FAILED
 fi
 
-# §6-4: read a secret file outside every grant — must be BLOCKED
+# §6-4: read a secret file outside every grantmust be BLOCKED
 if cat "@SECRET@/secret.txt" > /dev/null 2>&1; then
 	step read_secret LEAKED
 else
 	step read_secret BLOCKED
 fi
 
-# §6-5: read an unlisted file — must be BLOCKED
+# §6-5: read an unlisted filemust be BLOCKED
 if cat "@DENIED@/unlisted.txt" > /dev/null 2>&1; then
 	step read_unlisted LEAKED
 else
@@ -53,7 +53,7 @@ else
 	step net_allowed "FAILED($code)"
 fi
 
-# §6-7: connect to an unlisted host — must be BLOCKED (HTTP 403 from proxy)
+# §6-7: connect to an unlisted hostmust be BLOCKED (HTTP 403 from proxy)
 code=$(curl -s -m 10 -o /dev/null -w '%{http_code}' "http://@BLOCKED@/" 2>/dev/null)
 if [ "$code" = "403" ]; then
 	step net_blocked BLOCKED
@@ -61,7 +61,7 @@ else
 	step net_blocked "NOT_BLOCKED($code)"
 fi
 
-# §6-8: env — allowlisted var visible, unlisted var absent
+# §6-8: envallowlisted var visible, unlisted var absent
 if [ "$GITHUB_TOKEN" = "@TOKEN@" ]; then
 	step env_allowed VISIBLE
 else

@@ -3,7 +3,7 @@
 **A lightweight sandbox runtime for MCP servers.**
 
 MCP servers routinely run as plain Node or Python processes on your machine
-with full filesystem and network access — even ones you just cloned from
+with full filesystem and network accesseven ones you just cloned from
 GitHub five minutes ago. Warden runs them in a restricted sandbox so a server
 only ever gets the files, network hosts, and environment variables you
 explicitly grant it.
@@ -55,7 +55,7 @@ for details.
 # npm (auto-downloads the release binary for your platform):
 npm install -g warden-sandbox-cli
 
-# Or manual download — static binaries for Linux, macOS, and Windows:
+# Or manual downloadstatic binaries for Linux, macOS, and Windows:
 # https://github.com/Prof-bilal/Warden/releases
 ```
 
@@ -72,15 +72,15 @@ warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
 
 Warden spawns the server inside a sandbox that:
 
-- **Filesystem** — only sees paths you list, read-only or read-write as you
+- **Filesystem**only sees paths you list, read-only or read-write as you
   specify. Everything else is invisible, not just "permission denied."
-- **Network** — can only reach hostnames you allowlist. Connections to other
+- **Network**can only reach hostnames you allowlist. Connections to other
   hosts are blocked at the sandbox boundary before DNS even resolves.
-- **Environment** — only receives the env vars you pass through. No automatic
+- **Environment**only receives the env vars you pass through. No automatic
   inheritance of your shell environment.
-- **Stdio** — passed through transparently, so the MCP client (Claude, an IDE,
+- **Stdio**passed through transparently, so the MCP client (Claude, an IDE,
   etc.) talks to the sandboxed process exactly like an unsandboxed one.
-- **Audit log** — records every file access attempt and network connection
+- **Audit log**records every file access attempt and network connection
   attempt (including blocked ones) at `${XDG_STATE_HOME:-~/.local/state}/warden/audit.jsonl`. View with `warden logs`.
 
 ## Backends
@@ -133,7 +133,7 @@ warden version
 `warden doctor` show the large ASCII banner when run interactively (never
 in CI or for `warden run`/`--help`/`--version`). Colors respect
 `NO_COLOR`, `TERM=dumb`, and `WARDEN_NO_UNICODE`; see
-[CLI Reference — CLI Experience](./docs/cli.md#cli-experience). First-run
+[CLI ReferenceCLI Experience](./docs/cli.md#cli-experience). First-run
 shows a one-time welcome (`Welcome to Warden`); it never blocks
 `warden run` and is suppressed in CI.
 
@@ -146,7 +146,7 @@ without a terminal).
 
 ## Compatibility
 
-Tested against 18 real-world MCP servers — **14 pass, 2 conditional, 2 fail**.
+Tested against 18 real-world MCP servers**14 pass, 2 conditional, 2 fail**.
 Each row links to the exact policy and has a permanent regression fixture
 under [`testdata/compat/`](./testdata/compat/). Full details, failure
 classification, and triage notes: [Compatibility Matrix](./docs/compatibility.md).
@@ -155,7 +155,7 @@ classification, and triage notes: [Compatibility Matrix](./docs/compatibility.md
 |---|---|---|
 | Filesystem, GitHub, Slack, PostgreSQL, SQLite, Brave Search, Google Drive, Git, Memory, Time, Sequential Thinking, Notion, Linear, Tavily | ✅ pass | [`testdata/compat/`](./testdata/compat/) |
 | Fetch, Kubernetes | ⚠️ conditional (deployment-specific hosts) | [`testdata/compat/fetch/`](./testdata/compat/fetch/) · [`testdata/compat/kubernetes/`](./testdata/compat/kubernetes/) |
-| Docker (needs daemon socket), Playwright (needs wildcard hosts) | ❌ fail — documented gaps | [Failure analysis](./docs/compatibility.md#failures-classified) |
+| Docker (needs daemon socket), Playwright (needs wildcard hosts) | ❌ faildocumented gaps | [Failure analysis](./docs/compatibility.md#failures-classified) |
 
 Running your own server? Trace it, generate a policy, and
 [file a compatibility report](./docs/beta.md#filing-a-compatibility-report) —
@@ -164,14 +164,14 @@ didn't design it.
 
 ## Documentation
 
-- [Schema Reference](./docs/schema.md) — complete field-by-field guide to `policy.yaml`
-- [Example Policies](./examples/) — copy-paste policies for popular MCP servers
-- [Security Review](./docs/security.md) — threat model, known limitations, and best practices
-- [Architecture](./docs/architecture.md) — how Warden works under the hood
- - [Interactive Approval Mode](./docs/approve.md) — `--approve` prompts instead of hard-fails
- - [Compatibility Matrix](./docs/compatibility.md) — 18 tested servers, exact policies, failure analysis
- - [Beta Program](./docs/beta.md) — run your server under Warden and report friction
- - [ROADMAP.md](./ROADMAP.md) — milestones and current status
+- [Schema Reference](./docs/schema.md)complete field-by-field guide to `policy.yaml`
+- [Example Policies](./examples/)copy-paste policies for popular MCP servers
+- [Security Review](./docs/security.md)threat model, known limitations, and best practices
+- [Architecture](./docs/architecture.md)how Warden works under the hood
+ - [Interactive Approval Mode](./docs/approve.md)`--approve` prompts instead of hard-fails
+ - [Compatibility Matrix](./docs/compatibility.md)18 tested servers, exact policies, failure analysis
+ - [Beta Program](./docs/beta.md)run your server under Warden and report friction
+ - [ROADMAP.md](./ROADMAP.md)milestones and current status
 
 ## Contributing
 

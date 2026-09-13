@@ -8,7 +8,7 @@
 #   - "http://127.0.0.1:P"     plain HTTP, loopback dev servers only
 #
 # The stdio subprocess receives only the variables listed in env.allow
-# (deny-by-default), but it is NOT sandboxed — its filesystem/network
+# (deny-by-default), but it is NOT sandboxedits filesystem/network
 # access are unrestricted. Wrap `warden proxy` in `warden run` for that.
 
 # The ONLY sandbox section enforced for the stdio subprocess

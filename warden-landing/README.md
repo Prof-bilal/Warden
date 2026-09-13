@@ -13,11 +13,11 @@ npm run dev
 
 Then open http://localhost:3000.
 
-> This was written without running `npm install` — it was built in an
+> This was written without running `npm install`it was built in an
 > offline sandbox with no network access, so the code hasn't been through
 > an actual build. It should work as-is with the versions pinned in
 > package.json, but if you hit a version mismatch on first install, it's
-> most likely Next/Tailwind needing a minor bump — run `npm install`
+> most likely Next/Tailwind needing a minor bumprun `npm install`
 > and check the terminal output first.
 
 ## Before you deploy
@@ -28,9 +28,9 @@ Then open http://localhost:3000.
    whatever you set in the main repo's `go.mod`).
 2. **`components/Backends.tsx` and `components/Compatibility.tsx`
    hardcode status values** ("Ready", "In progress", "Verified",
-   "Testing") — keep these in sync with `ROADMAP.md` as milestones land.
+   "Testing")keep these in sync with `ROADMAP.md` as milestones land.
    Don't let the landing page claim something the repo hasn't shipped yet.
-3. Add a real OG image / favicon — currently there's just text metadata
+3. Add a real OG image / faviconcurrently there's just text metadata
    in `app/layout.tsx`.
 
 ## Platform Support
@@ -40,15 +40,15 @@ Then open http://localhost:3000.
 | **Linux** | bubblewrap (unprivileged namespaces) | ✅ Ready |
 | **macOS** | sandbox-exec, with Docker fallback | ✅ Ready |
 | **Windows** | AppContainer + WFP + Job Objects + ETW audit | ✅ Ready |
-| **Overall** | — | ✅ Ready |
+| **Overall** || ✅ Ready |
 
 Windows requires an elevated (Administrator) shell to attach the WFP filters
 and ETW audit session; without elevation Warden fails closed with a clear
 message rather than running unaudited. The two Windows P0 production bugs
 the Windows CI job surfaced (ETW procs routed to the wrong DLL, WFP procs
 bound to a DLL absent on the runner) are fixed in commits `eadca83` and
-`f2232c2`. The authoritative cross-machine CI verification state — and the
-small set of remaining cross-platform test-debt items — is tracked in
+`f2232c2`. The authoritative cross-machine CI verification stateand the
+small set of remaining cross-platform test-debt itemsis tracked in
 [`REMAINING_WORK.md`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/REMAINING_WORK.md).
 
 ## Compatibility Matrix
@@ -56,8 +56,8 @@ small set of remaining cross-platform test-debt items — is tracked in
 The Warden MCP compatibility matrix (18 servers) has been validated:
 
 - **✅ Pass (14)**: filesystem, github, slack, postgres, sqlite, brave-search, gdrive, git, memory, time, sequential-thinking, notion, linear, tavily
-- **⚠️ Conditional (2)**: fetch (was a Warden bug — ambiguous file access, now fixed via `policy.Normalize`), kubernetes (inherent — needs per-deployment cluster API host + kubeconfig)
-- **❌ Fail (2)**: docker (inherent — requires Docker daemon socket, cannot be sandboxed), playwright (schema-gap — missing wildcard hosts & unix-socket grants)
+- **⚠️ Conditional (2)**: fetch (was a Warden bugambiguous file access, now fixed via `policy.Normalize`), kubernetes (inherentneeds per-deployment cluster API host + kubeconfig)
+- **❌ Fail (2)**: docker (inherentrequires Docker daemon socket, cannot be sandboxed), playwright (schema-gapmissing wildcard hosts & unix-socket grants)
 
 See [docs/compatibility.md](docs/compatibility.md) for the full matrix and [testdata/compat/](testdata/compat/) for regression fixtures.
 - Reduced-motion is respected both globally (`app/globals.css`) and inside

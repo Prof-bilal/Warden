@@ -10,24 +10,24 @@ import CopyableCode from "@/components/CopyableCode";
 const SITE_URL = "https://warden-six-rouge.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Features — Warden",
+  title: "FeaturesWarden",
   description:
-    "Every feature in the Warden sandbox runtime, in depth: sandboxed runs, policy tooling, audit logs, the MCP gateway, client proxy, Kubernetes rendering, and self-update — with the exact commands to use each one.",
+    "Every feature in the Warden sandbox runtime, in depth: sandboxed runs, policy tooling, audit logs, the MCP gateway, client proxy, Kubernetes rendering, and self-updatewith the exact commands to use each one.",
   alternates: {
     canonical: `${SITE_URL}/features`,
   },
   openGraph: {
-    title: "Warden Features — every command, in depth",
+    title: "Warden Featuresevery command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime with usage commands.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime with usage commands.",
     url: `${SITE_URL}/features`,
     type: "article",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden Features — every command, in depth",
+    title: "Warden Featuresevery command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime.",
   },
 };
 
@@ -84,7 +84,7 @@ const FEATURES: Feature[] = [
     name: "warden run",
     tagline: "Run any MCP server inside the sandbox",
     badge: "Core",
-    body: "The heart of Warden. Point it at a policy and a server command — Warden initializes an OS-native sandbox (bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP + Job Objects on Windows, Docker as a fallback), applies every grant, and only then starts the process. If the sandbox cannot be initialized, Warden refuses to run. Before launch it prints a summary of exactly what the server will and won't see.",
+    body: "The heart of Warden. Point it at a policy and a server commandWarden initializes an OS-native sandbox (bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP + Job Objects on Windows, Docker as a fallback), applies every grant, and only then starts the process. If the sandbox cannot be initialized, Warden refuses to run. Before launch it prints a summary of exactly what the server will and won't see.",
     bullets: [
       "Deny-by-default: unlisted paths, hosts, and env vars are invisible, not merely blocked",
       "Backend auto-detection with --backend override (auto | linux | seatbelt | windows | docker)",
@@ -114,7 +114,7 @@ const FEATURES: Feature[] = [
     id: "init",
     name: "warden init",
     tagline: "Draft a deny-by-default policy",
-    body: "Creates policy.yaml — the single file that describes everything a server may touch. Run it after a trace and it converts the recorded accesses into a conservative starter policy; or write one by hand using the schema. Warden refuses to overwrite an existing policy, so re-running is always safe.",
+    body: "Creates policy.yamlthe single file that describes everything a server may touch. Run it after a trace and it converts the recorded accesses into a conservative starter policy; or write one by hand using the schema. Warden refuses to overwrite an existing policy, so re-running is always safe.",
     bullets: [
       "Generates filesystem read/write, network allowlist, env allowlist, and limits sections",
       "Reads the latest trace by default, or a specific log with --log",
@@ -136,7 +136,7 @@ const FEATURES: Feature[] = [
     id: "trace",
     name: "warden trace",
     tagline: "Record what a server really accesses",
-    body: "Runs the server once without the sandbox (deliberately) and records every filesystem, network, and environment access to a JSONL trace. That trace is the raw material for warden init — so the policy matches the server's real behavior instead of your guesswork. One run, one trace, one honest policy.",
+    body: "Runs the server once without the sandbox (deliberately) and records every filesystem, network, and environment access to a JSONL trace. That trace is the raw material for warden initso the policy matches the server's real behavior instead of your guesswork. One run, one trace, one honest policy.",
     bullets: [
       "Records access attempts as JSONL events in the Warden state directory",
       "The recommended flow: trace once → init → review the generated policy → run sandboxed",
@@ -159,7 +159,7 @@ const FEATURES: Feature[] = [
     id: "logs",
     name: "warden logs",
     tagline: "Every allow/deny decision, on the record",
-    body: "Reads the audit log — a JSONL file where Warden records each access decision a sandboxed server made, allowed or denied. Tail it live while a server runs, or review after an incident. The audit log is the product: claims about blocking are backed by entries you can grep.",
+    body: "Reads the audit loga JSONL file where Warden records each access decision a sandboxed server made, allowed or denied. Tail it live while a server runs, or review after an incident. The audit log is the product: claims about blocking are backed by entries you can grep.",
     bullets: [
       "JSONL format: one decision per line, easy to ingest elsewhere",
       "--follow polls every 250ms for a live tail",
@@ -185,7 +185,7 @@ const FEATURES: Feature[] = [
     bullets: [
       "Detects bwrap / sandbox-exec / AppContainer availability",
       "Validates namespace and network enforcement support",
-      "A failed check is never interpreted as 'sandbox disabled' — Warden fails closed",
+      "A failed check is never interpreted as 'sandbox disabled'Warden fails closed",
     ],
     usage: "warden doctor",
     flags: [],
@@ -206,10 +206,10 @@ const FEATURES: Feature[] = [
     tagline: "Sandbox every server in your MCP client config",
     body: "Reads Claude Desktop / Claude Code / Cursor / VS Code style mcpServers configs (JSON) or gateway YAML registries, and sandboxes their stdio servers. Four subcommands cover the lifecycle: generate per-server policies, run one server sandboxed, wrap the whole config so the gateway itself launches every server through Warden, and list what's registered.",
     bullets: [
-      "gateway init — generate deny-by-default <name>.yaml per stdio server; never overwrites; remote (SSE/HTTP) servers are skipped",
-      "gateway run — launch one registered server under its policy, with the same --backend/--approve flags as warden run",
-      "gateway wrap — print or write a wrapped copy of the config whose stdio commands are prefixed with 'warden run --policy ...'",
-      "gateway list — show registered servers, stdio vs remote, and policy presence",
+      "gateway initgenerate deny-by-default <name>.yaml per stdio server; never overwrites; remote (SSE/HTTP) servers are skipped",
+      "gateway runlaunch one registered server under its policy, with the same --backend/--approve flags as warden run",
+      "gateway wrapprint or write a wrapped copy of the config whose stdio commands are prefixed with 'warden run --policy ...'",
+      "gateway listshow registered servers, stdio vs remote, and policy presence",
     ],
     usage:
       "warden gateway <init|run|wrap|list> --config <file> --policies <dir> [options]",
@@ -225,7 +225,7 @@ const FEATURES: Feature[] = [
     note: {
       tone: "deny",
       title: "Fails closed.",
-      text: "gateway run refuses when the policy is missing or the server is remote — no silent unsandboxed launch.",
+      text: "gateway run refuses when the policy is missing or the server is remoteno silent unsandboxed launch.",
     },
     image: {
       src: "/diagrams/mcp-client-proxy.jpeg",
@@ -238,8 +238,8 @@ const FEATURES: Feature[] = [
     tagline: "Filter MCP JSON-RPC in both directions",
     body: "A local filtering proxy that sits between your MCP client and an upstream server. Newline-delimited JSON-RPC messages are inspected both ways: tool calls are checked against an allowlist, secret deny patterns (like API-token regexes) block responses from leaking credentials, and oversized payloads are rejected. Every decision is audited. Supports local stdio upstreams and remote http(s) MCP servers (Streamable HTTP and SSE).",
     bullets: [
-      "Tool allowlist — only listed tools may be called",
-      "Deny patterns — regexes that block secrets (e.g. ghp_… tokens) from crossing the proxy",
+      "Tool allowlistonly listed tools may be called",
+      "Deny patternsregexes that block secrets (e.g. ghp_… tokens) from crossing the proxy",
       "Payload size caps and request auditing",
       "stdio upstreams receive only env.allow variables (deny-by-default)",
     ],
@@ -254,7 +254,7 @@ const FEATURES: Feature[] = [
     note: {
       tone: "progress",
       title: "Experimental.",
-      text: "The stdio upstream subprocess is filtered and audited at the message level but is not itself sandboxed — wrap warden proxy in warden run when it needs filesystem/network isolation.",
+      text: "The stdio upstream subprocess is filtered and audited at the message level but is not itself sandboxedwrap warden proxy in warden run when it needs filesystem/network isolation.",
     },
     image: {
       src: "/diagrams/mcp-client-proxy.jpeg",
@@ -265,11 +265,11 @@ const FEATURES: Feature[] = [
     id: "k8s",
     name: "warden k8s",
     tagline: "Translate policies into container + K8s hardening",
-    body: "Compiles a Warden policy into hardened Deployment + NetworkPolicy manifests or a docker run command — same grants, different enforcement layer. Generated manifests ship with secure defaults: read-only root filesystem, non-root user, all capabilities dropped, and seccomp RuntimeDefault.",
+    body: "Compiles a Warden policy into hardened Deployment + NetworkPolicy manifests or a docker run commandsame grants, different enforcement layer. Generated manifests ship with secure defaults: read-only root filesystem, non-root user, all capabilities dropped, and seccomp RuntimeDefault.",
     bullets: [
-      "render — emit K8s YAML manifests (Deployment + NetworkPolicy egress rules)",
-      "docker — emit the equivalent docker run command",
-      "validate — check a policy is deployable and surface warnings (e.g. FQDN limitations)",
+      "renderemit K8s YAML manifests (Deployment + NetworkPolicy egress rules)",
+      "dockeremit the equivalent docker run command",
+      "validatecheck a policy is deployable and surface warnings (e.g. FQDN limitations)",
       "filesystem.read → readOnlyRootFilesystem + RO volumes; network.allow → NetworkPolicy egress; limits → resource limits",
     ],
     usage: "warden k8s <render|docker|validate> --policy <file> [options]",
@@ -342,7 +342,7 @@ export default function FeaturesPage() {
             Every feature. Explained in depth.
           </h1>
           <p className="mt-4 max-w-2xl text-[1rem] leading-[1.65] text-muted">
-            Nine commands cover the entire Warden surface — from sandboxing a
+            Nine commands cover the entire Warden surfacefrom sandboxing a
             single server to wrapping a whole MCP client config. Everything
             below ships today and is backed by the test suite. For the full
             policy schema, see{" "}
@@ -477,7 +477,7 @@ export default function FeaturesPage() {
             Ready to sandbox your first server?
           </h2>
           <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-muted">
-            Install the CLI, trace once, and run under a policy — in about two
+            Install the CLI, trace once, and run under a policyin about two
             minutes.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

@@ -39,7 +39,7 @@ bad()  { FAIL=$((FAIL + 1)); echo "❌ $1"; }
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
 
-# send.sh <port> <line> — send one JSON-RPC line to the proxy over a single
+# send.sh <port> <line>send one JSON-RPC line to the proxy over a single
 # TCP connection and print the first response line.
 cat > "$TEST_DIR/send.sh" << 'EOF'
 #!/bin/bash

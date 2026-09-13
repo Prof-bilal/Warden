@@ -79,7 +79,7 @@ type ProxyServer struct {
 
 // NewProxyServer creates a new MCP proxy server. All three transports are
 // supported: stdio (subprocess bridge), http (Streamable HTTP), and sse
-// (server-sent events). HTTP/SSE filtering is identical to stdio — every
+// (server-sent events). HTTP/SSE filtering is identical to stdioevery
 // JSON-RPC message is checked before it is forwarded, and blocked messages
 // are answered with a JSON-RPC error instead of reaching the upstream.
 func NewProxyServer(policy MCPPolicy, logger *audit.Logger) (*ProxyServer, error) {
@@ -105,8 +105,8 @@ func NewProxyServer(policy MCPPolicy, logger *audit.Logger) (*ProxyServer, error
 			return nil, fmt.Errorf("mcp.upstream %q must be an http:// or https:// URL", upstream)
 		}
 		// Plain http:// is allowed only for loopback (local dev servers);
-		// anything else would put MCP traffic — and any forwarded OAuth
-		// tokens — on the wire unencrypted.
+		// anything else would put MCP trafficand any forwarded OAuth
+		// tokenson the wire unencrypted.
 		if u.Scheme == "http" {
 			host := u.Hostname()
 			if host != "127.0.0.1" && host != "localhost" && host != "::1" && !net.ParseIP(host).IsLoopback() {
@@ -307,7 +307,7 @@ func (s *ProxyServer) clientToUpstreamHTTP(ctx context.Context, conn net.Conn) e
 
 // relayUpstreamLines filters the upstream response body line-by-line and
 // forwards allowed JSON-RPC 2.0 lines to the client. Non-JSON-RPC lines are
-// dropped and audited — never forwarded.
+// dropped and auditednever forwarded.
 func (s *ProxyServer) relayUpstreamLines(conn net.Conn, body io.Reader) {
 	sc := bufio.NewScanner(body)
 	sc.Buffer(make([]byte, 4*1024), s.scanCap())
@@ -515,7 +515,7 @@ func (s *ProxyServer) relaySSE(conn net.Conn, body io.Reader) {
 //   - a filtered request (tool not allowed / deny pattern / too large) is
 //     answered with a JSON-RPC error and never reaches the subprocess;
 //   - a subprocess line that is not valid JSON-RPC 2.0 is dropped and
-//     audited — never forwarded to the client;
+//     auditednever forwarded to the client;
 //   - a filtered response is dropped and audited so sensitive data cannot
 //     leak to the client.
 func (s *ProxyServer) handleStdioTransport(conn net.Conn) {
@@ -724,7 +724,7 @@ func (s *ProxyServer) blockReason(msg MCPMessage) string {
 	// tool name lives in params.name, not in the JSON-RPC method.
 	// The tool namespace is deny-by-default: everything else (initialize,
 	// tools/list, resources/*, notifications) still passes so a client can
-	// discover what it may call — enforcement happens at tools/call.
+	// discover what it may callenforcement happens at tools/call.
 	if msg.Method == "tools/call" {
 		toolName := toolNameFromParams(msg.Params)
 		if !s.isToolAllowed(toolName) {

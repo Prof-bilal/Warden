@@ -8,7 +8,7 @@ package windows
 // sandboxed process tree.
 //
 // Fail-closed gate: auditing is part of the security gate, so a run whose
-// trace session cannot start is refused (see Run) — Warden never runs with a
+// trace session cannot start is refused (see Run)Warden never runs with a
 // silently missing audit trail. The kernel (WPP-style) providers accept only
 // one enabling session at a time; when another controller already holds one
 // (PerfView, an EDR), EnableTraceEx2 fails and the run fails closed with a
@@ -21,7 +21,7 @@ package windows
 //     kernel FileIo records; see etwdecode.go. Records without a verifiable
 //     name are dropped rather than guessed. Denied file opens never reach the
 //     file system provider (the AppContainer token denies them first), so
-//     file denials are invisible to ETW by design — the enforcement boundary
+//     file denials are invisible to ETW by designthe enforcement boundary
 //     is the token, not a logged syscall.
 //   - Kernel-Network events are enabled and captured for the same tree, but
 //     their endpoint payloads are not mapped in this release: the network
@@ -280,7 +280,7 @@ func stopTraceByName(name string) {
 // enableProviders turns on the Kernel-File and Kernel-Network providers for
 // this session. Kernel providers are single-session (WPP-style): when another
 // controller already holds one, EnableTraceEx2 fails and the run fails closed
-// — auditing is never best-effort.
+//auditing is never best-effort.
 func (t *traceSession) enableProviders() error {
 	for _, guid := range []windows.GUID{kernelFileGUID, kernelNetworkGUID} {
 		r, _, _ := procEnableTraceEx2.Call(

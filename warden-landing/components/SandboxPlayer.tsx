@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Film } from "lucide-react";
 
 /**
- * SandboxPlayer — a Remotion-style "video" rendered entirely in React.
+ * SandboxPlayera Remotion-style "video" rendered entirely in React.
  * Every frame is derived from a timeline value `t` (seconds), so the
  * animation is seekable, loops seamlessly, and ships zero video bytes.
  */
@@ -160,7 +160,7 @@ export default function SandboxPlayer() {
           aria-hidden
         />
 
-        {/* Scene 1+2 — left: terminal */}
+        {/* Scene 1+2left: terminal */}
         <div className="absolute inset-0 flex flex-col p-5 font-mono text-[0.8125rem] leading-[1.9] sm:p-7 sm:text-[0.875rem]">
           <div className="min-h-0 flex-1 overflow-hidden">
             {/* typed command */}
@@ -198,7 +198,7 @@ export default function SandboxPlayer() {
             ))}
           </div>
 
-          {/* verdict stream — pinned bottom */}
+          {/* verdict streampinned bottom */}
           <div className="flex min-h-[9.5rem] flex-col justify-end gap-[2px] overflow-hidden pt-2">
             {eventsVisible.map((e) => (
               <p key={e.target} className="flex items-center gap-2 truncate">
@@ -218,7 +218,7 @@ export default function SandboxPlayer() {
           </div>
         </div>
 
-        {/* Boundary pulse — right side, scenes 2–4 */}
+        {/* Boundary pulseright side, scenes 2–4 */}
         {t >= 5 && (
           <div className="pointer-events-none absolute right-[6%] top-1/2 hidden -translate-y-1/2 md:block" aria-hidden>
             <div
@@ -239,7 +239,7 @@ export default function SandboxPlayer() {
           </div>
         )}
 
-        {/* Summary card — scene 4 */}
+        {/* Summary cardscene 4 */}
         {summaryVisible && (
           <div
             className="absolute left-1/2 top-6 -translate-x-1/2 rounded-lg border border-[#3FB27E]/40 bg-black/70 px-5 py-2.5 text-center backdrop-blur-sm"

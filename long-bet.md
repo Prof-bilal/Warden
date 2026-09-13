@@ -1,18 +1,18 @@
-# Long Bet — AI Agent & Browser Isolation for Full-Computer-Access Agents
+# Long BetAI Agent & Browser Isolation for Full-Computer-Access Agents
 
-> **Status:** Research-grounded strategy sketch, 2026-09-10. Synthesizes Warden's actual shipped surface with independent web verification of the full-computer-access AI agent landscape, the security risks these agents introduce, and how Warden could solve the isolation problem that currently forces users to buy VPS or configure virtual machines. Where a claim has no source it is marked **Open question**. This doc is **not** a commitment to build — it is a sequenced bet with evidence.
+> **Status:** Research-grounded strategy sketch, 2026-09-10. Synthesizes Warden's actual shipped surface with independent web verification of the full-computer-access AI agent landscape, the security risks these agents introduce, and how Warden could solve the isolation problem that currently forces users to buy VPS or configure virtual machines. Where a claim has no source it is marked **Open question**. This doc is **not** a commitment to buildit is a sequenced bet with evidence.
 
 **How to use:** One long-term direction for Warden that is explicitly **not** a near-term roadmap item. Tagged `Speculative` (bet needing signal). Sections cite the file + line for the Warden mechanism they would reuse.
 
 ---
 
-## 0 — The Problem
+## 0The Problem
 
-AI agents that control a desktop (see [Anthropic’s computer use](https://www.anthropic.com/news/3-5-models-and-computer-use)) can see screens, move mice, click buttons, and type — full desktop control. Running these agents on your main computer is dangerous: a malicious instruction hidden in a website could steal passwords, send emails, or exfiltrate files. Currently, users must either buy a VPS ($5–50/mo) or configure a VM (complex setup, resource-heavy). Neither is simple.
+AI agents that control a desktop (see [Anthropic’s computer use](https://www.anthropic.com/news/3-5-models-and-computer-use)) can see screens, move mice, click buttons, and typefull desktop control. Running these agents on your main computer is dangerous: a malicious instruction hidden in a website could steal passwords, send emails, or exfiltrate files. Currently, users must either buy a VPS ($5–50/mo) or configure a VM (complex setup, resource-heavy). Neither is simple.
 
 ---
 
-## 1 — The Agents
+## 1The Agents
 
 - **Claude Computer Use** (Anthropic): Full desktop control via screenshots + mouse/keyboard.
 - **OpenAI Operator**: Browser-only agent with computer-use capabilities.
@@ -24,7 +24,7 @@ All require full computer access to operate.
 
 ---
 
-## 2 — Security Risks
+## 2Security Risks
 
 - **Prompt injection**: Attacker-hidden instructions in web content can be executed (OpenAI states this is “unfixable”).
 - **Same-origin bypass**: Agentic browsers remove browser security protections.
@@ -34,7 +34,7 @@ All require full computer access to operate.
 
 ---
 
-## 3 — Current Solutions
+## 3Current Solutions
 
 - **VPS**: Rent a cloud computer (AWS EC2, DigitalOcean). Pros: complete isolation. Cons: cost, technical barrier.
 - **Local VM**: Run VirtualBox/QEMU locally. Pros: free, complete isolation. Cons: complex setup, resource-heavy.
@@ -44,7 +44,7 @@ None are simple, purpose-built for AI agents, nor auditable.
 
 ---
 
-## 4 — The Warden Opportunity
+## 4The Warden Opportunity
 
 A new `warden agent` command would run any AI agent (Claude Computer Use, AutoGPT, etc.) in an isolated environment defined by the same `policy.yaml` model used for MCP servers.
 
@@ -54,7 +54,7 @@ warden agent run --policy policy.yaml -- agent-command
 
 ---
 
-## 5 — Architecture
+## 5Architecture
 
 - **Tiers**: Tier 1 (namespace/bwrap), Tier 2 (container/Docker), Tier 3 (microVM/Firecracker).
 - **Display**: Virtual display (Xvfb) for screen access.
@@ -64,7 +64,7 @@ warden agent run --policy policy.yaml -- agent-command
 
 ---
 
-## 6 — Competition
+## 6Competition
 
 - **AWS EC2**, **DigitalOcean**: Cloud VMs (fully isolated but costly).
 - **VirtualBox/Docker**: Local VMs/containers (free but complex).
@@ -75,7 +75,7 @@ Warden differentiates with the same policy model and local-first approach.
 
 ---
 
-## 7 — Sequencing
+## 7Sequencing
 
 - **Phase 0**: This document (now).
 - **Phase 1**: Tier 1 agent mode (namespace + virtual display).
@@ -85,7 +85,7 @@ Warden differentiates with the same policy model and local-first approach.
 
 ---
 
-## 8 — Sources
+## 8Sources
 
 - Anthropic: [computer use announcement](https://www.anthropic.com/news/3-5-models-and-computer-use)
 - OpenAI Operator: [operator launch](https://openai.com/index/introducing-operator)

@@ -17,7 +17,7 @@ labels: compatibility
 ## Policy
 
 <!-- Attach the exact policy.yaml you ran with. Values are never stored in
-     the policy — only env NAMES — so it is safe to paste. -->
+     the policyonly env NAMESso it is safe to paste. -->
 
 ```yaml
 # paste policy.yaml here
@@ -39,4 +39,4 @@ labels: compatibility
 ## Friction narrative
 
 <!-- What was confusing? What did you try? Where did the docs or schema
-     fail you? This is the most valuable section — be specific. -->
+     fail you? This is the most valuable sectionbe specific. -->

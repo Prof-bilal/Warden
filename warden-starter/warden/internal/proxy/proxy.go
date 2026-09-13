@@ -267,7 +267,7 @@ func (s *Server) allowed(host string) bool {
 // multicast, and unspecified addresses before dialing an individual IP. This
 // prevents an allowlisted DNS name from rebinding to an internal service.
 // An explicit IP literal (127.0.0.1, 10.x, etc.) is already allowlisted by
-// name, so it is dialed directly — only unspecified/multicast are still
+// name, so it is dialed directlyonly unspecified/multicast are still
 // rejected as they can never be valid upstreams.
 func dialApproved(ctx context.Context, host, port string) (net.Conn, error) {
 	if ip := net.ParseIP(host); ip != nil {
@@ -382,7 +382,7 @@ func copyHeader(dst, src http.Header) {
 // oneConnListener lets net/http parse exactly one proxied connection. The
 // second Accept blocks until that connection has actually been finished —
 // closed by the server (plain requests) or by the hijacking handler
-// (CONNECT) — so Serve does not return and trigger the caller's deferred
+// (CONNECT)so Serve does not return and trigger the caller's deferred
 // close while the handler goroutine is still relaying data. Without this,
 // the request context is cancelled mid-handler and an allowed proxied
 // request can fail with an empty reply.

@@ -57,7 +57,7 @@ function resolveBinPath() {
       }
     }
   } catch {
-    // cache missing — download package version below
+    // cache missingdownload package version below
   }
   return { version: bestVer, binPath: bestPath };
 }

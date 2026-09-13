@@ -8,12 +8,12 @@ const SITE_URL = "https://warden-six-rouge.vercel.app";
 export const metadata: Metadata = {
   title: "Documentation",
   description:
-    "Warden documentation — install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
+    "Warden documentationinstall, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
   alternates: {
     canonical: `${SITE_URL}/docs`,
   },
   openGraph: {
-    title: "Documentation — Warden",
+    title: "DocumentationWarden",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     url: `${SITE_URL}/docs`,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Documentation — Warden",
+    title: "DocumentationWarden",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     images: [`${SITE_URL}/og-image.png`],
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 const CARDS = [
   {
     title: "Install",
-    body: "Linux, macOS, Windows, Docker fallback — or build from source with Go 1.22+. What each platform needs before warden will run.",
+    body: "Linux, macOS, Windows, Docker fallbackor build from source with Go 1.22+. What each platform needs before warden will run.",
     href: "/docs/install",
   },
   {
@@ -48,12 +48,12 @@ const CARDS = [
   },
   {
     title: "Policy schema",
-    body: "Every policy.yaml field, validation rule, and enforcement note — the one reference to keep open while writing policies.",
+    body: "Every policy.yaml field, validation rule, and enforcement notethe one reference to keep open while writing policies.",
     href: "/docs/schema",
   },
   {
     title: "CLI reference",
-    body: "run, trace, init, logs, gateway, --approve — every subcommand and flag, verified against the source.",
+    body: "run, trace, init, logs, gateway, --approveevery subcommand and flag, verified against the source.",
     href: "/docs/cli",
   },
   {
@@ -68,7 +68,7 @@ const CARDS = [
   },
   {
     title: "Architecture",
-    body: "How the CLI, policy engine, sandbox backends, egress proxy, and audit logger fit together — with component diagrams.",
+    body: "How the CLI, policy engine, sandbox backends, egress proxy, and audit logger fit togetherwith component diagrams.",
     href: "/docs/architecture",
   },
   {
@@ -83,7 +83,7 @@ const CARDS = [
   },
   {
     title: "Roadmap",
-    body: "M0 through M8 milestones — what's built, what's shipped, and what's next for Warden.",
+    body: "M0 through M8 milestoneswhat's built, what's shipped, and what's next for Warden.",
     href: "/docs/roadmap",
   },
   {
@@ -98,7 +98,7 @@ const CARDS = [
   },
   {
     title: "Cross-platform testing",
-    body: "Test Warden on Linux, macOS, and Windows — build binaries, run MCP servers, verify security boundaries.",
+    body: "Test Warden on Linux, macOS, and Windowsbuild binaries, run MCP servers, verify security boundaries.",
     href: "/docs/testing-platforms",
   },
 ];
@@ -108,7 +108,7 @@ export default function Docs() {
     <main className="min-h-screen bg-ink-950">
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        {/* Breadcrumb — icons.devigner.cc style */}
+        {/* Breadcrumbicons.devigner.cc style */}
         <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
           <span className="hover:text-paper transition-colors">
             <a href="/">Warden</a>
@@ -133,7 +133,7 @@ export default function Docs() {
             </h1>
             <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
               Install it, run your first sandboxed server, then go deep on the
-              policy schema. Start with Install and Quickstart — in that order.
+              policy schema. Start with Install and Quickstartin that order.
             </p>
 
             <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">

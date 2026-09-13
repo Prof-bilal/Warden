@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Zap } from "lucide-react";
 
 /**
- * BoundaryDemo — the full Warden workflow as a looping animation:
+ * BoundaryDemothe full Warden workflow as a looping animation:
  * an AI agent requests a resource → the request travels → Warden's
  * boundary verdicts ALLOW (through to the resource) or DENY (stopped,
- * logged) — flip the switch to see what happens with no sandbox.
+ * logged)flip the switch to see what happens with no sandbox.
  */
 
 const SCENE_MS = 3800;
@@ -90,7 +90,7 @@ export default function BoundaryDemo() {
             MCP has no concept of a boundary.
           </h2>
           <p className="mt-4 text-[1rem] leading-[1.65] text-muted">
-            An agent asks for a file, a host, a secret — and the protocol
+            An agent asks for a file, a host, a secretand the protocol
             happily complies. Flip the switch and watch Warden verdict every
             request at the boundary: granted calls pass, everything else is
             stopped and written down.

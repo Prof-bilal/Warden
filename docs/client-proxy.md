@@ -39,10 +39,10 @@ endpoint (directly, or bridged via `mcp-remote` if you prefer a stdio hop):
 ```yaml
 # mcp-proxy-policy.yaml
 mcp:
-  # Option A — remote HTTPS upstream (Streamable HTTP / SSE):
+  # Option Aremote HTTPS upstream (Streamable HTTP / SSE):
   upstream: "https://mcp.github.com/mcp"
 
-  # Option B — local stdio command (or a stdio bridge to a remote server):
+  # Option Blocal stdio command (or a stdio bridge to a remote server):
   # upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
 
   allow_tools:
@@ -89,9 +89,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
 ```yaml
 mcp:
   # Required: Upstream MCP server. Three forms are accepted:
-  #   "stdio:<command>"          — local subprocess bridge
-  #   "https://host/path"        — remote Streamable HTTP upstream (TLS verified)
-  #   "http://127.0.0.1:PORT"    — plain HTTP allowed for loopback dev servers only
+  #   "stdio:<command>"         local subprocess bridge
+  #   "https://host/path"       remote Streamable HTTP upstream (TLS verified)
+  #   "http://127.0.0.1:PORT"   plain HTTP allowed for loopback dev servers only
   upstream: "https://mcp.github.com/mcp"
   
   # Optional: Allowed tool names (deny-by-default if specified)
@@ -134,7 +134,7 @@ env:
 > ⚠️ **Honest security model (current)**: Warden filters and audits every
 > JSON-RPC message in both directions, and the stdio subprocess receives only
 > the variables listed in `env.allow` (deny-by-default). The subprocess is
-> **not** sandboxed — its filesystem and network access are unrestricted.
+> **not** sandboxedits filesystem and network access are unrestricted.
 > The `filesystem`/`network` sections above are not enforced by the proxy.
 
 ## Security Benefits
@@ -329,7 +329,7 @@ Client Request
 - `warden proxy` runs a real stdio JSON-RPC bridge: spawns the upstream
   subprocess, relays newline-delimited JSON-RPC in both directions
 - **Remote HTTP/SSE upstreams** (Streamable HTTP): POST-per-message with
-  SSE-framed responses, plus the server→client GET event stream — all
+  SSE-framed responses, plus the server→client GET event streamall
   filtered, all audited, TLS verified, plain http:// loopback-only
 - **`Mcp-Session-Id` handling**: the id issued on the initialize response is
   captured and replayed on every subsequent request, so session-based servers
@@ -348,7 +348,7 @@ Client Request
   your client establishes (for stdio bridges, `env.allow` governs token reachability)
 
 **Known safe by design:** every blocked message is answered with a JSON-RPC
-error and audited; nothing blocked is ever forwarded — including on the HTTP
+error and audited; nothing blocked is ever forwardedincluding on the HTTP
 path, where a filtered payload never leaves loopback.
 
 ## Live Interop Results
@@ -364,7 +364,7 @@ Upstreams tested:
 |---|---|---|
 | `https://mcp.deepwiki.com/mcp` (DeepWiki) | No session id; POST responses are `text/event-stream` frames | 5/5 pass |
 | `https://learn.microsoft.com/api/mcp` (Microsoft Learn) | Issues `Mcp-Session-Id`; session replay verified across tools/list + tools/call | 4/4 pass |
-| `https://api.githubcopilot.com/mcp/` (GitHub) | Requires OAuth Bearer (401 without token) — out of proxy scope, fail-closed as designed | not proxied |
+| `https://api.githubcopilot.com/mcp/` (GitHub) | Requires OAuth Bearer (401 without token)out of proxy scope, fail-closed as designed | not proxied |
 | Dead host (`*.invalid`) | DNS failure surfaces as JSON-RPC `-32603` to the client, no hang | pass (fail-closed) |
 
 Test matrix against DeepWiki (policy: allowlist = `read_wiki_structure`,
@@ -378,7 +378,7 @@ Test matrix against DeepWiki (policy: allowlist = `read_wiki_structure`,
 | 4 | `tools/call read_wiki_contents` (NOT allowlisted) | `-32001 blocked by Warden policy: tool ... not in allow list`; upstream never contacted | PASS |
 | 5 | allowlisted call whose payload contains a `ghp_…` token | `-32001 … blocked pattern: ghp_[A-Za-z0-9]{36}`; payload never leaves loopback | PASS |
 
-Corresponding audit trail (`warden logs`) for the same session — every
+Corresponding audit trail (`warden logs`) for the same sessionevery
 decision recorded, allowed and blocked:
 
 ```json
@@ -400,7 +400,7 @@ pinned by the unit/e2e test suite):
    id is captured once per proxy process and replayed on every subsequent
    POST and GET.
 3. **GET-without-session is spec-legal.** Opening the server→client event
-   stream on a server that issues no session id returns HTTP 406 — treated
+   stream on a server that issues no session id returns HTTP 406treated
    as "no GET stream", not a failure; POST responses still deliver results.
 
 Reproduction sketch (any MCP client that speaks newline-delimited JSON-RPC
@@ -457,7 +457,7 @@ warden proxy --policy mcp-policy.yaml
 4. **Tool Permissions**: Use minimal `allow_tools` for principle of least privilege
 5. **Payload Limits**: Set `max_payload_kb` to prevent resource exhaustion
 6. **No process isolation yet**: the stdio subprocess runs unsandboxed on your
-   host — wrap `warden proxy` itself in `warden run` (or a container) if the
+   hostwrap `warden proxy` itself in `warden run` (or a container) if the
    upstream must be filesystem/network isolated
 
 ## Future Enhancements

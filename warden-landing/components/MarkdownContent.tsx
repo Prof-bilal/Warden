@@ -9,12 +9,12 @@ import { Check, Copy } from "lucide-react";
 function rewriteHref(href: string): string {
   if (!href) return href;
 
-  // External links — keep as-is
+  // External linkskeep as-is
   if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:")) {
     return href;
   }
 
-  // Anchor-only links — keep as-is
+  // Anchor-only linkskeep as-is
   if (href.startsWith("#")) {
     return href;
   }
@@ -30,12 +30,12 @@ function rewriteHref(href: string): string {
     return `/docs/${mdMatch[1]}${hash}`;
   }
 
-  // Links already starting with /docs/ or / — keep as-is
+  // Links already starting with /docs/ or /keep as-is
   if (base.startsWith("/")) {
     return base + hash;
   }
 
-  // Other relative links — prefix with /docs/
+  // Other relative linksprefix with /docs/
   if (base.length > 0) {
     return `/docs/${base}${hash}`;
   }

@@ -28,7 +28,7 @@ Each sandbox backend should have an integration test layer that exercises the ac
 - Docker-based fallback tests should run only when `docker info` succeeds
   and the configured image is present (`internal/sandbox/docker`).
 
-These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed. **However, on CI runners that *claim* to support a backend, tests must actually run — never silently skip.**
+These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed. **However, on CI runners that *claim* to support a backend, tests must actually runnever silently skip.**
 
 ## Linux CI Status ✅
 
@@ -46,11 +46,11 @@ go test -v -count=1 ./internal/sandbox/linux/...
 
 ### GitHub Actions Note
 
-The GitHub Actions `ubuntu-latest` runner does **not support unprivileged user namespaces** by design (AppArmor policy: `kernel.apparmor_restrict_unprivileged_userns=1`). This causes the Linux CI job to intentionally fail — it refuses to silently skip security tests.
+The GitHub Actions `ubuntu-latest` runner does **not support unprivileged user namespaces** by design (AppArmor policy: `kernel.apparmor_restrict_unprivileged_userns=1`). This causes the Linux CI job to intentionally failit refuses to silently skip security tests.
 
 **This is not a bug.** See `.github/workflows/ci.yml` lines 101-103:
 
-> "If the hosted runner cannot run unprivileged user namespaces, move this job to a privileged container or self-hosted runner — do not re-enable silent skips."
+> "If the hosted runner cannot run unprivileged user namespaces, move this job to a privileged container or self-hosted runnerdo not re-enable silent skips."
 
 **Status:** Linux tests are verified locally on real hardware. No action required right now. To enable GitHub Actions Linux CI validation in the future, add your Linux machine as a [self-hosted runner](https://github.com/Prof-bilal/Warden/settings/actions/runners/new).
 

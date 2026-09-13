@@ -1,10 +1,10 @@
-# Warden — A Sandbox Runtime for MCP Servers
+# WardenA Sandbox Runtime for MCP Servers
 
 > Run third-party MCP servers in OS-native sandboxes. Only the files, hosts, and environment variables you explicitly grant are accessible.
 
 ## What is Warden?
 
-Warden is an open-source sandbox runtime for MCP (Model Context Protocol) servers. It runs third-party code inside OS-native sandboxes — bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP on Windows, Docker as fallback — with deny-by-default controls on filesystem, network, and environment access.
+Warden is an open-source sandbox runtime for MCP (Model Context Protocol) servers. It runs third-party code inside OS-native sandboxesbubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP on Windows, Docker as fallbackwith deny-by-default controls on filesystem, network, and environment access.
 
 ## Key Features
 

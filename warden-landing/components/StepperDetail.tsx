@@ -50,7 +50,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
           onScroll={onTrackScroll}
           className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-[12px] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="region"
-          aria-label={`${sectionLabel} carousel — swipe to browse`}
+          aria-label={`${sectionLabel} carouselswipe to browse`}
         >
           {items.map((s, i) => (
             <div
@@ -61,7 +61,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
                 Step {i + 1} of {total}
               </span>
-              {/* Each slide renders its own image — all slides stay mounted,
+              {/* Each slide renders its own imageall slides stay mounted,
                   so swiping never waits on an image load. */}
               <div className="mt-3 overflow-hidden rounded-[8px] border border-ink-700 bg-ink-950 p-1.5">
                 {s.image}
@@ -173,7 +173,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
             {item.body}
           </p>
 
-          {/* Image panel — all images stay mounted and stacked in one grid
+          {/* Image panelall images stay mounted and stacked in one grid
               cell so every tab switch is instant (no per-click image load). */}
           <div className="mt-6 grid min-h-[200px] flex-1 overflow-hidden rounded-[8px] border border-ink-700 bg-ink-950 p-2.5 sm:min-h-[240px] lg:min-h-[280px]">
             {items.map((s, i) => (

@@ -53,7 +53,7 @@ const (
 // Trustee forms (accctrl.h / golang.org/x/sys/windows).
 // TRUSTEE_IS_SID must be 0. The value 3 is TRUSTEE_IS_OBJECTS_AND_SID, which
 // makes SetEntriesInAcl expect an OBJECTS_AND_SID pointer and returns
-// ERROR_INVALID_PARAMETER (87) when given a raw SID — the failure observed
+// ERROR_INVALID_PARAMETER (87) when given a raw SIDthe failure observed
 // on Windows CI as "SetEntriesInAcl: The parameter is incorrect".
 const (
 	trusteeIsSid     = 0 // TRUSTEE_IS_SID

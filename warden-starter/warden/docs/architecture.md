@@ -59,7 +59,7 @@ Docker is **never** preferred over a working native backend.
 
 ## How each backend works
 
-### Linux — bubblewrap (`bwrap`)
+### Linuxbubblewrap (`bwrap`)
 
 Warden invokes `bwrap` with a carefully constructed argument list:
 
@@ -89,7 +89,7 @@ Warden invokes `bwrap` with a carefully constructed argument list:
   session; on macOS the structured network events come from the egress
   proxy.)
 
-### macOS — `sandbox-exec` (Seatbelt)
+### macOS`sandbox-exec` (Seatbelt)
 
 Apple's `sandbox-exec` enforces a generated Seatbelt profile. The profile
 denies all filesystem and network access by default; grants are added for
@@ -106,7 +106,7 @@ the current Warden ELF binary (Linux). On macOS/Windows hosts, set
 `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary. The default image
 is `alpine:3.20` (override with `WARDEN_DOCKER_IMAGE`).
 
-### Windows — AppContainer + WFP + ETW (M5)
+### WindowsAppContainer + WFP + ETW (M5)
 
 The backend runs the command under an AppContainer (LowBox) token derived
 from the policy: filesystem capabilities are installed as DACL grants,
@@ -114,7 +114,7 @@ Windows Filtering Platform (WFP) rules on a per-run sublayer permit only
 loopback traffic to the egress proxy and deny everything else outbound, a
 Job Object enforces process-tree memory/time limits, and a real-time ETW
 session audits Kernel-File activity for the process tree. Warden refuses to
-run if any of these primitives fail to install — it never falls back to an
+run if any of these primitives fail to installit never falls back to an
 unrestricted process. Note that WFP and ETW both require an elevated (admin)
 process; see `docs/security.md` for the known limitations.
 
@@ -149,7 +149,7 @@ typos in policy files fail closed rather than being silently ignored.
 
 The egress proxy is the *only* network出口 from the sandbox:
 
-1. On Linux, the sandbox gets a private network namespace — no default route,
+1. On Linux, the sandbox gets a private network namespaceno default route,
    no external interfaces. `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` point
    to `127.0.0.1:18080` (the bridge inside the namespace).
 2. The bridge accepts loopback TCP connections and forwards them over a
@@ -168,10 +168,10 @@ no route.
 ## Audit log flow
 
 - **Persistent log:** `${XDG_STATE_HOME:-~/.local/state}/warden/audit.jsonl`
-  — append-only, mode `0o600`, written by the parent process.
+ append-only, mode `0o600`, written by the parent process.
 - **Trace logs:** `${XDG_STATE_HOME:-~/.local/state}/warden/traces/<timestamp>.jsonl`
-  — per-session logs created by `warden trace`, used as input to `warden init`.
-- **Linux strace temp:** `/tmp/warden-strace-*.log` — deleted after import.
+ per-session logs created by `warden trace`, used as input to `warden init`.
+- **Linux strace temp:** `/tmp/warden-strace-*.log`deleted after import.
 
 Each event is a JSON object with fields: `timestamp`, `type` (`file` or
 `network`), `action`, `resource`, `allowed` (bool), `reason`.

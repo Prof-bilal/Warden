@@ -18,7 +18,7 @@ import (
 // per TESTING.md they are skipped (not failed) when the primitive is missing.
 //
 // False-positive hardening (plan §5): requireAppContainer runs a positive
-// control first — the sandbox must actually start a marker-writing target —
+// control firstthe sandbox must actually start a marker-writing target —
 // so a dead backend can never be reported as a security PASS. Like the
 // darwin ladder, the control FAILS (never skips) when the primitive exists
 // but the target cannot start.
@@ -27,12 +27,12 @@ const startupMarkerWindows = "WARDEN_WINDOWS_UP"
 func requireAppContainer(t *testing.T) {
 	t.Helper()
 	if !Supported() {
-		t.Skip("AppContainer sandbox not usable on this host — skipping Windows escape test")
+		t.Skip("AppContainer sandbox not usable on this hostskipping Windows escape test")
 	}
 
 	comspec := os.Getenv("COMSPEC")
 	if comspec == "" || !filepath.IsAbs(comspec) {
-		t.Skip("COMSPEC not set to an absolute path — positive control impossible")
+		t.Skip("COMSPEC not set to an absolute pathpositive control impossible")
 	}
 
 	// Prove execution via a granted write the test verifies on the host
@@ -60,7 +60,7 @@ func requireAppContainer(t *testing.T) {
 	}
 	data, readErr := os.ReadFile(marker)
 	if readErr != nil {
-		t.Fatalf("positive control: startup marker file missing — target never really ran: %v", readErr)
+		t.Fatalf("positive control: startup marker file missingtarget never really ran: %v", readErr)
 	}
 	if !strings.Contains(string(data), startupMarkerWindows) {
 		t.Fatalf("positive control: marker file lacks the startup marker: %q", string(data))
@@ -79,7 +79,7 @@ func comspec(t *testing.T) string {
 	t.Helper()
 	cmd := os.Getenv("COMSPEC")
 	if cmd == "" || !filepath.IsAbs(cmd) {
-		t.Skip("COMSPEC not set to an absolute path — skipping")
+		t.Skip("COMSPEC not set to an absolute pathskipping")
 	}
 	return cmd
 }
@@ -190,8 +190,8 @@ func waitAuditEvent(t *testing.T, match func(audit.Event) bool) {
 // network request lands in the audit log as an allowed=false `network` event.
 // The sandboxed curl is forced through the egress proxy by the injected
 // HTTP_PROXY variables; the proxy performs the hostname allowlist check and
-// logs the exact denial — the deterministic "blocked" audit signal. (Direct
-// DNS is also blocked — by the AppContainer token and the WFP deny filters —
+// logs the exact denialthe deterministic "blocked" audit signal. (Direct
+// DNS is also blockedby the AppContainer token and the WFP deny filters —
 // but denied packets never reach a provider that could audit them.)
 func TestEscapeNetworkBlockedAudited(t *testing.T) {
 	// curl.exe ships in System32 on supported Windows; it honors the

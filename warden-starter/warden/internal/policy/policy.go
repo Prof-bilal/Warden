@@ -142,7 +142,7 @@ func (p *Policy) ValidateRunnable(cmd []string) error {
 // the host and inside the sandbox.
 //
 // Because the sandbox is deny-by-default, the resolved path is what the
-// sandboxed process sees — it does not leak the path's host prefix beyond
+// sandboxed process seesit does not leak the path's host prefix beyond
 // the granted paths themselves.
 func (p *Policy) ResolvePaths(dir string) error {
 	absDir, err := filepath.Abs(dir)
@@ -239,7 +239,7 @@ func validateHost(host string) error {
 	if host == "" {
 		return fmt.Errorf("host must not be empty")
 	}
-	// IP literal (IPv4 or IPv6) — allowed as-is.
+	// IP literal (IPv4 or IPv6)allowed as-is.
 	if ip := net.ParseIP(host); ip != nil {
 		return nil
 	}

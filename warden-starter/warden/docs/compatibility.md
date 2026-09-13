@@ -3,7 +3,7 @@
 Will Warden work with *your* MCP server? This page is the public,
 tested answer. Every row below has a permanent regression fixture under
 `testdata/compat/`
-— the exact `policy.yaml` the server needs — enforced by
+— the exact `policy.yaml` the server needsenforced by
 `go test ./internal/compat/`, so a future Warden change cannot silently
 break a server that used to work. Each pinned policy is reproduced in
 [full below](#pinned-policies), so you can copy it without leaving this site.
@@ -41,33 +41,33 @@ break a server that used to work. Each pinned policy is reproduced in
 
 ## What each server needs
 
-- **Filesystem** — grant exactly the directories the server may serve
+- **Filesystem**grant exactly the directories the server may serve
   (`filesystem.read`); no network, no env.
-- **GitHub** — `network.allow: ["api.github.com"]` covers REST + GraphQL;
+- **GitHub**`network.allow: ["api.github.com"]` covers REST + GraphQL;
   pass `GITHUB_TOKEN` through `env.allow`, plus a cache/output dir.
-- **Slack** — `slack.com` + `api.slack.com`, `SLACK_BOT_TOKEN` /
+- **Slack**`slack.com` + `api.slack.com`, `SLACK_BOT_TOKEN` /
   `SLACK_TEAM_ID`, and a write-only cache dir (a write grant subsumes
   reads; don't list the same dir twice).
-- **PostgreSQL** — the DB host(s) in `network.allow`, client credential
+- **PostgreSQL**the DB host(s) in `network.allow`, client credential
   files as read grants, `PG*` connection names in `env.allow`.
-- **SQLite** — `write` on the database *directory* (WAL and journal
+- **SQLite**`write` on the database *directory* (WAL and journal
   sidecars live next to the db file), no network.
-- **Brave Search / Notion / Linear / Tavily** — single-host API egress plus
+- **Brave Search / Notion / Linear / Tavily**single-host API egress plus
   the provider's API-key env name.
-- **Google Drive** — `www.googleapis.com` + `oauth2.googleapis.com` +
+- **Google Drive**`www.googleapis.com` + `oauth2.googleapis.com` +
   `drive.google.com`, an OAuth client file as a read grant, and the Google
   credential env names.
-- **Git** — `write` on the repo checkout it operates on; no network needed
+- **Git**`write` on the repo checkout it operates on; no network needed
   for local operations.
-- **Memory** — `write` on the directory holding the JSON store; no network.
-- **Time / Sequential Thinking** — empty grants: pure compute, the
+- **Memory**`write` on the directory holding the JSON store; no network.
+- **Time / Sequential Thinking**empty grants: pure compute, the
   deny-by-default sandbox fits with zero configuration.
 
 ## Failures, classified
 
 Every non-pass row gets a class, per the M8 triage rule:
 
-### Fixed during triage (Warden bugs — highest impact first)
+### Fixed during triage (Warden bugshighest impact first)
 
 1. **Same path in `read` and `write` rejected (Slack).** The shipped Slack
    example listed `./data/cache` in both lists; it passed validation but
@@ -89,10 +89,10 @@ Every non-pass row gets a class, per the M8 triage rule:
   hostnames, leaving no honest policy for a browser-automation server
   (Playwright) that visits arbitrary domains. The schema now accepts a
   single leading wildcard label (`*.example.com`), which grants a subdomain
-  pattern — the exact gap Playwright hit. The fixture in
+  patternthe exact gap Playwright hit. The fixture in
   `testdata/compat/playwright/policy.yaml` can now record the subdomain
   grant it previously had to pin to a single host. (A full `*` grant —
-  any domain — is still deliberately rejected: it is equivalent to no
+  any domainis still deliberately rejected: it is equivalent to no
   sandbox at all.)
 - **No unix-socket grants.** The Docker daemon socket and browser IPC
   sockets have no scoped-down representation in the schema.
@@ -103,7 +103,7 @@ Every non-pass row gets a class, per the M8 triage rule:
   over full host container control and voids the sandbox; there is no
   scoped grant preserving both function and isolation.
 - **Fetch: arbitrary user-supplied URLs by design.** Sandboxable only with
-  an explicit per-deployment host list — a fully general fetch server
+  an explicit per-deployment host lista fully general fetch server
   cannot be allowlisted in advance.
 - **Kubernetes: cluster-specific.** Works fine once the cluster API host
   and kubeconfig grant are set, but those are per-deployment by nature.
@@ -118,7 +118,7 @@ Copy the one closest to your server and point `command` at your install.
 Upstream: `@modelcontextprotocol/server-filesystem` · Verdict: **✅ pass** · Fixture: `testdata/compat/filesystem/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-filesystem (compat: pass)
+# Fixture policy@modelcontextprotocol/server-filesystem (compat: pass)
 # Relative paths resolve against THIS directory (testdata/compat/filesystem).
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
@@ -139,7 +139,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-github` · Verdict: **✅ pass** · Fixture: `testdata/compat/github/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-github (compat: pass)
+# Fixture policy@modelcontextprotocol/server-github (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read:
@@ -163,7 +163,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-slack` · Verdict: **✅ pass** · Fixture: `testdata/compat/slack/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-slack (compat: pass)
+# Fixture policy@modelcontextprotocol/server-slack (compat: pass)
 # Canonical write-only cache dir: a write grant subsumes reads underneath
 # it, so no duplicate read grant (see policy.Normalize).
 command: ["/usr/bin/node", "./server/dist/index.js"]
@@ -190,7 +190,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-postgres` · Verdict: **✅ pass** · Fixture: `testdata/compat/postgres/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-postgres (compat: pass)
+# Fixture policy@modelcontextprotocol/server-postgres (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read:
@@ -219,7 +219,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-sqlite` · Verdict: **✅ pass** · Fixture: `testdata/compat/sqlite/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-sqlite (compat: pass)
+# Fixture policy@modelcontextprotocol/server-sqlite (compat: pass)
 # SQLite needs WRITE on the db directory (WAL + journal sidecars), not just
 # the db file. The write grant on ./data covers ./data/db.sqlite3.
 command: ["/usr/bin/node", "./server/dist/index.js"]
@@ -241,7 +241,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-brave-search` · Verdict: **✅ pass** · Fixture: `testdata/compat/brave-search/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-brave-search (compat: pass)
+# Fixture policy@modelcontextprotocol/server-brave-search (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -264,7 +264,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-gdrive` · Verdict: **✅ pass** · Fixture: `testdata/compat/gdrive/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-gdrive (compat: pass)
+# Fixture policy@modelcontextprotocol/server-gdrive (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read:
@@ -291,7 +291,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-git` · Verdict: **✅ pass** · Fixture: `testdata/compat/git/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-git (compat: pass)
+# Fixture policy@modelcontextprotocol/server-git (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -311,7 +311,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-memory` · Verdict: **✅ pass** · Fixture: `testdata/compat/memory/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-memory (compat: pass)
+# Fixture policy@modelcontextprotocol/server-memory (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -331,7 +331,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-time` · Verdict: **✅ pass** · Fixture: `testdata/compat/time/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-time (compat: pass)
+# Fixture policy@modelcontextprotocol/server-time (compat: pass)
 # No filesystem or network needs at all: empty grants, deny-by-default.
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
@@ -351,7 +351,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-sequential-thinking` · Verdict: **✅ pass** · Fixture: `testdata/compat/sequential-thinking/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-sequential-thinking (compat: pass)
+# Fixture policy@modelcontextprotocol/server-sequential-thinking (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -370,7 +370,7 @@ limits:
 Upstream: `notion-mcp` · Verdict: **✅ pass** · Fixture: `testdata/compat/notion/policy.yaml`
 
 ```yaml
-# Fixture policy — community notion-mcp (compat: pass)
+# Fixture policycommunity notion-mcp (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -393,7 +393,7 @@ limits:
 Upstream: `linear-mcp` · Verdict: **✅ pass** · Fixture: `testdata/compat/linear/policy.yaml`
 
 ```yaml
-# Fixture policy — community linear-mcp (compat: pass)
+# Fixture policycommunity linear-mcp (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -416,7 +416,7 @@ limits:
 Upstream: `tavily-mcp` · Verdict: **✅ pass** · Fixture: `testdata/compat/tavily/policy.yaml`
 
 ```yaml
-# Fixture policy — community tavily-mcp web search (compat: pass)
+# Fixture policycommunity tavily-mcp web search (compat: pass)
 command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   read: []
@@ -439,7 +439,7 @@ limits:
 Upstream: `@modelcontextprotocol/server-fetch` · Verdict: **⚠️ conditional** · Fixture: `testdata/compat/fetch/policy.yaml`
 
 ```yaml
-# Fixture policy — @modelcontextprotocol/server-fetch (compat: CONDITIONAL)
+# Fixture policy@modelcontextprotocol/server-fetch (compat: CONDITIONAL)
 # Fetch retrieves arbitrary user-supplied URLs by design, so no static
 # allowlist is complete. This fixture pins one host (example.com) to prove
 # the mechanism; a deployment must extend network.allow per use-case.
@@ -463,7 +463,7 @@ limits:
 Upstream: `kubernetes-mcp` · Verdict: **⚠️ conditional** · Fixture: `testdata/compat/kubernetes/policy.yaml`
 
 ```yaml
-# Fixture policy — community kubernetes-mcp (compat: CONDITIONAL)
+# Fixture policycommunity kubernetes-mcp (compat: CONDITIONAL)
 # Works once the two deployment-specific grants are set: the cluster API
 # host and a read grant on the kubeconfig file.
 command: ["/usr/bin/node", "./server/dist/index.js"]
@@ -488,7 +488,7 @@ limits:
 Upstream: `docker-mcp` · Verdict: **❌ fail (inherent)** · Fixture: `testdata/compat/docker/policy.yaml`
 
 ```yaml
-# Fixture policy — community docker-mcp (compat: FAIL, inherent)
+# Fixture policycommunity docker-mcp (compat: FAIL, inherent)
 # The server needs the Docker daemon socket (/var/run/docker.sock), i.e.
 # full host container control. That grant is DELIBERATELY ABSENT here:
 # granting the socket would void the sandbox. This fixture pins the rest of
@@ -513,7 +513,7 @@ limits:
 Upstream: `playwright-mcp` · Verdict: **❌ fail (schema gap)** · Fixture: `testdata/compat/playwright/policy.yaml`
 
 ```yaml
-# Fixture policy — community playwright-mcp (compat: FAIL, schema-gap)
+# Fixture policycommunity playwright-mcp (compat: FAIL, schema-gap)
 # A browser visits arbitrary domains (needs wildcard hosts, which the schema
 # rejects) and needs browser IPC / nested-sandbox syscalls Warden does not
 # mediate. This fixture pins a single host to prove the mechanism while the
@@ -538,23 +538,23 @@ limits:
 
 ## Manifest
 
-The machine-readable source of truth (`testdata/compat/matrix.yaml`) behind the table above — verdict, failure class, and grant probes per server, enforced by `go test ./internal/compat/`. Reproduced verbatim.
+The machine-readable source of truth (`testdata/compat/matrix.yaml`) behind the table aboveverdict, failure class, and grant probes per server, enforced by `go test ./internal/compat/`. Reproduced verbatim.
 
 ```yaml
-# Warden MCP compatibility matrix (M8) — machine-readable manifest.
+# Warden MCP compatibility matrix (M8)machine-readable manifest.
 #
 # This file is the single source of truth for the matrix published in
 # docs/compatibility.md. Each entry MUST have a matching fixture directory
 # testdata/compat/<name>/policy.yaml, enforced by internal/compat/compat_test.go.
 #
 # verdict:
-#   pass        — works under the fixture policy on a host with a working backend
-#   conditional — works only with per-deployment grants (documented in notes)
-#   fail        — cannot be sandboxed without a schema or design change
+#   pass       works under the fixture policy on a host with a working backend
+#   conditionalworks only with per-deployment grants (documented in notes)
+#   fail       cannot be sandboxed without a schema or design change
 # failure_class (for verdict != pass, plus fixed bugs):
-#   warden-bug  — Warden defect (fixed where fix_version is set)
-#   schema-gap  — access pattern the policy schema cannot express yet
-#   inherent    — server is incompatible with sandboxing by design
+#   warden-bug Warden defect (fixed where fix_version is set)
+#   schema-gap access pattern the policy schema cannot express yet
+#   inherent   server is incompatible with sandboxing by design
 verdicts:
   - name: filesystem
     upstream: "@modelcontextprotocol/server-filesystem"
@@ -661,7 +661,7 @@ verdicts:
     verdict: pass
     failure_class: none
     policy: time/policy.yaml
-    notes: "No filesystem or network needs at all — empty grants."
+    notes: "No filesystem or network needs at allempty grants."
     probe_allow_files: []
     probe_deny_files: ["/etc/shadow"]
     probe_allow_hosts: []
