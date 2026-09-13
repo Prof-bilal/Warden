@@ -28,9 +28,7 @@ npx warden --version                    # use via npx
 # warden --version                      # will fail: command not found
 ```
 
-On install, the package runs an anonymous telemetry ping (`telemetry.js`) that
-can never fail the install and is skipped with `npm install --ignore-scripts`
-(see [Anonymous Installation Telemetry](telemetry.md)). The platform binary is
+The platform binary is
 downloaded lazily on first `warden` invocation from GitHub Releases (5 binaries
 + `SHA256SUMS` per release).
 
