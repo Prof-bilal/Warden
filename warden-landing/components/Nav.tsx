@@ -70,7 +70,7 @@ export default function Nav() {
 
   const starsLabel = stats.stars !== null ? formatCount(stats.stars) : "5";
   const downloadsLabel =
-    stats.downloads !== null ? formatCount(stats.downloads) : "1.9k";
+    stats.downloads !== null ? formatCount(stats.downloads) : "1,952";
 
   const logo = (
     <Image
