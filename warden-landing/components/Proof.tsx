@@ -1,50 +1,43 @@
 import StepperDetail from "@/components/StepperDetail";
 import type { StepperItem } from "@/components/StepperDetail";
-import {
-  ShieldFailClosed,
-  DenyFilesystem,
-  NetworkEnforced,
-  EnvFilter,
-  PlatformFailClosed,
-  ResourceLimits,
-} from "@/lib/images";
+import Diagram from "@/components/Diagram";
 
 const GUARANTEES: StepperItem[] = [
   {
     title: "Fail-closed by default",
     summary: "No valid backend = no run.",
     body: "Warden refuses to start without a valid sandbox backend. If enforcement can't be verified, the server never runs.",
-    image: <ShieldFailClosed />,
+    image: <Diagram src="/diagrams/fail-closed-startup.jpeg" alt="Startup decision flow: no valid backend means the process refuses to run" />,
   },
   {
     title: "Deny-by-default filesystem",
     summary: "Only granted paths visible.",
     body: "Only explicitly granted paths are visible. Everything else — including the rest of the filesystem, environment variables, and network — is invisible.",
-    image: <DenyFilesystem />,
+    image: <Diagram src="/diagrams/deny-by-default-filesystem.jpeg" alt="Deny-by-default filesystem architecture: only granted paths are visible to the sandbox" />,
   },
   {
     title: "Network enforced at the kernel level",
     summary: "DNS blocked before resolution.",
     body: "An in-process egress proxy blocks every hostname not in the policy. DNS is resolved only after the allowlist check. No policy grant, no connection.",
-    image: <NetworkEnforced />,
+    image: <Diagram src="/diagrams/kernel-network-policy.jpeg" alt="Kernel-level network security policy blocking DNS before resolution" />,
   },
   {
     title: "Environment filtering",
     summary: "Named variables only.",
     body: "Only env.allow names are forwarded. Empty allowlist = empty environment. No secrets leak through ungranted variables.",
-    image: <EnvFilter />,
+    image: <Diagram src="/diagrams/env-filter-boundary.jpeg" alt="Environment variables filtered at the sandbox boundary" />,
   },
   {
     title: "Fail-closed on every platform",
     summary: "Linux, macOS, Windows.",
     body: "Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW), Docker fallback — each requires its primitives to initialize or the run is refused.",
-    image: <PlatformFailClosed />,
+    image: <Diagram src="/diagrams/cross-platform.jpeg" alt="Cross-platform security architecture covering Linux, macOS and Windows" />,
   },
   {
     title: "Resource limits enforced by the kernel",
     summary: "Timeout + memory + kill.",
     body: "Wall-clock timeout, memory RSS sampling with SIGTERM-then-SIGKILL, and kill-on-close via Job Objects on Windows. A runaway process is terminated with its entire tree.",
-    image: <ResourceLimits />,
+    image: <Diagram src="/diagrams/resource-limit-terminated.jpeg" alt="Process terminated at resource limit" />,
   },
 ];
 

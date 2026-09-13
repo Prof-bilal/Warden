@@ -79,7 +79,10 @@ export const metadata: Metadata = {
     creator: "@Prof-bilal",
   },
   icons: {
-    icon: "/icon.png",
+    icon: [
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },

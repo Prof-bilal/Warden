@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Download, Github, Menu, Star, X } from "lucide-react";
 import { formatCount } from "@/lib/stats";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
+  { href: "/features", label: "Features" },
   { href: "/#how-to-use", label: "How to use" },
   { href: "/#backends", label: "Backends" },
   { href: "/#proof", label: "Proof" },
@@ -23,6 +25,8 @@ type Stats = { stars: number | null; downloads: number | null };
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [pillOpen, setPillOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [phOpen, setPhOpen] = useState(true);
   const [stats, setStats] = useState<Stats>({ stars: null, downloads: null });
 
@@ -54,9 +58,30 @@ export default function Nav() {
     };
   }, []);
 
+  // Show the floating pill navbar once the page header has scrolled away.
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 80);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const starsLabel = stats.stars !== null ? formatCount(stats.stars) : "5";
   const downloadsLabel =
     stats.downloads !== null ? `${formatCount(stats.downloads)}/mo` : "1.7k/mo";
+
+  const logo = (
+    <Image
+      src="/logo.png"
+      alt=""
+      width={28}
+      height={28}
+      className="rounded-full"
+      priority
+    />
+  );
 
   return (
     <>
@@ -94,14 +119,11 @@ export default function Nav() {
         </div>
       )}
 
+      {/* ── Static page header ── */}
       <header className="border-b border-ink-700">
         <div className="mx-auto flex max-w-display items-center justify-between gap-6 px-6 py-5">
-          <Link href="#" className="flex shrink-0 items-center gap-2.5">
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-              <rect x="1" y="1" width="6" height="20" rx="1" stroke="#6E93E8" strokeWidth="1.4" />
-              <rect x="15" y="1" width="6" height="20" rx="1" stroke="#6E93E8" strokeWidth="1.4" />
-              <path d="M7 11H15" stroke="#3FB27E" strokeWidth="1.4" strokeDasharray="1.5 2.2" />
-            </svg>
+          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Warden home">
+            {logo}
             <span className="text-[1.0625rem] font-medium text-paper">warden</span>
           </Link>
 
@@ -184,6 +206,92 @@ export default function Nav() {
           </nav>
         )}
       </header>
+
+      {/* ── Floating pill navbar (appears on scroll) ── */}
+      <div
+        className={
+          "fixed inset-x-0 top-2 z-50 transition-all duration-300 " +
+          (scrolled
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none -translate-y-4 opacity-0")
+        }
+      >
+        <div className="mx-auto max-w-display px-4">
+          <div className="relative flex items-center justify-between gap-3 rounded-2xl border border-ink-700 bg-ink-950/90 py-2 pl-4 pr-2 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-md">
+            {/* Left: logo + wordmark */}
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-2"
+              aria-label="Warden home"
+              onClick={() => setPillOpen(false)}
+            >
+              {logo}
+              <span className="text-[0.9375rem] font-medium text-paper">warden</span>
+            </Link>
+
+            {/* Right: GitHub, npm, hamburger */}
+            <div className="flex items-center gap-1.5">
+              <a
+                href="https://github.com/Prof-bilal/Warden"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Warden on GitHub"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+              >
+                <Github size={16} />
+              </a>
+              <a
+                href="https://www.npmjs.com/package/warden-sandbox-cli"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="warden-sandbox-cli on npm"
+                className="hidden h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper sm:flex"
+              >
+                <Download size={15} />
+              </a>
+              <a
+                href="/docs/install"
+                className="mr-1 hidden rounded-lg border border-ink-600 px-3 py-1.5 text-[0.75rem] font-medium text-paper transition-colors hover:border-blueprint/50 md:block"
+              >
+                Install
+              </a>
+              <button
+                onClick={() => setPillOpen(!pillOpen)}
+                aria-label={pillOpen ? "Close menu" : "Open menu"}
+                aria-expanded={pillOpen}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+              >
+                {pillOpen ? <X size={17} /> : <Menu size={17} />}
+              </button>
+            </div>
+
+            {/* Dropdown menu */}
+            {pillOpen && (
+              <nav className="absolute right-0 top-[calc(100%+8px)] w-60 rounded-2xl border border-ink-700 bg-ink-950/95 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur-md">
+                {links.map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setPillOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-[0.875rem] text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+                  >
+                    {l.label}
+                  </a>
+                ))}
+                <div className="mt-2 border-t border-ink-800 pt-2 md:hidden">
+                  <a
+                    href="/docs/install"
+                    onClick={() => setPillOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-[0.875rem] font-medium text-blueprint transition-colors hover:bg-ink-800"
+                  >
+                    Install Warden
+                  </a>
+                </div>
+              </nav>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   );
 }

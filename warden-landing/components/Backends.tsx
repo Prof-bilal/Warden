@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Clock3, ChevronDown, Apple, Terminal, LayoutGrid } from "lucide-react";
+import Diagram from "@/components/Diagram";
 
 const BACKENDS = [
   {
@@ -11,6 +12,8 @@ const BACKENDS = [
     detail: "unprivileged user namespaces",
     status: "verified" as const,
     statusLabel: "Verified on real hardware",
+    image: "/diagrams/linux-backend.jpeg",
+    imageAlt: "Linux backend architecture with bubblewrap sandboxing",
   },
   {
     platform: "macOS",
@@ -19,6 +22,8 @@ const BACKENDS = [
     detail: "with Docker fallback",
     status: "pending" as const,
     statusLabel: "CI-verified · hardware run pending",
+    image: "/diagrams/macos-backend.jpeg",
+    imageAlt: "macOS security architecture with Seatbelt sandboxing",
   },
   {
     platform: "Windows",
@@ -27,6 +32,8 @@ const BACKENDS = [
     detail: "Job Objects · ETW audit",
     status: "verified" as const,
     statusLabel: "CI-verified escape tests",
+    image: "/diagrams/windows-backend.jpeg",
+    imageAlt: "Windows backend architecture with AppContainer, WFP and ETW",
   },
 ];
 
@@ -85,6 +92,10 @@ export default function Backends() {
                 <p className="mt-4 border-t border-ink-800 pt-3 text-[0.75rem] text-muted">
                   {b.statusLabel}
                 </p>
+
+                <div className="mt-4 overflow-hidden rounded-[8px] border border-ink-800">
+                  <Diagram src={b.image} alt={b.imageAlt} />
+                </div>
               </div>
             );
           })}

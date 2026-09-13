@@ -4,32 +4,32 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import StepperDetail from "@/components/StepperDetail";
 import type { StepperItem } from "@/components/StepperDetail";
-import { HowInstall, HowInit, HowRun, HowLogs } from "@/lib/images";
+import Diagram from "@/components/Diagram";
 
 const STEPS: StepperItem[] = [
   {
     title: "Install Warden",
     summary: "npm install -g warden-sandbox-cli",
     body: "Install the CLI globally via npm. Works on Linux, macOS, and Windows.",
-    image: <HowInstall />,
+    image: <Diagram src="/diagrams/install-cli.jpeg" alt="Installing the Warden CLI in a terminal" />,
   },
   {
     title: "Create a policy",
     summary: "warden init",
     body: "Run the interactive wizard. It asks what the server needs and drafts a deny-by-default YAML policy.",
-    image: <HowInit />,
+    image: <Diagram src="/diagrams/create-policy.jpeg" alt="Creating a security policy with warden init" />,
   },
   {
     title: "Run the server sandboxed",
     summary: "warden run --policy policy.yaml -- ...",
     body: "Point Warden at the policy and the server command. The sandbox enforces every grant.",
-    image: <HowRun />,
+    image: <Diagram src="/diagrams/sandbox-boundary.jpeg" alt="Server process stopped at the sandbox boundary while running" />,
   },
   {
     title: "Inspect what was blocked",
     summary: "warden logs --tail",
     body: "The audit log records every allow and deny decision. Tail it live or review after the session.",
-    image: <HowLogs />,
+    image: <Diagram src="/diagrams/policy-inspector.jpeg" alt="Developer inspecting the security policy and audit log" />,
   },
 ];
 

@@ -41,15 +41,15 @@ export default function Hero() {
         <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
           {/* Left: Two-tone headline — Apk Galeria → Newsreader, negative tracking */}
           <div>
-            <h1 className="hero-display max-w-[900px] text-[2rem] font-normal leading-[0.95] tracking-[-0.02em] sm:text-[2.6rem] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
+            <h1 className="hero-display max-w-[900px] text-[1.625rem] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[2.6rem] sm:leading-[0.95] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
               {/* first phrase in paper (primary), second phrase in muted — the InvisibleTech call-and-response */}
-              <span className="inline-block rounded-[6px] bg-grant-subtle px-2 pb-0.5 text-grant">
+              <span className="inline-block break-words rounded-[6px] bg-grant-subtle px-2 pb-0.5 text-grant">
                 Your MCP servers
               </span>
               <span className="font-light text-muted"> don&apos;t needs</span>
-              <span className="block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
+              <span className="mt-1 block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
                 your whole{" "}
-                <span className="inline-block rounded-[6px] bg-deny-subtle px-2 pb-0.5 text-deny">
+                <span className="inline-block break-words rounded-[6px] bg-deny-subtle px-2 pb-0.5 text-deny">
                   filesystem
                 </span>
                 .
@@ -99,8 +99,9 @@ export default function Hero() {
                 )}
               </button>
 
-              <p className="px-1 font-mono text-[0.6875rem] uppercase tracking-[0.06em] text-muted/80">
-                Works with any MCP client · No daemon · Linux · macOS · Windows
+              <p className="px-1 font-mono text-[0.625rem] uppercase leading-[1.7] tracking-[0.06em] text-muted/80 sm:text-[0.6875rem]">
+                Works with any MCP client · No daemon · Linux · macOS ·
+                Windows
               </p>
             </div>
           </div>
