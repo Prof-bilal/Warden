@@ -78,8 +78,11 @@ jobs:
       - name: Verify package tarball integrity
         run: |
           set -euo pipefail
-          npm pack
-          TAR="warden-sandbox-cli-${GITHUB_REF_NAME#v}.tgz"
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAR="warden-sandbox-cli-${VERSION}.tgz"
+          # Build tarball locally instead of `npm pack` (which hits the
+          # registry and counts as a download, inflating download stats).
+          tar -czf "$TAR" -C . bin/ README.md LICENSE package.json
           echo "Tarball contents:"
           tar -tf "$TAR"
           # bin requires the launcher.
