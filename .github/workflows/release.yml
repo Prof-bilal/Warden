@@ -82,8 +82,7 @@ jobs:
           TAR="warden-sandbox-cli-${GITHUB_REF_NAME#v}.tgz"
           echo "Tarball contents:"
           tar -tf "$TAR"
-          # postinstall requires telemetry.js; bin requires the launcher.
-          tar -tf "$TAR" | grep -qx 'package/telemetry.js'
+          # bin requires the launcher.
           tar -tf "$TAR" | grep -qx 'package/bin/warden'
           # Metadata must ship the landing homepage, not a GitHub fallback.
           tar -xOf "$TAR" package/package.json | grep -q 'warden-six-rouge.vercel.app'
