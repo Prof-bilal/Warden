@@ -33,7 +33,7 @@ export default function Nav() {
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 15000);
     fetch("/api/stats", { signal: controller.signal })
       .then((res) => {
         if (!res.ok) return;
@@ -70,7 +70,7 @@ export default function Nav() {
 
   const starsLabel = stats.stars !== null ? formatCount(stats.stars) : "5";
   const downloadsLabel =
-    stats.downloads !== null ? `${formatCount(stats.downloads)}/mo` : "152/mo";
+    stats.downloads !== null ? formatCount(stats.downloads) : "1.9k";
 
   const logo = (
     <Image
