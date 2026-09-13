@@ -1,31 +1,31 @@
 import StepperDetail from "@/components/StepperDetail";
 import type { StepperItem } from "@/components/StepperDetail";
-import { WinAppContainer, WinWFP, WinJobObject, WinETW } from "@/lib/images";
+import Diagram from "@/components/Diagram";
 
 const LAYERS: StepperItem[] = [
   {
     title: "AppContainer Token",
     summary: "LowBox token denies all.",
     body: "Every sandboxed process runs under a LowBox token that denies all filesystem, network, and environment access by default. The token is the hard boundary — no syscall can cross it.",
-    image: <WinAppContainer />,
+    image: <Diagram src="/diagrams/appcontainer-token.jpeg" alt="Windows AppContainer token security boundary" />,
   },
   {
     title: "WFP Egress Filters",
     summary: "TCP + DNS blocked.",
     body: "Windows Filtering Platform rules permit only the loopback proxy bridge and block every other outbound connection. DNS is denied by the token; TCP is denied by the filters.",
-    image: <WinWFP />,
+    image: <Diagram src="/diagrams/wfp-egress-filters.jpeg" alt="WFP egress filters network diagram" />,
   },
   {
     title: "Job Object Limits",
     summary: "Timeout + memory + kill.",
     body: "Wall-clock timeout, memory cap, and kill-on-close are enforced by the kernel. A runaway process is terminated with its entire tree — no orphaned children.",
-    image: <WinJobObject />,
+    image: <Diagram src="/diagrams/job-object-tree-kill.jpeg" alt="Process tree termination inside a Windows Job Object" />,
   },
   {
     title: "ETW Audit Trail",
     summary: "Kernel file I/O trace.",
     body: "A private real-time trace session captures kernel file I/O events scoped to the sandbox tree. Every file access is logged, not guessed — the audit is the product.",
-    image: <WinETW />,
+    image: <Diagram src="/diagrams/etw-audit-trail.jpeg" alt="ETW audit trail architecture for kernel file I/O tracing" />,
   },
 ];
 

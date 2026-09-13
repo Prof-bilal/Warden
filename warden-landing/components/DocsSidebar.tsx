@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const sections = [
+type SidebarItem = { slug: string; label: string; external?: boolean };
+
+const sections: { title: string; items: SidebarItem[] }[] = [
   {
     title: "Guide",
     items: [
@@ -24,6 +26,14 @@ const sections = [
       { slug: "roadmap", label: "Roadmap" },
     ],
   },
+  {
+    title: "Reference",
+    items: [
+      { slug: "features", label: "Features (in depth)", external: true },
+    ],
+  },
+
+
   {
     title: "Contributing",
     items: [
@@ -46,7 +56,7 @@ export default function DocsSidebar() {
           </h4>
           <ul className="space-y-0.5">
             {section.items.map((item) => {
-              const href = `/docs/${item.slug}`;
+              const href = item.external ? "/features" : `/docs/${item.slug}`;
               const isActive = pathname === href;
               return (
                 <li key={item.slug}>
