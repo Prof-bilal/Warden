@@ -218,7 +218,8 @@ export default async function DocPage({
             </h1>
 
             <div className="mt-8">
-              <MarkdownContent content={content} />
+              {/* The page already renders an H1; strip the markdown's own H1 to keep exactly one per page. */}
+              <MarkdownContent content={content.replace(/^#[^\n]*\n+/, "")} />
             </div>
 
             {/* Prev / Next navigation */}
