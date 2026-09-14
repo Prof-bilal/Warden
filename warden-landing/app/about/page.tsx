@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
@@ -48,6 +50,12 @@ const ROWS = [
 export default function About() {
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "About", url: `${SITE_URL}/about` },
+        ])}
+      />
       <Nav />
       <section className="mx-auto max-w-content px-6 pb-20 pt-16 md:pt-24">
         <div className="max-w-[38rem]">

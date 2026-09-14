@@ -97,3 +97,36 @@ export function personSchema(author: Author) {
     sameAs: [author.url],
   };
 }
+
+export function collectionPageSchema({
+  name,
+  description,
+  url,
+  itemUrls,
+}: {
+  name: string;
+  description: string;
+  url: string;
+  itemUrls?: string[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name,
+    description,
+    url,
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+    ...(itemUrls && itemUrls.length > 0
+      ? {
+          mainEntity: {
+            "@type": "ItemList",
+            itemListElement: itemUrls.map((itemUrl, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              url: itemUrl,
+            })),
+          },
+        }
+      : {}),
+  };
+}

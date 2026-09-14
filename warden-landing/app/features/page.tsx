@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -337,6 +339,12 @@ export default function FeaturesPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(featuresSchema) }}
+      />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Features", url: `${SITE_URL}/features` },
+        ])}
       />
       <Nav />
 

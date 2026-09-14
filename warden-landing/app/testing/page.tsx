@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -96,6 +98,12 @@ const TEST_RESULTS = [
 export default function TestingPage() {
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Testing", url: `${SITE_URL}/testing` },
+        ])}
+      />
       <Nav />
 
       <section className="mx-auto max-w-content px-6 pb-16 pt-16 md:pt-24">

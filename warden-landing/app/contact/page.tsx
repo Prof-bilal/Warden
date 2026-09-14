@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import { createMetadata } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { createMetadata, SITE_URL } from "@/lib/seo";
+import { breadcrumbSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createMetadata({
   title: "Contact",
@@ -35,6 +37,12 @@ const CHANNELS = [
 export default function Contact() {
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Contact", url: `${SITE_URL}/contact` },
+        ])}
+      />
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">

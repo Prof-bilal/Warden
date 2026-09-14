@@ -12,7 +12,7 @@ import {
   getCategoryBySlug,
 } from "@/lib/blog";
 import { SITE_URL, createMetadata } from "@/lib/seo";
-import { breadcrumbSchema } from "@/lib/schema";
+import { breadcrumbSchema, collectionPageSchema } from "@/lib/schema";
 
 export function generateStaticParams() {
   return CATEGORIES.map((category) => ({ slug: category.slug }));
@@ -54,9 +54,17 @@ export default async function CategoryPage({
     },
   ]);
 
+  const collection = collectionPageSchema({
+    name: `${category.name} — Warden Blog`,
+    description: category.description,
+    url: `${SITE_URL}/blog/category/${category.slug}`,
+    itemUrls: articles.map((a) => `${SITE_URL}/blog/${a.slug}`),
+  });
+
   return (
     <main className="min-h-screen bg-ink-950">
       <JsonLd data={breadcrumbs} />
+      <JsonLd data={collection} />
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <nav

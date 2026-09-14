@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import DocsSidebar from "@/components/DocsSidebar";
@@ -105,6 +107,12 @@ const CARDS = [
 export default function Docs() {
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Docs", url: `${SITE_URL}/docs` },
+        ])}
+      />
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
         {/* Breadcrumbicons.devigner.cc style */}

@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
 import ArticleCard from "@/components/ArticleCard";
 import { getAllArticles, getAuthorBySlug, getCategoryBySlug, CATEGORIES } from "@/lib/blog";
-import { createMetadata } from "@/lib/seo";
+import { SITE_URL, createMetadata } from "@/lib/seo";
+import { breadcrumbSchema, collectionPageSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createMetadata({
   title: "Blog",
@@ -16,8 +18,23 @@ export const metadata: Metadata = createMetadata({
 export default function BlogIndex() {
   const articles = getAllArticles();
 
+  const breadcrumbs = breadcrumbSchema([
+    { name: "Home", url: `${SITE_URL}/` },
+    { name: "Blog", url: `${SITE_URL}/blog` },
+  ]);
+
+  const collection = collectionPageSchema({
+    name: "Warden Blog",
+    description:
+      "Articles on sandboxing MCP servers, policy enforcement, and OS-level security for AI tooling.",
+    url: `${SITE_URL}/blog`,
+    itemUrls: articles.map((a) => `${SITE_URL}/blog/${a.slug}`),
+  });
+
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd data={breadcrumbs} />
+      <JsonLd data={collection} />
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <p className="font-mono text-[0.6875rem] uppercase tracking-widest text-blueprint">
