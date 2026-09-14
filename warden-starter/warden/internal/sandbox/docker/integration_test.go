@@ -50,7 +50,19 @@ func requireDocker(t *testing.T) {
 	// execution via a granted write the test can verify on the host. FAIL
 	// (not skip) if nota skip here would mask a dead backend behind
 	// green tests.
-	writeDir := t.TempDir()
+	//
+	// Use a directory outside /tmp because the Docker backend provides /tmp
+	// as an isolated tmpfs, and t.TempDir() returns paths under /tmp which
+	// would conflict with that tmpfs mount.
+	writeDir, err := os.MkdirTemp("/var/tmp", "warden-docker-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir outside /tmp: %v", err)
+	}
+	// Docker bind-mounts preserve host UIDs. The container runs as root
+	// (UID 0) but the temp dir is owned by the test process UID. chmod
+	// 0777 so the container root can write into it.
+	os.Chmod(writeDir, 0777)
+	t.Cleanup(func() { os.RemoveAll(writeDir) })
 	marker := filepath.Join(writeDir, "started.marker")
 	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{writeDir}}}
 	out, err := Run([]string{"/bin/sh", "-c", "echo " + startupMarkerDocker + " > " + marker}, p)
@@ -69,11 +81,21 @@ func requireDocker(t *testing.T) {
 func TestDockerBlocksUngrantedRead(t *testing.T) {
 	requireDocker(t)
 
-	secretDir := t.TempDir()
+	secretDir, err := os.MkdirTemp("/var/tmp", "warden-docker-secret-*")
+	if err != nil {
+		t.Fatalf("create secret dir: %v", err)
+	}
+	os.Chmod(secretDir, 0777)
+	t.Cleanup(func() { os.RemoveAll(secretDir) })
 	if err := os.WriteFile(filepath.Join(secretDir, "secret.txt"), []byte("nope"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	scriptDir := t.TempDir()
+	scriptDir, err := os.MkdirTemp("/var/tmp", "warden-docker-script-*")
+	if err != nil {
+		t.Fatalf("create script dir: %v", err)
+	}
+	os.Chmod(scriptDir, 0777)
+	t.Cleanup(func() { os.RemoveAll(scriptDir) })
 	script := filepath.Join(scriptDir, "probe.sh")
 	body := "#!/bin/sh\ncat \"$1\"\n"
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {

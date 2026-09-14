@@ -136,6 +136,11 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 				return nil, fmt.Errorf("docker args: %q is inside the read-only runtime base %s and cannot be granted write", path, base)
 			}
 		}
+		// /tmp and /run are already provided as tmpfs mounts above;
+		// skip them to avoid "Duplicate mount point" errors from Docker.
+		if path == "/tmp" || path == "/run" {
+			continue
+		}
 		mode[path] = "write"
 		addBind(path, path, "rw")
 	}
