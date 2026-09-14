@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import fs from "fs";
 import path from "path";
-
-const SITE_URL = "https://warden-six-rouge.vercel.app";
+import { SITE_URL } from "@/lib/seo";
+import { AUTHORS, CATEGORIES, getAllArticles } from "@/lib/blog";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
@@ -21,41 +21,89 @@ function getAllDocSlugs(): string[] {
 }
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-
+  // lastmod is only set where we have a real content date (articles).
+  // Faking build-time lastmod on static pages erodes crawler trust.
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
     },
     {
+      url: `${SITE_URL}/blog`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/docs`,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
       url: `${SITE_URL}/about`,
-      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/features`,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/testing`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
-      url: `${SITE_URL}/docs`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
+      url: `${SITE_URL}/contact`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${SITE_URL}/privacy`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${SITE_URL}/terms`,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
 
+  // Article lastModified comes from frontmatter (updated ?? date) — real dates only.
+  const articlePages: MetadataRoute.Sitemap = getAllArticles().map(
+    (article) => ({
+      url: `${SITE_URL}/blog/${article.slug}`,
+      lastModified: new Date(article.updated ?? article.date),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })
+  );
+
+  const categoryPages: MetadataRoute.Sitemap = CATEGORIES.map((category) => ({
+    url: `${SITE_URL}/blog/category/${category.slug}`,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
+  const authorPages: MetadataRoute.Sitemap = AUTHORS.map((author) => ({
+    url: `${SITE_URL}/author/${author.slug}`,
+    changeFrequency: "weekly" as const,
+    priority: 0.5,
+  }));
+
   const docPages: MetadataRoute.Sitemap = getAllDocSlugs().map((slug) => ({
     url: `${SITE_URL}/docs/${slug}`,
-    lastModified: now,
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
 
-  return [...staticPages, ...docPages];
+  return [
+    ...staticPages,
+    ...articlePages,
+    ...categoryPages,
+    ...authorPages,
+    ...docPages,
+  ];
 }

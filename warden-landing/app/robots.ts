@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -6,28 +7,34 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
+        disallow: ["/api/"],
       },
       {
         userAgent: "GPTBot",
         allow: "/",
+        disallow: ["/api/"],
       },
       {
         userAgent: "ChatGPT-User",
         allow: "/",
+        disallow: ["/api/"],
       },
       {
         userAgent: "ClaudeBot",
         allow: "/",
+        disallow: ["/api/"],
       },
       {
         userAgent: "Amazonbot",
         allow: "/",
+        disallow: ["/api/"],
       },
       {
         userAgent: "Google-Extended",
         allow: "/",
+        disallow: ["/api/"],
       },
     ],
-    sitemap: "https://warden-six-rouge.vercel.app/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

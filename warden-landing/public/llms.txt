@@ -29,9 +29,9 @@ curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-li
 
 ## Links
 
-- Website: https://warden-six-rouge.vercel.app
+- Website: https://warden.blog
 - GitHub: https://github.com/Prof-bilal/Warden
-- Documentation: https://warden-six-rouge.vercel.app/docs
+- Documentation: https://warden.blog/docs
 - npm: https://www.npmjs.com/package/warden-sandbox-cli
 
 ## License

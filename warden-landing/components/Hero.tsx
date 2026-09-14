@@ -42,12 +42,16 @@ export default function Hero() {
           {/* Left: Two-tone headlineApk Galeria → Newsreader, negative tracking */}
           <div>
             <h1 className="hero-display max-w-[900px] text-[1.625rem] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[2.6rem] sm:leading-[0.95] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
-              {/* first phrase in paper (primary), second phrase in mutedthe InvisibleTech call-and-response */}
+              {/* Line 1: the subject, in grant green */}
               <span className="inline-block break-words rounded-[6px] bg-grant-subtle px-2 pb-0.5 text-grant">
                 Your MCP servers
               </span>
-              <span className="font-light text-muted"> don&apos;t needs</span>
-              <span className="mt-1 block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
+              {/* Line 2: the denial, muted and light */}
+              <span className="mt-1 block font-light tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
+                don&apos;t need to access
+              </span>
+              {/* Line 3: the consequence, muted with deny-red highlight */}
+              <span className="block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
                 your whole{" "}
                 <span className="inline-block break-words rounded-[6px] bg-deny-subtle px-2 pb-0.5 text-deny">
                   filesystem

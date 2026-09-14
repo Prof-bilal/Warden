@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 
-const SITE_URL = "https://warden-six-rouge.vercel.app";
-
 export const metadata: Metadata = {
-  title: "About",
+  title: "About Warden",
   description:
-    "About Wardenan open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
+    "About Warden — an open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
   alternates: {
     canonical: `${SITE_URL}/about`,
   },
   openGraph: {
-    title: "About WardenA Sandbox Runtime for MCP Servers",
+    title: "About Warden",
     description:
       "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
     url: `${SITE_URL}/about`,
@@ -27,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "About WardenA Sandbox Runtime for MCP Servers",
+    title: "About Warden",
     description:
       "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
     images: [`${SITE_URL}/og-image.png`],

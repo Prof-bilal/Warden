@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
@@ -7,27 +8,34 @@ import Diagram from "@/components/Diagram";
 import CodeBlock from "@/components/CodeBlock";
 import CopyableCode from "@/components/CopyableCode";
 
-const SITE_URL = "https://warden-six-rouge.vercel.app";
-
 export const metadata: Metadata = {
-  title: "FeaturesWarden",
+  title: "Features",
   description:
-    "Every feature in the Warden sandbox runtime, in depth: sandboxed runs, policy tooling, audit logs, the MCP gateway, client proxy, Kubernetes rendering, and self-updatewith the exact commands to use each one.",
+    "Every Warden feature in depth: sandboxed runs, policy tooling, audit logs, gateway, proxy, Kubernetes rendering, and self-update — with exact commands.",
   alternates: {
     canonical: `${SITE_URL}/features`,
   },
   openGraph: {
-    title: "Warden Featuresevery command, in depth",
+    title: "Warden Features — every command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime with usage commands.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime with usage commands.",
     url: `${SITE_URL}/features`,
     type: "article",
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "Warden Features",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden Featuresevery command, in depth",
+    title: "Warden Features — every command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime.",
+    images: [`${SITE_URL}/og-image.png`],
   },
 };
 

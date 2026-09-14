@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import fs from "fs";
 import path from "path";
 import { notFound } from "next/navigation";
@@ -6,8 +7,8 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import MarkdownContent from "@/components/MarkdownContent";
 import DocsSidebar from "@/components/DocsSidebar";
-
-const SITE_URL = "https://warden-six-rouge.vercel.app";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
@@ -42,14 +43,19 @@ export function generateStaticParams() {
   return getAllDocSlugs().map((slug) => ({ slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const content = readDoc(params.slug);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const content = readDoc(slug);
   if (!content) return { title: "Not Found" };
 
   const firstLine = content.split("\n").find((l) => l.startsWith("# "));
   const title = firstLine
     ? firstLine.replace(/^#\s*/, "")
-    : params.slug.replace(/-/g, " ");
+    : slug.replace(/-/g, " ");
 
   const description = `Warden documentation: ${title}. Learn how to use Warden to sandbox MCP servers.`;
 
@@ -57,25 +63,25 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     title,
     description,
     alternates: {
-      canonical: `${SITE_URL}/docs/${params.slug}`,
+      canonical: `${SITE_URL}/docs/${slug}`,
     },
     openGraph: {
-      title: `${title}Warden`,
+      title: `${title} | Warden`,
       description,
-      url: `${SITE_URL}/docs/${params.slug}`,
+      url: `${SITE_URL}/docs/${slug}`,
       type: "article",
       images: [
         {
           url: `${SITE_URL}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `${title}Warden Documentation`,
+          alt: `${title} | Warden Documentation`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title}Warden`,
+      title: `${title} | Warden`,
       description,
       images: [`${SITE_URL}/og-image.png`],
     },
@@ -114,18 +120,23 @@ const slugToLabel: Record<string, string> = {
   "testing-platforms": "Cross-platform testing",
 };
 
-export default function DocPage({ params }: { params: { slug: string } }) {
-  const content = readDoc(params.slug);
+export default async function DocPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const content = readDoc(slug);
   if (!content) notFound();
 
   const firstLine = content.split("\n").find((l) => l.startsWith("# "));
   const title = firstLine
     ? firstLine.replace(/^#\s*/, "")
-    : params.slug.replace(/-/g, " ");
+    : slug.replace(/-/g, " ");
 
   const slugs = PUBLIC_SLUGS;
   const allSlugs = getAllDocSlugs();
-  const currentIndex = allSlugs.indexOf(params.slug);
+  const currentIndex = allSlugs.indexOf(slug);
   const prevSlug = currentIndex > 0 ? allSlugs[currentIndex - 1] : null;
   const nextSlug =
     currentIndex < allSlugs.length - 1 ? allSlugs[currentIndex + 1] : null;
@@ -143,7 +154,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
     "@type": "TechArticle",
     headline: title,
     description: `Warden documentation: ${title}`,
-    url: `${SITE_URL}/docs/${params.slug}`,
+    url: `${SITE_URL}/docs/${slug}`,
     author: {
       "@type": "Person",
       name: "Prof-bilal",
@@ -159,7 +170,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `${SITE_URL}/docs/${params.slug}`,
+      "@id": `${SITE_URL}/docs/${slug}`,
     },
   };
 
@@ -168,6 +179,13 @@ export default function DocPage({ params }: { params: { slug: string } }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Docs", url: `${SITE_URL}/docs` },
+          { name: title, url: `${SITE_URL}/docs/${slug}` },
+        ])}
       />
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
@@ -181,7 +199,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
             <a href="/docs">Docs</a>
           </span>
           <span className="mx-1.5 text-ink-600">/</span>
-          <span className="text-paper">{slugToTitle(params.slug)}</span>
+          <span className="text-paper">{slugToTitle(slug)}</span>
         </nav>
 
         {/* Sidebar + Content layout */}
@@ -210,7 +228,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
                   href={`/docs/${prevSlug}`}
                   className="text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
-                  ← {slugToTitle(prevSlug)}
+                  â† {slugToTitle(prevSlug)}
                 </a>
               ) : (
                 <span />
@@ -220,7 +238,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
                   href={`/docs/${nextSlug}`}
                   className="text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
-                  {slugToTitle(nextSlug)} →
+                  {slugToTitle(nextSlug)} â†’
                 </a>
               ) : (
                 <span />

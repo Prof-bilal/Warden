@@ -14,6 +14,7 @@ const links = [
   { href: "/#proof", label: "Proof" },
   { href: "/#compatibility", label: "Compatibility" },
   { href: "/testing", label: "Testing" },
+  { href: "/blog", label: "Blog" },
   { href: "/about", label: "About" },
   { href: "/docs", label: "Docs" },
 ];
@@ -129,13 +130,13 @@ export default function Nav() {
 
           <nav className="hidden items-center gap-6 lg:flex">
             {links.map((l) => (
-              <a
+              <Link
                 key={l.href}
                 href={l.href}
                 className="whitespace-nowrap text-[0.9375rem] text-muted transition-colors hover:text-paper"
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -213,14 +214,14 @@ export default function Nav() {
           <nav className="border-t border-ink-700 px-6 py-4 md:hidden">
             <div className="flex flex-col gap-3">
               {links.map((l) => (
-                <a
+                <Link
                   key={l.href}
                   href={l.href}
                   onClick={() => setOpen(false)}
                   className="whitespace-nowrap text-[0.9375rem] text-muted transition-colors hover:text-paper"
                 >
                   {l.label}
-                </a>
+                </Link>
               ))}
             </div>
           </nav>
@@ -285,12 +286,12 @@ export default function Nav() {
               >
                 <Download size={15} />
               </a>
-              <a
+              <Link
                 href="/docs/install"
                 className="mr-1 hidden rounded-lg border border-ink-600 px-3 py-1.5 text-[0.75rem] font-medium text-paper transition-colors hover:border-blueprint/50 md:block"
               >
                 Install
-              </a>
+              </Link>
               <button
                 onClick={() => setPillOpen(!pillOpen)}
                 aria-label={pillOpen ? "Close menu" : "Open menu"}
@@ -305,23 +306,23 @@ export default function Nav() {
             {pillOpen && (
               <nav className="absolute right-0 top-[calc(100%+8px)] w-60 rounded-2xl border border-ink-700 bg-ink-950/95 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur-md">
                 {links.map((l) => (
-                  <a
+                  <Link
                     key={l.href}
                     href={l.href}
                     onClick={() => setPillOpen(false)}
                     className="block rounded-lg px-3 py-2 text-[0.875rem] text-muted transition-colors hover:bg-ink-800 hover:text-paper"
                   >
                     {l.label}
-                  </a>
+                  </Link>
                 ))}
                 <div className="mt-2 border-t border-ink-800 pt-2 md:hidden">
-                  <a
+                  <Link
                     href="/docs/install"
                     onClick={() => setPillOpen(false)}
                     className="block rounded-lg px-3 py-2 text-[0.875rem] font-medium text-blueprint transition-colors hover:bg-ink-800"
                   >
                     Install Warden
-                  </a>
+                  </Link>
                   <a
                     href="https://discord.gg/Mx5BhwNP4"
                     target="_blank"

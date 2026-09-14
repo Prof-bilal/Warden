@@ -1,19 +1,18 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import DocsSidebar from "@/components/DocsSidebar";
 
-const SITE_URL = "https://warden-six-rouge.vercel.app";
-
 export const metadata: Metadata = {
   title: "Documentation",
   description:
-    "Warden documentationinstall, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
+    "Warden documentation: install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
   alternates: {
     canonical: `${SITE_URL}/docs`,
   },
   openGraph: {
-    title: "DocumentationWarden",
+    title: "Documentation",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     url: `${SITE_URL}/docs`,
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "DocumentationWarden",
+    title: "Documentation",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     images: [`${SITE_URL}/og-image.png`],

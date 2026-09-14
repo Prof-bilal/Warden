@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-
-const SITE_URL = "https://warden-six-rouge.vercel.app";
 
 export const metadata: Metadata = {
   title: "Cross-Platform Testing",
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
     canonical: `${SITE_URL}/testing`,
   },
   openGraph: {
-    title: "Cross-Platform TestingWarden",
+    title: "Cross-Platform Testing",
     description:
       "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
     url: `${SITE_URL}/testing`,
@@ -28,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cross-Platform TestingWarden",
+    title: "Cross-Platform Testing",
     description:
       "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
     images: [`${SITE_URL}/og-image.png`],

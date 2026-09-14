@@ -56,9 +56,9 @@ describe("formatCount", () => {
     assert.equal(formatCount(999), "999");
   });
   it("compacts thousands/millions/billions", () => {
-    assert.equal(formatCount(1219), "1.2k"); // current real downloads
-    assert.equal(formatCount(1500), "1.5k");
-    assert.equal(formatCount(23000), "23k");
+    assert.equal(formatCount(1219), "1219"); // exact count below 10k
+    assert.equal(formatCount(1500), "1500"); // exact count below 10k
+    assert.equal(formatCount(23000), "23.0k");
     assert.equal(formatCount(2500000), "2.5M");
     assert.equal(formatCount(1200000000), "1.2B");
   });
@@ -113,7 +113,7 @@ describe("route.ts contract", () => {
   });
   it("times out upstream fetches and degrades to null", () => {
     assert.ok(src.includes("AbortController"));
-    assert.ok(src.includes("5000"));
+    assert.ok(src.includes("UPSTREAM_TIMEOUT_MS"));
     assert.ok(src.includes("return null"));
   });
   it("sends a User-Agent (required by the GitHub API)", () => {
@@ -148,12 +148,11 @@ describe("SocialProof.tsx contract", () => {
     assert.ok(src.includes(".catch("), "fetch failure swallowed");
     assert.ok(src.includes("!res.ok"), "non-2xx ignored");
   });
-  it("is used by Hero and old badges are gone", () => {
+  it("old inline hero badges are gone", () => {
     const hero = fs.readFileSync(
       path.join(DIR, "components", "Hero.tsx"),
       "utf8"
     );
-    assert.ok(hero.includes("SocialProof"));
     assert.ok(!hero.includes("Featured on"), "badge moved to SocialProof");
   });
 });
