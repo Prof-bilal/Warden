@@ -58,9 +58,10 @@ runs:
     - name: Install Warden
       shell: bash
       run: |
-        # Install the Warden binary. We prefer the checked-in dist binary that
-        # matches the exact commit being reviewed, then fall back to a pinned
-        # GitHub release. Both paths fail closed with a clear action message.
+        # Install the Warden binary. Order of preference:
+        # 1) Checked-in dist binary (matches this commit).
+        # 2) Release binary from GitHub Releases.
+        # 3) Build from source (requires Go).
         WARDEN_VERSION="${{ inputs.warden-version }}"
         BIN_NAME="warden-linux-amd64"
         TARGET="/usr/local/bin/warden"
@@ -83,16 +84,26 @@ runs:
 
         echo "::notice::Downloading Warden from $RELEASE_URL"
         TMP="$(mktemp)"
-        if ! curl -fsSL -o "$TMP" "$RELEASE_URL"; then
+        if curl -fsSL -o "$TMP" "$RELEASE_URL"; then
+          sudo install -m 0755 "$TMP" "$TARGET"
           rm -f "$TMP"
-          echo "::error::Could not download the Warden binary. Commit dist/warden-linux-amd64 to the repo, or pass a valid warden-version tag (e.g. v0.1.9)."
-          exit 1
+          warden version
+          exit 0
+        fi
+        rm -f "$TMP"
+        echo "::warning::Could not download release binary, falling back to build from source"
+
+        # 3) Build from source (Go is available on GitHub Actions runners).
+        GO_SRC="warden-starter/warden/cmd/warden"
+        if [[ -d "$GO_SRC" ]] && command -v go &> /dev/null; then
+          echo "::notice::Building Warden from source"
+          CGO_ENABLED=0 go build -o "$TARGET" "./$GO_SRC/"
+          warden version
+          exit 0
         fi
 
-        sudo install -m 0755 "$TMP" "$TARGET"
-        rm -f "$TMP"
-
-        warden version
+        echo "::error::Could not install Warden. Download failed and Go source not found."
+        exit 1
 
     - name: Install bubblewrap if needed
       shell: bash
