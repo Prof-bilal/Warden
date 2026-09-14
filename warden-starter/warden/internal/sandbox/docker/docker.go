@@ -106,6 +106,21 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 	}
 
 	addBind := func(src, dst, mode string) {
+		// Resolve relative paths to absolute. Docker resolves -v src:dst
+		// differently: src is resolved on the host, dst inside the
+		// container (where WORKDIR is /). Using relative paths causes the
+		// host CWD to mount at the container's root instead of the same
+		// path, breaking any command that references the original path.
+		if !filepath.IsAbs(src) {
+			if abs, err := filepath.Abs(src); err == nil {
+				src = abs
+			}
+		}
+		if !filepath.IsAbs(dst) {
+			if abs, err := filepath.Abs(dst); err == nil {
+				dst = abs
+			}
+		}
 		args = append(args, "-v", src+":"+dst+":"+mode)
 		seen[src] = true
 	}
