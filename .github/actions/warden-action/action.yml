@@ -129,6 +129,14 @@ runs:
           exit 1
         fi
 
+    - name: Pull Docker image (Docker backend only)
+      if: env.WARDEN_DETECTED_BACKEND == 'docker'
+      shell: bash
+      run: |
+        DOCKER_IMAGE="${WARDEN_DOCKER_IMAGE:-alpine:3.20}"
+        echo "::notice::Pulling Docker image $DOCKER_IMAGE for sandbox backend"
+        docker pull "$DOCKER_IMAGE"
+
     - name: Validate Warden setup
       shell: bash
       run: |
