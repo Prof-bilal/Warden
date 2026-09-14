@@ -49,12 +49,13 @@ type MCPMessage struct {
 
 // MCPPolicy extends the standard policy with MCP-specific configuration
 type MCPPolicy struct {
-	Upstream      string   `yaml:"upstream"`       // "stdio:<command>", "https://host", or "http://loopback:P"
-	AllowTools    []string `yaml:"allow_tools"`    // Allowed MCP tool names
-	DenyPatterns  []string `yaml:"deny_patterns"`  // Regex patterns to block in payloads
-	MaxPayloadKB  int      `yaml:"max_payload_kb"` // Max payload size in KB
-	AuditRequests bool     `yaml:"audit_requests"` // Whether to log all requests
-	EnvAllow      []string // Env var names passed to the stdio subprocess (deny-by-default)
+	Upstream      string       `yaml:"upstream"`       // "stdio:<command>", "https://host", or "http://loopback:P"
+	Transport     MCPTransport // "http", "sse", or "" (auto-detect from URL)
+	AllowTools    []string     `yaml:"allow_tools"`    // Allowed MCP tool names
+	DenyPatterns  []string     `yaml:"deny_patterns"`  // Regex patterns to block in payloads
+	MaxPayloadKB  int          `yaml:"max_payload_kb"` // Max payload size in KB
+	AuditRequests bool         `yaml:"audit_requests"` // Whether to log all requests
+	EnvAllow      []string     // Env var names passed to the stdio subprocess (deny-by-default)
 }
 
 // defaultHTTPTimeout bounds a single upstream HTTP request. MCP tool calls
@@ -83,8 +84,17 @@ type ProxyServer struct {
 // JSON-RPC message is checked before it is forwarded, and blocked messages
 // are answered with a JSON-RPC error instead of reaching the upstream.
 func NewProxyServer(policy MCPPolicy, logger *audit.Logger) (*ProxyServer, error) {
+	// Filter empty tool names from allowlist to preserve deny-by-default.
+	var cleanTools []string
+	for _, t := range policy.AllowTools {
+		if t != "" {
+			cleanTools = append(cleanTools, t)
+		}
+	}
+	policy.AllowTools = cleanTools
+
 	// Parse upstream to determine transport
-	transport, upstream, err := parseUpstream(policy.Upstream)
+	transport, upstream, err := parseUpstream(policy.Upstream, policy.Transport)
 	if err != nil {
 		return nil, fmt.Errorf("invalid upstream %q: %w", policy.Upstream, err)
 	}
@@ -584,8 +594,8 @@ func (s *ProxyServer) handleStdioTransport(conn net.Conn) {
 	case <-done:
 		// The subprocess exited on its own: drop the client connection and
 		// let the direction goroutines unwind (they will see EOF/errors).
+		// childInW is closed by the client-to-subprocess goroutine's defer.
 		_ = conn.Close()
-		_ = childInW.Close()
 	case <-bothDone:
 		// Both bridge directions finished (client gone / upstream stdout
 		// closed): stop the subprocess if it is still running, then reap it.
@@ -803,17 +813,32 @@ func (s *ProxyServer) Close() error {
 	return nil
 }
 
-// parseUpstream parses the upstream configuration to determine transport and target
-func parseUpstream(upstream string) (MCPTransport, string, error) {
+// parseUpstream parses the upstream configuration to determine transport and
+// target. When explicit is non-empty it overrides the URL-based heuristic:
+// "http" forces Streamable HTTP, "sse" forces SSE, and "auto" (or empty)
+// falls back to URL inspection.
+func parseUpstream(upstream string, explicit MCPTransport) (MCPTransport, string, error) {
 	if strings.HasPrefix(upstream, "stdio:") {
+		if explicit != "" && explicit != TransportStdio {
+			return "", "", fmt.Errorf("transport %q is incompatible with stdio upstream", explicit)
+		}
 		return TransportStdio, strings.TrimPrefix(upstream, "stdio:"), nil
 	}
 	if strings.HasPrefix(upstream, "http://") || strings.HasPrefix(upstream, "https://") {
-		// Determine if it's SSE based on common patterns
-		if strings.Contains(upstream, "stream") || strings.Contains(upstream, "events") {
+		switch explicit {
+		case TransportSSE:
 			return TransportSSE, upstream, nil
+		case TransportHTTP:
+			return TransportHTTP, upstream, nil
+		case "", "auto":
+			// Heuristic: URL containing "stream" or "events" defaults to SSE.
+			if strings.Contains(upstream, "stream") || strings.Contains(upstream, "events") {
+				return TransportSSE, upstream, nil
+			}
+			return TransportHTTP, upstream, nil
+		default:
+			return "", "", fmt.Errorf("unknown transport %q (want http, sse, or auto)", explicit)
 		}
-		return TransportHTTP, upstream, nil
 	}
 	if upstream == "" {
 		return "", "", fmt.Errorf("upstream cannot be empty")
