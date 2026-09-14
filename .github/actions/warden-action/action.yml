@@ -103,6 +103,32 @@ runs:
           sudo apt-get install -y bubblewrap
         fi
 
+    - name: Detect sandbox backend
+      shell: bash
+      run: |
+        # Test if bwrap can actually create network namespaces.
+        # GitHub Actions ubuntu-latest blocks unprivileged user namespaces
+        # via AppArmor (kernel.apparmor_restrict_unprivileged_userns=1),
+        # which makes bwrap fail with "RTM_NEWADDR: Operation not permitted".
+        # When this happens we fall back to the Docker backend.
+        BWRAP_OK=false
+        if command -v bwrap &> /dev/null; then
+          if bwrap --ro-bind / / --unshare-net -- echo bwrap-ok 2>/dev/null; then
+            BWRAP_OK=true
+          fi
+        fi
+
+        if [[ "$BWRAP_OK" == "true" ]]; then
+          echo "WARDEN_DETECTED_BACKEND=linux" >> "$GITHUB_ENV"
+          echo "::notice::bubblewrap network namespace OK, using linux backend"
+        elif command -v docker &> /dev/null && docker info >/dev/null 2>&1; then
+          echo "WARDEN_DETECTED_BACKEND=docker" >> "$GITHUB_ENV"
+          echo "::warning::bubblewrap cannot create network namespaces (AppArmor restriction), falling back to docker backend"
+        else
+          echo "::error::bubblewrap cannot create network namespaces and docker is not available. Use a self-hosted runner with user namespaces enabled."
+          exit 1
+        fi
+
     - name: Validate Warden setup
       shell: bash
       run: |
@@ -162,6 +188,10 @@ runs:
           exit 1
         fi
         BACKEND="${{ inputs.backend }}"
+        # Use auto-detected backend when user hasn't explicitly chosen one.
+        if [[ "$BACKEND" == "auto" ]]; then
+          BACKEND="${WARDEN_DETECTED_BACKEND:-linux}"
+        fi
         APPROVE="${{ inputs.approve }}"
 
         # Write the user command to a script file so shell metacharacters and
