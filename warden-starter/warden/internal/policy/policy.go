@@ -81,6 +81,10 @@ type MCP struct {
 	// Examples: "https://mcp.github.com", "stdio:npx @modelcontextprotocol/server-github"
 	Upstream string `yaml:"upstream"`
 
+	// Transport forces the upstream transport type: "http" (Streamable HTTP),
+	// "sse" (server-sent events), or "" / "auto" (detect from URL).
+	Transport string `yaml:"transport,omitempty"`
+
 	// AllowTools lists MCP tool names that are allowed to be called.
 	// Empty list means all tools are allowed. Deny-by-default when specified.
 	AllowTools []string `yaml:"allow_tools,omitempty"`
@@ -219,6 +223,23 @@ func (p *Policy) Validate() error {
 	}
 	if uint64(p.Limits.TimeoutS) > uint64((time.Duration(1<<63-1))/time.Second) {
 		return fmt.Errorf("limits.timeout_s is too large")
+	}
+	// Validate MCP section if present.
+	if p.MCP != nil {
+		if p.MCP.Upstream == "" {
+			return fmt.Errorf("mcp.upstream must not be empty")
+		}
+		if p.MCP.Transport != "" && p.MCP.Transport != "http" && p.MCP.Transport != "sse" && p.MCP.Transport != "auto" {
+			return fmt.Errorf("mcp.transport: %q is not valid (want http, sse, or auto)", p.MCP.Transport)
+		}
+		if p.MCP.MaxPayloadKB < 0 {
+			return fmt.Errorf("mcp.max_payload_kb must not be negative")
+		}
+		for i, name := range p.MCP.AllowTools {
+			if name == "" {
+				return fmt.Errorf("mcp.allow_tools[%d]: tool name must not be empty", i)
+			}
+		}
 	}
 	return nil
 }
