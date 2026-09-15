@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy, Github, Terminal } from "lucide-react";
+import ContainmentField from "./ContainmentField";
 
 const INSTALL_CMD =
   "curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64";
@@ -25,117 +26,131 @@ export default function Hero() {
   }
 
   return (
-    // InvisibleTech editorial herolayout + font only, colors preserved from warden (ink/paper/muted)
+    // Centered mono hero (CodeAtlas layout) + Warden ContainmentField bg
     <section className="relative overflow-hidden border-b border-ink-700 bg-ink-950">
-      {/* graph-paper dot gridvery faint, masked to top, no color takeover */}
-      <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-[0.18]" aria-hidden />
-      {/* subtle top fade washuses existing ink-900 at low opacity, not a new palette */}
+      {/* Warden-tinted glows (replaces CodeAtlas purple wash, same placement logic) */}
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-b from-ink-900/30 to-transparent"
+        className="pointer-events-none absolute inset-0"
         aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 50% at 50% -10%, rgba(63,178,126,0.16) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 30% 50%, rgba(110,147,232,0.08) 0%, transparent 50%), radial-gradient(ellipse 50% 35% at 70% 70%, rgba(63,178,126,0.06) 0%, transparent 50%)",
+        }}
       />
+      {/* Containment animation: trapped particles + fail-closed boundary */}
+      <ContainmentField />
+      {/* faint dot texture under canvas content */}
+      <div className="pointer-events-none absolute inset-0 hero-dot-grid opacity-[0.12]" aria-hidden />
 
-      {/* 1280px max-width containerInvisibleTech page model */}
-      <div className="relative mx-auto max-w-[1280px] px-4 pb-12 pt-8 sm:px-6 md:pb-24 md:pt-16 lg:pb-28 lg:pt-20">
-        {/* ── Two-column editorial rhythm: headline ~55% / intro ~45%, gap 24-64px ── */}
-        <div className="mt-6 grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:gap-12 xl:gap-16">
-          {/* Left: Two-tone headlineApk Galeria → Newsreader, negative tracking */}
-          <div>
-            <h1 className="hero-display max-w-[900px] text-[1.625rem] font-normal leading-[1.05] tracking-[-0.02em] sm:text-[2.6rem] sm:leading-[0.95] md:text-[3.75rem] lg:text-[4.25rem] xl:text-[64px] xl:leading-[1] xl:tracking-[-0.030em]">
-              {/* Line 1: the subject, in grant green */}
-              <span className="inline-block break-words rounded-[6px] bg-grant-subtle px-2 pb-0.5 text-grant">
-                Your MCP servers
-              </span>
-              {/* Line 2: the denial, muted and light */}
-              <span className="mt-1 block font-light tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
-                don&apos;t need to access
-              </span>
-              {/* Line 3: the consequence, muted with deny-red highlight */}
-              <span className="block font-normal tracking-[-0.02em] text-muted xl:tracking-[-0.030em]">
-                your whole{" "}
-                <span className="inline-block break-words rounded-[6px] bg-deny-subtle px-2 pb-0.5 text-deny">
-                  filesystem
-                </span>
-                .
-              </span>
-            </h1>
+      <div className="relative z-[2] mx-auto max-w-[1280px] px-5 pb-16 pt-16 sm:px-6 md:pb-[120px] md:pt-[140px]">
+        <div className="mx-auto max-w-[800px] text-center">
+          {/* eyebrow */}
+          <p className="mb-6 inline-flex items-center gap-2 font-hero text-[12px] font-bold uppercase leading-none tracking-[0.12em] text-grant">
+            <span className="rounded-full border border-grant/30 bg-grant-subtle px-2 py-[3px] text-[10px] leading-none">
+              v0.1.17
+            </span>
+            Sandbox runtime for MCP servers
+          </p>
 
+          {/* headlineJetBrains Mono bold, gradient white, like reference */}
+          <h1 className="mx-auto mb-7 bg-gradient-to-b from-white to-white/70 bg-clip-text font-hero text-[2.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-transparent sm:text-6xl md:text-7xl xl:text-[84px]">
+            Give MCP servers a sandbox, not your filesystem.
+          </h1>
+
+          {/* sub */}
+          <p className="mx-auto mb-10 max-w-[640px] font-hero text-[17px] leading-[1.7] text-muted md:text-[20px]">
+            Warden runs MCP servers in a restricted sandbox. Only the files, hosts, and env vars
+            you explicitly grant are visible. Everything else is denied by default.
+          </p>
+
+          {/* actions */}
+          <div className="mb-10 flex flex-wrap items-center justify-center gap-[14px]">
+            <a
+              href="/docs/install"
+              className="inline-flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-grant to-blueprint px-4 py-[9px] font-hero text-[14px] font-semibold text-white transition hover:brightness-110"
+            >
+              Get Started
+              <ArrowRight size={15} />
+            </a>
+            <a
+              href="https://github.com/Prof-bilal/Warden"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-ink-600 bg-ink-900 px-4 py-[9px] font-hero text-[14px] font-semibold text-paper transition hover:-translate-y-px hover:border-grant/60"
+            >
+              <Github size={15} />
+              View on GitHub
+            </a>
           </div>
 
-          {/* Right: supporting body + CTAsright column at ~45% width on desktop */}
-          <div className="flex max-w-[32rem] flex-col lg:ml-auto lg:max-w-[30rem]">
-            <p className="hero-display text-[1.0625rem] font-normal leading-[1.65] text-muted md:text-[1.125rem] md:leading-[1.7]">
-              Warden creates a secure sandbox for AI tools, giving them access only to the files and
-              resources you allow. Everything else stays blocked.
-            </p>
-
-            {/* Install pills9999px radius, hairline border, mono, no shadow, comfortable 24px element gap */}
-            <div className="mt-8 flex flex-col gap-3">
-              <button
-                onClick={handleNpmCopy}
-                className="group flex min-w-0 w-full items-center justify-between gap-4 overflow-hidden rounded-full border border-ink-600 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-paper transition-colors hover:border-ink-500 hover:bg-ink-800 md:px-5 md:py-3 md:text-[0.875rem]"
-                aria-label="Copy npm install command"
-              >
-                <span className="truncate">
-                  <span className="text-muted">$ </span>
+          {/* install terminalsingle centered card like reference */}
+          <div className="mx-auto max-w-[460px] text-left">
+            <div className="overflow-hidden rounded-xl border border-ink-700 bg-[#0B0E13] shadow-[0_24px_60px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center gap-2 border-b border-ink-800 bg-ink-900 px-[14px] py-[9px] font-hero text-[11px] tracking-[0.04em] text-muted">
+                <Terminal size={12} className="text-muted" />
+                <span>install</span>
+              </div>
+              <div className="flex items-center gap-[10px] p-4">
+                <span className="shrink-0 font-hero font-semibold text-grant">$</span>
+                <code className="flex-1 truncate font-hero text-[14px] text-paper">
                   {NPM_CMD}
-                </span>
-                {npmCopied ? (
-                  <Check size={15} className="shrink-0 text-grant" />
-                ) : (
-                  <Copy size={15} className="shrink-0 text-muted transition-colors group-hover:text-paper" />
-                )}
-              </button>
-
-              <button
-                onClick={handleCopy}
-                className="group flex min-w-0 w-full items-center justify-between gap-4 overflow-hidden rounded-full border border-ink-700 bg-ink-900 px-4 py-[11px] text-left font-mono text-[0.8125rem] leading-none text-muted transition-colors hover:border-ink-600 hover:text-paper md:px-5 md:py-3 md:text-[0.875rem]"
-                aria-label="Copy curl install command"
-              >
-                <span className="truncate">
-                  <span className="text-muted">$ </span>
-                  {INSTALL_CMD}
-                </span>
-                {copied ? (
-                  <Check size={15} className="shrink-0 text-grant" />
-                ) : (
-                  <Copy size={15} className="shrink-0 text-muted transition-colors group-hover:text-paper" />
-                )}
-              </button>
-
-              <p className="px-1 font-mono text-[0.625rem] uppercase leading-[1.7] tracking-[0.06em] text-muted/80 sm:text-[0.6875rem]">
-                Works with any MCP client · No daemon · Linux · macOS ·
-                Windows
-              </p>
+                </code>
+                <button
+                  onClick={handleNpmCopy}
+                  className="flex shrink-0 items-center gap-[6px] rounded-lg border border-ink-600 bg-ink-900 px-[10px] py-[6px] font-hero text-[12px] text-muted transition hover:border-grant/50 hover:text-paper"
+                  aria-label="Copy npm install command"
+                >
+                  {npmCopied ? <Check size={13} className="text-grant" /> : <Copy size={13} />}
+                  <span>{npmCopied ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
             </div>
+            <button
+              onClick={handleCopy}
+              className="group mx-auto mt-3 flex items-center gap-2 font-hero text-[12px] text-muted/80 transition-colors hover:text-paper"
+              aria-label="Copy curl install command"
+            >
+              <span className="truncate">
+                <span className="text-muted">$ </span>
+                curl binary for Linux
+              </span>
+              {copied ? (
+                <Check size={13} className="shrink-0 text-grant" />
+              ) : (
+                <Copy size={13} className="shrink-0 transition-colors group-hover:text-paper" />
+              )}
+            </button>
+            <p className="mt-3 text-center font-hero text-[11px] uppercase leading-[1.7] tracking-[0.06em] text-muted/80">
+              No daemon · Linux · macOS · Windows
+            </p>
           </div>
         </div>
 
-        {/* Visualizer12px card radius (InvisibleTech cards), 80px section gap above */}
-        <div className="mt-12 md:mt-16 lg:mt-20">
-          {/* subtle hairline divider before demoeditorial rhythm, 80px gap */}
-          <div className="mb-8 hidden h-px bg-ink-800 lg:block" aria-hidden />
-          <div className="overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
-            <video
-              className="aspect-video w-full"
-              width={1920}
-              height={1080}
-              autoPlay
-              muted
-              loop
-              controls
-              playsInline
-              preload="metadata"
-              poster="/images/ui-preview.svg"
-              aria-label="Warden demo: recorded terminal session showing a sandboxed MCP server with policy grants and denied access attempts"
-            >
-              <source src="/videos/video-9ReotrYUC6t1GFvpAcsf.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+        {/* demo visual */}
+        <div className="mt-12 flex justify-center md:mt-[72px]">
+          <div className="w-full max-w-5xl">
+            <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
+              <video
+                className="aspect-video w-full"
+                width={1920}
+                height={1080}
+                autoPlay
+                muted
+                loop
+                controls
+                playsInline
+                preload="metadata"
+                poster="/images/ui-preview.svg"
+                aria-label="Warden demo: recorded terminal session showing a sandboxed MCP server with policy grants and denied access attempts"
+              >
+                <source src="/videos/video-9ReotrYUC6t1GFvpAcsf.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <p className="mt-3 text-center font-hero text-[11px] uppercase tracking-[0.08em] text-muted">
+              Watch the sandbox enforce a policy in real time
+            </p>
           </div>
-          <p className="mt-3 text-center font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-            Watch the sandbox enforce a policy in real time
-          </p>
         </div>
       </div>
     </section>

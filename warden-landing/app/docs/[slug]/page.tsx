@@ -213,7 +213,7 @@ export default async function DocPage({
 
           {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+            <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
               {title}
             </h1>
 
@@ -227,7 +227,7 @@ export default async function DocPage({
               {prevSlug ? (
                 <a
                   href={`/docs/${prevSlug}`}
-                  className="text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-hero text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
                   â† {slugToTitle(prevSlug)}
                 </a>
@@ -237,7 +237,7 @@ export default async function DocPage({
               {nextSlug ? (
                 <a
                   href={`/docs/${nextSlug}`}
-                  className="text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-hero text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
                   {slugToTitle(nextSlug)} â†’
                 </a>

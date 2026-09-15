@@ -13,14 +13,14 @@ import CopyableCode from "@/components/CopyableCode";
 export const metadata: Metadata = {
   title: "Features",
   description:
-    "Every Warden feature in depth: sandboxed runs, policy tooling, audit logs, gateway, proxy, Kubernetes rendering, and self-update — with exact commands.",
+    "Every Warden feature in depth: sandboxed runs, policy tooling, audit logs, gateway, proxy, Kubernetes rendering, and self-updatewith exact commands.",
   alternates: {
     canonical: `${SITE_URL}/features`,
   },
   openGraph: {
-    title: "Warden Features — every command, in depth",
+    title: "Warden Featuresevery command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime with usage commands.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime with usage commands.",
     url: `${SITE_URL}/features`,
     type: "article",
     images: [
@@ -34,9 +34,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden Features — every command, in depth",
+    title: "Warden Featuresevery command, in depth",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, update — the complete feature surface of the Warden sandbox runtime.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
@@ -47,7 +47,7 @@ function Flag({ name, desc }: { name: string; desc: string }) {
       <span className="shrink-0 sm:w-56">
         <CopyableCode text={name} />
       </span>
-      <span className="text-[0.875rem] leading-[1.55] text-muted">{desc}</span>
+      <span className="font-hero text-[0.875rem] leading-[1.55] text-muted">{desc}</span>
     </div>
   );
 }
@@ -67,7 +67,7 @@ function Note({
     progress: "border-progress/30 bg-progress-subtle text-progress",
   }[tone];
   return (
-    <div className={`rounded-[8px] border px-4 py-3 text-[0.875rem] leading-[1.6] ${styles}`}>
+    <div className={`rounded-[8px] border px-4 py-3 font-hero text-[0.875rem] leading-[1.6] ${styles}`}>
       <span className="font-medium">{title}</span>{" "}
       <span className="text-muted">{children}</span>
     </div>
@@ -351,13 +351,13 @@ export default function FeaturesPage() {
       {/* Page header */}
       <div className="border-t border-ink-800">
         <div className="mx-auto max-w-content px-6 pb-10 pt-16">
-          <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+          <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
             Feature Reference
           </span>
-          <h1 className="mt-5 max-w-3xl text-[2.25rem] font-medium leading-[1.12] tracking-[-0.015em] text-paper sm:text-[2.75rem]">
+          <h1 className="mt-5 max-w-3xl font-hero text-[2.25rem] font-bold leading-[1.12] tracking-[-0.02em] text-paper sm:text-[2.75rem]">
             Every feature. Explained in depth.
           </h1>
-          <p className="mt-4 max-w-2xl text-[1rem] leading-[1.65] text-muted">
+          <p className="mt-4 max-w-2xl font-hero text-[1rem] leading-[1.65] text-muted">
             Nine commands cover the entire Warden surfacefrom sandboxing a
             single server to wrapping a whole MCP client config. Everything
             below ships today and is backed by the test suite. For the full
@@ -385,22 +385,22 @@ export default function FeaturesPage() {
           >
             {/* Section header */}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[0.75rem] text-muted">
+              <span className="font-hero text-[0.75rem] text-muted">
                 {String(idx + 1).padStart(2, "0")}
               </span>
-              <h2 className="font-mono text-[1.375rem] font-medium tracking-[-0.01em] text-paper">
+              <h2 className="font-hero text-[1.375rem] font-bold tracking-[-0.01em] text-paper">
                 {f.name}
               </h2>
               <span className="rounded-full border border-blueprint/30 bg-blueprint/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-blueprint">
                 {f.badge}
               </span>
             </div>
-            <p className="mt-2 text-[1.0625rem] text-muted">{f.tagline}</p>
+            <p className="mt-2 font-hero text-[1.0625rem] text-muted">{f.tagline}</p>
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_22rem]">
               {/* Left: prose + usage */}
               <div className="min-w-0">
-                <p className="max-w-2xl text-[0.9375rem] leading-[1.7] text-muted">
+                <p className="max-w-2xl font-hero text-[0.9375rem] leading-[1.7] text-muted">
                   {f.body}
                 </p>
 
@@ -409,7 +409,7 @@ export default function FeaturesPage() {
                     {f.bullets.map((b) => (
                       <li
                         key={b}
-                        className="flex gap-2.5 text-[0.9375rem] leading-[1.6] text-muted"
+                        className="flex gap-2.5 font-hero text-[0.9375rem] leading-[1.6] text-muted"
                       >
                         <svg
                           width="14"
@@ -434,7 +434,7 @@ export default function FeaturesPage() {
 
                 {/* Usage */}
                 <div className="mt-7">
-                  <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                  <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
                     Usage
                   </span>
                   <div className="mt-2">
@@ -445,7 +445,7 @@ export default function FeaturesPage() {
                 {/* Flags */}
                 {f.flags.length > 0 && (
                   <div className="mt-6">
-                    <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                    <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
                       Flags
                     </span>
                     <div className="mt-2">
@@ -458,7 +458,7 @@ export default function FeaturesPage() {
 
                 {/* Examples */}
                 <div className="mt-6">
-                  <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                  <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
                     Examples
                   </span>
                   <div className="mt-2">
@@ -489,23 +489,23 @@ export default function FeaturesPage() {
       {/* Bottom CTA */}
       <div className="mx-auto max-w-content px-6 pb-24 pt-4">
         <div className="rounded-[12px] border border-ink-700 bg-ink-900 p-8 text-center">
-          <h2 className="text-[1.375rem] font-medium text-paper">
+          <h2 className="font-hero text-[1.375rem] font-bold text-paper">
             Ready to sandbox your first server?
           </h2>
-          <p className="mx-auto mt-2 max-w-md text-[0.9375rem] text-muted">
+          <p className="mx-auto mt-2 max-w-md font-hero text-[0.9375rem] text-muted">
             Install the CLI, trace once, and run under a policyin about two
             minutes.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/docs/install"
-              className="rounded-[8px] bg-blueprint px-5 py-2.5 text-[0.875rem] font-medium text-ink-950 transition-opacity hover:opacity-90"
+              className="rounded-[8px] bg-blueprint px-5 py-2.5 font-hero text-[0.875rem] font-medium text-ink-950 transition-opacity hover:opacity-90"
             >
               Install Warden
             </Link>
             <Link
               href="/docs/quickstart"
-              className="rounded-[8px] border border-ink-600 px-5 py-2.5 text-[0.875rem] font-medium text-paper transition-colors hover:border-ink-500"
+              className="rounded-[8px] border border-ink-600 px-5 py-2.5 font-hero text-[0.875rem] font-medium text-paper transition-colors hover:border-ink-500"
             >
               Read the quickstart
             </Link>

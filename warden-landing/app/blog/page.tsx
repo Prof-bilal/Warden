@@ -37,13 +37,13 @@ export default function BlogIndex() {
       <JsonLd data={collection} />
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
-        <p className="font-mono text-[0.6875rem] uppercase tracking-widest text-blueprint">
+        <p className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-grant">
           Blog
         </p>
-        <h1 className="mt-3 text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+        <h1 className="mt-3 font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
           Warden articles
         </h1>
-        <p className="mt-4 text-[1.0625rem] leading-relaxed text-muted">
+        <p className="mt-4 font-hero text-[1.0625rem] leading-relaxed text-muted">
           Sandboxing, policy enforcement, and platform internals for MCP
           servers and AI tooling.
         </p>
@@ -56,7 +56,7 @@ export default function BlogIndex() {
             <Link
               key={category.slug}
               href={`/blog/category/${category.slug}`}
-              className="rounded-full border border-ink-700 px-3 py-1 text-[0.8125rem] text-muted transition-colors hover:border-blueprint/50 hover:text-paper"
+              className="rounded-full border border-ink-700 px-3 py-1 font-hero text-[0.8125rem] text-muted transition-colors hover:border-blueprint/50 hover:text-paper"
             >
               {category.name}
             </Link>
@@ -65,7 +65,7 @@ export default function BlogIndex() {
 
         <div className="mt-12 border-t border-ink-800">
           {articles.length === 0 ? (
-            <p className="py-12 text-muted">
+            <p className="py-12 font-hero text-muted">
               No articles published yet.
             </p>
           ) : (

@@ -1,332 +1,490 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Zap } from "lucide-react";
+import {
+  Bot,
+  Check,
+  FileCode2,
+  Globe,
+  KeyRound,
+  Pause,
+  Play,
+  RotateCcw,
+  ShieldCheck,
+  ShieldX,
+  X,
+} from "lucide-react";
 
 /**
- * BoundaryDemothe full Warden workflow as a looping animation:
- * an AI agent requests a resource → the request travels → Warden's
- * boundary verdicts ALLOW (through to the resource) or DENY (stopped,
- * logged)flip the switch to see what happens with no sandbox.
+ * BoundaryDemoredesigned interactive Warden boundary console.
+ * Pattern (from security-demo research: PipeLab/Curate-Me style):
+ * scenario picker → readable 3-node pipeline (agent → gate → resource)
+ * → big verdict card → audit log + counters. Same JetBrains Mono
+ * hero font, Warden ink/grant/deny palette.
  */
 
-const SCENE_MS = 3800;
-const VERDICT_AT = 1.05; // seconds into the scene when the boundary verdicts
+const SCENE_MS = 4200;
+const VERDICT_AT = 1150;
 
 type Scene = {
   op: string;
   target: string;
-  res: string;
+  short: string;
+  resource: string;
+  rule: string;
   allow: boolean;
+  sensitive: boolean;
 };
 
 const SCENES: Scene[] = [
-  { op: "fs.read", target: "./workspace/data.json", res: "./workspace", allow: true },
-  { op: "fs.read", target: "~/.ssh/id_rsa", res: "~/.ssh", allow: false },
-  { op: "net.connect", target: "api.github.com:443", res: "api.github.com", allow: true },
-  { op: "env.get", target: "AWS_SECRET_ACCESS_KEY", res: "$AWS_SECRET", allow: false },
-  { op: "net.connect", target: "evil.example.io", res: "evil.com", allow: false },
+  {
+    op: "fs.read",
+    target: "./workspace/data.json",
+    short: "data.json",
+    resource: "./workspace",
+    rule: "fs.allow ./workspace/**",
+    allow: true,
+    sensitive: false,
+  },
+  {
+    op: "fs.read",
+    target: "~/.ssh/id_rsa",
+    short: "id_rsa",
+    resource: "~/.ssh",
+    rule: "no matching allow rule",
+    allow: false,
+    sensitive: true,
+  },
+  {
+    op: "net.connect",
+    target: "api.github.com:443",
+    short: "github:443",
+    resource: "api.github.com",
+    rule: "net.allow api.github.com:443",
+    allow: true,
+    sensitive: false,
+  },
+  {
+    op: "env.get",
+    target: "AWS_SECRET_ACCESS_KEY",
+    short: "AWS_SECRET",
+    resource: "$AWS_SECRET",
+    rule: "no matching allow rule",
+    allow: false,
+    sensitive: true,
+  },
+  {
+    op: "net.connect",
+    target: "evil.example.io",
+    short: "evil.example.io",
+    resource: "evil.com",
+    rule: "net.deny * (default)",
+    allow: false,
+    sensitive: true,
+  },
 ];
 
-const RESOURCES = [
-  { label: "./workspace", y: 11.5, sensitive: false },
-  { label: "~/.ssh", y: 20, sensitive: true },
-  { label: "api.github.com", y: 28.5, sensitive: false },
-  { label: "$AWS_SECRET", y: 37, sensitive: true },
-  { label: "evil.com", y: 45.5, sensitive: true },
-];
+type LogLine = {
+  id: number;
+  kind: "allow" | "deny" | "warn";
+  text: string;
+};
 
-function resY(label: string) {
-  return RESOURCES.find((r) => r.label === label)?.y ?? 28.5;
+function ResourceIcon({ scene }: { scene: Scene }) {
+  const cls = "text-muted";
+  if (scene.op.startsWith("fs")) return <FileCode2 size={16} className={cls} />;
+  if (scene.op.startsWith("env")) return <KeyRound size={16} className={cls} />;
+  return <Globe size={16} className={cls} />;
 }
 
 export default function BoundaryDemo() {
   const [wardenOn, setWardenOn] = useState(true);
   const [idx, setIdx] = useState(0);
-  const [log, setLog] = useState<{ text: string; deny: boolean; dim: boolean }[]>([]);
-  const logRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(true);
+  const [runId, setRunId] = useState(0);
+  const [showVerdict, setShowVerdict] = useState(false);
+  const [log, setLog] = useState<LogLine[]>([]);
+  const [stats, setStats] = useState({ allow: 0, deny: 0, exposed: 0 });
+  const idRef = useRef(0);
 
   const scene = SCENES[idx % SCENES.length];
-
-  // Scene loop + verdict log timing
-  useEffect(() => {
-    const t: ReturnType<typeof setTimeout>[] = [];
-    t.push(
-      setTimeout(() => {
-        setLog((prev) => {
-          const deny = scene.allow ? false : wardenOn;
-          const text = wardenOn
-            ? deny
-              ? `DENY   ${scene.op}  ${scene.target}  · logged`
-              : `ALLOW  ${scene.op}  ${scene.target}`
-            : scene.allow
-              ? `ALLOW  ${scene.op}  ${scene.target}`
-              : `ALLOW  ${scene.op}  ${scene.target}  ⚠ unsandboxed`;
-          return [{ text, deny, dim: false }, ...prev].slice(0, 4);
-        });
-      }, VERDICT_AT * 1000),
-    );
-    const iv = setInterval(() => setIdx((i) => i + 1), SCENE_MS);
-    return () => {
-      clearInterval(iv);
-      t.forEach(clearTimeout);
-    };
-  }, [idx, wardenOn, scene]);
-
-  useEffect(() => {
-    logRef.current?.scrollTo({ top: 0 });
-  }, [log]);
-
-  const ry = resY(scene.res);
-  const sceneKey = `${idx}-${wardenOn}`;
   const denied = !scene.allow && wardenOn;
+  const exposed = !scene.allow && !wardenOn; // sensitive request passes with no sandbox
+  const runKey = `${idx}-${wardenOn}-${runId}`;
+
+  // auto-advance scenes
+  useEffect(() => {
+    if (!playing) return;
+    const iv = setInterval(() => setIdx((i) => (i + 1) % SCENES.length), SCENE_MS);
+    return () => clearInterval(iv);
+  }, [playing, runId]);
+
+  // verdict timing per scene: reveal card + append audit log + counters
+  useEffect(() => {
+    setShowVerdict(false);
+    const t = setTimeout(() => {
+      setShowVerdict(true);
+      idRef.current += 1;
+      const id = idRef.current;
+      const kind: LogLine["kind"] = denied ? "deny" : exposed ? "warn" : "allow";
+      const text =
+        denied || exposed
+          ? `${denied ? "DENY" : "ALLOW"}  ${scene.op}  ${scene.target}${exposed ? "  ⚠ unsandboxed" : "  · logged"}`
+          : `ALLOW  ${scene.op}  ${scene.target}`;
+      setLog((prev) => [{ id, kind, text }, ...prev].slice(0, 5));
+      setStats((prev) => ({
+        allow: prev.allow + (denied ? 0 : 1),
+        deny: prev.deny + (denied ? 1 : 0),
+        exposed: prev.exposed + (exposed ? 1 : 0),
+      }));
+    }, VERDICT_AT);
+    return () => clearTimeout(t);
+  }, [runKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function pick(i: number) {
+    setIdx(i);
+    setRunId((r) => r + 1);
+    setPlaying(true);
+  }
+
+  function toggleWarden() {
+    setWardenOn((v) => !v);
+    setRunId((r) => r + 1);
+  }
+
+  function replay() {
+    setLog([]);
+    setStats({ allow: 0, deny: 0, exposed: 0 });
+    idRef.current = 0;
+    setIdx(0);
+    setRunId((r) => r + 1);
+    setPlaying(true);
+  }
+
+  const packetAnim = !wardenOn
+    ? "bd-packet-through"
+    : denied
+      ? "bd-packet-stop"
+      : "bd-packet-pass";
+  const packetColor = !wardenOn
+    ? scene.allow
+      ? "#3FB27E"
+      : "#E2604F"
+    : denied
+      ? "#E2604F"
+      : "#6E93E8";
 
   return (
-    <section className="border-t border-ink-800">
-      <div className="mx-auto grid max-w-content items-center gap-10 px-6 py-20 md:grid-cols-[22rem_1fr] md:gap-16">
-        {/* Left copy */}
-        <div>
-          <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+    <section className="border-t border-ink-800 bg-ink-950">
+      <div className="mx-auto max-w-content px-6 py-20 md:py-28">
+        {/* header */}
+        <div className="mx-auto max-w-[640px] text-center">
+          <p className="mb-4 font-hero text-[12px] font-bold uppercase tracking-[0.12em] text-grant">
+            Live boundary demo
+          </p>
+          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
             MCP has no concept of a boundary.
           </h2>
-          <p className="mt-4 text-[1rem] leading-[1.65] text-muted">
-            An agent asks for a file, a host, a secretand the protocol
-            happily complies. Flip the switch and watch Warden verdict every
-            request at the boundary: granted calls pass, everything else is
-            stopped and written down.
+          <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
+            An agent asks for a file, a host, a secretand the protocol happily complies. Pick a
+            request, flip the switch, and watch Warden verdict every call at the boundary.
           </p>
+        </div>
 
-          {/* Toggle */}
-          <button
-            onClick={() => setWardenOn((v) => !v)}
-            aria-pressed={wardenOn}
-            className={
-              "mt-7 inline-flex items-center gap-3 rounded-full border px-4 py-2.5 text-[0.875rem] font-medium transition-colors " +
-              (wardenOn
-                ? "border-grant/50 bg-grant-subtle text-paper hover:border-grant"
-                : "border-ink-600 bg-ink-900 text-muted hover:border-ink-500")
-            }
-          >
+        {/* console */}
+        <div className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
+          {/* control bar */}
+          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 bg-ink-950/60 px-4 py-3 md:px-5">
             <span
               className={
-                "relative h-5 w-9 rounded-full transition-colors " +
-                (wardenOn ? "bg-grant" : "bg-ink-600")
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1 font-hero text-[11px] font-bold tracking-[0.08em] " +
+                (wardenOn
+                  ? "border-grant/40 bg-grant-subtle text-grant"
+                  : "border-deny/40 bg-deny-subtle text-deny")
+              }
+            >
+              <span
+                className={"h-1.5 w-1.5 rounded-full " + (wardenOn ? "bg-grant" : "bg-deny")}
+              />
+              {wardenOn ? "ENFORCING" : "UNSANDBOXED"}
+            </span>
+
+            <button
+              onClick={toggleWarden}
+              aria-pressed={wardenOn}
+              className={
+                "inline-flex items-center gap-2.5 rounded-full border px-3 py-1.5 font-hero text-[12px] font-semibold transition-colors " +
+                (wardenOn
+                  ? "border-grant/50 bg-grant-subtle text-paper hover:border-grant"
+                  : "border-ink-600 bg-ink-900 text-muted hover:border-ink-500")
               }
             >
               <span
                 className={
-                  "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all " +
-                  (wardenOn ? "left-[1.125rem]" : "left-0.5")
+                  "relative h-4 w-8 rounded-full transition-colors " +
+                  (wardenOn ? "bg-grant" : "bg-ink-600")
                 }
-              />
-            </span>
-            {wardenOn ? "Warden: ON" : "Warden: OFF"}
-            <Zap size={14} className={wardenOn ? "text-grant" : "text-muted"} />
-          </button>
-        </div>
-
-        {/* Right workflow visualization */}
-        <div className="overflow-hidden rounded-[12px] border border-ink-700 bg-ink-900">
-          <div className="relative mx-auto aspect-[16/9] w-full">
-            {/* Status pill */}
-            <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 font-mono text-[0.6875rem] backdrop-blur-sm">
-              <span className={"h-1.5 w-1.5 rounded-full " + (wardenOn ? "bg-grant animate-pulse" : "bg-deny")} />
-              <span className={wardenOn ? "text-grant" : "text-deny"}>
-                {wardenOn ? "ENFORCING" : "UNSANDBOXED"}
+              >
+                <span
+                  className={
+                    "absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all " +
+                    (wardenOn ? "left-[1.0625rem]" : "left-0.5")
+                  }
+                />
               </span>
+              {wardenOn ? "Warden: ON" : "Warden: OFF"}
+            </button>
+
+            <div className="ml-auto flex items-center gap-1.5">
+              <button
+                onClick={() => setPlaying((p) => !p)}
+                aria-label={playing ? "Pause demo" : "Play demo"}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+              >
+                {playing ? <Pause size={15} /> : <Play size={15} />}
+              </button>
+              <button
+                onClick={replay}
+                aria-label="Replay demo"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+              >
+                <RotateCcw size={15} />
+              </button>
             </div>
-
-            <svg viewBox="0 0 100 57" className="h-full w-full">
-              {/* ── Static stage ── */}
-
-              {/* Agent */}
-              <rect x="4" y="23" width="16" height="10" rx="1.2" fill="#1E242E" stroke="#6E93E8" strokeWidth="0.45" />
-              <text x="12" y="27.2" textAnchor="middle" fontSize="2.3" fill="#E8EBEF" fontFamily="var(--font-geist-mono)">
-                AI agent
-              </text>
-              <text x="12" y="30.6" textAnchor="middle" fontSize="1.7" fill="#8D95A5" fontFamily="var(--font-geist-mono)">
-                mcp client
-              </text>
-
-              {/* Boundary zone */}
-              {wardenOn ? (
-                <g>
-                  <rect x="36" y="8" width="26" height="41" rx="3" fill="rgba(65,255,84,0.035)" stroke="#3FB27E" strokeWidth="0.45" strokeDasharray="1.7 1.3">
-                    <animate attributeName="stroke-dashoffset" from="0" to="6" dur="2.4s" repeatCount="indefinite" />
-                  </rect>
-                  <text x="49" y="5.6" textAnchor="middle" fontSize="2" fill="#3FB27E" fontFamily="var(--font-geist-mono)" letterSpacing="0.35">
-                    WARDEN
-                  </text>
-                </g>
-              ) : (
-                <g opacity="0.3">
-                  <rect x="36" y="8" width="26" height="41" rx="3" fill="none" stroke="#E2604F" strokeWidth="0.35" strokeDasharray="1 1.4" />
-                  <text x="49" y="5.6" textAnchor="middle" fontSize="2" fill="#E2604F" fontFamily="var(--font-geist-mono)" letterSpacing="0.35">
-                    NO SANDBOX
-                  </text>
-                </g>
-              )}
-
-              {/* Server inside the zone */}
-              <rect x="43" y="24.5" width="12" height="7" rx="1" fill="#1E242E" stroke={wardenOn ? "#3FB27E" : "#4A5568"} strokeWidth="0.45" />
-              <text x="49" y="28.7" textAnchor="middle" fontSize="2.3" fill="#E8EBEF" fontFamily="var(--font-geist-mono)">
-                server
-              </text>
-              {wardenOn && (
-                <text x="49" y="32.6" textAnchor="middle" fontSize="1.6" fill="#3FB27E" fontFamily="var(--font-geist-mono)">
-                  sandboxed
-                </text>
-              )}
-
-              {/* Resources column */}
-              {RESOURCES.map((r) => (
-                <g key={r.label}>
-                  <circle cx="79" cy={r.y - 0.7} r="0.9" fill={r.sensitive ? "#E2604F" : "#3FB27E"} opacity="0.85" />
-                  <text x="82" y={r.y} fontSize="2.1" fill={r.sensitive ? "#C9705F" : "#3FB27E"} fontFamily="var(--font-geist-mono)">
-                    {r.label}
-                  </text>
-                </g>
-              ))}
-              <text x="82" y="50.5" fontSize="1.6" fill="#8D95A5" fontFamily="var(--font-geist-mono)">
-                host resources
-              </text>
-
-              {/* ── Per-scene animation (remounted each scene) ── */}
-              <g key={sceneKey}>
-                {/* lane: agent → boundary, always visible (ON) */}
-                {wardenOn && (
-                  <line x1="20" y1="28" x2="35.5" y2="28" stroke={denied ? "#E2604F" : "#6E93E8"} strokeWidth="0.35" opacity="0.4" strokeDasharray="0.9 1.1">
-                    <animate attributeName="opacity" values="0;0.4;0.4;0.25" keyTimes="0;0.1;0.85;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                  </line>
-                )}
-                {/* lane: server → resource, always visible (ON) */}
-                {wardenOn && (
-                  <line x1="55.5" y1="28" x2="76.5" y2={ry} stroke={scene.allow ? "#3FB27E" : "#4A5568"} strokeWidth="0.35" opacity={scene.allow ? "0.4" : "0.22"} strokeDasharray={scene.allow ? "0.9 1.1" : "0.6 1.4"}>
-                    <animate attributeName="opacity" values={scene.allow ? "0;0.4;0.4;0.25" : "0;0.22;0.22;0.12"} keyTimes="0;0.1;0.85;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                  </line>
-                )}
-                {/* lane: agent → resource straight through (OFF) */}
-                {!wardenOn && (
-                  <line x1="20" y1="28" x2="76.5" y2={ry} stroke={scene.allow ? "#3FB27E" : "#E2604F"} strokeWidth="0.35" opacity="0.4" strokeDasharray="0.9 1.1">
-                    <animate attributeName="opacity" values="0;0.4;0.4;0.25" keyTimes="0;0.1;0.85;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                  </line>
-                )}
-
-                {/* request label above agent */}
-                <text x="12" y="19.5" textAnchor="middle" fontSize="1.8" fill="#8D95A5" fontFamily="var(--font-geist-mono)">
-                  {scene.op}
-                  <animate attributeName="opacity" values="0;1;1;0.85" keyTimes="0;0.08;0.9;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                </text>
-                <text x="12" y="36.5" textAnchor="middle" fontSize="1.8" fill={denied ? "#E2604F" : scene.allow ? "#3FB27E" : "#E2604F"} fontFamily="var(--font-geist-mono)">
-                  {scene.target.length > 18 ? scene.target.slice(0, 17) + "…" : scene.target}
-                  <animate attributeName="opacity" values="0;1;1;0.85" keyTimes="0;0.08;0.9;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                </text>
-
-                {/* request packet: agent → boundary (ON) */}
-                {wardenOn && (
-                  <circle r="1.3" fill={denied ? "#E2604F" : "#6E93E8"} opacity="0">
-                    <animateMotion path="M20,28 L35.5,28" begin="0.15s" dur="0.9s" fill="freeze" />
-                    <animate attributeName="opacity" values="0;1;1;1" keyTimes="0;0.05;0.93;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                    {denied && (
-                      <animate attributeName="fill" begin="1.05s" dur="0.01s" fill="freeze" from="#6E93E8" to="#E2604F" />
-                    )}
-                    {/* fade packet right before scene ends */}
-                    <animate attributeName="opacity" begin={`${SCENE_MS / 1000 - 0.4}s`} dur="0.35s" fill="freeze" from="1" to="0" />
-                  </circle>
-                )}
-
-                {/* request packet: agent → resource, straight through (OFF) */}
-                {!wardenOn && (
-                  <circle r="1.3" fill={scene.allow ? "#3FB27E" : "#E2604F"} opacity="0">
-                    <animateMotion path={`M20,28 L76.5,${ry}`} begin="0.15s" dur="1.7s" fill="freeze" />
-                    <animate attributeName="opacity" values="0;1;1;1" keyTimes="0;0.05;0.93;1" dur={`${SCENE_MS / 1000}s`} fill="freeze" />
-                    <animate attributeName="opacity" begin={`${SCENE_MS / 1000 - 0.4}s`} dur="0.35s" fill="freeze" from="1" to="0" />
-                  </circle>
-                )}
-
-                {/* verdict at the boundary (ON) */}
-                {wardenOn && denied && (
-                  <g>
-                    {/* impact ripple */}
-                    <circle cx="36" cy="28" r="1" fill="none" stroke="#E2604F" strokeWidth="0.4">
-                      <animate attributeName="r" begin="1.05s" dur="0.55s" fill="freeze" from="1" to="5.5" />
-                      <animate attributeName="opacity" begin="1.05s" dur="0.55s" fill="freeze" from="0.9" to="0" />
-                    </circle>
-                    {/* X burst */}
-                    <g stroke="#E2604F" strokeWidth="0.55" opacity="0">
-                      <line x1="34.6" y1="26.6" x2="37.4" y2="29.4" />
-                      <line x1="34.6" y1="29.4" x2="37.4" y2="26.6" />
-                      <animate attributeName="opacity" begin="1.05s" dur="0.18s" fill="freeze" from="0" to="1" />
-                    </g>
-                    {/* logged tag */}
-                    <text x="36" y="36.5" textAnchor="middle" fontSize="1.7" fill="#E2604F" fontFamily="var(--font-geist-mono)" opacity="0">
-                      blocked · logged
-                      <animate attributeName="opacity" begin="1.3s" dur="0.25s" fill="freeze" from="0" to="1" />
-                    </text>
-                  </g>
-                )}
-                {wardenOn && !denied && (
-                  <g>
-                    {/* boundary check stamp */}
-                    <text x="36" y="26.2" textAnchor="middle" fontSize="2.6" fill="#3FB27E" fontFamily="var(--font-geist-mono)" opacity="0">
-                      ✓
-                      <animate attributeName="opacity" begin="1.05s" dur="0.2s" fill="freeze" from="0" to="1" />
-                    </text>
-                    {/* continue packet: server → resource */}
-                    <circle r="1.2" fill="#3FB27E" opacity="0">
-                      <animateMotion path={`M56,28 L76.5,${ry}`} begin="1.25s" dur="0.85s" fill="freeze" />
-                      <animate attributeName="opacity" begin="1.25s" dur="0.1s" fill="freeze" from="0" to="1" />
-                      <animate attributeName="opacity" begin={`${SCENE_MS / 1000 - 0.4}s`} dur="0.35s" fill="freeze" from="1" to="0" />
-                    </circle>
-                    {/* arrival ping */}
-                    <circle cx="77.5" cy={ry - 0.7} r="1" fill="none" stroke="#3FB27E" strokeWidth="0.4" opacity="0">
-                      <animate attributeName="r" begin="2.1s" dur="0.5s" fill="freeze" from="1" to="4" />
-                      <animate attributeName="opacity" begin="2.1s" dur="0.5s" fill="freeze" from="0.9" to="0" />
-                    </circle>
-                  </g>
-                )}
-
-                {/* OFF-mode arrival: dangerous resource gets ⚠ */}
-                {!wardenOn && !scene.allow && (
-                  <g opacity="0">
-                    <text x="77.5" y={ry - 3} fontSize="1.9" fill="#E2604F" fontFamily="var(--font-geist-mono)">
-                      full access!
-                      <animate attributeName="opacity" begin="1.95s" dur="0.25s" fill="freeze" from="0" to="1" />
-                    </text>
-                    <circle cx="77.5" cy={ry - 0.7} r="1" fill="none" stroke="#E2604F" strokeWidth="0.4">
-                      <animate attributeName="r" begin="1.9s" dur="0.5s" fill="freeze" from="1" to="4" />
-                      <animate attributeName="opacity" begin="1.9s" dur="0.5s" fill="freeze" from="0.9" to="0" />
-                    </circle>
-                    <animate attributeName="opacity" begin="1.95s" dur="0.2s" fill="freeze" from="0" to="1" />
-                  </g>
-                )}
-              </g>
-            </svg>
           </div>
 
-          {/* Live audit log strip */}
-          <div
-            ref={logRef}
-            className="h-[7.5rem] overflow-hidden border-t border-ink-700 bg-ink-950 px-5 py-3 font-mono text-[0.75rem] leading-[1.7]"
-          >
-            {log.length === 0 && <p className="text-muted">agent connecting…</p>}
-            {log.map((line, i) => (
-              <p
-                key={`${line.text}-${i}`}
+          {/* scene progress */}
+          <div className="h-[2px] bg-ink-800">
+            <div
+              key={runKey + (playing ? "-play" : "-pause")}
+              className="h-full bg-grant/70"
+              style={{
+                animation: `bd-progress-fill ${SCENE_MS}ms linear forwards`,
+                animationPlayState: playing ? "running" : "paused",
+              }}
+            />
+          </div>
+
+          {/* scenario picker */}
+          <div className="flex gap-2 overflow-x-auto border-b border-ink-700 px-4 py-3 md:px-5">
+            {SCENES.map((s, i) => {
+              const active = i === idx % SCENES.length;
+              return (
+                <button
+                  key={s.short}
+                  onClick={() => pick(i)}
+                  className={
+                    "flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 font-hero text-[12px] transition-colors " +
+                    (active
+                      ? "border-blueprint/60 bg-blueprint/10 text-paper"
+                      : "border-ink-700 bg-ink-950 text-muted hover:border-ink-500 hover:text-paper")
+                  }
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ background: s.allow ? "#3FB27E" : "#E2604F" }}
+                  />
+                  <span className="text-muted">{s.op}</span>
+                  <span>{s.short}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-4 py-6 md:px-8 md:py-8">
+            {/* pipeline: agent → gate → resource */}
+            <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 md:gap-4">
+              {/* agent */}
+              <div className="min-w-0 rounded-xl border border-blueprint/40 bg-ink-950 p-3 text-center md:p-4">
+                <Bot size={18} className="mx-auto text-blueprint" />
+                <p className="mt-2 truncate font-hero text-[13px] font-bold text-paper md:text-[14px]">
+                  AI agent
+                </p>
+                <p className="font-hero text-[11px] text-muted">mcp client</p>
+                <p className="mt-2 truncate font-hero text-[11px] text-blueprint md:text-[12px]">
+                  {scene.op}
+                </p>
+              </div>
+
+              {/* gate */}
+              <div className="flex flex-col items-center justify-center px-1">
+                <div
+                  className={
+                    "flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-dashed transition-colors md:h-20 md:w-20 " +
+                    (wardenOn
+                      ? "border-grant/70 bg-grant-subtle"
+                      : "border-deny/40 bg-deny-subtle opacity-70") +
+                    (wardenOn && showVerdict && denied ? " motion-safe:animate-[bd-deny-shake_0.4s_ease]" : "")
+                  }
+                  style={wardenOn ? { animation: "bd-gate-glow 2.4s ease-in-out infinite" } : undefined}
+                >
+                  {wardenOn ? (
+                    showVerdict ? (
+                      denied ? (
+                        <X size={26} className="text-deny" />
+                      ) : (
+                        <Check size={26} className="text-grant" />
+                      )
+                    ) : (
+                      <ShieldCheck size={26} className="text-grant" />
+                    )
+                  ) : (
+                    <ShieldX size={26} className="text-deny/70" />
+                  )}
+                </div>
+                <p
+                  className={
+                    "mt-2 font-hero text-[10px] font-bold tracking-[0.2em] " +
+                    (wardenOn ? "text-grant" : "text-deny/70")
+                  }
+                >
+                  {wardenOn ? "WARDEN" : "NO GATE"}
+                </p>
+              </div>
+
+              {/* resource */}
+              <div
                 className={
-                  line.dim
-                    ? "text-muted"
-                    : line.text.startsWith("DENY")
-                      ? "text-deny"
-                      : line.text.includes("⚠")
-                        ? "text-progress"
-                        : "text-grant"
+                  "min-w-0 rounded-xl border bg-ink-950 p-3 text-center md:p-4 " +
+                  (scene.sensitive ? "border-deny/40" : "border-grant/40")
                 }
-                style={{ opacity: 1 - i * 0.18 }}
               >
-                {line.text}
-              </p>
-            ))}
+                <div className="mx-auto flex justify-center">
+                  <ResourceIcon scene={scene} />
+                </div>
+                <p className="mt-2 truncate font-hero text-[13px] font-bold text-paper md:text-[14px]">
+                  {scene.resource}
+                </p>
+                <p
+                  className={
+                    "font-hero text-[11px] " + (scene.sensitive ? "text-deny" : "text-grant")
+                  }
+                >
+                  {scene.sensitive ? "sensitive" : "granted"}
+                </p>
+                <p className="mt-2 truncate font-hero text-[11px] text-muted md:text-[12px]">
+                  {scene.target}
+                </p>
+              </div>
+            </div>
+
+            {/* packet track */}
+            <div className="relative mx-[11%] mt-1 h-6" aria-hidden>
+              <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-ink-600" />
+              <div
+                key={"pkt-" + runKey}
+                className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full motion-reduce:animate-none"
+                style={{
+                  background: packetColor,
+                  boxShadow: `0 0 12px 2px ${packetColor}66`,
+                  animation: `${packetAnim} ${SCENE_MS}ms linear forwards`,
+                  animationPlayState: playing ? "running" : "paused",
+                }}
+              />
+            </div>
+
+            {/* verdict card */}
+            <div className="mt-2 min-h-[86px]">
+              {showVerdict ? (
+                <div
+                  key={"v-" + runKey}
+                  className={
+                    "rounded-xl border px-4 py-3 motion-safe:animate-[bd-verdict-pop_0.3s_ease] " +
+                    (denied
+                      ? "border-deny/50 bg-deny-subtle"
+                      : exposed
+                        ? "border-progress/50 bg-progress-subtle"
+                        : "border-grant/50 bg-grant-subtle")
+                  }
+                >
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span
+                      className={
+                        "rounded px-1.5 py-0.5 font-hero text-[12px] font-bold tracking-[0.06em] " +
+                        (denied
+                          ? "bg-deny text-ink-950"
+                          : exposed
+                            ? "bg-progress text-ink-950"
+                            : "bg-grant text-ink-950")
+                      }
+                    >
+                      {denied ? "DENY" : exposed ? "LEAKED" : "ALLOW"}
+                    </span>
+                    <code className="truncate font-hero text-[13px] text-paper md:text-[14px]">
+                      {scene.op} {scene.target}
+                    </code>
+                  </div>
+                  <p className="mt-1.5 font-hero text-[12px] text-muted">
+                    {denied && (
+                      <>
+                        blocked at boundary · {scene.rule} ·{" "}
+                        <span className="text-deny">logged</span>
+                      </>
+                    )}
+                    {exposed && (
+                      <>
+                        no sandboxsensitive {scene.op} passed ·{" "}
+                        <span className="text-progress">would be denied by Warden</span>
+                      </>
+                    )}
+                    {!denied && !exposed && (
+                      <>
+                        {scene.rule} · <span className="text-grant">1.2ms · logged</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-ink-700 px-4 py-3">
+                  <p className="font-hero text-[12px] text-muted">
+                    <span className="motion-safe:animate-pulse">●</span> evaluating {scene.op} at
+                    the boundary…
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* bottom split: audit log + counters */}
+            <div className="mt-4 grid gap-4 md:grid-cols-[1fr_12rem]">
+              <div className="min-h-[9.5rem] rounded-xl border border-ink-700 bg-ink-950 px-4 py-3 font-hero text-[12px] leading-[1.9]">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+                  Audit log
+                </p>
+                {log.length === 0 && <p className="text-muted">agent connecting…</p>}
+                {log.map((line) => (
+                  <p
+                    key={line.id}
+                    className={
+                      "truncate motion-safe:animate-[bd-log-in_0.25s_ease] " +
+                      (line.kind === "deny"
+                        ? "text-deny"
+                        : line.kind === "warn"
+                          ? "text-progress"
+                          : "text-grant")
+                    }
+                  >
+                    {line.text}
+                  </p>
+                ))}
+              </div>
+              <div className="flex flex-row gap-3 md:flex-col">
+                {[
+                  { label: "allowed", value: stats.allow, cls: "text-grant" },
+                  { label: "denied", value: stats.deny, cls: "text-deny" },
+                  { label: "exposed", value: stats.exposed, cls: "text-progress" },
+                ].map((s) => (
+                  <div
+                    key={s.label}
+                    className="flex-1 rounded-xl border border-ink-700 bg-ink-950 px-4 py-3 text-center"
+                  >
+                    <p className={"font-hero text-2xl font-bold " + s.cls}>{s.value}</p>
+                    <p className="font-hero text-[10px] uppercase tracking-[0.14em] text-muted">
+                      {s.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

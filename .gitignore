@@ -51,3 +51,10 @@ warden-starter/warden/dist/
 # Proof-harness output (generated artifacts, plan §6)
 evidence/
 warden-starter/warden/site/
+# Social/marketing drafts (never publish to git)
+# NOTE: scoped to root only — warden-landing/content/articles/ holds
+# published blog posts and MUST stay tracked.
+/articles/
+
+# Founder content notes (private, never publish to git)
+CONTENT_NOTES.md

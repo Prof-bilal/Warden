@@ -15,14 +15,14 @@ import Cta from "@/components/Cta";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: { absolute: "Warden — Sandbox Runtime for MCP Servers" },
+  title: { absolute: "WardenSandbox Runtime for MCP Servers" },
   description:
     "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "Warden — Sandbox Runtime for MCP Servers",
+    title: "WardenSandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
     url: SITE_URL,
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — Sandbox Runtime for MCP Servers",
+    title: "WardenSandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
     images: [`${SITE_URL}/og-image.png`],

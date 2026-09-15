@@ -1,6 +1,6 @@
 ---
 title: "Warden backends: bubblewrap, Seatbelt, AppContainer"
-description: "How Warden maps one deny-by-default policy onto three different OS sandbox mechanisms — Linux bubblewrap, macOS Seatbelt, and Windows AppContainer with WFP and Job Objects."
+description: "How Warden maps one deny-by-default policy onto three different OS sandbox mechanismsLinux bubblewrap, macOS Seatbelt, and Windows AppContainer with WFP and Job Objects."
 date: "2026-09-14"
 author: prof-bilal
 category: engineering
@@ -10,7 +10,7 @@ draft: false
 sample: true
 ---
 
-Every operating system already ships a kernel-level sandbox mechanism. Warden doesn't invent one — it compiles the same policy file into whichever mechanism the host provides. This article explains the three backends and what each one actually enforces.
+Every operating system already ships a kernel-level sandbox mechanism. Warden doesn't invent oneit compiles the same policy file into whichever mechanism the host provides. This article explains the three backends and what each one actually enforces.
 
 ## Linux: bubblewrap
 
@@ -26,7 +26,7 @@ Because the grants are enforced by the kernel through namespaces, a compromised 
 
 ## macOS: Seatbelt
 
-On macOS, Warden compiles the policy into a Seatbelt (sandbox-exec) profile. Seatbelt operates on the same principle — operations not explicitly allowed by the profile are denied by the kernel — so the deny-by-default model maps directly. Where the Seatbelt backend cannot yet guarantee parity with Linux for a given grant, Warden falls back to a Docker-based sandbox and says so, rather than pretending the native backend is stricter than it is.
+On macOS, Warden compiles the policy into a Seatbelt (sandbox-exec) profile. Seatbelt operates on the same principleoperations not explicitly allowed by the profile are denied by the kernelso the deny-by-default model maps directly. Where the Seatbelt backend cannot yet guarantee parity with Linux for a given grant, Warden falls back to a Docker-based sandbox and says so, rather than pretending the native backend is stricter than it is.
 
 ## Windows: AppContainer + WFP + Job Objects
 
@@ -34,10 +34,10 @@ Windows support uses three cooperating layers:
 
 ![Diagram of the Windows backend layers: AppContainer, WFP egress filters, and Job Objects](/diagrams/windows-backend.webp)
 
-- **AppContainer** — the server runs with a LowBox token that constrains filesystem and object access to explicitly granted capabilities
-- **WFP egress filters** — Windows Filtering Platform rules enforce the network allowlist at the kernel level
-- **Job Objects** — CPU and memory limits, with the whole job terminated on breach
-- **ETW auditing** — enforcement events are captured through Event Tracing for Windows into the JSONL audit stream
+- **AppContainer**the server runs with a LowBox token that constrains filesystem and object access to explicitly granted capabilities
+- **WFP egress filters**Windows Filtering Platform rules enforce the network allowlist at the kernel level
+- **Job Objects**CPU and memory limits, with the whole job terminated on breach
+- **ETW auditing**enforcement events are captured through Event Tracing for Windows into the JSONL audit stream
 
 ## One policy, equivalent guarantees
 

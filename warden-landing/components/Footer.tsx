@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="border-t border-ink-800">
-      <div className="mx-auto flex max-w-content flex-col items-start justify-between gap-4 px-6 py-10 text-[0.8125rem] text-muted md:flex-row md:items-center">
+      <div className="mx-auto flex max-w-content flex-col items-start justify-between gap-4 px-6 py-10 font-hero text-[0.8125rem] text-muted md:flex-row md:items-center">
         <span>wardenMIT licensed</span>
         <div className="flex flex-wrap gap-6">
           <Link href="/#how-it-works" className="transition-colors hover:text-paper">

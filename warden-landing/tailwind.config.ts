@@ -32,6 +32,7 @@ const config: Config = {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
         display: ["var(--font-display)", "Newsreader", "GT Sectra", "Tiempos Text", "serif"],
+        hero: ["var(--font-hero-mono)", "JetBrains Mono", "Fira Code", "var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       maxWidth: {
         content: "72rem",

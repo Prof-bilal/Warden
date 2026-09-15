@@ -29,8 +29,12 @@ npx warden --version                    # use via npx
 ```
 
 The platform binary is
-downloaded lazily on first `warden` invocation from GitHub Releases (5 binaries
-+ `SHA256SUMS` per release).
+downloaded lazily on the first `warden` invocation: the npm launcher prints
+`Downloading warden v<version>...`, fetches the matching GitHub Release
+binary (5 binaries + `SHA256SUMS` per release) into
+`~/.cache/warden/<version>/`, and then runs it. Later invocations reuse the
+cached binary. Checksum verification against the published `SHA256SUMS` is
+performed by `warden update` when upgrading.
 
 Releases that predate `warden update` do not include that commandupgrade
 those installs with:
@@ -56,7 +60,7 @@ warden  # prints usage; exit code is 1 with no subcommand, that's normal
 
 ### Option CBuild from source
 
-Requires **Go 1.22+**:
+Requires **Go 1.24+** (see `go.mod`):
 
 ```bash
 git clone https://github.com/Prof-bilal/Warden.git
@@ -99,13 +103,18 @@ if you hit that error.
 
 ## What a successful install looks like
 
-When installed via `npm` (`npm install -g warden-sandbox-cli`) the first
-`warden` invocation downloads the platform binary with a polished,
-non-blocking progress sequence. In a TTY it animates briefly with a braille
-spinner; in CI or when piped it falls back to deterministic bracketed lines
-so logs stay clean. No spinner is left behind on exit.
+`npm install -g warden-sandbox-cli` itself prints only npm's standard
+outputthere is no Warden banner or progress screen at install time. The
+binary is fetched on the first `warden` invocation:
 
-TTY (interactive):
+```
+$ warden --version
+Downloading warden v0.1.17...
+warden version 0.1.17
+```
+
+Bare `warden` (no subcommand) then shows usage and exits 1. In an
+interactive terminal it starts with the large ASCII banner:
 
 ```
 ██     ██  █████  ██████  ██████  ███████ ███    ██
@@ -113,53 +122,35 @@ TTY (interactive):
 ██  █  ██ ███████ ██████  ██   ██ █████   ██ ██  ██
 ██ ███ ██ ██   ██ ██   ██ ██   ██ ██      ██  ██ ██
  ███ ███  ██   ██ ██   ██ ██████  ███████ ██   ████
-              MCP SERVER SANDBOX
+               MCP SERVER SANDBOX
 
-        Secure execution for MCP servers
+WARDEN
+Secure execution for MCP servers.
 
-  Installing Warden...
+Usage:
+  warden <command> [options]
 
-  ✓ Checking platform  (linux/amd64)
-  ✓ Installing runtime  (warden-linux-amd64)
-  ✓ Installing CLI
-  ✓ Verifying installation
+Commands:
+  init       Create a security policy
+  run        Run an MCP server in the sandbox
+  ...
 
-  ─────────────────────────────────────
+Get started:
 
-  ✓ Warden v0.1.0 installed successfully.
-
-  Get started:
-
-    warden init
-    warden run --policy policy.yaml -- <server>
-    warden doctor check sandbox readiness
-
-  Security:
-    Warden fails closed when sandboxing is unavailable.
+  warden init
+  warden run --policy policy.yaml -- <server>
+  ...
 ```
 
-CI / non-TTY fallback:
+When output is piped or `CI` is set, the large banner is omitted and only
+the compact `WARDEN` header + usage is printed. Colors respect `NO_COLOR`
+and `TERM=dumb`; set `WARDEN_NO_UNICODE=1` for ASCII fallbacks.
 
-```
-WARDENMCP Server Sandbox  v0.1.0
-[1/4] Checking platform... OK
-[2/4] Installing runtime... OK
-[3/4] Installing CLI... OK
-[4/4] Verifying installation... OK
-
-Warden v0.1.0 installed successfully.
-```
-
-The same fail-closed guarantee applies: if the platform is unsupported or
-the binary cannot be downloaded/verified, the installer exits non-zero
-and prints `You can manually install from: https://github.com/Prof-bilal/Warden/releases`
-without leaving a half-installed state. Colors respect `NO_COLOR` and
-`TERM=dumb`; set `WARDEN_NO_UNICODE=1` for ASCII fallbacks.
-
-First-run after install, `warden` (no args) shows a one-time welcome with
-the banner, capabilities, and next steps (`warden init` / `warden doctor`).
-It is never shown in CI, never shown for `warden run`, and can be disabled
-with `WARDEN_NO_FIRST_RUN=1`. See [CLI Reference](cli.md#cli-experience).
+First-run after install, `warden` (no args) in an interactive terminal
+shows a one-time welcome with the banner, capabilities, and next steps
+(`warden init` / `warden doctor`). It is never shown in CI, never shown
+for `warden run`, and can be disabled with `WARDEN_NO_FIRST_RUN=1`. See
+[CLI Reference](cli.md#cli-experience).
 
 ## Verify your install
 

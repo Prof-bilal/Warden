@@ -135,10 +135,10 @@ export default function Docs() {
 
           {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+            <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
               Docs.
             </h1>
-            <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
+            <p className="mt-5 max-w-[34rem] font-hero text-[1.0625rem] leading-[1.65] text-muted">
               Install it, run your first sandboxed server, then go deep on the
               policy schema. Start with Install and Quickstartin that order.
             </p>
@@ -150,13 +150,13 @@ export default function Docs() {
                   href={c.href}
                   className="group bg-ink-950 p-7 transition-colors hover:bg-ink-900"
                 >
-                  <h2 className="text-[1.125rem] font-medium text-paper">
+                  <h2 className="font-hero text-[1.125rem] font-bold text-paper">
                     {c.title}
                     <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5">
                       →
                     </span>
                   </h2>
-                  <p className="mt-2 text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
+                  <p className="mt-2 font-hero text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
                 </a>
               ))}
             </div>

@@ -34,14 +34,14 @@ export default function Windows() {
     <section id="windows" className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2rem]">
             Windows: four layers, one boundary.
           </h2>
-          <span className="rounded-sm bg-grant-subtle px-2.5 py-1 text-[0.75rem] text-grant">
+          <span className="rounded-sm bg-grant-subtle px-2.5 py-1 font-hero text-[0.75rem] text-grant">
             v0.1.6
           </span>
         </div>
-        <p className="mt-3 max-w-[36rem] text-[1rem] leading-[1.65] text-muted">
+        <p className="mt-3 max-w-[36rem] font-hero text-[1rem] leading-[1.65] text-muted">
           The Windows backend stacks four OS-native primitives so each
           sandboxed MCP server gets exactly the access its policy allows —
           no more, no fallback, no silent escalation.

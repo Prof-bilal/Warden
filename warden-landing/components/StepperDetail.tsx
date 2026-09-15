@@ -40,7 +40,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
     <div>
       {/* ══════════ Mobile: swipeable image carousel (lg:hidden) ══════════ */}
       <div className="lg:hidden">
-        <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+        <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
           {sectionLabel}
         </span>
 
@@ -58,7 +58,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               className="w-full shrink-0 snap-center rounded-[12px] border border-ink-700 bg-ink-900 p-4"
               aria-hidden={i !== mobileIdx}
             >
-              <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+              <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
                 Step {i + 1} of {total}
               </span>
               {/* Each slide renders its own imageall slides stay mounted,
@@ -66,10 +66,10 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               <div className="mt-3 overflow-hidden rounded-[8px] border border-ink-700 bg-ink-950 p-1.5">
                 {s.image}
               </div>
-              <h3 className="mt-4 text-[1.25rem] font-medium leading-[1.2] tracking-[-0.01em] text-paper">
+              <h3 className="mt-4 font-hero text-[1.25rem] font-bold leading-[1.2] tracking-[-0.01em] text-paper">
                 {s.title}
               </h3>
-              <p className="mt-2 text-[0.875rem] leading-[1.6] text-muted">
+              <p className="mt-2 font-hero text-[0.875rem] leading-[1.6] text-muted">
                 {s.body}
               </p>
             </div>
@@ -91,7 +91,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               />
             ))}
           </div>
-          <span className="font-mono text-[0.6875rem] tabular-nums text-muted">
+          <span className="font-hero text-[0.6875rem] tabular-nums text-muted">
             {String(mobileIdx + 1).padStart(2, "0")}/
             {String(total).padStart(2, "0")}
           </span>
@@ -104,7 +104,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               key={i}
               onClick={() => goTo(i)}
               className={
-                "shrink-0 rounded-full border px-2.5 py-1 font-mono text-[0.6875rem] transition-colors " +
+                "shrink-0 rounded-full border px-2.5 py-1 font-hero text-[0.6875rem] transition-colors " +
                 (i === mobileIdx
                   ? "border-blueprint/40 bg-blueprint/10 text-blueprint"
                   : "border-ink-700 text-muted")
@@ -120,7 +120,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
       <div className="hidden gap-8 lg:grid lg:grid-cols-[26rem_1fr]">
         {/* Left: stepper list */}
         <div className="flex flex-col gap-2">
-          <span className="mb-2 inline-block w-fit rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+          <span className="mb-2 inline-block w-fit rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
             {sectionLabel}
           </span>
           {items.map((s, i) => (
@@ -136,7 +136,7 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
             >
               <span
                 className={
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-mono text-[0.75rem] " +
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-hero text-[0.75rem] " +
                   (i === active
                     ? "border-blueprint/40 bg-blueprint/10 text-blueprint"
                     : "border-ink-600 text-muted")
@@ -147,13 +147,13 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
               <div className="min-w-0">
                 <span
                   className={
-                    "block truncate text-[1rem] font-medium " +
+                    "block truncate font-hero text-[1rem] font-medium " +
                     (i === active ? "text-paper" : "text-muted")
                   }
                 >
                   {s.title}
                 </span>
-                <span className="mt-0.5 block truncate text-[0.8125rem] leading-[1.4] text-muted">
+                <span className="mt-0.5 block truncate font-hero text-[0.8125rem] leading-[1.4] text-muted">
                   {s.summary}
                 </span>
               </div>
@@ -163,13 +163,13 @@ export default function StepperDetail({ sectionLabel, items }: Props) {
 
         {/* Right: detail panel */}
         <div className="flex flex-col rounded-[12px] border border-ink-700 bg-ink-900 p-8">
-          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+          <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
             Step {active + 1} of {total}
           </span>
-          <h3 className="mt-2 text-[1.5rem] font-medium leading-[1.2] tracking-[-0.01em] text-paper">
+          <h3 className="mt-2 font-hero text-[1.5rem] font-medium leading-[1.2] tracking-[-0.01em] text-paper">
             {item.title}
           </h3>
-          <p className="mt-2 text-[0.9375rem] leading-[1.6] text-muted">
+          <p className="mt-2 font-hero text-[0.9375rem] leading-[1.6] text-muted">
             {item.body}
           </p>
 

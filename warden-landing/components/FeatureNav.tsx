@@ -40,7 +40,7 @@ export default function FeatureNav() {
     <div className="sticky top-[57px] z-30 border-y border-ink-800 bg-ink-950/95 backdrop-blur">
       <div className="mx-auto flex max-w-content items-center gap-5 px-6 py-3">
         {/* Label */}
-        <span className="hidden shrink-0 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted sm:block">
+        <span className="hidden shrink-0 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted sm:block">
           Features
         </span>
 
@@ -54,7 +54,7 @@ export default function FeatureNav() {
               key={f.id}
               href={`#${f.id}`}
               className={
-                "shrink-0 rounded-full border px-3 py-1 font-mono text-[0.75rem] transition-colors " +
+                "shrink-0 rounded-full border px-3 py-1 font-hero text-[0.75rem] transition-colors " +
                 (active === f.id
                   ? "border-blueprint/40 bg-blueprint/10 text-blueprint"
                   : "border-ink-700 text-muted hover:border-ink-600 hover:text-paper")
@@ -78,7 +78,7 @@ export default function FeatureNav() {
               />
             ))}
           </div>
-          <span className="font-mono text-[0.6875rem] tabular-nums text-muted">
+          <span className="font-hero text-[0.6875rem] tabular-nums text-muted">
             {String(activeIndex + 1).padStart(2, "0")}/
             {String(FEATURES.length).padStart(2, "0")}
           </span>

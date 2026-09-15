@@ -57,10 +57,10 @@ export default function Capabilities() {
   return (
     <section id="capabilities" className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
-        <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+        <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2rem]">
           What&apos;s supported.
         </h2>
-        <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
+        <p className="mt-3 max-w-[34rem] font-hero text-[1rem] leading-[1.65] text-muted">
           Every item below ships in the CLI today and is covered by the test
           suite. Nothing on this page is a roadmap promisethat list lives
           separately, labeled as roadmap.

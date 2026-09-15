@@ -3,7 +3,7 @@ import { getArticleBySlug, getCategoryBySlug } from "@/lib/blog";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "Article preview — Warden";
+export const alt = "Article previewWarden";
 
 export default async function ArticleOgImage({
   params,

@@ -2,27 +2,30 @@ import SandboxPlayer from "@/components/SandboxPlayer";
 
 export default function Demo() {
   return (
-    <section id="demo" className="border-t border-ink-800">
-      <div className="mx-auto max-w-content px-6 py-20">
-        <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
-          <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+    <section id="demo" className="border-t border-ink-800 bg-ink-950">
+      <div className="mx-auto max-w-content px-6 py-20 md:py-28">
+        <div className="mx-auto max-w-[640px] text-center">
+          <p className="mb-4 font-hero text-[12px] font-bold uppercase tracking-[0.12em] text-grant">
+            Live demo · rendered in React
+          </p>
+          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
             Watch it enforce a policy.
           </h2>
-          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-            24s · rendered live in React
-          </span>
+          <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
+            A Warden sandbox from the inside: the policy grants are applied, a granted call
+            succeeds, and everything outside the grant is stopped at the boundary and written to
+            the audit log.
+          </p>
         </div>
-        <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
-          A Warden sandbox from the inside: the policy grants are applied, a
-          granted call succeeds, and everything outside the grant is stopped at
-          the boundary and written to the audit log.
-        </p>
 
         {/* Remotion-style player: the whole "recording" is rendered live in
             Reactseekable, loopable, zero video bytes. */}
-        <div className="mt-10">
+        <div className="mx-auto mt-10 max-w-5xl">
           <SandboxPlayer />
         </div>
+        <p className="mt-3 text-center font-hero text-[11px] uppercase tracking-[0.08em] text-muted">
+          24s loop · click the stage or scrub the timeline
+        </p>
       </div>
     </section>
   );

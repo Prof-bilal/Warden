@@ -43,9 +43,13 @@ banners are semantic and degrade gracefully.
   stdout nor stderr is a TTY. It never blocks `warden run` and never
   requires interactive input.
 
-- **Installation:** The npm wrapper (`build/npm-wrapper/install.js`) shows
-  polished progress with TTY spinner vs CI static fallback, matching the
-  Go banner. See [Install](install.md) for the expected output.
+- **Installation:** The published npm package ships only the `bin/warden`
+  launcher (no install script), so `npm install -g warden-sandbox-cli`
+  prints npm's standard output only. The platform binary is fetched on the
+  first `warden` invocationthe launcher prints
+  `Downloading warden v<version>...`, downloads the matching GitHub Release
+  binary into `~/.cache/warden/<version>/`, and execs it. Later runs reuse
+  the cache. See [Install](install.md) for the expected output.
 
 - **Fail-closed messaging:** When a backend cannot be initialized, Warden
   prints `✗ Warden refused to start: sandbox backend unavailable` with the

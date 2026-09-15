@@ -80,7 +80,7 @@ export default async function ArticlePage({
       <article className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <nav
           aria-label="Breadcrumb"
-          className="mb-8 text-[0.8125rem] text-muted"
+          className="mb-8 font-hero text-[0.8125rem] text-muted"
         >
           <Link href="/" className="transition-colors hover:text-paper">
             Home
@@ -102,11 +102,11 @@ export default async function ArticlePage({
           )}
         </nav>
 
-        <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+        <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
           {article.title}
         </h1>
 
-        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.875rem] text-muted">
+        <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 font-hero text-[0.875rem] text-muted">
           {author && (
             <Link
               href={`/author/${author.slug}`}
@@ -136,8 +136,8 @@ export default async function ArticlePage({
         )}
 
         {article.sample && (
-          <p className="mt-6 rounded-lg border border-progress/30 bg-progress-subtle px-4 py-3 text-[0.875rem] text-paper">
-            Sample content — this article demonstrates the publishing system.
+          <p className="mt-6 rounded-lg border border-progress/30 bg-progress-subtle px-4 py-3 font-hero text-[0.875rem] text-paper">
+            Sample contentthis article demonstrates the publishing system.
             Replace it with a real article before promoting it.
           </p>
         )}
@@ -148,7 +148,7 @@ export default async function ArticlePage({
 
         {author && (
           <div className="mt-14 border-t border-ink-800 pt-6">
-            <p className="text-[0.9375rem] text-muted">
+            <p className="font-hero text-[0.9375rem] text-muted">
               Written by{" "}
               <Link
                 href={`/author/${author.slug}`}
@@ -156,14 +156,14 @@ export default async function ArticlePage({
               >
                 {author.name}
               </Link>{" "}
-              — {author.role}.
+             {author.role}.
             </p>
           </div>
         )}
 
         {related.length > 0 && (
           <section className="mt-14 border-t border-ink-800 pt-8">
-            <h2 className="font-mono text-[0.6875rem] uppercase tracking-widest text-muted">
+            <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted">
               Related articles
             </h2>
             <ul className="mt-4 space-y-3">
@@ -171,7 +171,7 @@ export default async function ArticlePage({
                 <li key={relatedArticle.slug}>
                   <Link
                     href={`/blog/${relatedArticle.slug}`}
-                    className="text-[1.0625rem] font-medium text-paper transition-colors hover:text-blueprint"
+                    className="font-hero text-[1.0625rem] font-medium text-paper transition-colors hover:text-blueprint"
                   >
                     {relatedArticle.title}
                   </Link>

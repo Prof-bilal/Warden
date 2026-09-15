@@ -48,15 +48,15 @@ Everything not listed is denied. You don't write deny rules; absence of an allow
 
 At launch, Warden compiles the policy into the sandbox primitive of the host platform:
 
-- **Linux** — bubblewrap namespaces and bind mounts: only granted paths exist inside the mount namespace, and a network proxy mediates egress
-- **macOS** — Seatbelt (sandbox-exec) profiles compiled from the same policy
-- **Windows** — AppContainer LowBox tokens plus Windows Filtering Platform (WFP) egress filters and Job Objects for resource limits
+- **Linux**bubblewrap namespaces and bind mounts: only granted paths exist inside the mount namespace, and a network proxy mediates egress
+- **macOS**Seatbelt (sandbox-exec) profiles compiled from the same policy
+- **Windows**AppContainer LowBox tokens plus Windows Filtering Platform (WFP) egress filters and Job Objects for resource limits
 
 The same policy file produces equivalent enforcement on each platform. If the native backend can't provide the requested guarantee, Warden refuses to start the server rather than silently running with weaker isolation.
 
 ## Fail-closed startup
 
-Ordering matters at startup. The sandbox is fully constructed — mounts, filters, env filtering, limits — *before* the server process is spawned. If any step fails, Warden aborts the launch and writes the reason to the audit log. There is no mode where a policy error results in an unsandboxed run.
+Ordering matters at startup. The sandbox is fully constructedmounts, filters, env filtering, limits*before* the server process is spawned. If any step fails, Warden aborts the launch and writes the reason to the audit log. There is no mode where a policy error results in an unsandboxed run.
 
 ## Runtime denial
 
@@ -70,7 +70,7 @@ The stream is JSONL, one event per line, so it can be piped into any log tooling
 
 ## Why not just use Docker?
 
-Container images add an indirection layer, but they don't solve the grant problem: a container with default settings still has broad network access and whatever volumes you mount. Warden's deny-by-default policy, kernel-level network filtering, and per-platform enforcement are a tighter boundary for the specific job of running MCP servers — and they work on the machine you already have, without a daemon. The [about page](/about) covers this trade-off in more detail.
+Container images add an indirection layer, but they don't solve the grant problem: a container with default settings still has broad network access and whatever volumes you mount. Warden's deny-by-default policy, kernel-level network filtering, and per-platform enforcement are a tighter boundary for the specific job of running MCP serversand they work on the machine you already have, without a daemon. The [about page](/about) covers this trade-off in more detail.
 
 ## Try it
 

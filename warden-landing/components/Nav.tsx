@@ -125,7 +125,7 @@ export default function Nav() {
         <div className="mx-auto flex max-w-display items-center justify-between gap-6 px-6 py-5">
           <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Warden home">
             {logo}
-            <span className="text-[1.0625rem] font-medium text-paper">warden</span>
+            <span className="font-hero text-[1.0625rem] font-bold text-paper">warden</span>
           </Link>
 
           <nav className="hidden items-center gap-6 lg:flex">
@@ -133,7 +133,7 @@ export default function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="whitespace-nowrap text-[0.9375rem] text-muted transition-colors hover:text-paper"
+                className="whitespace-nowrap font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
               >
                 {l.label}
               </Link>
@@ -218,7 +218,7 @@ export default function Nav() {
                   key={l.href}
                   href={l.href}
                   onClick={() => setOpen(false)}
-                  className="whitespace-nowrap text-[0.9375rem] text-muted transition-colors hover:text-paper"
+                  className="whitespace-nowrap font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
                 >
                   {l.label}
                 </Link>
@@ -247,7 +247,7 @@ export default function Nav() {
               onClick={() => setPillOpen(false)}
             >
               {logo}
-              <span className="text-[0.9375rem] font-medium text-paper">warden</span>
+              <span className="font-hero text-[0.9375rem] font-bold text-paper">warden</span>
             </Link>
 
             {/* Right: Discord, GitHub, npm, hamburger */}

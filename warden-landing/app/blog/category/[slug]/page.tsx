@@ -55,7 +55,7 @@ export default async function CategoryPage({
   ]);
 
   const collection = collectionPageSchema({
-    name: `${category.name} — Warden Blog`,
+    name: `${category.name}Warden Blog`,
     description: category.description,
     url: `${SITE_URL}/blog/category/${category.slug}`,
     itemUrls: articles.map((a) => `${SITE_URL}/blog/${a.slug}`),
