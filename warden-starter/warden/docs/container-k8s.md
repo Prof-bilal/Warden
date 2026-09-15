@@ -83,15 +83,15 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 
 | Warden Policy | Docker | Kubernetes |
 |---|---|---|
-| `env.allow: ["NODE_ENV"]` | `-e NODE_ENV` | `env: [{name: NODE_ENV}]` |
-| `env.allow: ["SECRET"]` | `-e SECRET` | `envFrom: secretRef` (recommended) |
+| `env.allow: ["NODE_ENV"]` | not emitted by the current generator (the container inherits the host env; pass variables explicitly if needed) | `env: [{name: NODE_ENV}]` (value injected by the cluster) |
+| `env.allow: ["SECRET"]` | not emitted | `envFrom: secretRef` (recommended) |
 
 ### Limits → Resource Controls
 
 | Warden Policy | Docker | Kubernetes |
 |---|---|---|
 | `limits.memory_mb: 512` | `--memory 512m` | `resources.limits.memory: 512Mi` |
-| `limits.timeout_s: 300` | N/A | `activeDeadlineSeconds: 300` |
+| `limits.timeout_s: 300` | not emitted | not emitted — enforce timeouts outside the manifest (e.g. wrap the entrypoint in `timeout`) |
 
 ## Generated Security Controls
 
@@ -103,9 +103,9 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 --security-opt no-new-privileges:true  # Prevent privilege escalation
 --cap-drop ALL                 # Drop all capabilities
 --tmpfs /tmp:rw,noexec,nosuid,nodev    # Safe temporary storage
---user 1000:1000              # Non-root user
 --memory 512m                  # Memory limit
 --network none                 # Network isolation (if no network.allow)
+# (no --user flag is generated today; build the image with a non-root USER)
 ```
 
 ### Kubernetes Security Context
@@ -124,7 +124,8 @@ securityContext:
 # Pod-level security:
 podSecurityContext:
   runAsNonRoot: true
-  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
 ```
 
 ## Commands Reference
@@ -316,10 +317,10 @@ warden k8s render --policy prod-policy.yaml --namespace production
 
 ### Helm Chart Integration
 
-```bash
-# Generate manifests as Helm templates
-warden k8s render --policy policy.yaml --image "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-```
+> **Not implemented.** `warden k8s render` emits plain Kubernetes YAML
+> (Deployment, NetworkPolicy, SeccompProfile); there is no Helm templating or
+> `helm` subcommand today. To use Helm, vendor the rendered YAML into your
+> own chart as a starting point.
 
 ## Security Best Practices
 
@@ -599,7 +600,7 @@ kubectl exec <pod-name> -- nc -zv api.github.com 443
 
 ## Related Documentation
 
-- [Warden Policy Reference](./policy-schema.md)
+- [Warden Policy Reference](schema.md)
 - [MCP Client Proxy](./client-proxy.md)
-- [CI/CD Integration](../github/actions/warden-action/docs/ci-integration.md)
+- [CI/CD Integration](https://github.com/Prof-bilal/Warden/blob/main/.github/actions/warden-action/docs/ci-integration.md)
 - [Security Best Practices](./security.md)

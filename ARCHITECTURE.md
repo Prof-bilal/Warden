@@ -52,6 +52,9 @@ Entry point. Subcommands:
 - `warden init [--log <file>] [--output <file>] [-- <command...>]`scaffold
   a non-overwriting policy file from a JSONL trace log.
 - `warden logs`view/tail the audit log for a past or running session.
+- Plus `doctor`, `gateway`, `proxy` (MCP message filtering), `k8s`
+  (container/Kubernetes rendering), `update`, and `version` — see
+  `warden-starter/warden/docs/cli.md` for the full reference.
 
 ### 2. Policy Engine
 
@@ -97,8 +100,8 @@ One implementation per platform, behind a common interface
   hosts the current executable is used; on macOS/Windows set
   `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary (macOS auto-detect
   still prefers Seatbelt when `sandbox-exec` is present).
-- **WindowsM5.** An AppContainer backend will use a restricted token,
-  filesystem capabilities, Windows Filtering Platform rules, ETW audit
+- **WindowsM5 (implemented).** The AppContainer backend uses a restricted
+  token, filesystem capabilities, Windows Filtering Platform rules, ETW audit
   events, and a Job Object for process-tree limits. Until all of those
   enforcement primitives are installed successfully, Warden refuses to run;
   it never falls back to a plain Windows process.

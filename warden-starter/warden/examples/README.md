@@ -19,7 +19,9 @@ shell's current working directory.
 | **Slack** | [slack-mcp-server.yaml](./slack-mcp-server.yaml) | API + web UI, needs `SLACK_BOT_TOKEN` and `SLACK_TEAM_ID` |
 | **PostgreSQL** | [postgres-mcp-server.yaml](./postgres-mcp-server.yaml) | Database connections, `.pgpass` / `.postgresql` credentials |
 | **Brave Search** | [brave-search-mcp-server.yaml](./brave-search-mcp-server.yaml) | Search API only, needs `BRAVE_API_KEY` |
-| **Comprehensive reference** | [policy.example.yaml](./policy.example.yaml) | Full schema with annotations for every fielduse as a template |
+| **Comprehensive reference** | [policy.example.yaml](./policy.example.yaml) | Full schema with annotations for every field — use as a template |
+| **Container/K8s** | [container-policy.yaml](./container-policy.yaml) | Policy for `warden k8s render` / `warden k8s docker` translation |
+| **MCP client proxy** | [mcp-proxy-policy.yaml](./mcp-proxy-policy.yaml) | `warden proxy` with a stdio or HTTPS upstream, tool allowlist, and deny patterns |
 
 ## Common patterns
 

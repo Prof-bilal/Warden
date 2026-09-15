@@ -76,17 +76,11 @@ generating the policy.
 
 ### Wildcard hosts (`*.example.com`)
 
-Not supported`network.allow` takes bare hostnames or IP literals only,
-and adding a wildcard is rejected at validation. Browser-like servers that
-visit arbitrary domains (Playwright) therefore have no honest policy. This
-is a tracked [schema gap](compatibility.md#failures-classified), locked in
-by regression test so it can't change silently.
-
-### Daemon sockets (`/var/run/docker.sock`)
-
-There is no unix-socket grant type, and granting a daemon socket would hand
-over host control anyway. Servers that need one (docker-mcp) are
-[inherently incompatible](compatibility.md#failures-classified).
+A **single leading wildcard label** is supported: `network.allow` accepts
+`*.example.com` to grant a subdomain pattern (locked in by regression test —
+see the policy schema). Fully arbitrary hosts (any top-level domain, e.g.
+browser-like servers) remain out of scope. Daemon sockets (`/var/run/docker.sock`)
+have no grant type and are [inherently incompatible](compatibility.md#failures-classified).
 
 ### "Will this work with my server?"
 

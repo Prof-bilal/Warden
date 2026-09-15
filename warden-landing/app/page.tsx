@@ -56,7 +56,7 @@ export default function Home() {
     url: SITE_URL,
     downloadUrl: "https://github.com/Prof-bilal/Warden/releases",
     installUrl: "https://www.npmjs.com/package/warden-sandbox-cli",
-    softwareVersion: "0.1.13",
+    softwareVersion: "0.1.17",
     license: "https://opensource.org/licenses/MIT",
     offers: {
       "@type": "Offer",

@@ -8,15 +8,15 @@ GitHub five minutes ago. Warden runs them in a restricted sandbox instead,
 so a server only ever gets the files, network hosts, and environment
 variables you explicitly grant it.
 
-> **Status: alpha.** Warden works todaythe npm package (`warden-sandbox-cli`),
-> GitHub Releases binaries, and docs are live. Verification state, honestly:
-> **Linux verified on real hardware** (escape tests, CI, proof harness);
-> **Windows verified via CI** (AppContainer/WFP/ETW escape tests on GitHub
-> Windows runners); **macOS code-complete and CI-green, pending a real-hardware
-> proof-harness run**. Not yet hardened against a determined local attacker —
-> see [REMAINING_WORK.md](./REMAINING_WORK.md) and [TESTING.md](./TESTING.md).
-> Not a design skeleton: see [ARCHITECTURE.md](./ARCHITECTURE.md) for how it
-> actually works.
+> **Status: alpha — shipped and in active development.** The npm package
+> (`warden-sandbox-cli`), GitHub Releases binaries, and docs are live.
+> Verification state, honestly: **Linux verified on real hardware** (escape
+> tests, CI, proof harness); **Windows verified via CI** (AppContainer/WFP/ETW
+> escape tests on GitHub Windows runners); **macOS code-complete and CI-green,
+> pending a real-hardware proof-harness run**. Not yet hardened against a
+> determined local attacker — see [REMAINING_WORK.md](warden-starter/warden/REMAINING_WORK.md)
+> and [TESTING.md](warden-starter/warden/TESTING.md). See
+> [ARCHITECTURE.md](./ARCHITECTURE.md) for how it actually works.
 
 ## The problem
 
@@ -86,8 +86,9 @@ overhead, so sandboxing an MCP server is no harder than running it.
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to get involved, and
-[REMAINING_WORK.md](./REMAINING_WORK.md) for the current priorities.
+See [CONTRIBUTING.md](warden-starter/warden/CONTRIBUTING.md) for how to get
+involved, and [REMAINING_WORK.md](warden-starter/warden/REMAINING_WORK.md) for
+the current priorities.
 Good first contributions: example policies for new MCP servers, testing the
 backends on your platform, or improving the docs.
 

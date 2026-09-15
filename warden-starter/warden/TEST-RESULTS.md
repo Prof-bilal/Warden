@@ -3,7 +3,8 @@
 > **This hand-written results file is retired (audit P1-7).** Snapshot
 > documents like the old "19/19 tests passed" version went stale as the code
 > changed (e.g. the Linux strace requirement for `warden run`) and claimed
-> more than could be reproduced.
+> more than could be reproduced. The historical claims that used to live
+> below this notice were removed for exactly that reason.
 >
 > Evidence now comes from the **reproducible proof harness**:
 >
@@ -22,26 +23,3 @@
 > Unit and escape tests: see `TESTING.md` (`go test ./...`). CI additionally
 > asserts on Linux/macOS/Windows that escape tests actually executed instead
 > of silently skipping.
-- Use Docker backend for consistent behavior
-- Test security boundaries incrementally
-
-## Next Steps
-
-1. Test on macOS with Seatbelt backend
-2. Test on Windows with AppContainer backend
-3. Try real MCP servers (filesystem, github)
-4. Create custom policies for production
-5. Enable audit logging for production
-
-## Conclusion
-
-**Warden MCP sandbox is fully functional and secure.** ✅
-
-- Multi-platform support working
-- Security boundaries enforced
-- MCP protocol supported
-- Ready for production use
-
-**Test Coverage:** 19 tests passed
-**Security Status:** All boundaries verified
-**Recommendation:** Ready for deployment

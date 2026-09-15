@@ -85,11 +85,11 @@ The server only sees `./data` (read), `./output` (write), `api.github.com` (netw
 
 | Feature | Description |
 |---------|-------------|
-| **Deny by default** | Paths don't exist unless grantednot "permission denied" |
+| **Deny by default** | Paths don't exist unless granted — not "permission denied" |
 | **OS-native** | bubblewrap (Linux), Seatbelt (macOS), AppContainer (Windows) |
 | **No Docker required** | Native sandboxing first, Docker only as fallback |
-| **Auto-generate policies** | `warden trace` + `warden init` watches and generates policies |
-| **Audit trail** | Logs every blocked access attempt |
+| **Auto-generate policies** | `warden trace` + `warden init` watch and generate policies |
+| **Audit trail** | Logs access attempts, including blocks (coverage varies by backend — see [ARCHITECTURE.md](ARCHITECTURE.md)) |
 | **Interactive approval** | `--approve` mode prompts on first blocked access |
 
 ## Commands
@@ -107,8 +107,8 @@ warden update                                        # Update to latest version
 
 | OS | Backend | Status |
 |----|---------|--------|
-| Linux | bubblewrap | ✅ Verified |
-| macOS | Seatbelt | ✅ CI verified |
+| Linux | bubblewrap | ✅ Verified on real hardware |
+| macOS | Seatbelt | ✅ CI verified (hardware proof pending) |
 | Windows | AppContainer + WFP | ✅ CI verified |
 | Any | Docker (fallback) | ✅ Works |
 
@@ -121,7 +121,8 @@ npm install -g warden-sandbox-cli
 # Manual download
 # https://github.com/Prof-bilal/Warden/releases
 
-# From source
+# From source (the Go module lives in warden-starter/warden)
+cd warden-starter/warden
 go build -o warden ./cmd/warden
 ```
 

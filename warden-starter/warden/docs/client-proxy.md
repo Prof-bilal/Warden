@@ -2,6 +2,13 @@
 
 The Warden Client Proxy sits between MCP clients (Claude Desktop, Cursor, ChatGPT) and MCP servers (local or remote), providing security filtering, auditing, and sensitive pattern blocking.
 
+> ⚠️ **What the proxy does and does not isolate:** the proxy filters MCP
+> JSON-RPC messages and restricts a stdio subprocess's environment to
+> `env.allow`. It does **not** sandbox a stdio upstream's filesystem or
+> network access — wrap `warden proxy` itself in `warden run` (or a
+> container) when the upstream must be isolated. See
+> [Security Considerations](#security-considerations) below.
+
 ## Overview
 
 Traditional MCP setup:
@@ -427,8 +434,9 @@ warden proxy --policy mcp-proxy-policy.yaml --listen 127.0.0.1:8765
    - Ensure `upstream` is specified
 
 2. **"Connection refused"**  
-   - Check that upstream MCP server is accessible
-   - Verify network.allow includes the upstream host
+   - Check that the upstream MCP server is accessible at its address
+     (the proxy itself does not consult `network.allow` for upstream
+     connections; `https://` upstreams must be reachable and TLS-valid)
 
 3. **"Tool not in allow list"**
    - Add the tool name to `mcp.allow_tools`
@@ -470,7 +478,6 @@ warden proxy --policy mcp-policy.yaml
 
 ## Related Documentation
 
-- [Policy Schema Reference](../docs/schema.md)
-- [Security Best Practices](../docs/security.md)  
-- [Audit Logging Guide](../docs/audit.md)
-- [Container/K8s Mode](../docs/container.md)
+- [Policy Schema Reference](schema.md)
+- [Security Best Practices](security.md)
+- [Container/K8s Mode](container-k8s.md)

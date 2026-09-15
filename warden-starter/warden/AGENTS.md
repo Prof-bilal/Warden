@@ -31,7 +31,7 @@ If a change would violate one of the above invariants, stop and ask for clarific
 Before considering a task done, the agent should run the project checks in this order:
 
 ```bash
-cd /home/abdullah/Downloads/warden/warden-starter/warden
+cd warden-starter/warden   # from the repository root; the Go module lives here
 go build ./...
 go vet ./...
 go test ./...
@@ -51,8 +51,16 @@ For anything touching sandbox enforcement, policy schema semantics, or audit log
 - Do not silently change CLI output or flags in a way that breaks the README quickstart without updating the relevant docs in the same PR.
 - Do not move scope beyond the roadmap without documenting the decision in the architecture and release docs.
 
-## Open questions
+## Current state (previously stale "open questions", corrected)
 
-- The repo currently has no checked-in `internal` packages, so the exact naming of the future policy and sandbox packages remains a convention to be established by the implementation rather than a fact already present in the code.
-- The architecture doc mentions a local egress proxy and DNS blocking, but the repo does not yet specify whether the proxy is mandatory for M2 or can be implemented as a backend-specific wrapper around the process network namespace.
-- The current CLI stub defines `trace`, `init`, and `logs` subcommands, but those behaviors are not yet implemented; their exact UX and output format remain open design decisions.
+The implementation is present and tested: `internal/policy`, `internal/sandbox`
+(with `linux`, `darwin`, `windows`, and `docker` backends), `internal/proxy`,
+`internal/mcpproxy`, `internal/audit`, `internal/envfilter`, `internal/gateway`,
+`internal/container`, and `internal/selfupdate` all exist under this module, and
+the CLI implements `run`, `trace`, `init`, `logs`, `doctor`, `gateway`, `proxy`,
+`k8s`, `version`, and `update`. The egress proxy is mandatory for network
+enforcement on the native Linux and macOS backends (sandboxed processes have no
+external route; loopback bridging to the host proxy is the only path out).
+
+Genuinely open design work is tracked in `REMAINING_WORK.md` and `ROADMAP.md`
+rather than here.
