@@ -166,9 +166,11 @@ go build -o warden ./cmd/warden
 ./testdata/proof/run-proof.sh          # writes evidence/ and prints the verdict table
 ```
 
-### Attack simulations — 7/7 contained
+### Attack simulations — 7/7 contained, re-verified on every CI push
 
-The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side** — collector request logs, vault sha256 integrity, escape-probe files — never by trusting the sandboxed process's own output. Measured results (Linux x86_64, warden built from source):
+The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side** — collector request logs, vault sha256 integrity, escape-probe files — never by trusting the sandboxed process's own output.
+
+This harness runs **in CI on every push** (the [`attack-sim` job](.github/workflows/ci.yml); docker backend on ubuntu-24.04 runners, evidence files attached as workflow artifacts). Measured results from [run 34963444394](https://github.com/Prof-bilal/Warden/actions/runs/34963444394):
 
 | Attack | Without Warden (control) | With Warden (sandbox) | Verdict |
 |---|---|---|---|
@@ -178,14 +180,14 @@ The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) run
 | **process_spawn** — host probe + escape-probe write | FULL_SYSTEM_ACCESS | BLOCKED (no probe file) | ✅ |
 | **symlink_traverse** — read through a link outside grants | PARTIAL_ACCESS | BLOCKED | ✅ |
 | **ransomware** — XOR-encrypt + delete decoy docs | FILES_DESTROYED | NO_DAMAGE (vault byte-identical) | ✅ |
-| **cpu_bomb** — unbounded busy-loop | ran away (130k iters/3s) | TIMEOUT_KILLED (count frozen) | ✅ |
+| **cpu_bomb** — unbounded busy-loop | ran away (649k iters/3s) | TIMEOUT_KILLED (bounded, 730k iters/5s) | ✅ |
 
-Reproduce:
+Reproduce locally (docker backend = CI-equivalent; on a Linux desktop with bwrap you can drop `WARDEN_BACKEND` for the native backend):
 
 ```bash
 cd warden-starter/warden
 go build -o warden ./cmd/warden
-bash testdata/attacks/run-attacks.sh   # exits 0 only if every control landed AND everything was contained
+WARDEN_BACKEND=docker bash testdata/attacks/run-attacks.sh   # exits 0 only if every control landed AND everything was contained
 ```
 
 All data is decoy data the harness creates itself (fake keys, XOR "encryption", loopback-only collectors) — safe to run on your machine. Evidence format and scenario details: [testdata/attacks/README.md](warden-starter/warden/testdata/attacks/README.md).
@@ -205,11 +207,12 @@ All data is decoy data the harness creates itself (fake keys, XOR "encryption", 
 | **Windows escape tests** | AppContainer/WFP/ETW enforcement + fail-closed on missing privileges | `internal/sandbox/windows` (Windows CI job) |
 | **Docker integration tests** | Container deny-by-default mounts, blocked reads | `internal/sandbox/docker` (runs when a daemon is present) |
 | **Proof harness** | End-to-end behavior with a positive control, evidence files | `testdata/proof/run-proof.sh` |
+| **Attack harness** | Live attack techniques (exfil, ransomware-sim, resource exhaustion) contained; verdicts from host-side artifacts the sandbox can't forge | `testdata/attacks/run-attacks.sh` (runs in CI) |
 | **Compatibility matrix** | 18 real MCP servers: 14 pass, 2 conditional, 2 fail (classified) | `internal/compat` + [docs/compatibility.md](warden-starter/warden/docs/compatibility.md) |
 
-CI runs the test matrix on Linux, macOS, and Windows runners, plus cross-builds for `windows/amd64` and `darwin/arm64`. The GitHub Action that ships Warden to CI users is tested end-to-end on real runners (`.github/workflows/test-warden-action.yml`).
+CI runs the test matrix on Linux, macOS, and Windows runners, plus cross-builds for `windows/amd64` and `darwin/arm64`. The `attack-sim` job re-measures attack containment on every push and uploads the run's evidence (`summary.json`, per-scenario results, collector log, vault hash manifests, sandbox audit stream) as workflow artifacts. The GitHub Action that ships Warden to CI users is tested end-to-end on real runners (`.github/workflows/test-warden-action.yml`).
 
-> **Honesty note:** the attack table above comes from the reproducible harness — every number is re-measured on each run with committed evidence files. Illustrative figures elsewhere (landing page galleries) that predate the harness are labeled there and are superseded by harness output.
+> **Honesty note:** every number in the attack table is re-measured in CI on each push, and each run publishes its full evidence as a workflow artifact — the table above cites one specific run. Illustrative figures elsewhere (landing page galleries) that predate the harness are labeled there and are superseded by harness output.
 
 ## 📦 Install
 
