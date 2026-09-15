@@ -170,7 +170,7 @@ go build -o warden ./cmd/warden
 
 The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side** — collector request logs, vault sha256 integrity, escape-probe files — never by trusting the sandboxed process's own output.
 
-This harness runs **in CI on every push** (the [`attack-sim` job](.github/workflows/ci.yml); docker backend on ubuntu-24.04 runners, evidence files attached as workflow artifacts). Measured results from [run 34963444394](https://github.com/Prof-bilal/Warden/actions/runs/34963444394):
+This harness runs **in CI on every push** (the [`attack-sim` job](.github/workflows/ci.yml); docker backend on ubuntu-24.04 runners, evidence files attached as workflow artifacts). Measured results from the main-branch run [34964319944](https://github.com/Prof-bilal/Warden/actions/runs/34964319944):
 
 | Attack | Without Warden (control) | With Warden (sandbox) | Verdict |
 |---|---|---|---|
@@ -180,7 +180,7 @@ This harness runs **in CI on every push** (the [`attack-sim` job](.github/workfl
 | **process_spawn** — host probe + escape-probe write | FULL_SYSTEM_ACCESS | BLOCKED (no probe file) | ✅ |
 | **symlink_traverse** — read through a link outside grants | PARTIAL_ACCESS | BLOCKED | ✅ |
 | **ransomware** — XOR-encrypt + delete decoy docs | FILES_DESTROYED | NO_DAMAGE (vault byte-identical) | ✅ |
-| **cpu_bomb** — unbounded busy-loop | ran away (649k iters/3s) | TIMEOUT_KILLED (bounded, 730k iters/5s) | ✅ |
+| **cpu_bomb** — unbounded busy-loop | ran away (749k iters/3s) | TIMEOUT_KILLED (bounded, 808k iters/6s) | ✅ |
 
 Reproduce locally (docker backend = CI-equivalent; on a Linux desktop with bwrap you can drop `WARDEN_BACKEND` for the native backend):
 
