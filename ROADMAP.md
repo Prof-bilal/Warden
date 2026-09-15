@@ -99,7 +99,7 @@ with a clear error rather than running unaudited.
       rather than write a policy from scratch
 - [x] Security review passdocumented threat model (7 categories),
       known-limitations table, and best-practices section in
-      [docs/security.md](./docs/security.md)
+      [docs/security.md](warden-starter/warden/docs/security.md)
 
 ## M7Stretch goals (post-1.0)
 - [x] Interactive approval modeprompt the user the first time a server
@@ -116,29 +116,29 @@ with a clear error rather than running unaudited.
       public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
       Google Drive, a couple of the popular community ones) and record
       pass/fail plus the exact policy each one needed
-      (18 servers in [`testdata/compat/matrix.yaml`](./testdata/compat/matrix.yaml),
-      published in [`docs/compatibility.md`](./docs/compatibility.md):
+      (      18 servers in [`testdata/compat/matrix.yaml`](warden-starter/warden/testdata/compat/matrix.yaml),
+      published      in [`docs/compatibility.md`](warden-starter/warden/docs/compatibility.md):
       14 pass, 2 conditional, 2 fail)
 - [x] For every failure, classify itis it a Warden bug, a policy-schema
       gap (some access pattern the schema can't express yet), or a server
       doing something inherently incompatible with sandboxing (e.g.
       expecting arbitrary filesystem access by design)?
-      (see [docs/compatibility.md](./docs/compatibility.md#failures-classified))
+      (see [docs/compatibility.md](warden-starter/warden/docs/compatibility.md#failures-classified))
 - [x] Recruit a small external beta group of MCP server maintainers/users
       (5-10 people) to run their own servers under Warden and report
       frictionthis is the first real signal on whether the policy
       schema is usable by people who didn't design it
-      (program + report template: [`docs/beta.md`](./docs/beta.md),
-      [`.github/ISSUE_TEMPLATE/compat_report.md`](./.github/ISSUE_TEMPLATE/compat_report.md))
+      (program + report template: [`docs/beta.md`](warden-starter/warden/docs/beta.md),
+      [`.github/ISSUE_TEMPLATE/compat_report.md`](.github/ISSUE_TEMPLATE/compat_report.md))
 - [x] Turn the matrix into a public compatibility page/README table, so
       prospective users can check "will this work with my server" before
       installing
-      ([`docs/compatibility.md`](./docs/compatibility.md), README table,
+      ([`docs/compatibility.md`](warden-starter/warden/docs/compatibility.md), README table,
       mkdocs nav)
 - [x] Add every server from the matrix as a permanent regression fixture
       under `testdata/`, so a future change can't silently break
       compatibility with something that used to work
-      ([`testdata/compat/`](./testdata/compat/), enforced by
+      ([`testdata/compat/`](warden-starter/warden/testdata/compat/), enforced by
       `go test ./internal/compat/`)
 - [x] Triage and fix the highest-impact gaps found (most-used servers
       first) before moving on to M6/M7-style polish
@@ -158,3 +158,86 @@ something people can actually adopt."
 the smallest slice that proves the core mechanism (transparent stdio +
 filesystem restriction) actually works before investing in the network
 proxy, which is the more complex piece.
+
+---
+
+## The Long Bet — AI agent & browser isolation (Speculative)
+
+> **Status:** research-grounded strategy sketch, explicitly **not** a
+> near-term roadmap item. This is a sequenced bet with evidence, kept here
+> so the direction is visible without implying a commitment. Sections cite
+> Warden mechanisms that already exist and would be reused.
+
+### The problem
+
+AI agents that control a desktop (see [Anthropic's computer use](https://www.anthropic.com/news/3-5-models-and-computer-use))
+can see screens, move mice, click buttons, and type — full desktop control.
+Running these agents on your main computer is dangerous: a malicious
+instruction hidden in a website could steal passwords, send emails, or
+exfiltrate files. Today users must either buy a VPS ($5–50/mo) or configure
+a local VM (complex, resource-heavy). Neither is simple.
+
+**Agents in scope:** Claude Computer Use, OpenAI Operator (browser agent),
+AutoGPT, and general-purpose agent platforms — all require full computer
+access to operate.
+
+**Security risks introduced:** prompt injection (attacker-hidden
+instructions in web content — OpenAI states this is "unfixable"),
+same-origin bypass in agentic browsers, credential theft via file access,
+data exfiltration, and supply-chain weaknesses in browser automation
+libraries (CVE-2025-47241 affected 1,500+ projects).
+
+**Current solutions and why they fall short:**
+
+| Option | Pros | Cons |
+|---|---|---|
+| Cloud VM (EC2, DigitalOcean) | Complete isolation | Recurring cost, technical barrier |
+| Local VM (VirtualBox/QEMU) | Free, complete isolation | Complex setup, resource-heavy |
+| Docker | Lightweight | No GUI support — poor fit for desktop control |
+
+None are simple, purpose-built for AI agents, or auditable.
+
+### The opportunity
+
+A new `warden agent` command would run any AI agent inside an isolated
+environment defined by the **same `policy.yaml` model** already used for
+MCP servers:
+
+```bash
+warden agent run --policy policy.yaml -- agent-command
+```
+
+Reuse map — everything below exists today for MCP servers:
+
+- **Tiers:** Tier 1 (namespace/bwrap) → Tier 2 (container/Docker) →
+  Tier 3 (microVM/Firecracker)
+- **Display:** virtual display (Xvfb) for screen access
+- **Policy:** same `policy.yaml` restricts filesystem, network, env, limits
+- **Audit:** log every agent action (JSONL stream)
+- **Approval:** human-in-the-loop for sensitive actions (`--approve`)
+
+**Competition:** cloud VMs and local VMs (cost/complexity), Daytona
+(microVM, paid), and Warden itself today (namespaces only). Warden
+differentiates with one policy model across all tiers and a local-first
+approach.
+
+### Sequencing (if signal justifies it)
+
+1. **Phase 1:** Tier 1 agent mode — namespace isolation + virtual display
+2. **Phase 2:** Tier 2 — container isolation
+3. **Phase 3:** Tier 3 (microVM) + full approval flow
+4. **Phase 4:** marketplace / policy templates for popular agents
+
+### Sources
+
+Anthropic [computer use](https://www.anthropic.com/news/3-5-models-and-computer-use) ·
+OpenAI [Operator](https://openai.com/index/introducing-operator) ·
+[AutoGPT](https://en.wikipedia.org/wiki/AutoGPT) ·
+Techtimes [AI browser security review](https://techtimes.com/articles/318528/20260616/ai-browser-comparison-2026) ·
+Axis Intelligence [browser agent security guide](https://axis-intelligence.com/browser-agent-security-risk-guide/) ·
+PiunikaWeb [browser credential leak](https://piunikaweb.com/2026/06/25/chatgpt-atlas-perplexity-comet-ai-browsers-leaking-credentials/) ·
+[OWASP LLM Top 10](https://owasp.org/www-project-top-10-for-large-language-model-applications) ·
+[NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) ·
+[Daytona](https://daytona.io/) ·
+[Firecracker](https://firecracker-microvm.github.io/) ·
+[Xvfb](https://www.x.org/releases/X11R7.7/doc/man/Xvfb)

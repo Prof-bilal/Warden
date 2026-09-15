@@ -1,10 +1,13 @@
 # Remaining Work
 
-**Status:** M0–M8 shipped. Release pipeline green (v0.1.3–v0.1.5 published),
-`warden version`/`--version` flag live. This document tracks what the **first
-real CI run** (root `.github/workflows/ci.yml` landed in
-[`885ab2f`](https://github.com/Prof-bilal/Warden/actions/runs/34028064382)
-after v0.1.5) exposed, plus loose ends from the release work.
+**Status:** M0–M8 shipped. CI fully green across linux/macos/windows/
+cross-builds/repo-hygiene (as of 2026-09-15, runs on `warden-cleanup`),
+releases published through **v0.1.17** (npm wrapper `warden-sandbox-cli`
+0.1.16). The P0 items below were exposed by the **first real CI run**
+(root `.github/workflows/ci.yml` landed in
+[`885ab2f`](https://github.com/Prof-bilal/Warden/actions/runs/34028064382))
+and are **confirmed fixed by subsequent green CI runs**. This document now
+tracks the remaining loose ends only.
 
 **Evidence:** CI run
 [`34028064382`](https://github.com/Prof-bilal/Warden/actions/runs/34028064382)

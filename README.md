@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="warden-landing/public/warden-logo.svg" width="120" alt="Warden Logo">
+  <img src="warden-landing/public/logo.png" width="120" alt="Warden Logo">
 </p>
 
 <h1 align="center">Warden</h1>
 
 <p align="center">
-  <strong>Sandbox runtime for MCP servers</strong>
+  <strong>The sandbox runtime for MCP servers</strong><br>
+  Run any MCP server with only the access you grant it — nothing else exists.
 </p>
 
 <p align="center">
@@ -15,33 +16,45 @@
   <a href="https://www.npmjs.com/package/warden-sandbox-cli">
     <img src="https://img.shields.io/npm/dm/warden-sandbox-cli?style=flat-square&color=green" alt="npm downloads">
   </a>
-  <a href="https://github.com/Prof-bilal/Warden/blob/main/LICENSE">
-    <img src="https://img.shields.io/npm/l/warden-sandbox-cli?style=flat-square" alt="license">
+  <a href="https://github.com/Prof-bilal/Warden/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/Prof-bilal/Warden/ci.yml?branch=main&style=flat-square&label=CI" alt="CI status">
   </a>
   <a href="https://github.com/Prof-bilal/Warden/releases">
     <img src="https://img.shields.io/github/v/release/Prof-bilal/Warden?style=flat-square&color=orange" alt="GitHub release">
   </a>
-</p>
-
-<p align="center">
-  MCP servers run with full access to your machine. Warden runs them in a sandbox so they only see what you grant.
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT license">
+  </a>
 </p>
 
 ---
 
-## Why Warden?
+> [📘 **README**](#-readme) &nbsp;·&nbsp; [🤝 **Contributing**](CONTRIBUTING.md) &nbsp;·&nbsp; [⚖️ **MIT license**](LICENSE) &nbsp;·&nbsp; [🛡️ **Security**](SECURITY.md)
 
-MCP servers (Claude Desktop, Cursor, VS Code Copilot) run as plain processes with **full access** to your filesystem, network, and environment variables. That MCP server you just installed from GitHub? It can read your SSH keys, access your AWS credentials, and connect to any host.
+---
 
-**Warden fixes this** by running MCP servers in OS-native sandboxes with deny-by-default access control.
+<a id="-readme"></a>
 
-## Quick Start
+## 💥 The Problem
+
+MCP servers (Claude Desktop, Cursor, VS Code Copilot, and every other MCP client) run as plain processes with **full access to your machine**. The MCP spec requires zero process isolation — the default install path is *"run this script from GitHub with your user's permissions."* That server can read your SSH keys, harvest your AWS credentials, and phone any host on the internet.
+
+**Warden fixes this.** It runs MCP servers inside OS-native sandboxes with deny-by-default access control:
+
+| | Without Warden | With Warden |
+|---|---|---|
+| **Filesystem** | Entire home directory, dotfiles, SSH keys | Only paths you list — everything else is *invisible* |
+| **Network** | Any host, any port, raw DNS | Only allowlisted hostnames, forced through an egress proxy |
+| **Environment** | All of your shell env (secrets included) | Only the variables you name |
+| **Resources** | Unbounded CPU/memory/time | Memory + wall-clock limits, killed on breach |
+
+## 🚀 Quick Start
 
 ```bash
 # Install
 npm install -g warden-sandbox-cli
 
-# Create a policy
+# Describe what the server is allowed to touch
 cat > policy.yaml << 'EOF'
 command: ["node", "server.js"]
 filesystem:
@@ -51,92 +64,182 @@ network:
   allow: ["api.github.com"]
 env:
   allow: ["GITHUB_TOKEN"]
+limits:
+  memory_mb: 512
+  timeout_s: 300
 EOF
 
 # Run sandboxed
-warden run --policy policy.yaml -- node server.js
+warden run --policy policy.yaml
 ```
 
-The server only sees `./data` (read), `./output` (write), `api.github.com` (network), and `GITHUB_TOKEN` (env). Everything else is **invisible**.
+The server sees `./data` (read), `./output` (write), `api.github.com` (network), and `GITHUB_TOKEN` (env). **Everything else does not exist** — blocked paths return "not found", not "permission denied", so the sandbox can't even be probed.
 
-## How It Works
-
-```
-┌─────────────────────────────────────────────────┐
-│                  Your Machine                    │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  ┌──────────────┐      ┌──────────────────┐     │
-│  │  MCP Client  │──────│  Warden Sandbox  │     │
-│  │  (Claude)    │ stdio│                  │     │
-│  └──────────────┘      │  ┌────────────┐  │     │
-│                        │  │ MCP Server │  │     │
-│                        │  └────────────┘  │     │
-│                        │                  │     │
-│                        │  ✓ ./data (read) │     │
-│                        │  ✓ api.github.com│     │
-│                        │  ✗ everything else│     │
-│                        └──────────────────┘     │
-│                                                  │
-└─────────────────────────────────────────────────┘
-```
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Deny by default** | Paths don't exist unless granted — not "permission denied" |
-| **OS-native** | bubblewrap (Linux), Seatbelt (macOS), AppContainer (Windows) |
-| **No Docker required** | Native sandboxing first, Docker only as fallback |
-| **Auto-generate policies** | `warden trace` + `warden init` watch and generate policies |
-| **Audit trail** | Logs access attempts, including blocks (coverage varies by backend — see [ARCHITECTURE.md](ARCHITECTURE.md)) |
-| **Interactive approval** | `--approve` mode prompts on first blocked access |
-
-## Commands
+Don't want to write the policy blind? Watch the server once, unsandboxed:
 
 ```bash
-warden run --policy policy.yaml -- node server.js    # Run sandboxed
-warden trace -- node server.js                       # Record access patterns
-warden init                                          # Generate policy from trace
-warden logs                                          # View audit log
-warden doctor                                        # Check sandbox readiness
-warden update                                        # Update to latest version
+warden trace -- node server.js   # records every access the server attempts
+warden init                      # generates a starter policy.yaml from the trace
 ```
 
-## Platform Support
+## ⚙️ How It Works
 
-| OS | Backend | Status |
-|----|---------|--------|
-| Linux | bubblewrap | ✅ Verified on real hardware |
-| macOS | Seatbelt | ✅ CI verified (hardware proof pending) |
-| Windows | AppContainer + WFP | ✅ CI verified |
-| Any | Docker (fallback) | ✅ Works |
+```
+┌──────────────────────────────────────────────────────┐
+│                    Your Machine                       │
+│                                                       │
+│  ┌────────────┐  stdio  ┌─────────────────────────┐  │
+│  │ MCP Client │────────▶│     Warden Sandbox      │  │
+│  │ (Claude…)  │         │  ┌───────────────────┐  │  │
+│  └────────────┘         │  │    MCP Server     │  │  │
+│                         │  └───────────────────┘  │  │
+│                         │  ✓ ./data        (read) │  │
+│                         │  ✓ ./output      (write)│  │
+│                         │  ✓ api.github.com (net) │  │
+│                         │  ✓ GITHUB_TOKEN   (env) │  │
+│                         │  ✗ everything else      │  │
+│                         └────────────┬────────────┘  │
+│                                      │ audit (JSONL) │
+│                         ┌────────────▼────────────┐  │
+│                         │  ~/.local/state/warden/ │  │
+│                         └─────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
+```
 
-## Install Options
+Warden translates one simple YAML policy into the low-level primitives each platform actually needs. The sandboxed process talks stdio straight through to the MCP client — sandboxing is invisible to the protocol.
+
+| OS | Enforcement | Notes |
+|---|---|---|
+| **Linux** | bubblewrap namespaces (user/net/pid/ipc) + cgroup-style limits | Hardware-verified |
+| **macOS** | sandbox-exec / Seatbelt profiles | CI-verified; hardware proof run pending |
+| **Windows** | AppContainer restricted token + WFP egress filters + ETW audit + Job Objects | CI-verified; needs elevation (admin) |
+| **Fallback** | Docker containers (`--network none`, read-only root, tmpfs) | Any OS with a daemon |
+
+**Fail-closed everywhere:** if the sandbox primitives can't be applied — bwrap missing, AppContainer refused, WFP filters unavailable, ETW session blocked — Warden **refuses to run** rather than execute unsandboxed. A plain-process fallback is never acceptable.
+
+### Network enforcement
+
+Egress goes through a local allowlist proxy; DNS resolution happens **after** the allowlist check, so blocked hosts never leak queries. On Linux the sandbox has no default route; on Windows WFP filters block everything but loopback to the proxy. Raw TCP/UDP is blocked by the namespace/filters (the proxy itself intercepts HTTP/HTTPS).
+
+## ✨ Features
+
+| | Feature | Detail |
+|---|---|---|
+| 🔒 | **Deny by default** | Ungranted paths are invisible (ENOENT), not "permission denied" |
+| 🖥️ | **OS-native backends** | bubblewrap / Seatbelt / AppContainer — no VM, no daemon needed |
+| 🌐 | **Pre-DNS network blocking** | Hostname allowlist enforced before any DNS query leaves |
+| 📝 | **Policy generation** | `warden trace` + `warden init` watch a real run and write the policy |
+| 📜 | **Audit trail** | Every access attempt logged as JSONL — including blocked ones |
+| 👍 | **Interactive approval** | `--approve` prompts on first blocked access instead of failing |
+| 🚦 | **Resource limits** | Memory (RSS-sampled) + wall-clock timeout with clean process-tree kill |
+| 🔀 | **Gateway integration** | `warden gateway init/run/wrap/list` to sandbox servers in a gateway registry |
+| 🩺 | **Readiness check** | `warden doctor` verifies backend, namespaces, and proxy in one command |
+
+## 🧪 Tests & Verification
+
+Warden is verified with **escape tests** (the sandboxed process tries to escape, and must fail), a **reproducible proof harness**, and a **compatibility matrix** against real MCP servers. Everything below is reproducible on your machine.
+
+### Proof harness — 8/8 steps PASS
+
+The harness (`warden-starter/warden/testdata/proof/run-proof.sh`) runs a scripted target against a real sandboxed `warden run` and checks every expected outcome:
+
+| Step | Expected | Verdict |
+|---|---|---|
+| read_allowed | SUCCESS | ✅ PASS |
+| write_allowed | SUCCESS | ✅ PASS |
+| read_secret | BLOCKED | ✅ PASS |
+| read_unlisted | BLOCKED | ✅ PASS |
+| net_allowed | SUCCESS | ✅ PASS |
+| net_blocked | BLOCKED | ✅ PASS |
+| env_allowed | VISIBLE | ✅ PASS |
+| env_denied | BLOCKED | ✅ PASS |
+
+<p align="center">
+  <img src=".github/assets/proof-evidence.png" width="640" alt="Warden proof evidence: 8/8 steps pass with positive control">
+</p>
+
+Each run writes machine-checkable evidence to `evidence/<platform>/<timestamp>/` (`summary.json`, `results.jsonl`, `audit.jsonl`). Reproduce it:
 
 ```bash
-# npm (recommended)
+cd warden-starter/warden
+go build -o warden ./cmd/warden
+./testdata/proof/run-proof.sh          # writes evidence/ and prints the verdict table
+```
+
+### Policy builder output
+
+<p align="center">
+  <img src=".github/assets/policy-builder.png" width="640" alt="Warden policy builder example">
+</p>
+
+### Test layers
+
+| Layer | What it proves | Where |
+|---|---|---|
+| **Unit + policy-engine tests** | Arg construction, parsing, env filtering, deny-by-default mounting | `go test ./...` (20 packages) |
+| **Linux escape tests** | A sandboxed process cannot read ungranted paths, write outside grants, or leak env | `internal/sandbox` + bwrap (runs in CI) |
+| **Windows escape tests** | AppContainer/WFP/ETW enforcement + fail-closed on missing privileges | `internal/sandbox/windows` (Windows CI job) |
+| **Docker integration tests** | Container deny-by-default mounts, blocked reads | `internal/sandbox/docker` (runs when a daemon is present) |
+| **Proof harness** | End-to-end behavior with a positive control, evidence files | `testdata/proof/run-proof.sh` |
+| **Compatibility matrix** | 18 real MCP servers: 14 pass, 2 conditional, 2 fail (classified) | `internal/compat` + [docs/compatibility.md](warden-starter/warden/docs/compatibility.md) |
+
+CI runs the test matrix on Linux, macOS, and Windows runners, plus cross-builds for `windows/amd64` and `darwin/arm64`. The GitHub Action that ships Warden to CI users is tested end-to-end on real runners (`.github/workflows/test-warden-action.yml`).
+
+> **Honesty note:** illustrative attack-simulation numbers that appear on the landing page are *not* independently verified measurements and are labeled as such there. The proof harness above is the reproducible, evidence-backed verification.
+
+## 📦 Install
+
+```bash
+# npm (recommended — wraps the GitHub Releases binary)
 npm install -g warden-sandbox-cli
 
-# Manual download
-# https://github.com/Prof-bilal/Warden/releases
+# Direct download (Linux/macOS/Windows binaries + SHA256SUMS)
+# → https://github.com/Prof-bilal/Warden/releases/latest
 
 # From source (the Go module lives in warden-starter/warden)
 cd warden-starter/warden
 go build -o warden ./cmd/warden
 ```
 
-## Documentation
+## 🧰 Commands
 
-- [Install Guide](warden-starter/warden/docs/install.md)
-- [Schema Reference](warden-starter/warden/docs/schema.md)
-- [Example Policies](warden-starter/warden/examples/)
-- [Architecture](ARCHITECTURE.md)
+```bash
+warden run --policy policy.yaml -- node server.js   # Run sandboxed (auto-picks backend)
+warden trace -- node server.js                      # Record what a server accesses (unsandboxed)
+warden init                                         # Generate policy.yaml from a trace
+warden logs --tail 50                               # Inspect the audit log
+warden doctor                                       # Check sandbox readiness
+warden gateway init|run|wrap|list                   # Gateway registry integration
+warden update                                       # Update to the latest release
+```
 
-## Contributing
+## 📚 Documentation
 
-See [CONTRIBUTING.md](warden-starter/warden/CONTRIBUTING.md) for development setup and guidelines.
+| | |
+|---|---|
+| **Docs site** | [prof-bilal.github.io/Warden](https://prof-bilal.github.io/Warden/) |
+| **Quickstart** | [docs/quickstart.md](warden-starter/warden/docs/quickstart.md) |
+| **Policy schema** | [docs/schema.md](warden-starter/warden/docs/schema.md) |
+| **CLI reference** | [docs/cli.md](warden-starter/warden/docs/cli.md) |
+| **Security & threat model** | [docs/security.md](warden-starter/warden/docs/security.md) |
+| **Example policies** | [examples/](warden-starter/warden/examples/) — filesystem, GitHub, Slack, PostgreSQL, Brave Search |
+| **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **Use in CI** | [warden-action](.github/actions/warden-action/) — sandbox any build step |
 
-## License
+## 🗺️ Status & Roadmap
 
-MIT
+Milestones M0–M8 are complete: Linux → network enforcement → trace/init/limits → macOS → Windows → distribution → real-world MCP compatibility testing (18 servers). Current status is tracked in [ROADMAP.md](ROADMAP.md), with open work items in [REMAINING_WORK.md](warden-starter/warden/REMAINING_WORK.md).
+
+Not yet hardened against a determined local attacker — see the [threat model](warden-starter/warden/docs/security.md) for the honest limitation list (symlinks inside granted paths, HTTP/HTTPS-only proxy interception, no CPU throttling, and friends).
+
+## 🤝 Contributing
+
+Contributions are welcome — example policies, platform testing, docs, and code. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, repo layout, and PR guidelines.
+
+## 🛡️ Security
+
+Found a sandbox escape or a way to make Warden run unsandboxed? Please report it privately — see [SECURITY.md](SECURITY.md). Please don't open a public issue for exploitable behavior.
+
+## ⚖️ License
+
+[MIT](LICENSE) © Warden contributors
