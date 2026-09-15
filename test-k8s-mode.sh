@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-# Test script for Warden Container/K8s Mode functionality
+# MANUAL smoke test for Warden Container/K8s Mode (CLI parsing + renderer
+# output checks). Run by hand; NOT wired into CI. Automated coverage for the
+# translator lives in warden-starter/warden/internal/container/.
 echo "🧪 Testing Warden Container/K8s Mode..."
 
 # Test directory

@@ -27,7 +27,11 @@ fi
 FIXTURE_DIR="$REPO_ROOT/warden-starter/warden/testdata/proof"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 EVIDENCE_ROOT="${WARDEN_PROOF_OUT:-$REPO_ROOT/evidence}"
-OUTDIR="$EVIDENCE_ROOT/linux/$STAMP"
+# Evidence is grouped by platform (linux, darwin, ...) so cross-platform runs
+# never overwrite each other. On Linux this resolves to the historical
+# "evidence/linux/<stamp>" layout.
+PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')"
+OUTDIR="$EVIDENCE_ROOT/$PLATFORM/$STAMP"
 mkdir -p "$OUTDIR"
 
 MARKER="WARDEN_PROOF_STARTED_7f3a"
@@ -71,21 +75,32 @@ sed -e "s|@OUT@|$SBOX_OUT|g" \
     -e "s|@BLOCKED@|$BLOCKED_HOST|g" \
     -e "s|@TOKEN@|$TOKEN|g" \
     -e "s|@MARKER@|$MARKER|g" \
-    "$REPO_ROOT/testdata/proof/proof-target.sh.template" > "$TARGET"
+    "$FIXTURE_DIR/fixtures/proof-target.sh.template" > "$TARGET"
 chmod 755 "$TARGET"
 
 POLICY="$WORK/proof-policy.yaml"
 sed -e "s|@WORK@|$WORK|g" \
     -e "s|@OUT@|$SBOX_OUT|g" \
     -e "s|@SCRIPT_DIR@|$(dirname "$TARGET")|g" \
-    "$REPO_ROOT/warden-starter/warden/testdata/proof/proof-policy.yaml.template" > "$POLICY"
+    "$FIXTURE_DIR/proof-policy.yaml.template" > "$POLICY"
 
-# --- point GITHUB_TOKEN at the harness token, add the leak canary ------------
+# --- point GITHUB_TOKEN at the harness token ----------------------------------
 export GITHUB_TOKEN="$TOKEN"
+# --- plant the env-leak canary (must NOT reach the sandbox; see target §6-8) --
+# The target checks that WARDEN_SECRET_ENV is absent inside the sandbox. It is
+# exported here, before the run, so the env-denial step tests real filtering
+# instead of passing because the variable was never set at all.
+export WARDEN_SECRET_ENV="leak-canary-$STAMP"
+
 # --- run under warden ---------------------------------------------------------
+# The run gets a private XDG_STATE_HOME so its audit stream is scoped to this
+# invocation (no cross-talk with other warden runs on this machine). The
+# parent's own default audit path is captured first for the fallback below.
+PARENT_STATE="${XDG_STATE_HOME:-$HOME/.local/state}"
+DEFAULT_AUDIT="$PARENT_STATE/warden/audit.jsonl"
 echo "▶ warden run --policy ... -- /bin/sh proof-target.sh"
 START_TS="$(date -u +%Y-%m-%dT%H:%M:%S)"
-"$WARDEN" run --policy "$POLICY" -- /bin/sh "$TARGET" \
+XDG_STATE_HOME="$OUTDIR/xdg-state" "$WARDEN" run --policy "$POLICY" -- /bin/sh "$TARGET" \
     > "$OUTDIR/run-stdout.log" 2> "$OUTDIR/run-stderr.txt"
 RUN_EXIT=$?
 
@@ -95,37 +110,43 @@ STARTED="$SBOX_OUT/started.txt"
 CLAIM="ok"
 if [ ! -f "$STARTED" ] || ! grep -q "$MARKER" "$STARTED" 2>/dev/null; then
     CLAIM="fail"
-    echo "❌ POSITIVE CONTROL FAILED: target never startedall results void"
+    echo "❌ POSITIVE CONTROL FAILED: target never started — all results void"
 fi
 if [ ! -f "$STEPS" ]; then
     CLAIM="fail"
     echo "❌ no steps recorded (target never produced output)"
 fi
 
-declare -A WANT=(
-    [read_allowed]=SUCCESS
-    [write_allowed]=SUCCESS
-    [read_secret]=BLOCKED
-    [read_unlisted]=BLOCKED
-    [net_allowed]=SUCCESS
-    [net_blocked]=BLOCKED
-    [env_allowed]=VISIBLE
-    [env_denied]=BLOCKED
-)
+# Expected result per step (kept as a case lookup instead of an associative
+# array so the harness also runs under macOS's stock bash 3.2).
+want_for() {
+    case "$1" in
+        read_allowed)  echo SUCCESS ;;
+        write_allowed) echo SUCCESS ;;
+        read_secret)   echo BLOCKED ;;
+        read_unlisted) echo BLOCKED ;;
+        net_allowed)   echo SUCCESS ;;
+        net_blocked)   echo BLOCKED ;;
+        env_allowed)   echo VISIBLE ;;
+        env_denied)    echo BLOCKED ;;
+        *)             echo "?" ;;
+    esac
+}
 
 PASSCT=0; FAILCT=0
 : > "$OUTDIR/step-results.txt"
 if [ "$CLAIM" = "ok" ]; then
     while IFS= read -r line; do
         name="${line%%:*}"; got="${line#*:}"
-        want="${WANT[$name]:-?}"
+        want="$(want_for "$name")"
         if [ "$got" = "$want" ]; then st=PASS; PASSCT=$((PASSCT+1)); else st=FAIL; FAILCT=$((FAILCT+1)); fi
         echo "$name $want $got $st" >> "$OUTDIR/step-results.txt"
     done < "$STEPS"
     # Any step that never reported counts as a failure.
-    for name in "${!WANT[@]}"; do
+    for name in read_allowed write_allowed read_secret read_unlisted \
+                net_allowed net_blocked env_allowed env_denied; do
         if ! grep -q "^$name:" "$STEPS"; then
-            echo "$name ${WANT[$name]} MISSING FAIL" >> "$OUTDIR/step-results.txt"
+            echo "$name $(want_for "$name") MISSING FAIL" >> "$OUTDIR/step-results.txt"
             FAILCT=$((FAILCT+1))
         fi
     done
@@ -133,15 +154,21 @@ else
     FAILCT=$((FAILCT+1))
 fi
 
-# --- copy the raw audit stream (records from this run only) ---------------------
-AUDIT_SRC="${XDG_STATE_HOME:-$HOME/.local/state}/warden/audit.jsonl"
+# --- copy the raw audit stream (run-scoped via the private XDG_STATE_HOME) ----
+AUDIT_SRC="$OUTDIR/xdg-state/warden/audit.jsonl"
 if [ -f "$AUDIT_SRC" ]; then
-    awk -v ts="$START_TS" 'substr($0, index($0,"\"timestamp\":\"")+13, 19) >= ts' \
-        "$AUDIT_SRC" > "$OUTDIR/audit.jsonl" 2>/dev/null || cp "$AUDIT_SRC" "$OUTDIR/audit.jsonl"
-    # Empty filter (clock skew etc.) falls back to the full stream.
-    if [ ! -s "$OUTDIR/audit.jsonl" ]; then cp "$AUDIT_SRC" "$OUTDIR/audit.jsonl"; fi
+    cp "$AUDIT_SRC" "$OUTDIR/audit.jsonl"
 else
-    echo '{"note":"no audit log found"}' > "$OUTDIR/audit.jsonl"
+    # Fallback (audit stream outside the private dir): filter the shared
+    # default stream by start timestamp, best effort.
+    if [ -f "$DEFAULT_AUDIT" ]; then
+        awk -v ts="$START_TS" 'substr($0, index($0,"\"timestamp\":\"")+13, 19) >= ts' \
+            "$DEFAULT_AUDIT" > "$OUTDIR/audit.jsonl" 2>/dev/null || cp "$DEFAULT_AUDIT" "$OUTDIR/audit.jsonl"
+        # Empty filter (clock skew etc.) falls back to the full stream.
+        if [ ! -s "$OUTDIR/audit.jsonl" ]; then cp "$DEFAULT_AUDIT" "$OUTDIR/audit.jsonl"; fi
+    else
+        echo '{"note":"no audit log found"}' > "$OUTDIR/audit.jsonl"
+    fi
 fi
 
 # --- emit results.jsonl ----------------------------------------------------------
@@ -171,12 +198,12 @@ EOF
 
 # --- emit evidence.md ----------------------------------------------------------------
 {
-    echo "# Warden proof evidence$STAMP"
+    echo "# Warden proof evidence — $STAMP"
     echo ""
     echo "- platform: $(uname -s)-$(uname -m)"
     echo "- warden: $WARDEN_VER"
     echo "- run exit: $RUN_EXIT"
-    echo "- positive control (target started): $([ "$CLAIM" = "ok" ] && echo "PASS" || echo "**FAILall results void**")"
+    echo "- positive control (target started): $([ "$CLAIM" = "ok" ] && echo "PASS" || echo "**FAIL — all results void**")"
     echo ""
     echo "| step | expected | observed | verdict |"
     echo "|------|----------|----------|---------|"
@@ -203,6 +230,5 @@ if [ "$VERDICT" = "ok" ]; then
     echo "   artifacts: $OUTDIR"
     exit 0
 fi
-echo "❌ proof FAILEDsee $OUTDIR/evidence.md"
+echo "❌ proof FAILED — see $OUTDIR/evidence.md"
 exit 1
-export WARDEN_SECRET_ENV="leak-canary-DO-NOT-SEE"

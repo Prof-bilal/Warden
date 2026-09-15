@@ -1,8 +1,10 @@
 #!/bin/bash
 set -e
 
-# Test script for Warden GitHub Action
-# This script simulates what would happen in a GitHub Actions environment
+# MANUAL verification script for the Warden GitHub Action.
+# Run by hand when hacking on the action; NOT wired into CI (the real action
+# coverage lives in .github/workflows/test-warden-action.yml).
+# Simulates what would happen in a GitHub Actions environment.
 
 echo "🔧 Testing Warden GitHub Action..."
 
