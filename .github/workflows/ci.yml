@@ -252,8 +252,19 @@ jobs:
         run: CGO_ENABLED=0 go build -o warden ./cmd/warden
       - name: Run attack-simulation harness
         # run-attacks.sh resolves the repo root from its own location and
-        # defaults to the just-built ./warden binary.
-        run: bash testdata/attacks/run-attacks.sh
+        # defaults to the just-built ./warden binary. GitHub runners have no
+        # bwrap, so warden falls back to the docker backend — the image must
+        # exist locally first (warden refuses to pull on its own, and the
+        # backend is pinned so the job can't silently change meaning if a
+        # bwrap package ever appears in the runner image). WARDEN_BACKEND
+        # propagates into evidence so every artifact records which sandbox
+        # produced it.
+        env:
+          WARDEN_BACKEND: docker
+        run: |
+          set -euo pipefail
+          docker pull alpine:3.20
+          bash testdata/attacks/run-attacks.sh
       - name: Upload attack evidence
         if: always()
         uses: actions/upload-artifact@v4

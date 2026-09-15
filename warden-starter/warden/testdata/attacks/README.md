@@ -76,5 +76,6 @@ run-*-stdout.log             run-*-stderr.txt         what each phase printed
 |---|---|---|
 | `WARDEN_ATTACKS_OUT` | `<repo>/evidence` | evidence root directory |
 | `WARDEN_ATTACKS_TIMEOUT` | `60` | sandbox wall-clock timeout for the main run (s) |
+| `WARDEN_BACKEND` | _(unset)_ | pin the sandbox backend (`docker`, `linux`, …) instead of warden's auto-detection; recorded in evidence |
 
 The CPU-bomb scenario uses its own shorter timeout (5 s) to keep the run quick.

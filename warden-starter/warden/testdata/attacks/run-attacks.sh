@@ -44,6 +44,15 @@ if [ ! -x "$WARDEN" ]; then
     exit 1
 fi
 
+# Backend selection: WARDEN_BACKEND pins the sandbox backend explicitly
+# (e.g. WARDEN_BACKEND=docker on CI runners where bwrap is absent). Empty
+# means warden's own auto-detection (bwrap if present, then docker).
+BACKEND_ARGS=""
+if [ -n "${WARDEN_BACKEND:-}" ]; then
+    BACKEND_ARGS="--backend $WARDEN_BACKEND"
+    echo "▶ sandbox backend pinned via WARDEN_BACKEND: $WARDEN_BACKEND"
+fi
+
 FIXTURE_DIR="$REPO_ROOT/warden-starter/warden/testdata/attacks"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 EVIDENCE_ROOT="${WARDEN_ATTACKS_OUT:-$REPO_ROOT/evidence}"
@@ -159,9 +168,20 @@ run_target_phase() {
             -e "s|@TIMEOUT@|$SBOX_TIMEOUT|g" \
             "$FIXTURE_DIR/policy.yaml.template" > "$policy"
         echo "▶ [$tag] warden run — deny-by-default, no network, timeout ${SBOX_TIMEOUT}s"
-        XDG_STATE_HOME="$R/xdg-state" "$WARDEN" run --policy "$policy" -- /bin/sh "$target" \
+        XDG_STATE_HOME="$R/xdg-state" "$WARDEN" run --policy "$policy" $BACKEND_ARGS -- /bin/sh "$target" \
             > "$R/run-$tag-stdout.log" 2> "$R/run-$tag-stderr.txt"
         echo $? > "$R/run-$tag.exit"
+        # A sandbox run that dies before starting the target produces no
+        # scenario rows at all — surface warden's own output on the console
+        # so startup failures are self-describing in CI logs.
+        if [ -s "$R/run-$tag-stderr.txt" ]; then
+            echo "⚠ [$tag] warden stderr:"
+            cat "$R/run-$tag-stderr.txt"
+        fi
+        if [ ! -s "$out/steps.txt" ]; then
+            echo "❌ [$tag] target never started — full warden output:"
+            cat "$R/run-$tag-stdout.log" "$R/run-$tag-stderr.txt" 2>/dev/null
+        fi
         cp "$R/xdg-state/warden/audit.jsonl" "$OUTDIR/audit.jsonl" 2>/dev/null || true
     else
         echo "▶ [$tag] unsandboxed control run"
@@ -224,9 +244,13 @@ run_bomb_phase() {
             -e "s|@TIMEOUT@|$BOMB_TIMEOUT|g" \
             "$FIXTURE_DIR/policy.yaml.template" > "$policy"
         t0=$(date +%s)
-        XDG_STATE_HOME="$R/xdg-state" "$WARDEN" run --policy "$policy" -- /bin/sh "$world/work/cpu-bomb.sh" \
+        XDG_STATE_HOME="$R/xdg-state" "$WARDEN" run --policy "$policy" $BACKEND_ARGS -- /bin/sh "$world/work/cpu-bomb.sh" \
             > "$R/run-bomb-stdout.log" 2> "$R/run-bomb-stderr.txt"
         echo $? > "$R/run-bomb-sandbox.exit"
+        if [ -s "$R/run-bomb-stderr.txt" ]; then
+            echo "⚠ [cpu-bomb sandbox] warden stderr:"
+            cat "$R/run-bomb-stderr.txt"
+        fi
         t1=$(date +%s)
         echo "$((t1 - t0))" > "$R/bomb-sbox-wall.txt"
         # Nothing may still be looping: the count must be frozen.
@@ -391,6 +415,7 @@ cat > "$OUTDIR/summary.json" <<EOF
   "platform": "$(uname -s)-$(uname -m)",
   "warden_binary": "$WARDEN",
   "warden_version": "$WARDEN_VER",
+  "sandbox_backend": "${WARDEN_BACKEND:-auto}",
   "control_exit": $CTRL_EXIT,
   "sandbox_exit": $SBOX_EXIT,
   "collector_control_posts": $CTRL_POSTS,
@@ -423,6 +448,7 @@ EOF
     echo ""
     echo "- platform: $(uname -s)-$(uname -m)"
     echo "- warden: $WARDEN_VER"
+    echo "- sandbox backend: ${WARDEN_BACKEND:-auto (warden-detected)}"
     echo "- control (unsandboxed) exit: $CTRL_EXIT — every attack must land for results to count"
     echo "- sandbox exit: $SBOX_EXIT"
     echo ""
