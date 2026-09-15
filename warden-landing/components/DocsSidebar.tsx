@@ -51,7 +51,7 @@ export default function DocsSidebar() {
     <nav className="docs-sidebar" aria-label="Documentation navigation">
       {sections.map((section) => (
         <div key={section.title} className="mb-6">
-          <h4 className="mb-2 px-3 text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
+          <h4 className="mb-2 px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted">
             {section.title}
           </h4>
           <ul className="space-y-0.5">
@@ -62,7 +62,7 @@ export default function DocsSidebar() {
                 <li key={item.slug}>
                   <Link
                     href={href}
-                    className={`block rounded-md px-3 py-1.5 text-[0.875rem] transition-colors ${
+                    className={`block rounded-md px-3 py-1.5 font-hero text-[0.875rem] transition-colors ${
                       isActive
                         ? "bg-blueprint/10 font-medium text-blueprint"
                         : "text-muted hover:bg-ink-800 hover:text-paper"

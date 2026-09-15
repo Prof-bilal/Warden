@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Film } from "lucide-react";
 
 /**
- * SandboxPlayer — a Remotion-style "video" rendered entirely in React.
+ * SandboxPlayera Remotion-style "video" rendered entirely in React.
  * Every frame is derived from a timeline value `t` (seconds), so the
  * animation is seekable, loops seamlessly, and ships zero video bytes.
  */
@@ -122,16 +122,16 @@ export default function SandboxPlayer() {
   const sweep = (t % 3) / 3;
 
   return (
-    <div className="overflow-hidden rounded-[12px] border border-ink-700 bg-ink-950">
+    <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-950">
       {/* Window chrome */}
       <div className="flex items-center gap-2 border-b border-ink-800 bg-ink-900 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-[#E2604F]/70" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#F59E0B]/70" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#3FB27E]/70" />
-        <span className="ml-3 font-mono text-[0.6875rem] text-muted">
+        <span className="ml-3 font-hero text-[0.6875rem] text-muted">
           warden-demo · rendered in React · {DURATION}s loop
         </span>
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-2 py-0.5 font-mono text-[0.625rem] uppercase tracking-[0.08em] text-muted">
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-2 py-0.5 font-hero text-[0.625rem] uppercase tracking-[0.08em] text-muted">
           <Film size={10} />
           Scene {sceneIdx}/4
         </span>
@@ -160,8 +160,8 @@ export default function SandboxPlayer() {
           aria-hidden
         />
 
-        {/* Scene 1+2 — left: terminal */}
-        <div className="absolute inset-0 flex flex-col p-5 font-mono text-[0.8125rem] leading-[1.9] sm:p-7 sm:text-[0.875rem]">
+        {/* Scene 1+2left: terminal */}
+        <div className="absolute inset-0 flex flex-col p-5 font-hero text-[0.8125rem] leading-[1.9] sm:p-7 sm:text-[0.875rem]">
           <div className="min-h-0 flex-1 overflow-hidden">
             {/* typed command */}
             <p>
@@ -198,7 +198,7 @@ export default function SandboxPlayer() {
             ))}
           </div>
 
-          {/* verdict stream — pinned bottom */}
+          {/* verdict streampinned bottom */}
           <div className="flex min-h-[9.5rem] flex-col justify-end gap-[2px] overflow-hidden pt-2">
             {eventsVisible.map((e) => (
               <p key={e.target} className="flex items-center gap-2 truncate">
@@ -218,14 +218,14 @@ export default function SandboxPlayer() {
           </div>
         </div>
 
-        {/* Boundary pulse — right side, scenes 2–4 */}
+        {/* Boundary pulseright side, scenes 2–4 */}
         {t >= 5 && (
           <div className="pointer-events-none absolute right-[6%] top-1/2 hidden -translate-y-1/2 md:block" aria-hidden>
             <div
               className="relative h-40 w-40 rounded-full border border-dashed border-[#3FB27E]/50 lg:h-48 lg:w-48"
               style={{ transform: `scale(${pulse})` }}
             >
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-mono text-[0.5625rem] tracking-[0.2em] text-[#3FB27E]/80">
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-hero text-[0.5625rem] tracking-[0.2em] text-[#3FB27E]/80">
                 BOUNDARY
               </span>
               <span className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 rounded-md border border-[#6E93E8]/50 bg-ink-900" />
@@ -239,14 +239,14 @@ export default function SandboxPlayer() {
           </div>
         )}
 
-        {/* Summary card — scene 4 */}
+        {/* Summary cardscene 4 */}
         {summaryVisible && (
           <div
             className="absolute left-1/2 top-6 -translate-x-1/2 rounded-lg border border-[#3FB27E]/40 bg-black/70 px-5 py-2.5 text-center backdrop-blur-sm"
             style={{ opacity: easeOut(summaryIn), transform: `translate(-50%, ${(1 - easeOut(summaryIn)) * -12}px)` }}
           >
-            <p className="font-mono text-[0.8125rem] text-[#3FB27E]">3 allowed · 5 denied · 0 escapes</p>
-            <p className="mt-0.5 font-mono text-[0.625rem] tracking-wider text-muted">OVERHEAD 0.6MS · FAIL-CLOSED</p>
+            <p className="font-hero text-[0.8125rem] text-[#3FB27E]">3 allowed · 5 denied · 0 escapes</p>
+            <p className="mt-0.5 font-hero text-[0.625rem] tracking-wider text-muted">OVERHEAD 0.6MS · FAIL-CLOSED</p>
           </div>
         )}
       </div>
@@ -295,7 +295,7 @@ export default function SandboxPlayer() {
           />
         </div>
 
-        <span className="font-mono text-[0.6875rem] text-muted">
+        <span className="font-hero text-[0.6875rem] text-muted">
           {fmt(t)} <span className="text-muted/50">/ {fmt(DURATION)}</span>
         </span>
       </div>

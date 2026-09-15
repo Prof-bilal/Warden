@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 
 /**
- * Inline code chip that copies its text on click — for code snippets
+ * Inline code chip that copies its text on clickfor code snippets
  * inside tables and prose. Shows a small ✓ badge on copy (no layout
  * shift: the badge is absolutely positioned).
  */
@@ -29,7 +29,7 @@ export default function CopyableCode({
       title={`Click to copy: ${text}`}
       aria-label={`Copy ${text}`}
       className={
-        "group relative inline-flex max-w-full cursor-pointer items-center rounded-md border px-1.5 py-0.5 align-baseline font-mono text-[0.8125rem] transition-colors " +
+        "group relative inline-flex max-w-full cursor-pointer items-center rounded-md border px-1.5 py-0.5 align-baseline font-hero text-[0.8125rem] transition-colors " +
         (copied
           ? "border-grant/50 text-grant "
           : "border-ink-600 text-blueprint hover:border-ink-500 hover:text-paper ") +

@@ -21,7 +21,7 @@ const GROUPS = [
   },
   {
     verdict: "2 conditional",
-    detail: "Fetch and Kubernetes — need per-deployment hosts",
+    detail: "Fetch and Kubernetesneed per-deployment hosts",
     tone: "progress" as const,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -33,7 +33,7 @@ const GROUPS = [
     iconClass: "text-progress border-progress/30 bg-progress-subtle",
   },
   {
-    verdict: "2 fail — documented",
+    verdict: "2 faildocumented",
     detail:
       "Docker socket and Playwright wildcards can't be sandboxed honestly",
     tone: "deny" as const,
@@ -56,20 +56,20 @@ export default function Compatibility() {
         <div className="grid gap-10 lg:grid-cols-[24rem_1fr] lg:gap-14">
           {/* Left: heading + description + CTA */}
           <div className="lg:sticky lg:top-24 lg:self-start">
-            <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+            <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
               Compatibility
             </span>
-            <h2 className="mt-5 text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+            <h2 className="mt-5 font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper">
               Tested against 18 real servers, not just our own fixtures.
             </h2>
-            <p className="mt-4 text-[1rem] leading-[1.65] text-muted">
+            <p className="mt-4 font-hero text-[1rem] leading-[1.65] text-muted">
               Every server ships with the exact policy it needed, pinned as a
-              regression fixture — so an update can&apos;t silently break what
+              regression fixtureso an update can&apos;t silently break what
               used to work.
             </p>
             <a
               href={MATRIX_URL}
-              className="mt-6 inline-flex items-center gap-2 rounded-[8px] border border-ink-600 bg-ink-900 px-4 py-2.5 text-[0.875rem] font-medium text-paper transition-colors hover:border-blueprint/50 hover:text-white"
+              className="mt-6 inline-flex items-center gap-2 rounded-[8px] border border-ink-600 bg-ink-900 px-4 py-2.5 font-hero text-[0.875rem] font-medium text-paper transition-colors hover:border-blueprint/50 hover:text-white"
             >
               Read the full compatibility matrix
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -99,11 +99,11 @@ export default function Compatibility() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <h3 className={`text-[1.0625rem] font-medium text-${g.tone}`}>
+                      <h3 className={`font-hero text-[1.0625rem] font-medium text-${g.tone}`}>
                         {g.verdict}
                       </h3>
                     </div>
-                    <p className="mt-1 text-[0.9375rem] leading-[1.55] text-muted">
+                    <p className="mt-1 font-hero text-[0.9375rem] leading-[1.55] text-muted">
                       {g.detail}
                     </p>
                   </div>
@@ -118,10 +118,10 @@ export default function Compatibility() {
                 alt="Security architecture across filesystem, network, and environment layers"
               />
               <div className="border-t border-ink-800 bg-ink-900 px-5 py-3">
-                <p className="text-[0.75rem] leading-[1.5] text-muted">
+                <p className="font-hero text-[0.75rem] leading-[1.5] text-muted">
                   <span className="text-paper/85">One policy, every layer.</span>{" "}
                   Filesystem, network, environment, and audit are enforced
-                  together — the same policy shape protects all 18 servers.
+                  togetherthe same policy shape protects all 18 servers.
                 </p>
               </div>
             </div>

@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Newsreader } from "next/font/google";
+import { Newsreader, JetBrains_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/seo";
+import { organizationSchema, websiteSchema } from "@/lib/schema";
 import "./globals.css";
 
 const newsreader = Newsreader({
@@ -11,30 +13,25 @@ const newsreader = Newsreader({
   weight: ["400", "500"],
 });
 
-const SITE_URL = "https://warden-six-rouge.vercel.app";
+const heroMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-hero-mono",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+export const viewport: Viewport = {
+  themeColor: "#10141a",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Warden — A Sandbox Runtime for MCP Servers",
+    default: "WardenSandbox Runtime for MCP Servers",
     template: "%s | Warden",
   },
   description:
-    "Warden runs MCP servers in a restricted sandbox, so a server only ever gets the files, hosts, and environment variables you explicitly grant it. Open-source, fail-closed, audited.",
-  keywords: [
-    "MCP sandbox",
-    "MCP server security",
-    "Model Context Protocol",
-    "AI tooling security",
-    "sandbox runtime",
-    "MCP server isolation",
-    "bubblewrap",
-    "seatbelt",
-    "AppContainer",
-    "Warden",
-    "open source",
-    "developer tools",
-  ],
+    "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
   authors: [{ name: "Prof-bilal", url: "https://github.com/Prof-bilal" }],
   creator: "Prof-bilal",
   publisher: "Prof-bilal",
@@ -57,29 +54,30 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Warden",
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenSandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
     images: [
       {
-        url: `${SITE_URL}/og-image.png`,
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Warden — A Sandbox Runtime for MCP Servers",
+        alt: "WardenSandbox Runtime for MCP Servers",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — A Sandbox Runtime for MCP Servers",
+    title: "WardenSandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
-    images: [`${SITE_URL}/og-image.png`],
+    images: ["/og-image.png"],
     creator: "@Prof-bilal",
   },
   icons: {
     icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
       { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
     ],
@@ -93,63 +91,29 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Warden",
-    url: SITE_URL,
-    description:
-      "A sandbox runtime for MCP servers. Run third-party code with first-party trust.",
-    publisher: {
-      "@type": "Organization",
-      name: "Warden",
-      url: SITE_URL,
-      logo: {
-        "@type": "ImageObject",
-        url: `${SITE_URL}/icon.png`,
-      },
-    },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/docs?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-  };
-
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Warden",
-    url: SITE_URL,
-    logo: {
-      "@type": "ImageObject",
-      url: `${SITE_URL}/icon.png`,
-    },
-    sameAs: ["https://github.com/Prof-bilal/Warden"],
-    description:
-      "Open-source sandbox runtime for MCP servers. Run third-party AI tooling code safely.",
-  };
-
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable} ${heroMono.variable}`}
     >
       <head>
-        <meta name="theme-color" content="#10141a" />
-        <meta name="google-site-verification" content="Q2f7-V2KDOxOTZEYUebS_woBqRa1L-kgFr-Q5zBN7ks" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+        <meta
+          name="google-site-verification"
+          content="Q2f7-V2KDOxOTZEYUebS_woBqRa1L-kgFr-Q5zBN7ks"
+        />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Warden Blog"
+          href="/feed.xml"
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationSchema),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema()) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema()) }}
         />
       </head>
       <body className="font-sans antialiased">{children}</body>

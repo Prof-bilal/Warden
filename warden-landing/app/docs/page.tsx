@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema } from "@/lib/schema";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import DocsSidebar from "@/components/DocsSidebar";
 
-const SITE_URL = "https://warden-six-rouge.vercel.app";
-
 export const metadata: Metadata = {
   title: "Documentation",
   description:
-    "Warden documentation — install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
+    "Warden documentation: install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
   alternates: {
     canonical: `${SITE_URL}/docs`,
   },
   openGraph: {
-    title: "Documentation — Warden",
+    title: "Documentation",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     url: `${SITE_URL}/docs`,
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Documentation — Warden",
+    title: "Documentation",
     description:
       "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
     images: [`${SITE_URL}/og-image.png`],
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
 const CARDS = [
   {
     title: "Install",
-    body: "Linux, macOS, Windows, Docker fallback — or build from source with Go 1.22+. What each platform needs before warden will run.",
+    body: "Linux, macOS, Windows, Docker fallbackor build from source with Go 1.22+. What each platform needs before warden will run.",
     href: "/docs/install",
   },
   {
@@ -48,12 +49,12 @@ const CARDS = [
   },
   {
     title: "Policy schema",
-    body: "Every policy.yaml field, validation rule, and enforcement note — the one reference to keep open while writing policies.",
+    body: "Every policy.yaml field, validation rule, and enforcement notethe one reference to keep open while writing policies.",
     href: "/docs/schema",
   },
   {
     title: "CLI reference",
-    body: "run, trace, init, logs, gateway, --approve — every subcommand and flag, verified against the source.",
+    body: "run, trace, init, logs, gateway, --approveevery subcommand and flag, verified against the source.",
     href: "/docs/cli",
   },
   {
@@ -68,7 +69,7 @@ const CARDS = [
   },
   {
     title: "Architecture",
-    body: "How the CLI, policy engine, sandbox backends, egress proxy, and audit logger fit together — with component diagrams.",
+    body: "How the CLI, policy engine, sandbox backends, egress proxy, and audit logger fit togetherwith component diagrams.",
     href: "/docs/architecture",
   },
   {
@@ -83,7 +84,7 @@ const CARDS = [
   },
   {
     title: "Roadmap",
-    body: "M0 through M8 milestones — what's built, what's shipped, and what's next for Warden.",
+    body: "M0 through M8 milestoneswhat's built, what's shipped, and what's next for Warden.",
     href: "/docs/roadmap",
   },
   {
@@ -98,7 +99,7 @@ const CARDS = [
   },
   {
     title: "Cross-platform testing",
-    body: "Test Warden on Linux, macOS, and Windows — build binaries, run MCP servers, verify security boundaries.",
+    body: "Test Warden on Linux, macOS, and Windowsbuild binaries, run MCP servers, verify security boundaries.",
     href: "/docs/testing-platforms",
   },
 ];
@@ -106,9 +107,15 @@ const CARDS = [
 export default function Docs() {
   return (
     <main className="min-h-screen bg-ink-950">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: `${SITE_URL}/` },
+          { name: "Docs", url: `${SITE_URL}/docs` },
+        ])}
+      />
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        {/* Breadcrumb — icons.devigner.cc style */}
+        {/* Breadcrumbicons.devigner.cc style */}
         <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
           <span className="hover:text-paper transition-colors">
             <a href="/">Warden</a>
@@ -128,12 +135,12 @@ export default function Docs() {
 
           {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+            <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
               Docs.
             </h1>
-            <p className="mt-5 max-w-[34rem] text-[1.0625rem] leading-[1.65] text-muted">
+            <p className="mt-5 max-w-[34rem] font-hero text-[1.0625rem] leading-[1.65] text-muted">
               Install it, run your first sandboxed server, then go deep on the
-              policy schema. Start with Install and Quickstart — in that order.
+              policy schema. Start with Install and Quickstartin that order.
             </p>
 
             <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">
@@ -143,13 +150,13 @@ export default function Docs() {
                   href={c.href}
                   className="group bg-ink-950 p-7 transition-colors hover:bg-ink-900"
                 >
-                  <h2 className="text-[1.125rem] font-medium text-paper">
+                  <h2 className="font-hero text-[1.125rem] font-bold text-paper">
                     {c.title}
                     <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5">
                       →
                     </span>
                   </h2>
-                  <p className="mt-2 text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
+                  <p className="mt-2 font-hero text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
                 </a>
               ))}
             </div>

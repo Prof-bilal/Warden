@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Accepts anonymous npm install pings. Stores one JSONL line per event in
 // data/installs.jsonl (gitignored). No IP, hostname, username, or any
-// request header is ever persisted — only the five validated body fields
+// request header is ever persistedonly the five validated body fields
 // plus a server-side timestamp.
 const MAX_BODY_BYTES = 4096;
 
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
 
   // Persist: one JSONL line. Field names match the telemetry table spec
   // (timestamp, package, version, platform, architecture, node_version).
-  // Deliberately no IP/headers/hostname/user-agent here — the Request object
+  // Deliberately no IP/headers/hostname/user-agent herethe Request object
   // exposes them, but we never read them.
   const record = {
     timestamp: new Date().toISOString(),

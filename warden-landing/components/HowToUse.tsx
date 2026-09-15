@@ -45,7 +45,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-auto flex shrink-0 items-center gap-1.5 rounded-sm border border-ink-700 px-2 py-1 font-mono text-[0.6875rem] text-muted transition-colors hover:border-ink-500 hover:text-paper"
+      className="ml-auto flex shrink-0 items-center gap-1.5 rounded-sm border border-ink-700 px-2 py-1 font-hero text-[0.6875rem] text-muted transition-colors hover:border-ink-500 hover:text-paper"
       aria-label="Copy command"
     >
       {copied ? (
@@ -68,14 +68,14 @@ export default function HowToUse() {
     <section id="how-to-use" className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
         <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:justify-between">
-          <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2rem]">
             How to use Warden.
           </h2>
-          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+          <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
             4 commands · 2 minutes
           </span>
         </div>
-        <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
+        <p className="mt-3 max-w-[34rem] font-hero text-[1rem] leading-[1.65] text-muted">
           From install to a sandboxed server in four steps. No daemon, no config
           files beyond the policy, no changes to your existing MCP setup.
         </p>

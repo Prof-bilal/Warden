@@ -32,10 +32,11 @@ const config: Config = {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
         display: ["var(--font-display)", "Newsreader", "GT Sectra", "Tiempos Text", "serif"],
+        hero: ["var(--font-hero-mono)", "JetBrains Mono", "Fira Code", "var(--font-geist-mono)", "ui-monospace", "monospace"],
       },
       maxWidth: {
         content: "72rem",
-        display: "80rem", // 1280px — InvisibleTech page max-width
+        display: "80rem", // 1280pxInvisibleTech page max-width
       },
       letterSpacing: {
         tighter: "-0.03em", // display 64px

@@ -21,9 +21,9 @@ const CYCLE: Omit<Attempt, "id">[] = [
 ];
 
 const GRANT_LABELS: Record<GrantKey, string> = {
-  data: "./data — read",
-  output: "./output — write",
-  github: "api.github.com — network",
+  data: "./dataread",
+  output: "./outputwrite",
+  github: "api.github.comnetwork",
 };
 
 export default function SandboxVisualizer() {
@@ -82,7 +82,7 @@ export default function SandboxVisualizer() {
         </div>
         <p className="mt-4 text-[0.75rem] leading-[1.5] text-muted">
           Toggle a grant and watch the matching attempt change on the right.
-          Two of the five attempts are never in the policy — they stay
+          Two of the five attempts are never in the policythey stay
           denied no matter what.
         </p>
       </div>

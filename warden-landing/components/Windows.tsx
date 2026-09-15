@@ -6,7 +6,7 @@ const LAYERS: StepperItem[] = [
   {
     title: "AppContainer Token",
     summary: "LowBox token denies all.",
-    body: "Every sandboxed process runs under a LowBox token that denies all filesystem, network, and environment access by default. The token is the hard boundary — no syscall can cross it.",
+    body: "Every sandboxed process runs under a LowBox token that denies all filesystem, network, and environment access by default. The token is the hard boundaryno syscall can cross it.",
     image: <Diagram src="/diagrams/appcontainer-token.jpeg" alt="Windows AppContainer token security boundary" />,
   },
   {
@@ -18,13 +18,13 @@ const LAYERS: StepperItem[] = [
   {
     title: "Job Object Limits",
     summary: "Timeout + memory + kill.",
-    body: "Wall-clock timeout, memory cap, and kill-on-close are enforced by the kernel. A runaway process is terminated with its entire tree — no orphaned children.",
+    body: "Wall-clock timeout, memory cap, and kill-on-close are enforced by the kernel. A runaway process is terminated with its entire treeno orphaned children.",
     image: <Diagram src="/diagrams/job-object-tree-kill.jpeg" alt="Process tree termination inside a Windows Job Object" />,
   },
   {
     title: "ETW Audit Trail",
     summary: "Kernel file I/O trace.",
-    body: "A private real-time trace session captures kernel file I/O events scoped to the sandbox tree. Every file access is logged, not guessed — the audit is the product.",
+    body: "A private real-time trace session captures kernel file I/O events scoped to the sandbox tree. Every file access is logged, not guessedthe audit is the product.",
     image: <Diagram src="/diagrams/etw-audit-trail.jpeg" alt="ETW audit trail architecture for kernel file I/O tracing" />,
   },
 ];
@@ -34,14 +34,14 @@ export default function Windows() {
     <section id="windows" className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2rem]">
             Windows: four layers, one boundary.
           </h2>
-          <span className="rounded-sm bg-grant-subtle px-2.5 py-1 text-[0.75rem] text-grant">
+          <span className="rounded-sm bg-grant-subtle px-2.5 py-1 font-hero text-[0.75rem] text-grant">
             v0.1.6
           </span>
         </div>
-        <p className="mt-3 max-w-[36rem] text-[1rem] leading-[1.65] text-muted">
+        <p className="mt-3 max-w-[36rem] font-hero text-[1rem] leading-[1.65] text-muted">
           The Windows backend stacks four OS-native primitives so each
           sandboxed MCP server gets exactly the access its policy allows —
           no more, no fallback, no silent escalation.

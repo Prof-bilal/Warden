@@ -9,12 +9,12 @@ import { Check, Copy } from "lucide-react";
 function rewriteHref(href: string): string {
   if (!href) return href;
 
-  // External links — keep as-is
+  // External linkskeep as-is
   if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:")) {
     return href;
   }
 
-  // Anchor-only links — keep as-is
+  // Anchor-only linkskeep as-is
   if (href.startsWith("#")) {
     return href;
   }
@@ -30,12 +30,12 @@ function rewriteHref(href: string): string {
     return `/docs/${mdMatch[1]}${hash}`;
   }
 
-  // Links already starting with /docs/ or / — keep as-is
+  // Links already starting with /docs/ or /keep as-is
   if (base.startsWith("/")) {
     return base + hash;
   }
 
-  // Other relative links — prefix with /docs/
+  // Other relative linksprefix with /docs/
   if (base.length > 0) {
     return `/docs/${base}${hash}`;
   }
@@ -62,7 +62,7 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
       <button
         onClick={handleCopy}
         aria-label="Copy code"
-        className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 font-mono text-[0.6875rem] text-muted opacity-0 transition-all hover:border-ink-500 hover:text-paper focus-visible:opacity-100 group-hover:opacity-100"
+        className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 font-hero text-[0.6875rem] text-muted opacity-0 transition-all hover:border-ink-500 hover:text-paper focus-visible:opacity-100 group-hover:opacity-100"
       >
         {copied ? (
           <>

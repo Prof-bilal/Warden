@@ -6,7 +6,7 @@ const GROUPS: StepperItem[] = [
   {
     title: "Filesystem",
     summary: "Deny-by-default read/write.",
-    body: "Deny-by-default read/write grants. Anything unlisted is invisible — not merely unreadable.",
+    body: "Deny-by-default read/write grants. Anything unlisted is invisiblenot merely unreadable.",
     image: <Diagram src="/diagrams/filesystem-capabilities.jpeg" alt="Filesystem capabilities architecture with deny-by-default grants" />,
   },
   {
@@ -42,7 +42,7 @@ const GROUPS: StepperItem[] = [
   {
     title: "MCP client proxy",
     summary: "JSON-RPC filtering.",
-    body: "`warden proxy` filters JSON-RPC in both directions — tool allowlists, secret deny patterns, payload caps — for local stdio and remote HTTPS upstreams.",
+    body: "`warden proxy` filters JSON-RPC in both directionstool allowlists, secret deny patterns, payload capsfor local stdio and remote HTTPS upstreams.",
     image: <Diagram src="/diagrams/mcp-client-proxy.jpeg" alt="MCP client proxy security architecture filtering JSON-RPC" />,
   },
   {
@@ -57,12 +57,12 @@ export default function Capabilities() {
   return (
     <section id="capabilities" className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20">
-        <h2 className="text-[1.75rem] font-medium leading-[1.15] tracking-[-0.01em] text-paper">
+        <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2rem]">
           What&apos;s supported.
         </h2>
-        <p className="mt-3 max-w-[34rem] text-[1rem] leading-[1.65] text-muted">
+        <p className="mt-3 max-w-[34rem] font-hero text-[1rem] leading-[1.65] text-muted">
           Every item below ships in the CLI today and is covered by the test
-          suite. Nothing on this page is a roadmap promise — that list lives
+          suite. Nothing on this page is a roadmap promisethat list lives
           separately, labeled as roadmap.
         </p>
 
