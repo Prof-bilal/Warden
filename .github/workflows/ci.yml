@@ -236,6 +236,33 @@ jobs:
   #   3. no native binaries (ELF/Mach-O/PE) are tracked
   # Tracked files override .gitignore, so ignore rules alone cannot prevent
   # 2 and 3 once a path has been committed; hence these checks.
+  # Reproducible attack simulations: seven attacks, each unsandboxed (control
+  # must land) and sandboxed (must be contained), with host-side containment
+  # verification. Fails the build on any containment failure. Runs the docker
+  # backend (ubuntu runners block unprivileged user namespaces). Evidence is
+  # uploaded even when the job fails, so containment breaches are auditable.
+  attack-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      - name: Build warden (HEAD)
+        run: CGO_ENABLED=0 go build -o warden ./cmd/warden
+      - name: Run attack-simulation harness
+        # run-attacks.sh resolves the repo root from its own location and
+        # defaults to the just-built ./warden binary.
+        run: bash testdata/attacks/run-attacks.sh
+      - name: Upload attack evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attack-evidence-${{ github.run_id }}
+          path: evidence/
+          retention-days: 14
+          if-no-files-found: warn
+
   repo-hygiene:
     runs-on: ubuntu-latest
     defaults:
