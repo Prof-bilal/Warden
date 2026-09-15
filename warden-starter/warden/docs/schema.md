@@ -9,10 +9,10 @@ fully-worked example.
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `command` | `[]string` | No* | CLI-specified via `--` | How to start the sandboxed process. If omitted, you must supply the command after `--` on the CLI. |
-| `filesystem` | `Filesystem` | Yes | — | Filesystem access grants. |
-| `network` | `Network` | Yes | — | Network egress allowlist. |
-| `env` | `Env` | Yes | — | Environment variable passthrough list. |
-| `limits` | `Limits` | No | — | Resource limits enforced on Linux. |
+| `filesystem` | `Filesystem` | Yes || Filesystem access grants. |
+| `network` | `Network` | Yes || Network egress allowlist. |
+| `env` | `Env` | Yes || Environment variable passthrough list. |
+| `limits` | `Limits` | No || Resource limits enforced on Linux. |
 
 \* A policy file without `command:` is valid as long as the CLI supplies the
 command via `warden run --policy <file> -- <cmd...>`.
@@ -23,14 +23,14 @@ command via `warden run --policy <file> -- <cmd...>`.
 command: ["/usr/bin/node", "server.js"]
 ```
 
-The executable should be an **absolute path** inside the sandbox — the sandbox
+The executable should be an **absolute path** inside the sandboxthe sandbox
 binds the parent directory read-only, so only an absolute path is guaranteed
 visible. For convenience, `warden run` (and `warden gateway run`) also accept
 a bare name on `PATH` (`npx`, `uvx`, `node`) and resolve it via `LookPath` at
 launch, failing closed when the name is not found. Prefer the absolute path
 in checked-in policies so the grant is explicit and reproducible.
 
-Values after the executable are passed as-is — relative paths here are
+Values after the executable are passed as-isrelative paths here are
 resolved against the policy file's directory by `ResolvePaths`.
 
 ## `filesystem`
@@ -61,7 +61,7 @@ Each entry is a path (relative to the policy file, resolved by
 - Relative paths are resolved against the directory containing the policy
   file, not the current working directory.
 
-> **Enforced** — Yes. The Linux (bwrap) backend mounts only these paths;
+> **Enforced**Yes. The Linux (bwrap) backend mounts only these paths;
 > everything else is invisible to the sandboxed process.
 
 ## `network`
@@ -74,20 +74,20 @@ network:
 ```
 
 A list of hostnames or IP literals the sandboxed process may reach. Ports
-are **not** part of the grant — the egress proxy forwards all ports for an
+are **not** part of the grantthe egress proxy forwards all ports for an
 allowlisted host.
 
 **Validation rules:**
 
 - Entries must not be empty.
-- Must be a bare hostname or IP literal — paths (`/foo`), query strings
+- Must be a bare hostname or IP literalpaths (`/foo`), query strings
   (`?q=1`), fragments (`#anchor`), and colons (interpreted as ports) are
   rejected.
 - Hostnames must not exceed 253 characters; each label must be 1–63 chars,
   alphanumeric or hyphen, and must not start or end with a hyphen.
 - IPv6 literals are accepted via `net.ParseIP`.
 
-> **Enforced** — Linux only. The sandbox gets a private network namespace
+> **Enforced**Linux only. The sandbox gets a private network namespace
 > with no default route; all external traffic goes through the egress proxy
 > which checks this allowlist. On macOS the Seatbelt backend denies all
 > network except loopback to the proxy bridge; the proxy enforces the list.
@@ -106,7 +106,7 @@ env:
 ```
 
 A list of environment variable **names** to forward from the parent process.
-Values are **never** stored in the policy file — they are read from the
+Values are **never** stored in the policy filethey are read from the
 parent at runtime. An empty allowlist results in an empty environment for the
 sandboxed process.
 
@@ -115,7 +115,7 @@ sandboxed process.
 - Variable names must not be empty.
 - Names must not contain spaces, tabs, newlines, or `=` characters.
 
-> **Enforced** — All platforms. `envfilter.Filter` selects only the
+> **Enforced**All platforms. `envfilter.Filter` selects only the
 > allowlisted names from `os.Environ()` before spawning the child.
 
 > **Security note:** If you pass `HOME` through `env.allow`, the sandboxed
@@ -141,7 +141,7 @@ limits:
 - `memory_mb` must not overflow when converted to bytes.
 - `timeout_s` must not overflow a `time.Duration`.
 
-> **Enforced** — Linux (bwrap) backend. macOS and Docker backends do not
+> **Enforced**Linux (bwrap) backend. macOS and Docker backends do not
 > currently enforce these limits; the values are parsed for schema
 > compatibility but silently ignored. No CPU throttling is available on any
 > platform.

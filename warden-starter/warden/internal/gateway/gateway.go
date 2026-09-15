@@ -15,7 +15,7 @@
 // Normalization: every entry becomes a ServerEntry. Only stdio entries (a
 // local command to spawn) can be sandboxed. Remote entries (type/url,
 // http_url, endpoint, non-stdio transport) are marked Remote and are skipped
-// by init/run with a clear reason — Warden sandboxes local processes, it does
+// by init/run with a clear reasonWarden sandboxes local processes, it does
 // not proxy remote URLs.
 //
 // Security invariants (see AGENTS.md):
@@ -239,7 +239,7 @@ type yamlBack struct {
 	Description string            `yaml:"description"`
 }
 
-// yamlCommand accepts `command: "npx ..."` (shell-split on spaces — only for
+// yamlCommand accepts `command: "npx ..."` (shell-split on spacesonly for
 // simple cases; prefer a list) or `command: ["npx", "-y", ...]`.
 type yamlCommand []string
 
@@ -378,7 +378,7 @@ func checkEnv(env map[string]string) error {
 //
 // The command's executable is resolved to an absolute path via exec.LookPath
 // when possible (the sandbox requires absolute paths). Filesystem and network
-// grants are empty — the operator widens them after `warden trace`. Env
+// grants are emptythe operator widens them after `warden trace`. Env
 // allowlists the NAMES from the gateway entry; values are never copied.
 func StarterPolicy(e ServerEntry) (policy.Policy, error) {
 	if e.Remote {

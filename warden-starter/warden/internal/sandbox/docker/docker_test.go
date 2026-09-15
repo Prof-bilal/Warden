@@ -1,8 +1,10 @@
 package docker
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -47,6 +49,47 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("docker args missing %q\nargs: %v", want, args)
+		}
+	}
+	// --user maps the invoking user where the OS has uid/gid (Linux/macOS);
+	// on Windows os.Getuid/os.Getgid return -1 and the flag is omitted.
+	if runtime.GOOS == "windows" {
+		if strings.Contains(joined, "--user ") {
+			t.Fatalf("windows docker args must not include --user; args: %v", args)
+		}
+	} else if !strings.Contains(joined, fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid())) {
+		t.Fatalf("docker args missing invoking-user mapping %q\nargs: %v",
+			fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid()), args)
+	}
+}
+
+// /tmp and /run are provided as tmpfs mounts; binding either exactly at its
+// root makes the Docker daemon reject the container with "Duplicate mount
+// point" (exit 125) — the failure that broke the warden-action smoke tests.
+func TestBuildDockerArgsTmpfsPathsNeverBindAtRoot(t *testing.T) {
+	bridge := filepath.Join(t.TempDir(), "warden")
+	if err := os.WriteFile(bridge, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{
+			Read:  []string{"/tmp", "/run"},
+			Write: []string{"/tmp"},
+		},
+	}
+	args, err := BuildDockerArgs([]string{filepath.Join(t.TempDir(), "true")}, p, bridge, t.TempDir(), "alpine:3.20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	for _, forbidden := range []string{"-v /tmp:", "-v /run:"} {
+		if strings.Contains(joined, forbidden) {
+			t.Fatalf("docker args bind %q exactly at a tmpfs path; daemon would reject with Duplicate mount point\nargs: %v", forbidden, args)
+		}
+	}
+	for _, want := range []string{"--tmpfs /tmp:", "--tmpfs /run"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("docker args missing tmpfs mount %q\nargs: %v", want, args)
 		}
 	}
 }

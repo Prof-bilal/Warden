@@ -2,7 +2,7 @@ name: CI
 
 # The Go module lives at warden-starter/warden; every `run:` step below
 # resolves against that directory (see defaults). This is the primary CI:
-# it replaces the old root go.yml (build+test only) and — critically —
+# it replaces the old root go.yml (build+test only) andcritically —
 # runs the Windows job, which is the only place the WFP/AppContainer/ETW
 # escape and lifecycle tests execute for real.
 on:
@@ -28,7 +28,7 @@ jobs:
           go-version: '1.26.x'
       - name: Install sandbox prerequisites
         # Escape tests must actually execute. Missing bubblewrap/user
-        # namespaces is a hard failure — never a silent skip (plan §5).
+        # namespaces is a hard failurenever a silent skip (plan §5).
         #
         # Ubuntu 24.04 (ubuntu-latest) enables
         # kernel.apparmor_restrict_unprivileged_userns=1, so plain bwrap fails
@@ -99,12 +99,12 @@ jobs:
         # runner that should provide bwrap + user namespaces must fail the
         # job rather than let "Linux verified" stay a manual claim (plan §5).
         # If the hosted runner cannot run unprivileged user namespaces, move
-        # this job to a privileged container or self-hosted runner — do not
+        # this job to a privileged container or self-hosted runnerdo not
         # re-enable silent skips.
         if: always() && steps.bwrap.outcome != 'cancelled'
         run: |
           if grep -q '^--- SKIP:' linux-test.log; then
-            echo "bwrap escape tests skipped on a runner that must provide bubblewrap + user namespaces — a real failure was masked"
+            echo "bwrap escape tests skipped on a runner that must provide bubblewrap + user namespacesa real failure was masked"
             exit 1
           fi
           if ! grep -q '^--- PASS: TestSandboxPositiveControlStartup' linux-test.log; then
@@ -138,18 +138,18 @@ jobs:
           $out = go test -v -count=1 -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' ./internal/sandbox/windows/ 2>&1 | Out-String
           Write-Host $out
           # Tests must have been discovered (RUN line present). If none were
-          # found, the package didn't compile the test file — fail loudly.
+          # found, the package didn't compile the test filefail loudly.
           if ($out -notmatch '=== RUN') { throw "no ETW/escape/AppContainer/WFP tests discovered; output above" }
           # If tests ran but panicked (missing DLL export), the process would
-          # have exited non-zero before the assertion — caught by the step
+          # have exited non-zero before the assertioncaught by the step
           # itself. Here we check for the case where tests were found but all
           # skipped: that is acceptable only when Supported() returns false
           # (AppContainer API not available on this runner). If any test
           # panicked instead of skipping, the output contains "panic:" which
           # we flag.
           if ($out -match '(?m)^\s*--- SKIP:') {
-            if ($out -match 'panic:') { throw "ETW/escape tests panicked instead of skipping — investigate" }
-            Write-Host "ETW/escape tests skipped (AppContainer not available on this runner) — acceptable"
+            if ($out -match 'panic:') { throw "ETW/escape tests panicked instead of skippinginvestigate" }
+            Write-Host "ETW/escape tests skipped (AppContainer not available on this runner)acceptable"
             exit 0
           }
           # If tests actually ran, they must pass.
@@ -159,7 +159,7 @@ jobs:
           }
           # If tests failed due to WFP/sandbox backend unavailability, that's acceptable on this runner.
           if ($out -match 'sandbox backend unavailable') {
-            Write-Host "WFP sandbox backend unavailable on this runner — ETW/escape tests cannot run; acceptable"
+            Write-Host "WFP sandbox backend unavailable on this runnerETW/escape tests cannot run; acceptable"
             exit 0
           }
           throw "targeted Windows test run did not pass"
@@ -191,7 +191,7 @@ jobs:
         shell: bash
         run: |
           if grep -q '^--- SKIP:' darwin-test.log; then
-            echo "Seatbelt tests skipped on a runner that has sandbox-exec — a real failure was masked"
+            echo "Seatbelt tests skipped on a runner that has sandbox-execa real failure was masked"
             exit 1
           fi
           if ! grep -q '^--- PASS: TestSeatbelt' darwin-test.log; then
@@ -226,3 +226,110 @@ jobs:
           python-version: "3.x"
       - run: pip install mkdocs-material
       - run: mkdocs build --strict
+
+  # Repository hygiene guard. Runs at the workspace root: the job-level
+  # defaults override the workflow-level working-directory (which points at
+  # the Go module) so the check sees the whole tree. Verifies:
+  #   1. exactly one Go module exists, at the canonical path
+  #   2. no generated/dependency directories are tracked (node_modules,
+  #      dist, mkdocs site, Next build output, evidence)
+  #   3. no native binaries (ELF/Mach-O/PE) are tracked
+  # Tracked files override .gitignore, so ignore rules alone cannot prevent
+  # 2 and 3 once a path has been committed; hence these checks.
+  # Reproducible attack simulations: seven attacks, each unsandboxed (control
+  # must land) and sandboxed (must be contained), with host-side containment
+  # verification. Fails the build on any containment failure. Runs the docker
+  # backend (ubuntu runners block unprivileged user namespaces). Evidence is
+  # uploaded even when the job fails, so containment breaches are auditable.
+  attack-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      - name: Build warden (HEAD)
+        run: CGO_ENABLED=0 go build -o warden ./cmd/warden
+      - name: Run attack-simulation harness
+        # run-attacks.sh resolves the repo root from its own location and
+        # defaults to the just-built ./warden binary. GitHub runners have no
+        # bwrap, so warden falls back to the docker backend — the image must
+        # exist locally first (warden refuses to pull on its own, and the
+        # backend is pinned so the job can't silently change meaning if a
+        # bwrap package ever appears in the runner image). WARDEN_BACKEND
+        # propagates into evidence so every artifact records which sandbox
+        # produced it.
+        env:
+          WARDEN_BACKEND: docker
+        run: |
+          set -euo pipefail
+          docker pull alpine:3.20
+          bash testdata/attacks/run-attacks.sh
+      - name: Upload attack evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attack-evidence-${{ github.run_id }}
+          path: evidence/
+          retention-days: 14
+          if-no-files-found: warn
+
+  repo-hygiene:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exactly one Go module
+        # The only supported module is warden-starter/warden
+        # (github.com/warden-sandbox/warden). Stray go.mod files (the
+        # historical root stubs) made root-level `go build` and the
+        # warden-action build-from-source fallback resolve against the wrong
+        # module; fail loudly instead of letting that trap return.
+        # If a second module is ever genuinely required, update this guard
+        # AND .github/actions/warden-action/action.yml together.
+        run: |
+          set -euo pipefail
+          mods="$(find . -name go.mod -not -path './.git/*' -not -path '*/node_modules/*' | sort)"
+          count="$(printf '%s\n' "$mods" | grep -c . || true)"
+          echo "go.mod files found: $count"
+          printf '%s\n' "$mods" | sed 's/^/  /'
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Expected exactly 1 go.mod in the repository, found $count"
+            exit 1
+          fi
+          if [ "$mods" != "./warden-starter/warden/go.mod" ]; then
+            echo "::error::Expected the single go.mod at warden-starter/warden/go.mod, found: $mods"
+            exit 1
+          fi
+          echo "OK: single Go module at warden-starter/warden"
+      - name: No generated directories tracked
+        # Bans tracked files under generated/dependency output directories.
+        # ("site" only bans the generated docs output; a future source
+        # directory genuinely named site/ would need a path-specific rule.)
+        run: |
+          set -euo pipefail
+          hits="$(git ls-files | grep -E '(^|/)(node_modules|dist|site|\.next|evidence)/' || true)"
+          if [ -n "$hits" ]; then
+            echo "::error::Generated artifacts are tracked in git. Untrack with: git rm -r --cached <path>"
+            printf '%s\n' "$hits" | head -20 | sed 's/^/  /'
+            total="$(printf '%s\n' "$hits" | wc -l)"
+            if [ "$total" -gt 20 ]; then echo "  ... and $((total-20)) more"; fi
+            exit 1
+          fi
+          echo "OK: no generated directories tracked"
+      - name: No native binaries tracked
+        # Magic bytes via file(1): ELF executables/shared objects, Mach-O,
+        # and PE (Windows). Text launchers (e.g. the npm wrapper bin/warden)
+        # and regular assets are unaffected.
+        run: |
+          set -euo pipefail
+          hits="$(git ls-files -z | xargs -0 -r file --mime-type --no-dereference 2>/dev/null \
+            | grep -E 'application/(x-executable|x-sharedlib|x-mach-binary|x-dosexec)' || true)"
+          if [ -n "$hits" ]; then
+            echo "::error::Native binaries are tracked in git. Build outputs belong in Releases / npm, not the repo:"
+            printf '%s\n' "$hits" | sed 's/^/  /'
+            exit 1
+          fi
+          echo "OK: no native binaries tracked"

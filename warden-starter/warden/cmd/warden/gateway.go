@@ -42,7 +42,7 @@ Usage:
   warden gateway init --config <file> --policies <dir>
       Generate deny-by-default per-server policies (<name>.yaml) for every
       stdio server in a gateway config. Never overwrites existing files.
-      Remote (SSE/HTTP) servers are skipped — they have no local process.
+      Remote (SSE/HTTP) servers are skippedthey have no local process.
 
   warden gateway run --config <file> --policies <dir> --server <name>
       [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- [extra args...]

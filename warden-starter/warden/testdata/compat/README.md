@@ -1,4 +1,4 @@
-# `testdata/compat` — M8 compatibility fixtures
+# `testdata/compat`M8 compatibility fixtures
 
 One directory per MCP server in the [compatibility matrix](../../docs/compatibility.md),
 each holding the exact `policy.yaml` that server needs. The manifest
@@ -18,7 +18,7 @@ testdata/compat/
 ## CI behavior (deterministic, no sandbox needed)
 
 `go test ./internal/compat/` only exercises the policy engine
-(`policy.Load`, `Normalize`, `CoversFile`, host validation) — no `bwrap`,
+(`policy.Load`, `Normalize`, `CoversFile`, host validation)no `bwrap`,
 no network, no MCP server install. It fails if:
 
 - a matrix entry has no fixture directory (or vice versa),
@@ -49,5 +49,5 @@ warden logs --tail 20
 ```
 
 Record the outcome (pass/fail + exact policy diff) back into `matrix.yaml`
-and `docs/compatibility.md` — never change a fixture policy to make the
+and `docs/compatibility.md`never change a fixture policy to make the
 test pass without updating both.

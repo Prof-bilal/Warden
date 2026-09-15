@@ -12,8 +12,8 @@ import (
 
 // SaveHostGrant reloads the policy file fresh, adds a network host, and
 // saves it back. Reloading (instead of patching a stale in-memory copy)
-// keeps concurrent approvals — e.g. a network and a filesystem prompt in
-// the same run — from clobbering each other's grants.
+// keeps concurrent approvalse.g. a network and a filesystem prompt in
+// the same runfrom clobbering each other's grants.
 func SaveHostGrant(policyPath, host string) error {
 	p, err := policy.Load(policyPath)
 	if err != nil {
@@ -58,7 +58,7 @@ func SaveFileGrant(policyPath, grant string, write bool) error {
 // ShouldPromptFile decides whether a failed file syscall deserves a prompt.
 // Only genuine sandbox denials qualify: the access must map to a grant
 // (absolute, non-runtime path), fall outside the current policy, and name a
-// path that exists on the host — otherwise the event is either already
+// path that exists on the hostotherwise the event is either already
 // allowed, ungrantable, or a routine probe for an optional file, and
 // prompting would train the user to click through noise. cmdExe (the
 // server's own executable, whose parent dir backends bind read-only) is

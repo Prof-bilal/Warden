@@ -1,6 +1,6 @@
 # Contributing to Warden
 
-This project is early-stage — see ROADMAP.md for the current milestone.
+This project is early-stagesee ROADMAP.md for the current milestone.
 Right now the most useful contributions are:
 
 1. **Platform backends**: M4 Seatbelt/Docker work on macOS and M5
@@ -31,5 +31,5 @@ GOOS=windows GOARCH=amd64 go build ./...
 
 ## Pull requests
 
-Keep PRs scoped to one roadmap item where possible — easier to review, and
+Keep PRs scoped to one roadmap item where possibleeasier to review, and
 easier to roll back if a design assumption turns out wrong.

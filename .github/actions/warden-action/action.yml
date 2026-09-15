@@ -21,7 +21,7 @@ inputs:
     required: false
     default: 'false'
   warden-version:
-    description: 'Warden release tag to download from GitHub Releases (default: latest). When unset, a checked-in dist/warden-linux-amd64 binary is preferred.'
+    description: 'Warden release tag to download from GitHub Releases (default: latest). A checked-in dist/warden-linux-amd64 binary takes precedence when present; otherwise the latest release is used.'
     required: false
     default: ''
   working-directory:
@@ -58,14 +58,17 @@ runs:
     - name: Install Warden
       shell: bash
       run: |
-        # Install the Warden binary. We prefer the checked-in dist binary that
-        # matches the exact commit being reviewed, then fall back to a pinned
-        # GitHub release. Both paths fail closed with a clear action message.
+        # Install the Warden binary. Order of preference:
+        # 1) Checked-in dist binary (matches this commit).
+        # 2) Release binary from GitHub Releases.
+        # 3) Build from source (requires Go).
         WARDEN_VERSION="${{ inputs.warden-version }}"
         BIN_NAME="warden-linux-amd64"
         TARGET="/usr/local/bin/warden"
 
-        # 1) Repo-local dist binary (matches this commit; dist/ is committed).
+        # 1) Repo-local dist binary. dist/ is no longer committed to the repo
+        #    (built binaries are not tracked); the file is only present if a
+        #    workflow artifact or a local build placed it there.
         if [[ -x "dist/$BIN_NAME" ]]; then
           echo "::notice::Using checked-in dist/$BIN_NAME"
           sudo install -m 0755 "dist/$BIN_NAME" "$TARGET"
@@ -83,16 +86,37 @@ runs:
 
         echo "::notice::Downloading Warden from $RELEASE_URL"
         TMP="$(mktemp)"
-        if ! curl -fsSL -o "$TMP" "$RELEASE_URL"; then
+        if curl -fsSL -o "$TMP" "$RELEASE_URL"; then
+          sudo install -m 0755 "$TMP" "$TARGET"
           rm -f "$TMP"
-          echo "::error::Could not download the Warden binary. Commit dist/warden-linux-amd64 to the repo, or pass a valid warden-version tag (e.g. v0.1.9)."
-          exit 1
+          warden version
+          exit 0
+        fi
+        rm -f "$TMP"
+        echo "::warning::Could not download release binary, falling back to build from source"
+
+        # 3) Build from source (Go is available on GitHub Actions runners).
+        #    Build from the module directory: the only Go module in this repo
+        #    lives at warden-starter/warden (module
+        #    github.com/warden-sandbox/warden); there is no module at the
+        #    workspace root, so a root-level `go build` of this package cannot
+        #    resolve it.
+        #    The runner's Go toolchain must satisfy the `go` directive in
+        #    warden-starter/warden/go.mod (modern Go auto-switches toolchains
+        #    when allowed; otherwise Go itself reports a clear version error).
+        MOD_DIR="warden-starter/warden"
+        if [[ -f "$MOD_DIR/go.mod" ]] && command -v go &> /dev/null; then
+          echo "::notice::Building Warden from source ($MOD_DIR, $(go env GOVERSION))"
+          if ! ( cd "$MOD_DIR" && CGO_ENABLED=0 go build -o "$TARGET" ./cmd/warden ); then
+            echo "::error::go build failed in $MOD_DIR. Check that the Go toolchain ($(go env GOVERSION)) satisfies the go directive in $MOD_DIR/go.mod ($(sed -n 's/^go //p' "$MOD_DIR/go.mod" | head -1))."
+            exit 1
+          fi
+          warden version
+          exit 0
         fi
 
-        sudo install -m 0755 "$TMP" "$TARGET"
-        rm -f "$TMP"
-
-        warden version
+        echo "::error::Could not install Warden. Download failed and Go source not found."
+        exit 1
 
     - name: Install bubblewrap if needed
       shell: bash
@@ -102,6 +126,40 @@ runs:
           sudo apt-get update
           sudo apt-get install -y bubblewrap
         fi
+
+    - name: Detect sandbox backend
+      shell: bash
+      run: |
+        # Test if bwrap can actually create network namespaces.
+        # GitHub Actions ubuntu-latest blocks unprivileged user namespaces
+        # via AppArmor (kernel.apparmor_restrict_unprivileged_userns=1),
+        # which makes bwrap fail with "RTM_NEWADDR: Operation not permitted".
+        # When this happens we fall back to the Docker backend.
+        BWRAP_OK=false
+        if command -v bwrap &> /dev/null; then
+          if bwrap --ro-bind / / --unshare-net -- echo bwrap-ok 2>/dev/null; then
+            BWRAP_OK=true
+          fi
+        fi
+
+        if [[ "$BWRAP_OK" == "true" ]]; then
+          echo "WARDEN_DETECTED_BACKEND=linux" >> "$GITHUB_ENV"
+          echo "::notice::bubblewrap network namespace OK, using linux backend"
+        elif command -v docker &> /dev/null && docker info >/dev/null 2>&1; then
+          echo "WARDEN_DETECTED_BACKEND=docker" >> "$GITHUB_ENV"
+          echo "::warning::bubblewrap cannot create network namespaces (AppArmor restriction), falling back to docker backend"
+        else
+          echo "::error::bubblewrap cannot create network namespaces and docker is not available. Use a self-hosted runner with user namespaces enabled."
+          exit 1
+        fi
+
+    - name: Pull Docker image (Docker backend only)
+      if: env.WARDEN_DETECTED_BACKEND == 'docker'
+      shell: bash
+      run: |
+        DOCKER_IMAGE="${WARDEN_DOCKER_IMAGE:-alpine:3.20}"
+        echo "::notice::Pulling Docker image $DOCKER_IMAGE for sandbox backend"
+        docker pull "$DOCKER_IMAGE"
 
     - name: Validate Warden setup
       shell: bash
@@ -124,8 +182,15 @@ runs:
         cd "$WORKING_DIR"
 
         if [[ "$WARDEN_POLICY_INPUT" == *$'\n'* ]]; then
-          POLICY_PATH="$RUNNER_TEMP/warden-inline-policy.yaml"
+          # Write inline policies into the working directory, not RUNNER_TEMP:
+          # warden resolves a policy's relative filesystem grants against the
+          # policy file's directory, so a temp-dir policy would anchor "." at
+          # RUNNER_TEMP and leave the workspace (and the sandboxed script)
+          # outside the sandbox. Set WARDEN_POLICY_INLINE in BOTH branches so
+          # the flag always reflects this use, never a previous one.
+          POLICY_PATH="$PWD/.warden-action-policy.yaml"
           printf '%s\n' "$WARDEN_POLICY_INPUT" > "$POLICY_PATH"
+          echo "WARDEN_POLICY_INLINE=true" >> "$GITHUB_ENV"
           echo "::notice::Using inline policy (written to $POLICY_PATH)"
         else
           POLICY_PATH="$WARDEN_POLICY_INPUT"
@@ -133,6 +198,7 @@ runs:
             echo "::error::Policy file not found: $POLICY_PATH"
             exit 1
           fi
+          echo "WARDEN_POLICY_INLINE=false" >> "$GITHUB_ENV"
           echo "::notice::Using policy: $POLICY_PATH"
         fi
         echo "WARDEN_POLICY_PATH=$POLICY_PATH" >> "$GITHUB_ENV"
@@ -162,6 +228,10 @@ runs:
           exit 1
         fi
         BACKEND="${{ inputs.backend }}"
+        # Use auto-detected backend when user hasn't explicitly chosen one.
+        if [[ "$BACKEND" == "auto" ]]; then
+          BACKEND="${WARDEN_DETECTED_BACKEND:-linux}"
+        fi
         APPROVE="${{ inputs.approve }}"
 
         # Write the user command to a script file so shell metacharacters and
@@ -169,8 +239,16 @@ runs:
         # Prefer the working directory (always policy-granted as ".") over
         # RUNNER_TEMP, which may sit outside the sandbox filesystem grants.
         SCRIPT="$(pwd)/.warden-action-cmd.sh"
-        # Ensure a trailing newline so the final line always executes.
-        printf '%s\n' "$WARDEN_COMMAND" > "$SCRIPT"
+        # Prefix the command with a cd to the script's own directory (the
+        # working directory): the docker backend starts the process at the
+        # image WORKDIR ("/"), unlike the linux backend which inherits this
+        # step's cwd, so without the cd a docker-backend run would resolve
+        # every relative path in the command against "/". A trailing newline
+        # ensures the final line always executes.
+        {
+          printf 'cd "$(dirname "$0")" || exit 1\n'
+          printf '%s\n' "$WARDEN_COMMAND"
+        } > "$SCRIPT"
         chmod +x "$SCRIPT"
         
         WARDEN_ARGS=(run --policy "$POLICY_PATH")
@@ -199,6 +277,11 @@ runs:
         EXIT_CODE=$?
         
         rm -f "$SCRIPT"
+        # Clean up an inline policy written into the workspace by the
+        # validation step. File policies are user files — never removed.
+        if [[ "${WARDEN_POLICY_INLINE:-}" == "true" ]]; then
+          rm -f "$POLICY_PATH"
+        fi
         
         echo "::endgroup::"
         

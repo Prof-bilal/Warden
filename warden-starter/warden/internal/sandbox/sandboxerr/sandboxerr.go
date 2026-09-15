@@ -18,7 +18,7 @@ func (e RefuseToRun) Error() string {
 
 The sandbox backend couldn't initialize because %s.
 
-This is not a bug — Warden fails closed by design. It will never run
+This is not a bugWarden fails closed by design. It will never run
 your MCP server without a working sandbox, since that would mean
 running it completely unprotected.
 

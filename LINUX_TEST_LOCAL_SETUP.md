@@ -145,8 +145,8 @@ If you see actual test failures (not skips), there's a real sandbox bug—file a
 
 Once local tests pass:
 
-1. **Document the result** — Add a comment to your PR/commit confirming you've locally verified Linux tests pass
-2. **(Optional) Set up GitHub Actions with a self-hosted runner** — Add your machine as a self-hosted runner so CI also validates Linux:
+1. **Document the result**Add a comment to your PR/commit confirming you've locally verified Linux tests pass
+2. **(Optional) Set up GitHub Actions with a self-hosted runner**Add your machine as a self-hosted runner so CI also validates Linux:
    - Go to: `https://github.com/Prof-bilal/Warden/settings/actions/runners/new`
    - Follow the "Add a new self-hosted runner" steps
    - Update `.github/workflows/ci.yml` line 23: `runs-on: self-hosted` (instead of `ubuntu-latest`)

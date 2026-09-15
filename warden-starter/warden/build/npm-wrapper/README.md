@@ -2,7 +2,7 @@
 
 npm wrapper for the [Warden](https://warden-six-rouge.vercel.app/) sandbox runtime.
 
-Warden runs your MCP servers in a sandbox that only sees what you grant — a folder, a hostname, nothing more.
+Warden runs your MCP servers in a sandbox that only sees what you granta folder, a hostname, nothing more.
 
 ## Install (global CLI)
 

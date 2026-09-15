@@ -1,11 +1,11 @@
-# Warden Policy — Comprehensive Reference
+# Warden PolicyComprehensive Reference
 # =========================================
 #
 # This file documents the full policy schema with examples for every field.
 # Copy this file (or any example in this directory) and adjust it for your
 # MCP server. Relative paths are resolved against THIS FILE's directory, not
 # your shell's CWD. The executable must be an absolute path because the
-# sandbox binds its parent directory — a bare command name would resolve
+# sandbox binds its parent directorya bare command name would resolve
 # nowhere inside.
 #
 # Run with: warden run --policy policy.example.yaml -- <command...>
@@ -29,7 +29,7 @@ command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   # Read-only grants: the server can open and read files here but cannot
   # modify, create, or delete anything. Grant the smallest set of directories
-  # the server actually needs — never the whole home or project root unless
+  # the server actually needsnever the whole home or project root unless
   # required.
   read:
     - "./data/cache"      # Example: local response cache
@@ -50,7 +50,7 @@ filesystem:
 # `network.allow` before performing any DNS lookup or connection. DNS lookups
 # for disallowed hosts are blocked at the sandbox boundary.
 #
-# Only bare hostnames or IP literals are accepted — ports, paths, and URLs are
+# Only bare hostnames or IP literals are acceptedports, paths, and URLs are
 # rejected (the egress layer handles port selection). Wildcards are not
 # supported; list each host your server needs to reach.
 network:
@@ -64,7 +64,7 @@ network:
 # ── Environment ──────────────────────────────────────────────────────────────
 #
 # Only the names listed here are forwarded from the parent shell. Values are
-# NEVER stored in the policy file — this list only controls what gets passed
+# NEVER stored in the policy filethis list only controls what gets passed
 # through. An empty allowlist means the sandboxed process starts with no
 # environment variables (except those explicitly set by the runtime).
 #

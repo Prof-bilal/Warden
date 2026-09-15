@@ -139,7 +139,7 @@ Add a `README.md` at the repo root linking to `docs/index.md`.
 
 ## Notes
 
-- The `docs/` directory is separate from the MkDocs `docs/` convention — adjust
+- The `docs/` directory is separate from the MkDocs `docs/` conventionadjust
   the `docs_dir` setting in `mkdocs.yml` if you place source files elsewhere.
 - All internal links in the docs use relative paths (e.g., `[Schema Reference](schema.md)`)
   so they work both locally and on the published site.

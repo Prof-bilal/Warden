@@ -3,7 +3,7 @@
 ## Goals
 
 1. **Transparent to the MCP client.** The AI client (Claude, an IDE, etc.)
-   should not know or care that the server is sandboxed — stdio in/out
+   should not know or care that the server is sandboxedstdio in/out
    behaves identically to running the server directly.
 2. **Deny by default.** No filesystem path, network host, or env var is
    available unless the policy explicitly grants it.
@@ -43,22 +43,22 @@ flowchart TB
 
 Entry point. Subcommands:
 
-- `warden run --policy <file> -- <command...>` — run a server under a policy.
+- `warden run --policy <file> -- <command...>`run a server under a policy.
 - `warden run --policy <file> --approve [--approve-timeout <dur>] -- <command...>` —
   interactive approval mode (M7): the first out-of-policy access prompts on
   the controlling terminal instead of only hard-failing (see below).
-- `warden trace -- <command...>` — run **unsandboxed** but instrumented,
+- `warden trace -- <command...>`run **unsandboxed** but instrumented,
   logging every file/network access, to help generate a starter policy.
-- `warden init [--log <file>] [--output <file>] [-- <command...>]` — scaffold
+- `warden init [--log <file>] [--output <file>] [-- <command...>]`scaffold
   a non-overwriting policy file from a JSONL trace log.
-- `warden logs` — view/tail the audit log for a past or running session.
+- `warden logs`view/tail the audit log for a past or running session.
 
 ### 2. Policy Engine
 
 Parses and validates the policy YAML (schema below), resolves relative
 paths, and translates the declarative policy into the specific arguments
 each sandbox backend needs (bind mounts, seccomp filters, network rules).
-This is the one piece of logic that's shared across all platforms — keeping
+This is the one piece of logic that's shared across all platformskeeping
 it isolated from the backends makes it easier to test without needing a
 Linux/macOS matrix in CI.
 
@@ -67,7 +67,7 @@ Linux/macOS matrix in CI.
 One implementation per platform, behind a common interface
 (`Spawn(policy) -> (pid, stdio pipes, error)`):
 
-- **Linux — bubblewrap (`bwrap`).** Unprivileged user namespaces, bind-mount
+- **Linuxbubblewrap (`bwrap`).** Unprivileged user namespaces, bind-mount
   only the declared paths, drop unneeded capabilities. Mature, used by
   Flatpak in production for years, no root needed.
   - **Runtime base:** `/usr` and `/lib64` are explicitly bound read-only.
@@ -77,13 +77,13 @@ One implementation per platform, behind a common interface
   - **Pseudo-fs:** `/dev`, `/proc`, and a fresh `/tmp` (tmpfs) are mounted.
   - **Env passthrough:** Only names in `env.allow` are forwarded from the
     parent environment. Empty allowlist ⇒ empty environment.
-- **macOS — `sandbox-exec` (Seatbelt profiles).** Apple-provided, deprecated
+- **macOS`sandbox-exec` (Seatbelt profiles).** Apple-provided, deprecated
   but functional and still the most practical unprivileged option; profile
   is generated from the policy. Network is deny-by-default except loopback
   TCP to the egress proxy bridge (and its Unix socket). Structured file-deny
   audit events are Linux/`strace`-only; Seatbelt still enforces file denies
   as EPERM, and the egress proxy records network allow/deny decisions.
-- **Fallback — Docker.** Used when the native backend for the current OS is
+- **FallbackDocker.** Used when the native backend for the current OS is
   unavailable, or explicitly requested via `--backend docker`. Preference
   order for `--backend auto` (the default):
   - Linux: `bwrap` → Docker → fail closed
@@ -97,7 +97,7 @@ One implementation per platform, behind a common interface
   hosts the current executable is used; on macOS/Windows set
   `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary (macOS auto-detect
   still prefers Seatbelt when `sandbox-exec` is present).
-- **Windows — M5.** An AppContainer backend will use a restricted token,
+- **WindowsM5.** An AppContainer backend will use a restricted token,
   filesystem capabilities, Windows Filtering Platform rules, ETW audit
   events, and a Job Object for process-tree limits. Until all of those
   enforcement primitives are installed successfully, Warden refuses to run;
@@ -117,7 +117,7 @@ connection. It logs every allow/deny decision.
 With `--approve`, the proxy consults an approver callback before denying:
 the user may allow the host once, for the session (in-memory allowlist), or
 persistently (allowlist plus append to the policy file). Prompts go to
-`/dev/tty` — never the MCP stdio channel — and any prompt failure denies
+`/dev/tty`never the MCP stdio channeland any prompt failure denies
 (fail closed). See `docs/approve.md`.
 
 ### 5. Audit Logger
@@ -175,13 +175,13 @@ limits:
 
 Open question for M2/M3: should the policy support a "learn mode" flag that
 runs `trace` automatically on first launch and asks the user to approve a
-generated policy interactively? Leaning yes — it's a much lower-friction
+generated policy interactively? Leaning yesit's a much lower-friction
 onboarding path than asking people to hand-write YAML on day one.
 
 ## Non-goals (for now)
 
 - **Agent identity / audit-trail-of-who-asked.** Related but separate
-  problem (see the MCP ecosystem's "agent identity" gap) — Warden sandboxes
+  problem (see the MCP ecosystem's "agent identity" gap)Warden sandboxes
   *what a server can do*, not *who's acting through the client*. Worth a
   follow-on project, not this one.
 - **Multi-tenant / server-side deployment.** Warden targets a developer

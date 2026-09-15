@@ -1,17 +1,17 @@
-# Warden MCP compatibility matrix (M8) — machine-readable manifest.
+# Warden MCP compatibility matrix (M8)machine-readable manifest.
 #
 # This file is the single source of truth for the matrix published in
 # docs/compatibility.md. Each entry MUST have a matching fixture directory
 # testdata/compat/<name>/policy.yaml, enforced by internal/compat/compat_test.go.
 #
 # verdict:
-#   pass        — works under the fixture policy on a host with a working backend
-#   conditional — works only with per-deployment grants (documented in notes)
-#   fail        — cannot be sandboxed without a schema or design change
+#   pass       works under the fixture policy on a host with a working backend
+#   conditionalworks only with per-deployment grants (documented in notes)
+#   fail       cannot be sandboxed without a schema or design change
 # failure_class (for verdict != pass, plus fixed bugs):
-#   warden-bug  — Warden defect (fixed where fix_version is set)
-#   schema-gap  — access pattern the policy schema cannot express yet
-#   inherent    — server is incompatible with sandboxing by design
+#   warden-bug Warden defect (fixed where fix_version is set)
+#   schema-gap access pattern the policy schema cannot express yet
+#   inherent   server is incompatible with sandboxing by design
 verdicts:
   - name: filesystem
     upstream: "@modelcontextprotocol/server-filesystem"
@@ -118,7 +118,7 @@ verdicts:
     verdict: pass
     failure_class: none
     policy: time/policy.yaml
-    notes: "No filesystem or network needs at all — empty grants."
+    notes: "No filesystem or network needs at allempty grants."
     probe_allow_files: []
     probe_deny_files: ["/etc/shadow"]
     probe_allow_hosts: []

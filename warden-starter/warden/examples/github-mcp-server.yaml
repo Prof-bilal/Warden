@@ -1,4 +1,4 @@
-# Example Warden policy — @modelcontextprotocol/server-github
+# Example Warden policy@modelcontextprotocol/server-github
 # Copy this and adjust the command path, cache/output dirs, and token name.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your

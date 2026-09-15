@@ -3,13 +3,13 @@
 # Usage: VERSION=1.2.3 ./build/brew.sh [dist_dir] > warden.rb
 #
 # If no dist_dir is given, falls back to git-referenced download URLs with
-# per-OS sha256 placeholders — the CI release job fills those in.
+# per-OS sha256 placeholdersthe CI release job fills those in.
 # When run from a checkout with built dist/, it computes real hashes.
 
 set -euo pipefail
 
 VERSION="${VERSION:-dev}"
-# Strip leading 'v' if present — Homebrew prefers bare versions like "1.2.3".
+# Strip leading 'v' if presentHomebrew prefers bare versions like "1.2.3".
 BARE_VERSION="${VERSION#v}"
 DIST_DIR="${2:-$(dirname "$0")/../dist}"
 

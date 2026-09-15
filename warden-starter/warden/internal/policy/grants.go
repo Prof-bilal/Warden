@@ -56,7 +56,7 @@ func HostOnly(resource string) string {
 
 // ProposeFileGrant maps one file access (strace action + resource) to the
 // policy grant `init` would generate for it: a read grant on the path
-// itself, or — for mutating actions — a write grant on the parent directory
+// itself, orfor mutating actionsa write grant on the parent directory
 // (a writable mount must name an existing directory when the target creates
 // a new file). ok is false for non-absolute or runtime paths, which must
 // never become grants.
@@ -76,7 +76,7 @@ func ProposeFileGrant(action, resource string) (grant string, write bool, ok boo
 // degrades to a single write grant instead of failing at backend time.
 //
 // A write grant subsumes reads underneath it (see CoversFile), so dropping
-// the shadowed read grant changes no enforcement decision — it only stops
+// the shadowed read grant changes no enforcement decisionit only stops
 // the backends from rejecting the overlap as ambiguous. This matters for
 // real-world MCP servers (e.g. a cache dir that is both read and written);
 // without it, a hand-written policy with the same dir in both lists passes
@@ -200,7 +200,7 @@ func (p *Policy) AddFileGrant(grant string, write bool) (bool, error) {
 
 // Save writes the policy back to path with owner-only permissions,
 // validating first. It marshals the struct, so comments and formatting from
-// a hand-written file are not preserved — the data is.
+// a hand-written file are not preservedthe data is.
 func (p Policy) Save(path string) error {
 	if err := p.Validate(); err != nil {
 		return err

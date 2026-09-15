@@ -1,8 +1,9 @@
 #!/bin/bash
-# Acceptance test for `warden proxy` (P0-1 fix).
+# Acceptance test for `warden proxy` (P0-1 fix, updated for HTTP/SSE upstreams).
 #
 # Verifies the honest/functional proxy contract:
-#   1. HTTP/SSE upstreams are rejected at startup (fail-closed)
+#   1. Plain http:// to a remote host is rejected at startup (fail-closed);
+#      only loopback may use plain http — https:// remote upstreams are supported
 #   2. A stdio upstream starts a real JSON-RPC bridge on TCP
 #   3. Allowed tool calls are forwarded end-to-end
 #   4. Disallowed tool calls are answered with a JSON-RPC error
@@ -39,7 +40,7 @@ bad()  { FAIL=$((FAIL + 1)); echo "❌ $1"; }
 rm -rf "$TEST_DIR"
 mkdir -p "$TEST_DIR"
 
-# send.sh <port> <line> — send one JSON-RPC line to the proxy over a single
+# send.sh <port> <line>send one JSON-RPC line to the proxy over a single
 # TCP connection and print the first response line.
 cat > "$TEST_DIR/send.sh" << 'EOF'
 #!/bin/bash
@@ -56,19 +57,19 @@ echo "   binary: $WARDEN"
 
 # ---------------------------------------------------------------------------
 echo ""
-echo "🔍 Test 1: HTTP upstream rejected at startup (fail-closed)"
+echo "🔍 Test 1: plain http:// remote upstream rejected at startup (fail-closed)"
 cat > "$TEST_DIR/http-policy.yaml" << 'EOF'
 env:
   allow: ["PATH"]
 mcp:
-  upstream: "https://mcp.github.com/api"
+  upstream: "http://mcp.example.com/api"
   allow_tools: ["list_repos"]
 EOF
 OUT="$("$WARDEN" proxy --policy "$TEST_DIR/http-policy.yaml" 2>&1)"
-if echo "$OUT" | grep -q 'only "stdio:<command>" is implemented'; then
-    ok "HTTP upstream rejected with clear message"
+if echo "$OUT" | grep -q 'only loopback hosts may use http'; then
+    ok "plain http:// remote upstream rejected with clear message"
 else
-    bad "HTTP upstream rejection message missing; got: $OUT"
+    bad "plain http:// rejection message missing; got: $OUT"
 fi
 
 # ---------------------------------------------------------------------------

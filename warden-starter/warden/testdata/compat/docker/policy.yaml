@@ -1,4 +1,4 @@
-# Fixture policy — community docker-mcp (compat: FAIL, inherent)
+# Fixture policycommunity docker-mcp (compat: FAIL, inherent)
 # The server needs the Docker daemon socket (/var/run/docker.sock), i.e.
 # full host container control. That grant is DELIBERATELY ABSENT here:
 # granting the socket would void the sandbox. This fixture pins the rest of

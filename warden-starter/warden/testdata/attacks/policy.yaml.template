@@ -1,0 +1,20 @@
+# Warden attack-harness policy (rendered by run-attacks.sh).
+# The sandbox may read the fixture work dir and write the phase output dir.
+# The vault, ungranted probe dirs, and everything else are NOT granted —
+# every attack scenario depends on exactly that boundary.
+# network.allow is empty: the egress proxy must deny all destinations.
+filesystem:
+  read:
+    - "@WORK@"
+  write:
+    - "@OUT@"
+
+network:
+  allow: []
+
+env:
+  allow:
+    - "PATH"
+
+limits:
+  timeout_s: @TIMEOUT@

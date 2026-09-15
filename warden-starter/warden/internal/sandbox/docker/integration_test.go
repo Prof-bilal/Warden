@@ -38,19 +38,33 @@ const startupMarkerDocker = "WARDEN_DOCKER_UP"
 func requireDocker(t *testing.T) {
 	t.Helper()
 	if !Available() {
-		t.Skip("docker daemon not usable — skipping Docker integration test")
+		t.Skip("docker daemon not usableskipping Docker integration test")
 	}
 	image := Image()
 	if err := exec.Command("docker", "image", "inspect", image).Run(); err != nil {
-		t.Skipf("docker image %q not present — skipping", image)
+		t.Skipf("docker image %q not presentskipping", image)
 	}
 
 	// Positive control: the sandboxed target must really start and execute.
 	// Run() passes stdio through but returns only the exit code, so prove
 	// execution via a granted write the test can verify on the host. FAIL
-	// (not skip) if not — a skip here would mask a dead backend behind
+	// (not skip) if nota skip here would mask a dead backend behind
 	// green tests.
-	writeDir := t.TempDir()
+	//
+	// Use a directory outside /tmp because the Docker backend provides /tmp
+	// as an isolated tmpfs, and t.TempDir() returns paths under /tmp which
+	// would conflict with that tmpfs mount.
+	writeDir, err := os.MkdirTemp("/var/tmp", "warden-docker-test-*")
+	if err != nil {
+		t.Fatalf("create temp dir outside /tmp: %v", err)
+	}
+	// The container runs as the invoking user (BuildDockerArgs passes
+	// "--user uid:gid" from os.Getuid/os.Getgid), so it shares this test
+	// process's UID and can write into the default-mode (0700) directory.
+	// Deliberately NOT chmod'ed world-writable: if the --user flag ever
+	// regresses, the container's root (running without CAP_DAC_OVERRIDE)
+	// cannot write here and this test fails instead of masking it.
+	t.Cleanup(func() { os.RemoveAll(writeDir) })
 	marker := filepath.Join(writeDir, "started.marker")
 	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{writeDir}}}
 	out, err := Run([]string{"/bin/sh", "-c", "echo " + startupMarkerDocker + " > " + marker}, p)
@@ -59,7 +73,7 @@ func requireDocker(t *testing.T) {
 	}
 	data, readErr := os.ReadFile(marker)
 	if readErr != nil {
-		t.Fatalf("positive control: startup marker file missing — target never really ran: %v", readErr)
+		t.Fatalf("positive control: startup marker file missingtarget never really ran: %v", readErr)
 	}
 	if !strings.Contains(string(data), startupMarkerDocker) {
 		t.Fatalf("positive control: marker file lacks startup marker: %q", string(data))
@@ -69,11 +83,21 @@ func requireDocker(t *testing.T) {
 func TestDockerBlocksUngrantedRead(t *testing.T) {
 	requireDocker(t)
 
-	secretDir := t.TempDir()
+	secretDir, err := os.MkdirTemp("/var/tmp", "warden-docker-secret-*")
+	if err != nil {
+		t.Fatalf("create secret dir: %v", err)
+	}
+	os.Chmod(secretDir, 0777)
+	t.Cleanup(func() { os.RemoveAll(secretDir) })
 	if err := os.WriteFile(filepath.Join(secretDir, "secret.txt"), []byte("nope"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	scriptDir := t.TempDir()
+	scriptDir, err := os.MkdirTemp("/var/tmp", "warden-docker-script-*")
+	if err != nil {
+		t.Fatalf("create script dir: %v", err)
+	}
+	os.Chmod(scriptDir, 0777)
+	t.Cleanup(func() { os.RemoveAll(scriptDir) })
 	script := filepath.Join(scriptDir, "probe.sh")
 	body := "#!/bin/sh\ncat \"$1\"\n"
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {

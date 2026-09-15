@@ -35,7 +35,7 @@ silent skip cannot masquerade as a verified backend.
 | unlisted env var | BLOCKED | filtered before spawn |
 
 Every result is voided unless the target first proves it started inside the
-sandbox (the `WARDEN_SANDBOX_UP` marker file) — a positive control against
+sandbox (the `WARDEN_SANDBOX_UP` marker file)a positive control against
 "the sandbox blocked everything because nothing ran".
 
 ## Run it yourself
@@ -48,11 +48,11 @@ bash testdata/proof/run-proof.sh ./warden
 Requires Linux with `bwrap` + `strace` (the native backend is the one
 exercised). The harness writes its artifacts to `evidence/<platform>/<stamp>/`:
 
-- `results.jsonl` — one record per step with expected/observed/verdict
-- `audit.jsonl` — the Warden audit records from this run only, including the
+- `results.jsonl`one record per step with expected/observed/verdict
+- `audit.jsonl`the Warden audit records from this run only, including the
   real network-denial event for the blocked host
-- `summary.json` — machine-readable verdict
-- `evidence.md` — the human-readable table shown at the end
+- `summary.json`machine-readable verdict
+- `evidence.md`the human-readable table shown at the end
 
 The fixture target only touches harness-created temp files and loopback
 addresses; it cannot reach your real files or the internet.
@@ -60,7 +60,7 @@ addresses; it cannot reach your real files or the internet.
 ## Known gaps that the tests do not paper over
 
 The platform-specific audit blind spots and enforcement limits are documented
-honestly in the [Security Review](security.md#known-limitations) — e.g. Windows
+honestly in the [Security Review](security.md#known-limitations)e.g. Windows
 denied file opens produce no ETW event by OS design, and macOS/Docker do not
 enforce memory or timeout limits. The compatibility matrix
 ([18 servers](compatibility.md)) documents exactly which real-world MCP
@@ -71,4 +71,4 @@ servers pass, conditionally pass, or fail.
 Unit, integration, and escape tests: see [Testing](testing.md) and
 [`TESTING.md`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/TESTING.md).
 CI runs the full suite on Linux, macOS, and Windows plus cross-platform
-builds — no platform is tested only by cross-compilation.
+buildsno platform is tested only by cross-compilation.

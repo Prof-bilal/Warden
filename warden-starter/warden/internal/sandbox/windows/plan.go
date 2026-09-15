@@ -2,17 +2,17 @@
 //
 // Enforcement stack, applied in order, with every step failing closed:
 //
-//  1. AppContainer (LowBox) token — the process runs with a package SID,
+//  1. AppContainer (LowBox) tokenthe process runs with a package SID,
 //     no unneeded groups, and capability SIDs derived from the policy.
-//  2. Filesystem capabilities — DACL grants on the policy-granted paths
+//  2. Filesystem capabilitiesDACL grants on the policy-granted paths
 //     only (plus a mandatory low-integrity label where the DACL is
 //     rewritten). Everything else is denied by the token boundary.
-//  3. WFP filters — a dedicated sublayer that hard-permits only loopback
+//  3. WFP filtersa dedicated sublayer that hard-permits only loopback
 //     traffic to the egress proxy and hard-blocks all other outbound IPv4
 //     and IPv6 traffic from the container, including direct DNS.
-//  4. ETW audit — file and network events for the container's PIDs,
+//  4. ETW auditfile and network events for the container's PIDs,
 //     including blocked attempts, exported into the JSONL audit log.
-//  5. Job Object — process-tree memory limit, wall-clock timeout, and
+//  5. Job Objectprocess-tree memory limit, wall-clock timeout, and
 //     kill-on-close termination of the whole tree.
 //
 // Until all of those are installed successfully, warden refuses to run the

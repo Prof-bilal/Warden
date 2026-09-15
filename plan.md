@@ -1,8 +1,8 @@
-# Warden — Full Audit & Implementation Plan (Phase 1–19 + self-update)
+# WardenFull Audit & Implementation Plan (Phase 1–19 + self-update)
 
 **Repository:** `/home/abdullah/Downloads/warden` · branch `main` @ `7b69513` · module path `github.com/warden-sandbox/warden` (go 1.24)
 
-**What I did:** read the Go CLI + all four backends, the network proxy, audit, env-filter, MCP proxy, gateway, UI/color layer, the npm wrapper and `install.js`, CI/release workflows, the mkdocs tree, the landing page components, and the test/evidence files. I ran `go build`, `go vet`, and the core unit tests (policy / audit / envfilter / proxy) — all green. I did **not** modify anything.
+**What I did:** read the Go CLI + all four backends, the network proxy, audit, env-filter, MCP proxy, gateway, UI/color layer, the npm wrapper and `install.js`, CI/release workflows, the mkdocs tree, the landing page components, and the test/evidence files. I ran `go build`, `go vet`, and the core unit tests (policy / audit / envfilter / proxy)all green. I did **not** modify anything.
 
 > ⚠️ The CodeAtlas index in this workspace points at a different project, so all analysis was done directly against the filesystem.
 
@@ -17,22 +17,22 @@
 - **The macOS false-positive problem appears genuinely addressed.** `darwin/integration_test.go` uses `requireSandboxExec` (a diagnostic ladder that **fails**, never skips) and every denial test requires a `startupMarker` from the target before asserting a denial. `ci.yml`'s macOS job greps the test log and **hard-fails if any Seatbelt test is skipped or none ran.** The `127.0.0.1`/`localhost:18080` network-rule regression is fixed (`profile.go` emits `localhost`-based rules).
 
 ### What is messy
-- `README.md`'s "Project Structure" references `projects/marketingpilot/` — **that directory does not exist** in the repo.
+- `README.md`'s "Project Structure" references `projects/marketingpilot/`**that directory does not exist** in the repo.
 - **Version identity is scattered:** npm `0.1.10`, Windows-section badge `v0.1.6`, page schema `softwareVersion: "0.3.0"`, `--version` prints git-describe; the mkdocs `site_url` and old README say `prof-bilal.github.io` while the real site is Vercel.
 - **Module path ≠ repository URL:** module is `github.com/warden-sandbox/warden` but the repo is `Prof-bilal/Warden`. Source-consumers can't `go install github.com/Prof-bilal/Warden/...`.
-- A stale, hand-written **`TEST-RESULTS.md`** (Sept 7, Docker-backend on Arch) sits at repo root claiming "Ready for production use" and 19/19 tests — it contradicts the current code (which now mandates `strace` for Linux runs).
+- A stale, hand-written **`TEST-RESULTS.md`** (Sept 7, Docker-backend on Arch) sits at repo root claiming "Ready for production use" and 19/19 testsit contradicts the current code (which now mandates `strace` for Linux runs).
 - `main.go` is a 1,486-line monolith with hand-rolled flag parsing; `isUnder`/`Within` logic is duplicated across package boundaries.
 
 ### What is dangerous (needs eyes)
 - **`warden proxy` (the MCP client proxy) looks non-functional end-to-end.** `handleHTTPTransport` feeds an *empty* `&http.Request{}` into the proxy's `ServeHTTP` (will always `deny("invalid proxy destination")`), `handleStdioTransport` is an explicit `TODO: Implement subprocess spawning`, and `mcpFilteringConn` accumulates into a buffer it never drains. The `filterMCPMessage` logic is unit-tested, but the wire path is effectively broken.
 - **Linux `warden run` silently requires `strace` at runtime**, but every doc (`README.md`, `docs/install.md`) says strace is only needed for `warden trace`. A user following the npm/Linux path gets a hard fail on first `run` that the docs never warn about.
-- **Fabricated testimonials.** `Testimonials.tsx` shows quotes from "Sarah Chen — Platform Engineer at Vercel", "Marcus Rodriguez — Security Lead at Linear", "Priya Sharma — CTO at Warp". For a security product these fake personas (naming real companies) are an integrity liability and a supply-chain-trust problem.
-- **No integrity verification** on the npm wrapper's binary download (no `SHA256SUMS` check before chmod+exec) — relevant to the self-update design.
+- **Fabricated testimonials.** `Testimonials.tsx` shows quotes from "Sarah ChenPlatform Engineer at Vercel", "Marcus RodriguezSecurity Lead at Linear", "Priya SharmaCTO at Warp". For a security product these fake personas (naming real companies) are an integrity liability and a supply-chain-trust problem.
+- **No integrity verification** on the npm wrapper's binary download (no `SHA256SUMS` check before chmod+exec)relevant to the self-update design.
 
 ### What is confusing to users
-- Audit completeness **differs per platform** (Linux: full file+network via strace; macOS: network only via proxy, file denies are Seatbelt-EPERM and *not* audited; Docker: network only) — the "audited" claim needs qualification.
-- `warden doctor` **always exits 0** — the status is in the printed line only, so scripts misread it.
-- The landing's macOS status ("Code-complete, verification pending") is **stale** — CI now runs real macOS Seatbelt integration tests and asserts they execute.
+- Audit completeness **differs per platform** (Linux: full file+network via strace; macOS: network only via proxy, file denies are Seatbelt-EPERM and *not* audited; Docker: network only)the "audited" claim needs qualification.
+- `warden doctor` **always exits 0**the status is in the printed line only, so scripts misread it.
+- The landing's macOS status ("Code-complete, verification pending") is **stale**CI now runs real macOS Seatbelt integration tests and asserts they execute.
 
 
 ---
@@ -56,50 +56,50 @@ Verified against code, not docs.
 | Limits (timeout/memory/child-tree) | `linux/limits.go`, `darwin/run.go`, `job.go` | `limits_test.go` + integration | partial | SHIPPED + TESTED |
 | `warden run` | `cmd/warden/main.go` | `main_test.go` | partial | SHIPPED + TESTED |
 | `warden trace` / `init` | main.go + `audit/trace.go` + `policy/starter.go` | `strace_test.go`, `starter_test.go` | good | SHIPPED + TESTED |
-| `warden logs` | main.go + `audit.go` | — | good | SHIPPED + POORLY TESTED |
+| `warden logs` | main.go + `audit.go` || good | SHIPPED + POORLY TESTED |
 | `warden doctor` | `doctor.go` | `doctor_test.go` | good | SHIPPED + TESTED (exit 0 issue) |
 | `warden version` / `--version` | main.go | `version_test.go` | good | SHIPPED + TESTED |
 | `warden gateway` | `gateway.go` + `internal/gateway/*` | `gateway_test.go` | `docs/gateway.md` | SHIPPED + TESTED |
 | `warden k8s` | `container/*` | `container_test.go` | `docs/container-k8s.md` | SHIPPED + TESTED |
 | **`warden proxy` (MCP client proxy)** | `internal/mcpproxy/*` | unit (logic only) | `docs/client-proxy.md` | **BROKEN end-to-end** |
-| `warden update` | — | — | — | **PLANNED ONLY** |
-| Version check / update notice | — | — | — | **NOT IMPLEMENTED** |
+| `warden update` |||| **PLANNED ONLY** |
+| Version check / update notice |||| **NOT IMPLEMENTED** |
 | MCP stdio passthrough for `run` | bwrap/darwin/docker | via escape fixtures | partial | SHIPPED + TESTED |
 | Audit: Linux | `audit/strace.go` (external strace) | yes | good | SHIPPED + TESTED |
-| Audit: macOS file denies | — | — | "not available" | **NOT IMPLEMENTED** (network only) |
-| Audit: Docker file denies | — | — | — | **NOT IMPLEMENTED** |
-| GH Action | `.github/actions/warden-action` | `test-warden-action.yml` | — | SHIPPED + fixture-tested |
-| Homebrew | — | — | "coming soon" | **PLANNED ONLY** |
+| Audit: macOS file denies ||| "not available" | **NOT IMPLEMENTED** (network only) |
+| Audit: Docker file denies |||| **NOT IMPLEMENTED** |
+| GH Action | `.github/actions/warden-action` | `test-warden-action.yml` || SHIPPED + fixture-tested |
+| Homebrew ||| "coming soon" | **PLANNED ONLY** |
 
 
 ---
 
 ## 3 · Security findings (ranked)
 
-### P0 — security/correctness
+### P0security/correctness
 1. **`warden proxy` wire path is inert.** `mcpproxy.go` `handleHTTPTransport` calls `s.httpProxy.ServeHTTP(&wrappedResponseWriter{conn: wrapped}, &http.Request{})` → always processes an empty request → deny; `handleStdioTransport` is a `TODO` that only logs; `mcpFilteringConn` buffer is never consumed/reset, so even the "filtering" can't work reliably over a stream. A user who configures `warden proxy` to block tool names / patterns gets a **false sense of enforcement**.
    - *Evidence:* `mcpproxy.go` lines 139–170, 304–341; `proxy.go destination()` needs `r.Host`/`r.URL`.
    - *Fix:* Either finish the transport (framed JSON-RPC reader for stdio/HTTP) or remove/clearly mark the command EXPERIMENTAL. Never ship a "filtering proxy" whose filter can't run. Verify `test-mcp-proxy.sh` against the raw command, not just unit logic.
 
-2. **Linux runtime silently depends on `strace` — undocumented.** `linux.Run() → runWithEnvAndAudit(logger≠nil)` requires `strace` at `exec.LookPath` and hard-fails (lines 224–227). Docs (README, `docs/install.md`) only require strace for `trace`. Result: primary npm/Linux install → `warden run` fails with a message users can't predict.
+2. **Linux runtime silently depends on `strace`undocumented.** `linux.Run() → runWithEnvAndAudit(logger≠nil)` requires `strace` at `exec.LookPath` and hard-fails (lines 224–227). Docs (README, `docs/install.md`) only require strace for `trace`. Result: primary npm/Linux install → `warden run` fails with a message users can't predict.
    - *Fix:* Rename in docs to "strace required for `run` (audit) and `trace`"; or make Linux audit degrade with an explicit opt-out flag; and surface strace status in `warden doctor`.
 
 3. **Supply chain: npm wrapper executes a downloaded binary with no integrity check.** `build/npm-wrapper/bin/warden` and `install.js` download from GitHub Releases (HTTPS) but never verify against the release `SHA256SUMS` before chmod+exec. Relevant to the `warden update` design below.
    - *Evidence:* `bin/warden` `download()` → `execFileSync(binPath, …)`.
 
-### P1 — architecture / integrity
+### P1architecture / integrity
 4. **Fabricated testimonials naming real companies.** `Testimonials.tsx` (Vercel / Linear / Warp personas). Remove or clearly label as illustrative; never imply endorsement.
 5. **Audit record is platform-uneven but marketed uniformly ("audited").** macOS and Docker don't record filesystem denials. Qualify the claim or add a tracing primitive.
 6. **Module path ≠ repo URL** (`github.com/warden-sandbox/warden` vs `Prof-bilal/Warden`). Either move the module to a resolvable vanity path or align with the repo; document the canonical import.
-7. **Stale public evidence** — repo-root `TEST-RESULTS.md` (Sept 7, Docker-only, "ready for production") contradicts current code (strace-mandated Linux runs). Replace with the new reproducible proof harness (§6).
+7. **Stale public evidence**repo-root `TEST-RESULTS.md` (Sept 7, Docker-only, "ready for production") contradicts current code (strace-mandated Linux runs). Replace with the new reproducible proof harness (§6).
 8. **`warden doctor` always exits 0.** Scripts can't distinguish READY/NOT-READY. Add a documented nonzero exit for NOT-READY (opt-in flag if backward-compat needed).
 
-### P2 — documentation / UX
+### P2documentation / UX
 9. Landing macOS status stale ("verification pending") vs CI that asserts real macOS Seatbelt runs. Windows badge `v0.1.6` stale; schema `softwareVersion: "0.3.0"` isn't the CLI version.
 10. Root `README.md` references a nonexistent `projects/marketingpilot/` dir.
-11. `warden-README.md` says "pre-alpha / design skeleton" — contradicts root README's "All backends implemented".
+11. `warden-README.md` says "pre-alpha / design skeleton"contradicts root README's "All backends implemented".
 
-### P3 — cleanup
+### P3cleanup
 12. `main.go` monolith (1,486 lines) + hand-rolled arg parsers; duplicated `isUnder`/`Within`; multiple stale version constants; leftover `test-*.sh`, `test-*-policy.yaml`, `test-app/`, `mcp-test/` fixtures with no owner.
 13. Two remaining `github.com/Prof-bilal/Warden` doc strings in `main.go`/`firstrun.go` (docs URLs). Decide canonical GitHub URL and fix.
 
@@ -108,12 +108,12 @@ Verified against code, not docs.
 
 ## 4 · macOS findings
 
-- **State now:** The prior failure — `sandbox-exec: host must be * or localhost in network address (remote ip "127.0.0.1:18080")` — was fixed by switching Seatbelt network rules to `localhost` (`git 8ada500`, confirmed in `profile.go` lines 180–191 which emit `localhost:18080` and Unix-socket allows).
+- **State now:** The prior failure`sandbox-exec: host must be * or localhost in network address (remote ip "127.0.0.1:18080")`was fixed by switching Seatbelt network rules to `localhost` (`git 8ada500`, confirmed in `profile.go` lines 180–191 which emit `localhost:18080` and Unix-socket allows).
 - **Implementation:** `darwin/run.go` starts the host proxy, builds the Seatbelt profile, execs `sandbox-exec -f profile -- bridge __proxy-bridge --socket … --listen 127.0.0.1:18080 -- <cmd>`, filters env, sets HTTP(S)/ALL_PROXY to the loopback bridge. `profile.go` grants runtime read paths, dyld map-executable paths, `/tmp`, `/private/tmp`, `/var/folders`, `/private/var/folders` write, plus policy grants; socket path gets explicit read/write + metadata. `runWithApproval` supports network-only approval; filesystem is hard-deny (no live seatbelt file signal).
 - **Tests:** `profile_test.go` (pure, all-OS) and `integration_test.go` (darwin-only) with the fail-not-skip preflight ladder + `startupMarker` on every denial test. CI `macos` job runs `-count=1` and hard-fails on any SKIP or zero `TestSeatbelt` PASS.
 - **Remaining risks to verify on hardware:**
-  - Test suite asserts execution on GitHub macOS runners, but a **real end-user macOS machine** (different macOS version, Homebrew Python/Node, Rosetta binaries) should be run through the full proof harness (§6) — no CI runner substitutes for the exact `dylib`/`dyld CacheFinder` edge cases that earlier burned the project (see `fe2f691`, `6eda223`).
-  - Docker fallback from macOS needs `WARDEN_DOCKER_BRIDGE` pointed at a Linux-built warden — a real friction point to document and test.
+  - Test suite asserts execution on GitHub macOS runners, but a **real end-user macOS machine** (different macOS version, Homebrew Python/Node, Rosetta binaries) should be run through the full proof harness (§6)no CI runner substitutes for the exact `dylib`/`dyld CacheFinder` edge cases that earlier burned the project (see `fe2f691`, `6eda223`).
+  - Docker fallback from macOS needs `WARDEN_DOCKER_BRIDGE` pointed at a Linux-built wardena real friction point to document and test.
   - macOS memory/`limit` enforcement relies on `ps -g` RSS grouping; verify against the target tree on real hardware.
   - Confirm file-denials are observable or explicitly documented as network-only auditing (P1-5).
 
@@ -136,7 +136,7 @@ A test that can't prove the target started must **not** report a security PASS. 
 | MCP | initialize, initialized-notif, tools/list, tools/call, ping, malformed JSON-RPC, forbidden op | via fixtures | stdio all | yes |
 | Backend | partial-init refusal on each backend | backend_test | all | yes |
 
-**Fix the Linux CI asymmetry:** the `linux` job runs `go test ./...` and lets bwrap escape tests **skip** when userns is unavailable — unlike the macOS/Windows jobs which assert execution. Add a Linux assertion step (self-hosted runner or privileged container) so "Linux verified" is machine-checked, not manual only.
+**Fix the Linux CI asymmetry:** the `linux` job runs `go test ./...` and lets bwrap escape tests **skip** when userns is unavailableunlike the macOS/Windows jobs which assert execution. Add a Linux assertion step (self-hosted runner or privileged container) so "Linux verified" is machine-checked, not manual only.
 
 
 ---
@@ -220,7 +220,7 @@ Every image is generated from the real harness (§6), tagged with platform + ver
 
 ## 10 · Video storyboard (30–60 s)
 
-1. Hook (0–3 s): terminal — an MCP server reads `~/.ssh/id_rsa`. Text: "Your MCP servers don't need your whole filesystem."
+1. Hook (0–3 s): terminalan MCP server reads `~/.ssh/id_rsa`. Text: "Your MCP servers don't need your whole filesystem."
 2. Problem (3–9 s): default install = full access. Show the leak.
 3. Install (9–15 s): `npm install -g warden-sandbox-cli` → banner.
 4. Policy (15–22 s): `warden init` + YAML.
@@ -248,7 +248,7 @@ Do **not** make it the hero. Replace the current static ProductHunt/GitHub badge
 ## 12 · npm package changes (`warden-sandbox-cli`)
 
 - **Homepage field:** point to `https://warden-six-rouge.vercel.app/` (make the product site primary); keep `repository` → `Prof-bilal/Warden`.
-- **Description:** "A fail-closed sandbox runtime for MCP servers — deny-by-default filesystem, network, and environment on Linux (bubblewrap), macOS (Seatbelt), and Windows (AppContainer)." (short + factual).
+- **Description:** "A fail-closed sandbox runtime for MCP serversdeny-by-default filesystem, network, and environment on Linux (bubblewrap), macOS (Seatbelt), and Windows (AppContainer)." (short + factual).
 - **Keywords:** add `mcp`, `sandbox`, `security`, `cli`, `bubblewrap`, `seatbelt`, `ai-agents`.
 - **README** (rewrite): what/why/who, install (`npm install -g warden-sandbox-cli`), run, policy example, what gets blocked, proof, platforms, fail-closed, docs + GitHub + license. Keep the current package version stamping (`npm version` in `release.yml`) as the single source of truth.
 
@@ -270,7 +270,7 @@ Fix the landing + mkdocs to match reality:
 
 ### Current state (audited)
 - No `update` command; only `warden version`/`--version` (prints `version.Version`, stamped via Makefile `-ldflags -X …version.Version=$(git describe)`). npm publishes via `release.yml` → wrapper `bin/warden` downloads the release binary pinned to the **wrapper's installed `package.json` version** into `~/.cache/warden/<ver>/warden-<os>-<arch>` and re-execs it.
-- **Architectural constraint:** because the node wrapper pins to its own package version, a Go `update` that downloads a newer binary won't stick — the wrapper re-downloads the old pinned version next launch. The update path must therefore be coordinated with the wrapper.
+- **Architectural constraint:** because the node wrapper pins to its own package version, a Go `update` that downloads a newer binary won't stickthe wrapper re-downloads the old pinned version next launch. The update path must therefore be coordinated with the wrapper.
 
 ### Recommended design
 1. **Version source of truth:** single semver from npm package (`warden-sandbox-cli` `dist-tags.latest`). `warden --version` prints binary `version.Version`; keep aligned with npm version at release.
@@ -281,16 +281,16 @@ Fix the landing + mkdocs to match reality:
    - update exists → show current/latest/what happens, confirm in TTY (non-TTY/CI → require `--yes`), download the GitHub-release binary **and verify `SHA256SUMS` + `warden version` output** before chmod to `0o100/0o755`
    - write atomically (temp file → fsync → rename into `~/.cache/warden/<newver>/`), then re-exec with `warden --version` to verify
    - clear failure on network/permission/checksum mismatch; never touch unrelated files/config.
-3. **Wrapper coordination:** change `bin/warden` so it resolves the binary path to "newest available in cache" and, if absent, downloads it; `warden update` in Go writes the new versioned cache entry; the wrapper then prefers it. (This is the crux — update must be schema-coordinated with the launcher.)
+3. **Wrapper coordination:** change `bin/warden` so it resolves the binary path to "newest available in cache" and, if absent, downloads it; `warden update` in Go writes the new versioned cache entry; the wrapper then prefers it. (This is the cruxupdate must be schema-coordinated with the launcher.)
 4. **Update notice (non-blocking):** before normal commands, do a **cached** (TTL ∼24 h, stored under `~/.local/state/warden/` or `~/.cache/warden/`) latest-version check; if newer, print to stderr, one line:
    ```
    ⚠ A new Warden version is available: 0.x.x → 0.x.x. Run `warden update`.
    ```
-   Use `ui.Yellow` but keep it ASCII-readable when `NO_COLOR`/`TERM=dumb`/non-TTY; suppress in CI (`ui.IsCI`) and after user opts out (`WARDEN_NO_UPDATE_CHECK=1`) or when the check fails (**fail-open for the check only** — the sandbox's fail-closed behavior is never touched). Never delay or block command output.
+   Use `ui.Yellow` but keep it ASCII-readable when `NO_COLOR`/`TERM=dumb`/non-TTY; suppress in CI (`ui.IsCI`) and after user opts out (`WARDEN_NO_UPDATE_CHECK=1`) or when the check fails (**fail-open for the check only**the sandbox's fail-closed behavior is never touched). Never delay or block command output.
 
 ### Security review for the update surface
-- HTTPS + pinned registry host; validate latest version parses as strict semver (reject paths/`../`,`/`,`|`, control chars — never interpolate into a shell).
-- **No shell invocation** — use `exec.Command` with explicit argv, never `sh -c`. Reject command injection via version/package fields.
+- HTTPS + pinned registry host; validate latest version parses as strict semver (reject paths/`../`,`/`,`|`, control charsnever interpolate into a shell).
+- **No shell invocation**use `exec.Command` with explicit argv, never `sh -c`. Reject command injection via version/package fields.
 - Integrity: verify downloaded binary against release `SHA256SUMS`; re-verify by executing `warden version` and checking it reports the target version before caching.
 - Downgrade prevention: refuse to update to a lower or same version.
 - Temp files in a mode-0700 dir, fsync + rename (no symlink race), owner-only perms.
@@ -326,13 +326,13 @@ Your direction is sound but I would tighten it: **security correctness comes bef
 1. Codebase/security audit → ship this report (done)
 2. **P0 fixes** (proxy status, strace mismatch)
 3. **P1 integrity** (remove fabricated testimonials, qualify audit claims, module-path decision, doctor exit code)
-4. **Test false-positive hardening** (universal `requireTargetStarted` helper across backends; Linux CI assertion — mirror macOS/Windows)
+4. **Test false-positive hardening** (universal `requireTargetStarted` helper across backends; Linux CI assertionmirror macOS/Windows)
 5. Build reproducible proof harness → **Linux + Windows (CI) + real macOS**
 6. Capture real evidence/artifacts (§6) + video + screenshots (real only)
 7. Update product claims/docs to match verified reality (incl. macOS status, per-platform audit, strace)
 8. Docs restructure + "How to use Warden" + trust-signals (live npm/GitHub, no hardcoded numbers)
 9. npm metadata + README
-10. **Self-update** (`warden update`, cached non-blocking notice, downgrade/supply-chain safeguards + tests) — any time after step 1 but before wide distribution; it's supply-chain-critical, so it shouldn't wait until "market."
+10. **Self-update** (`warden update`, cached non-blocking notice, downgrade/supply-chain safeguards + tests)any time after step 1 but before wide distribution; it's supply-chain-critical, so it shouldn't wait until "market."
 11. Final release audit
 
 I deliberately moved the self-update earlier (after proof, before marketing) because it is part of the supply-chain security posture, and dropped "design/docs/marketing before the feature works" risks by keeping the CODE→TEST→PROOF→DOCUMENT→VISUALIZE→MARKET order.
@@ -344,7 +344,7 @@ No files were changed. All findings above are directly referenced to repo paths 
 
 **IMPLEMENTATION STATUS: IN PROGRESS**
 
-### Step 2 — P0 fixes: DONE (2026-09-11)
+### Step 2P0 fixes: DONE (2026-09-11)
 - **P0-2 (strace mismatch):** `doctor` marks missing strace as FAIL (NOT READY)
   when the resolved backend is native Linux; docker backend gets "info". README,
   `docs/install.md`, `docs/security.md` updated to say strace is required for
@@ -366,7 +366,7 @@ No files were changed. All findings above are directly referenced to repo paths 
   `docs/client-proxy.md` + `examples/mcp-proxy-policy.yaml` corrected to
   stdio-only with honest security-model notes.
 
-### Step 3 — P1 integrity: DONE (2026-09-11)
+### Step 3P1 integrity: DONE (2026-09-11)
 - **Fabricated testimonials removed:** `warden-landing/components/Testimonials.tsx`
   no longer shows invented people/companies (Vercel/Linear/Warp); replaced with
   real, code-backed design statements and an explicit note that user stories
@@ -380,11 +380,11 @@ No files were changed. All findings above are directly referenced to repo paths 
   `Prof-bilal/Warden`, so `go install ...@latest` will not resolve; npm or
   source build are the supported paths.
 - **Audit-claim qualification:** verified the Windows ETW/audit claims against
-  real code (`internal/sandbox/windows/etw.go` + tests) — landing-page statuses
+  real code (`internal/sandbox/windows/etw.go` + tests)landing-page statuses
   already match reality; no over-claim found to fix.
 - **Stale TEST-RESULTS.md:** already removed from the tree (nothing to do).
 
-### Step 4 — Test false-positive hardening: DONE (2026-09-11)
+### Step 4Test false-positive hardening: DONE (2026-09-11)
 - **Universal positive control:** every backend test file now proves the
   sandboxed target actually starts before any security assertion:
   - Linux: `requireTargetStarted` + `startupMarker` (`WARDEN_SANDBOX_UP`) in
@@ -406,7 +406,7 @@ No files were changed. All findings above are directly referenced to repo paths 
 - Full suite green on linux (incl. new controls), cross-build typechecks for
   windows/darwin pass.
 
-### Step 5 — Reproducible proof harness: DONE (2026-09-11)
+### Step 5Reproducible proof harness: DONE (2026-09-11)
 - **Fixtures:** `warden-starter/warden/testdata/proof/` —
   `proof-target.sh.template` (harmless target: harness temp files + loopback
   only), `proof-policy.yaml.template`, `run-proof.sh` (orchestrator),
@@ -417,14 +417,14 @@ No files were changed. All findings above are directly referenced to repo paths 
   net unlisted (HTTP 403 from egress proxy) BLOCKED · env allowlisted
   VISIBLE · env unlisted BLOCKED.
 - **Artifacts:** `evidence/linux/<stamp>/{results.jsonl,audit.jsonl,summary.json,evidence.md}`
-  — audit stream is filtered to the run's own window. Verified on this host:
+ audit stream is filtered to the run's own window. Verified on this host:
   verdict ok, 8/8 steps PASS, positive control PASS, audit contains the real
   `network/allowed=false` record for `blocked-w4rd3n.invalid:80`.
 - **TEST-RESULTS.md retired:** stale "19/19, ready for production" hand-written
   snapshot replaced by a pointer to the harness; dangling references in
   `marketing/WARDEN-LAUNCH-CONTENT.md` updated.
 
-### Next per §16: steps 6–7 — capture platform evidence (needs real
+### Next per §16: steps 6–7capture platform evidence (needs real
 macOS/Windows runs via CI artifacts or hardware) and update product claims to
 match verified reality; then docs restructure (8), npm metadata (9),
 self-update (10), final release audit (11).

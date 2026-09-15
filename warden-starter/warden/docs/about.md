@@ -10,7 +10,7 @@ to read in one sitting.**
 
 ## Why not just use Docker?
 
-You can — and Warden uses it as a fallback. But Docker is heavyweight for
+You canand Warden uses it as a fallback. But Docker is heavyweight for
 "run one script with a restricted home directory": slow cold starts, a daemon
 dependency, and a far bigger trust boundary than a namespace sandbox needs.
 Warden is a single static binary over OS-native primitives
@@ -30,7 +30,7 @@ Warden is in **beta**. Implemented and tested:
 | `trace` / `init` / `logs` | ✅ Observe, generate, inspect |
 | Approval mode (`--approve`) | ✅ Prompt instead of hard-fail |
 | Gateway integration | ✅ Wrap gateway-registered servers |
-| Compatibility matrix | ✅ 18 servers, 14 pass — see [Compatibility](compatibility.md) |
+| Compatibility matrix | ✅ 18 servers, 14 passsee [Compatibility](compatibility.md) |
 
 Live now: the [npm wrapper](https://www.npmjs.com/package/warden-sandbox-cli)
 (`warden-sandbox-cli`, auto-downloads the release binary on install), GitHub
@@ -41,15 +41,16 @@ program ([join it](beta.md)). Pending: Homebrew tap. Track milestones in
 ## Security posture
 
 Deny-by-default on filesystem, network, and environment. No silent fallback
-to unsandboxed runs — a missing backend fails loudly. Every blocked access
-is logged. Known limitations (no CPU throttling, no wildcard hosts,
-unix-socket grants, Seatbelt deprecation) are documented honestly in the
+to unsandboxed runsa missing backend fails loudly. Every blocked access
+is logged. Known limitations (no CPU throttling, no fully arbitrary hosts —
+only a single leading wildcard label is supported — unix-socket grants,
+Seatbelt deprecation) are documented honestly in the
 [Security Review](security.md) and [Compatibility](compatibility.md) pages —
 not buried.
 
 ## License and links
 
-- **License:** MIT — see [License](license.md)
+- **License:** MITsee [License](license.md)
 - **Repository:**
   [Prof-bilal/Warden](https://github.com/Prof-bilal/Warden)
 - **Contributing:** see [Contributing](contributing.md)

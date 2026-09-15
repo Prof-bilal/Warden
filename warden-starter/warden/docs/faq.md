@@ -7,14 +7,14 @@
 No usable backend on this host. On Linux install `bwrap`
 ([Install](install.md#per-os-prerequisites)); on macOS make sure
 `sandbox-exec` exists; anywhere else, start the Docker daemon. Warden never
-falls back to an unsandboxed run — this error is the product working as
+falls back to an unsandboxed runthis error is the product working as
 designed.
 
 ### "command … is not an absolute path"
 
 The executable must resolve to an absolute path so the backend can
 bind-mount its directory. Bare names (`npx`, `uvx`, `node`) are resolved via
-your `PATH` automatically — if you see this error, the name isn't on `PATH`
+your `PATH` automaticallyif you see this error, the name isn't on `PATH`
 in the shell launching Warden. Check with `command -v npx`, or put the
 absolute path in the policy's `command:`.
 
@@ -39,10 +39,10 @@ the grant you need to add.
 ### The policy looks right but access still fails
 
 - **Same path in `read` and `write`?** `Load` coalesces the overlap to a
-  single write grant — harmless, but check `warden logs` for the real
+  single write grantharmless, but check `warden logs` for the real
   denial, which is usually a *parent* directory that was never granted.
 - **SQLite writes failing?** Grant `write` on the database *directory*, not
-  the db file — WAL and journal sidecars live next to it.
+  the db fileWAL and journal sidecars live next to it.
 - **Child processes failing?** The sandbox covers the whole process tree,
   including grandchildren. The denial still appears in the log with the
   exact resource.
@@ -58,35 +58,29 @@ fails closed without one.
 
 ### I passed `HOME` and now the server can read `~/.ssh`?
 
-Expected — and your policy bug, not Warden's. `HOME` passthrough plus a
+Expectedand your policy bug, not Warden's. `HOME` passthrough plus a
 `filesystem.read` grant covering `~/.ssh` (or a parent of it) exposes your
 keys. Grant only the exact credential paths the server needs
 (`./config/.pgpass`, not `~`), and re-read the
 [Security Review](security.md#5-credential-exposure) before shipping a
 policy that passes `HOME`.
 
-### `warden trace` shows my secrets — is that logged?
+### `warden trace` shows my secretsis that logged?
 
 `trace` runs unsandboxed by design, so observed env values can appear in the
-trace log. `init` only writes variable *names* into the policy — values stay
-in your shell — but treat raw trace logs as sensitive and delete them after
+trace log. `init` only writes variable *names* into the policyvalues stay
+in your shellbut treat raw trace logs as sensitive and delete them after
 generating the policy.
 
 ## Things Warden can't do (by design or yet)
 
 ### Wildcard hosts (`*.example.com`)
 
-Not supported — `network.allow` takes bare hostnames or IP literals only,
-and adding a wildcard is rejected at validation. Browser-like servers that
-visit arbitrary domains (Playwright) therefore have no honest policy. This
-is a tracked [schema gap](compatibility.md#failures-classified), locked in
-by regression test so it can't change silently.
-
-### Daemon sockets (`/var/run/docker.sock`)
-
-There is no unix-socket grant type, and granting a daemon socket would hand
-over host control anyway. Servers that need one (docker-mcp) are
-[inherently incompatible](compatibility.md#failures-classified).
+A **single leading wildcard label** is supported: `network.allow` accepts
+`*.example.com` to grant a subdomain pattern (locked in by regression test —
+see the policy schema). Fully arbitrary hosts (any top-level domain, e.g.
+browser-like servers) remain out of scope. Daemon sockets (`/var/run/docker.sock`)
+have no grant type and are [inherently incompatible](compatibility.md#failures-classified).
 
 ### "Will this work with my server?"
 

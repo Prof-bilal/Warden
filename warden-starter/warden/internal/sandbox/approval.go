@@ -13,8 +13,8 @@ import (
 // network requests prompt and apply live while blocked file accesses prompt
 // with an offer to save and restart (backends return approve.ErrRestartRequested
 // after terminating the run so the CLI can respawn under the widened policy).
-// On other backends only network approval is live — there is no comparable
-// live filesystem signal — and filesystem stays hard-deny.
+// On other backends only network approval is livethere is no comparable
+// live filesystem signaland filesystem stays hard-deny.
 func RunWithApproval(cmd []string, p policy.Policy, backend string, cfg *approve.Config) (int, error) {
 	if cfg == nil || !cfg.Enabled {
 		return Run(cmd, p, backend)

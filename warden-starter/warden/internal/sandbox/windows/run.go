@@ -34,7 +34,7 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 // RunWithApproval sandboxes cmd like Run with interactive approval mode for
 // network requests: blocked hosts prompt on the terminal and approved ones
 // apply live via the egress proxy. ETW audit events are post-hoc, so there
-// is no live filesystem signal — filesystem stays hard-deny (use
+// is no live filesystem signalfilesystem stays hard-deny (use
 // `warden trace` + `warden init` to widen it). A nil or disabled cfg behaves
 // like Run.
 func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, error) {

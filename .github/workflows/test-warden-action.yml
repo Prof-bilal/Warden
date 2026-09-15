@@ -19,6 +19,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      # Build HEAD rather than downloading the latest release: the smoke tests
+      # below exercise the sandbox backends, so they must run the code under
+      # test. The action prefers a workspace dist/ binary when present.
+      - name: Set up Go (per go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      
+      - name: Build Warden from source (HEAD)
+        run: |
+          (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
+          "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          # warden anchors a policy's relative grants (".") at the policy
+          # file's directory, so template policies must be copied to the
+          # workspace root before use — using them in place would grant the
+          # templates/ directory instead of the workspace under test.
+          cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
+      
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -27,11 +45,13 @@ jobs:
       - name: Test minimal policy
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          policy: ./warden-smoke-policy.yaml
           run: |
             echo "Testing basic sandbox functionality"
             echo "Working directory: $(pwd)"
-            echo "User: $(whoami)"
+            # The container runs as the invoking UID without a passwd entry
+            # (minimal image), so whoami fails; id(1) has no such dependency.
+            echo "User: $(id -u)"
             ls -la . | head -5
       
       - name: Verify audit log creation
@@ -115,6 +135,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      # See note in test-basic-functionality: build HEAD, don't test a stale release.
+      - name: Set up Go (per go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      
+      - name: Build Warden from source (HEAD)
+        run: |
+          (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
+          "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
+      
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -123,7 +155,7 @@ jobs:
       - name: Test filesystem isolation
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          policy: ./warden-smoke-policy.yaml
           run: |
             # This should work (allowed path)
             ls . > /tmp/test.txt
@@ -137,18 +169,27 @@ jobs:
               echo "✅ Cannot read sensitive files (correctly blocked)"
             fi
       
-      - name: Test network isolation  
+      - name: Test network isolation
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          policy: ./warden-smoke-policy.yaml
           run: |
-            # This should be blocked (no network allowed in minimal policy)
-            if curl -s --connect-timeout 5 google.com > /dev/null 2>&1; then
-              echo "❌ SECURITY ISSUE: Network access not blocked"
-              exit 1
-            else
-              echo "✅ Network access correctly blocked"
-            fi
+            # Egress goes through warden's in-container proxy (HTTP_PROXY),
+            # which answers DENIED requests with HTTP 403 while curl still
+            # exits 0 (curl only fails on transport errors) — so the exit
+            # code proves nothing. Assert on the served HTTP code instead:
+            # denied = 403 (proxy deny) or 000 (transport refused); a 2xx/3xx
+            # means the request actually escaped the sandbox.
+            code=$(curl -s -o /dev/null --connect-timeout 5 -w '%{http_code}' http://google.com || true)
+            case "$code" in
+              403|000)
+                echo "✅ Network egress correctly denied (http_code=$code)"
+                ;;
+              *)
+                echo "❌ SECURITY ISSUE: request served with http_code=$code"
+                exit 1
+                ;;
+            esac
       
       - name: Test environment isolation
         env:
@@ -193,6 +234,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      # See note in test-basic-functionality: build HEAD, don't test a stale release.
+      - name: Set up Go (per go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      
+      - name: Build Warden from source (HEAD)
+        run: |
+          (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
+          "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          # Workspace-root copies: policy-relative grants anchor at the policy
+          # file's directory. tmp/ is pre-created because the sandboxed steps
+          # below write only inside policy-granted paths.
+          mkdir -p tmp
+          cp .github/policies/build.yaml ./warden-build-policy.yaml
+          cp .github/actions/warden-action/templates/security-scan.yaml ./warden-scan-policy.yaml
+      
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -201,9 +259,11 @@ jobs:
       - name: Test NPM build scenario
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/policies/build.yaml
+          policy: ./warden-build-policy.yaml
           run: |
-            # Create a minimal package.json
+            # Keep all writes inside policy-granted dirs (./tmp): build.yaml
+            # deliberately grants build-output paths, not the workspace root.
+            cd tmp
             cat > package.json << 'EOF'
             {
               "name": "test-build",
@@ -215,7 +275,7 @@ jobs:
             EOF
             
             mkdir -p dist
-            npm run build
+            npm --cache ./.npm-cache run build
             
             # Verify build output
             if [ -f dist/output.txt ]; then
@@ -229,11 +289,12 @@ jobs:
       - name: Test security scanning scenario
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/actions/warden-action/templates/security-scan.yaml
+          policy: ./warden-scan-policy.yaml
           run: |
-            # Create test files for scanning
-            echo "password = 'secret123'" > test-file.py
-            echo "api_key = 'sk-test123'" > test-file.js
+            # Create test files under ./tmp (a write grant in
+            # security-scan.yaml) — the workspace root is read-only in-sandbox.
+            echo "password = 'secret123'" > tmp/test-file.py
+            echo "api_key = 'sk-test123'" > tmp/test-file.js
             
             # Run basic security checks (without external tools)
             echo "Simulating security scan..."
@@ -295,17 +356,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
+      # See note in test-basic-functionality: build HEAD, don't test a stale release.
+      - name: Set up Go (per go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      
+      - name: Build Warden from source (HEAD)
+        run: |
+          (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
+          "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
+      
       - name: Run with audit logging
         uses: ./.github/actions/warden-action
         with:
-          policy: ./.github/actions/warden-action/templates/minimal.yaml
+          policy: ./warden-smoke-policy.yaml
           run: |
-            # Generate various audit events
+            # Generate various audit events. Use id(1), not whoami: the
+            # container runs as the invoking UID, which has no passwd entry
+            # in the minimal image, and a failing last command fails the step.
             ls -la .
             echo "test" > /tmp/audit-test.txt
             cat /tmp/audit-test.txt
             pwd
-            whoami
+            id
       
       - name: Analyze audit log
         run: |
@@ -340,6 +415,27 @@ jobs:
     if: always()
     
     steps:
+      # The summary only echoes per-job results; without this gate the workflow
+      # shows a green check even when sandbox jobs fail. Keep both steps.
+      - name: Fail if any test job failed
+        run: |
+          failed=0
+          for result in \
+            "${{ needs.test-basic-functionality.result }}" \
+            "${{ needs.test-policy-validation.result }}" \
+            "${{ needs.test-policy-generation.result }}" \
+            "${{ needs.test-security-scenarios.result }}" \
+            "${{ needs.test-real-world-scenarios.result }}" \
+            "${{ needs.test-error-handling.result }}" \
+            "${{ needs.test-audit-logging.result }}"; do
+            if [ "$result" != "success" ]; then failed=1; fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::One or more action-test jobs failed; see the per-job results above"
+            exit 1
+          fi
+          echo "All action-test jobs passed."
+      
       - name: Test Results Summary
         run: |
           echo "🧪 Warden GitHub Action Test Results"

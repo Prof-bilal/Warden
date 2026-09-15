@@ -20,7 +20,7 @@ import (
 // False-positive hardening (plan §5): every denial test must first prove the
 // target actually STARTED inside the sandbox (positive control) before
 // asserting a security result. runSandbox/runSandboxWithEnv gate on
-// requireTargetStarted — the same startupMarker pattern the darwin tests use —
+// requireTargetStartedthe same startupMarker pattern the darwin tests use —
 // so "target never launched" can never be reported as a sandbox PASS.
 
 // startupMarker is printed by a probe target; seeing it on stdout proves the
@@ -68,7 +68,7 @@ func requireTargetStarted(t *testing.T) {
 		t.Fatalf("positive control: startup probe exited %d, want 0\noutput:\n%s", code, out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("positive control: startup marker missing — target never really ran\noutput:\n%s", out)
+		t.Fatalf("positive control: startup marker missingtarget never really ran\noutput:\n%s", out)
 	}
 }
 
@@ -76,10 +76,10 @@ func requireBwrap(t *testing.T) string {
 	t.Helper()
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
-		t.Skip("bwrap not installed — skipping sandbox integration test")
+		t.Skip("bwrap not installedskipping sandbox integration test")
 	}
 	if err := exec.Command(bwrap, "--unshare-user", "--unshare-net", "--uid", "0", "--gid", "0", "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib", "/lib", "--ro-bind", "/lib64", "/lib64", "/usr/bin/true").Run(); err != nil {
-		t.Skipf("bwrap sandbox unusable on this host (%v) — skipping", err)
+		t.Skipf("bwrap sandbox unusable on this host (%v)skipping", err)
 	}
 	return bwrap
 }
@@ -161,7 +161,7 @@ func TestSandboxReadGrantAccessible(t *testing.T) {
 
 func TestSandboxUnlistedPathInvisible(t *testing.T) {
 	// A sibling directory that is not granted must be invisible inside the
-	// sandbox — not merely permission-denied.
+	// sandboxnot merely permission-denied.
 	granted := t.TempDir()
 	denied := t.TempDir()
 	os.WriteFile(filepath.Join(denied, "topsecret.txt"), []byte("nope"), 0o644)
@@ -288,7 +288,7 @@ func TestRunFailsLoudWithoutBwrap(t *testing.T) {
 	// missing-bwrap path we hide it from PATH. The failure must be a clear
 	// error, never a silent unsandboxed run.
 	if _, err := exec.LookPath("bwrap"); err != nil {
-		t.Skip("bwrap not installed — nothing to hide")
+		t.Skip("bwrap not installednothing to hide")
 	}
 	old := os.Getenv("PATH")
 	os.Setenv("PATH", "/nonexistent-path-xyz")

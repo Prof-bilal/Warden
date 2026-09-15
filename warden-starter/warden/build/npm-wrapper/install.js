@@ -86,7 +86,7 @@ function printBanner() {
     process.stderr.write("\n");
   } else {
     // CI / non-TTY: compact header, no large art to keep logs clean
-    process.stderr.write((useColor ? bold(cyan("WARDEN")) : "WARDEN") + " — " + (useColor ? dim("MCP Server Sandbox") : "MCP Server Sandbox") + "  v" + VERSION + "\n");
+    process.stderr.write((useColor ? bold(cyan("WARDEN")) : "WARDEN") + "" + (useColor ? dim("MCP Server Sandbox") : "MCP Server Sandbox") + "  v" + VERSION + "\n");
   }
 }
 
@@ -294,7 +294,7 @@ function writeBinarySafely(dest, binary) {
   process.stderr.write(bold("Get started:") + "\n\n");
   process.stderr.write(`  ${useColor ? cyan("warden init") : "warden init"}\n`);
   process.stderr.write(`  ${useColor ? cyan("warden run --policy policy.yaml -- <server>") : "warden run --policy policy.yaml -- <server>"}\n`);
-  process.stderr.write(`  ${useColor ? cyan("warden doctor") : "warden doctor"}${useColor ? dim("  — check sandbox readiness") : "  — check sandbox readiness"}\n`);
+  process.stderr.write(`  ${useColor ? cyan("warden doctor") : "warden doctor"}${useColor ? dim(" check sandbox readiness") : " check sandbox readiness"}\n`);
   process.stderr.write("\n");
   process.stderr.write(useColor ? dim("Security:") : "Security:");
   process.stderr.write("\n");

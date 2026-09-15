@@ -13,7 +13,7 @@ warden run --policy policy.yaml --approve --approve-timeout 2m -- /usr/bin/node 
 | Access | Prompt offers | Effect when approved |
 |---|---|---|
 | Network host | allow once / for this session / and save to policy / deny | **Live**: the proxy allows the host immediately (session) and optionally appends it to `network.allow` in the policy file (save) |
-| Filesystem path | save + restart now / save for next run / deny | **Saved**: the grant is appended to the policy file (`filesystem.read` on the path, or `filesystem.write` on the parent dir for mutating access — exactly what `warden init` would generate). Bind mounts are fixed at spawn, so a restart is required; Warden respawns the server automatically on "restart now" |
+| Filesystem path | save + restart now / save for next run / deny | **Saved**: the grant is appended to the policy file (`filesystem.read` on the path, or `filesystem.write` on the parent dir for mutating accessexactly what `warden init` would generate). Bind mounts are fixed at spawn, so a restart is required; Warden respawns the server automatically on "restart now" |
 
 You are asked **once per resource per run**: session/session-save/deny answers
 are remembered, so a chatty server cannot prompt-loop you. "Allow once"
@@ -28,7 +28,7 @@ are remembered, so a chatty server cannot prompt-loop you. "Allow once"
   `--approve` with no interactive terminal refuses to start at all, so it
   can never silently downgrade to deny-everything under an MCP client.
 - **Filesystem approvals always persist.** A restart reloads policy from
-  disk, so a memory-only filesystem grant would be a lie — there is no
+  disk, so a memory-only filesystem grant would be a liethere is no
   "session-only" filesystem option.
 - **Every decision is audit-logged** (`type: approval` in `warden logs`),
   including denials and timeouts.
@@ -48,7 +48,7 @@ are remembered, so a chatty server cannot prompt-loop you. "Allow once"
 - **macOS Seatbelt, Docker, Windows**: network approval only. Those
   backends have no live filesystem signal (Seatbelt reports EPERM without
   structured events, ETW/container tracing is post-hoc), so filesystem
-  stays hard-deny — use `warden trace` + `warden init` to widen the policy.
+  stays hard-denyuse `warden trace` + `warden init` to widen the policy.
 
 ## Non-goals
 

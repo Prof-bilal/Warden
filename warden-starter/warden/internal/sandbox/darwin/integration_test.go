@@ -22,7 +22,7 @@ import (
 // TestMain turns this test binary into a real __proxy-bridge when it is
 // re-exec'd with that argument. darwin.Run uses os.Executable() as the
 // bridge executable, so under `go test` the child must handle the bridge
-// protocol in-process — otherwise the nested binary is just the test binary
+// protocol in-processotherwise the nested binary is just the test binary
 // run with unknown flags.
 func TestMain(m *testing.M) {
 	if len(os.Args) > 1 && os.Args[1] == "__proxy-bridge" {
@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 
 // requireSandboxExec proves sandbox-exec can actually run a target process
 // through the production profile and bridge chain. It FAILS (never skips)
-// when the host cannot run sandboxed targets — a skip here is what made
+// when the host cannot run sandboxed targetsa skip here is what made
 // previous CI green while every real assertion was silently untested.
 //
 // The failure path runs a diagnostic ladder so a red run explains itself:
@@ -94,7 +94,7 @@ func requireSandboxExec(t *testing.T) {
 			err, profile, out, crashReportLog(), sandboxDenialLog())
 	}
 
-	// C: the real chain — generated profile, in-process bridge,
+	// C: the real chaingenerated profile, in-process bridge,
 	// marker-printing target. This is the failure mode that used to be
 	// invisible (silent child death, exit -1).
 	dir := t.TempDir()
@@ -109,7 +109,7 @@ func requireSandboxExec(t *testing.T) {
 		t.Fatalf("preflight C: target exited %d, want 0\noutput:\n%s\n%s", code, out, sandboxDenialLog())
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("preflight C: startup marker missing — target never really ran\noutput:\n%s\n%s", out, sandboxDenialLog())
+		t.Fatalf("preflight C: startup marker missingtarget never really ran\noutput:\n%s\n%s", out, sandboxDenialLog())
 	}
 }
 
@@ -217,7 +217,7 @@ func TestSeatbeltBlocksUngrantedRead(t *testing.T) {
 	scriptDir := t.TempDir()
 	script := writeScript(t, scriptDir, "probe.sh", "#!/bin/sh\necho "+startupMarker+"\ncat \"$1\"\n")
 
-	// Grant only the script dir — reading secretDir must fail.
+	// Grant only the script dirreading secretDir must fail.
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{scriptDir}},
 	}
@@ -226,7 +226,7 @@ func TestSeatbeltBlocksUngrantedRead(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)denial is not proven\noutput:\n%s", out)
 	}
 	if code == 0 {
 		t.Fatal("expected non-zero exit when reading ungranted path")
@@ -314,7 +314,7 @@ func TestSeatbeltWriteOutsideGrantDenied(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)denial is not proven\noutput:\n%s", out)
 	}
 	if code == 0 {
 		t.Fatal("expected nonzero exit writing outside grant")
@@ -379,7 +379,7 @@ func TestSeatbeltEnvPassthrough(t *testing.T) {
 
 func TestSeatbeltFailsClosedWithoutSandboxExec(t *testing.T) {
 	if _, err := exec.LookPath("sandbox-exec"); err != nil {
-		t.Skip("sandbox-exec not installed — nothing to prove")
+		t.Skip("sandbox-exec not installednothing to prove")
 	}
 	old := os.Getenv("PATH")
 	os.Setenv("PATH", "/nonexistent-path-xyz")
@@ -402,7 +402,7 @@ func TestSeatbeltTimeoutKillsProcess(t *testing.T) {
 	}
 	code, out, err := runSandboxed(t, []string{"/bin/sh", sh}, p)
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — timeout not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)timeout not proven\noutput:\n%s", out)
 	}
 	if err == nil && code == 0 {
 		t.Fatal("expected non-zero exit or error for timeout")
@@ -438,7 +438,7 @@ func TestSeatbeltNetworkAllowedViaProxy(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if strings.Contains(out, "NO_CURL") {
-		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+		t.Fatalf("curl not available in sandbox PATHtest cannot run\noutput:\n%s", out)
 	}
 	if !strings.Contains(out, startupMarker) {
 		t.Fatalf("target did not start (marker missing)\noutput:\n%s", out)
@@ -481,10 +481,10 @@ func TestSeatbeltNetworkDeniedByPolicy(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if strings.Contains(out, "NO_CURL") {
-		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+		t.Fatalf("curl not available in sandbox PATHtest cannot run\noutput:\n%s", out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)denial is not proven\noutput:\n%s", out)
 	}
 	if strings.Contains(out, "SHOULD-NOT-LEAK") {
 		t.Fatalf("non-allowlisted destination was reachable\noutput:\n%s", out)
@@ -524,10 +524,10 @@ func TestSeatbeltDirectIPIsNotDialable(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if strings.Contains(out, "NO_CURL") {
-		t.Fatalf("curl not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+		t.Fatalf("curl not available in sandbox PATHtest cannot run\noutput:\n%s", out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)denial is not proven\noutput:\n%s", out)
 	}
 	if strings.Contains(out, "DIRECT-LEAK") {
 		t.Fatalf("direct non-proxy egress escaped the sandbox\noutput:\n%s", out)
@@ -563,10 +563,10 @@ func TestSeatbeltLoopbackBeyondBridgeIsDenied(t *testing.T) {
 		t.Fatalf("Run: %v\noutput:\n%s", err, out)
 	}
 	if strings.Contains(out, "NO_NC") {
-		t.Fatalf("nc not available in sandbox PATH — test cannot run\noutput:\n%s", out)
+		t.Fatalf("nc not available in sandbox PATHtest cannot run\noutput:\n%s", out)
 	}
 	if !strings.Contains(out, startupMarker) {
-		t.Fatalf("target did not start (marker missing) — denial is not proven\noutput:\n%s", out)
+		t.Fatalf("target did not start (marker missing)denial is not proven\noutput:\n%s", out)
 	}
 	if strings.Contains(out, "LISTEN_ALIVE") {
 		t.Fatalf("sandboxed process could listen on a non-bridge loopback port\noutput:\n%s", out)

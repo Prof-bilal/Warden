@@ -5,7 +5,7 @@ This guide is distinct from `CONTRIBUTING.md`: it is the review checklist review
 ## Security-first review checklist
 
 - Does this change alter any default behavior? Any new default-allow is a red flag and must be justified explicitly in the PR description.
-- Does the change add a new grant surface — a new filesystem path type, network capability, or environment variable surface? If so, it must be documented in `ARCHITECTURE.md`'s schema section and reflected in `examples/policy.example.yaml`.
+- Does the change add a new grant surfacea new filesystem path type, network capability, or environment variable surface? If so, it must be documented in `ARCHITECTURE.md`'s schema section and reflected in `examples/policy.example.yaml`.
 - Does the change affect the CLI contract or user-facing command behavior? If the README quickstart or examples would no longer be valid, the PR should update the docs in the same change.
 - Is there an escape test that covers the new behavior, not just a happy-path test? Security-sensitive changes need failure-mode validation.
 - Does the PR maintain deny-by-default semantics, fail-loud behavior, and audit logging in the affected path?

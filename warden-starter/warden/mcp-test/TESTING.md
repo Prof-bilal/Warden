@@ -1,5 +1,16 @@
 # Warden MCP Testing Setup
 
+## Setup
+
+Dependencies are **not** committed to this repository (npm packages are
+gitignored). Install them once from the lockfile before running the fixture
+server:
+
+```bash
+cd warden-starter/warden/mcp-test
+npm ci
+```
+
 ## Quick Start
 
 ### Test with Docker Backend (Works Now)

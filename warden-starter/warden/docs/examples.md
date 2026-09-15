@@ -3,7 +3,7 @@
 Copy any of these policies as a starting point for your own MCP server, then
 adjust the `command` path, grants, and env allowlist to match your setup.
 Relative paths in these files are resolved against the policy file's own
-directory — not your shell's current working directory.
+directorynot your shell's current working directory.
 
 > **Tip:** The easiest way to get a policy right is to run
 > `warden trace -- <your-server-command>` first, then `warden init`. The
@@ -16,20 +16,20 @@ The source files live under `examples/` in the repo. The full content of each on
 
 | Server | What it covers |
 |---|---|
-| [Filesystem](#filesystem) | Local file read/write — no network |
+| [Filesystem](#filesystem) | Local file read/writeno network |
 | [GitHub](#github) | REST + GraphQL against `api.github.com`, needs `GITHUB_TOKEN` |
 | [Slack](#slack) | API + web UI, needs `SLACK_BOT_TOKEN` and `SLACK_TEAM_ID` |
 | [PostgreSQL](#postgresql) | Database connections, `.pgpass` / `.postgresql` credentials |
 | [Brave Search](#brave-search) | Search API only, needs `BRAVE_API_KEY` |
-| [Comprehensive reference](#comprehensive-reference) | Full schema with annotations for every field — use as a template |
+| [Comprehensive reference](#comprehensive-reference) | Full schema with annotations for every fielduse as a template |
 | [Gateway registry](#gateway-registry) | Wrapping servers registered in an MCP gateway config |
 
 ## Filesystem
 
-Local file access only — no network egress, no env passthrough.
+Local file access onlyno network egress, no env passthrough.
 
 ```yaml
-# Example Warden policy — @modelcontextprotocol/server-filesystem
+# Example Warden policy@modelcontextprotocol/server-filesystem
 # Copy this and adjust the command path, read grants, and env as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -54,12 +54,12 @@ network:
 
 env:
   # No environment variables are required by this server. If your Node.js
-  # runtime needs specific vars, add them here — values are never stored,
+  # runtime needs specific vars, add them herevalues are never stored,
   # only the names are forwarded from the parent shell.
   allow: []
 
 limits:
-  # Minimal footprint — the server does pure local filesystem I/O.
+  # Minimal footprintthe server does pure local filesystem I/O.
   memory_mb: 128
   timeout_s: 60
 ```
@@ -69,7 +69,7 @@ limits:
 REST + GraphQL against `api.github.com`, needs `GITHUB_TOKEN`.
 
 ```yaml
-# Example Warden policy — @modelcontextprotocol/server-github
+# Example Warden policy@modelcontextprotocol/server-github
 # Copy this and adjust the command path, cache/output dirs, and token name.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -111,7 +111,7 @@ limits:
 Slack API + web UI, needs `SLACK_BOT_TOKEN` and `SLACK_TEAM_ID`.
 
 ```yaml
-# Example Warden policy — @modelcontextprotocol/server-slack
+# Example Warden policy@modelcontextprotocol/server-slack
 # Copy this and adjust the command path and token name as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -153,7 +153,7 @@ limits:
 Database connections with file-based credentials.
 
 ```yaml
-# Example Warden policy — PostgreSQL database MCP server
+# Example Warden policyPostgreSQL database MCP server
 # Copy this and adjust hostnames, paths, and credentials as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -163,7 +163,7 @@ command: ["/usr/bin/node", "./server/dist/index.js"]
 
 filesystem:
   # PostgreSQL client libraries read .pgpass and .postgresql for credentials
-  # and SSL config. Grant only the exact paths you need — never the whole home.
+  # and SSL config. Grant only the exact paths you neednever the whole home.
   read:
     - "./config/.pgpass"
     - "./config/.postgresql"
@@ -172,7 +172,7 @@ filesystem:
 
 network:
   # Allow connections to the database host(s) only. Replace with your
-  # actual hostnames; wildcard hosts are not supported — list each one.
+  # actual hostnames; wildcard hosts are not supportedlist each one.
   allow:
     - "localhost"
     - "db.internal.example.com"
@@ -200,7 +200,7 @@ limits:
 Search API only, needs `BRAVE_API_KEY`.
 
 ```yaml
-# Example Warden policy — @modelcontextprotocol/server-brave-search
+# Example Warden policy@modelcontextprotocol/server-brave-search
 # Copy this and adjust the command path and API key name as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -234,17 +234,17 @@ limits:
 
 ## Comprehensive reference
 
-Full schema with annotations for every field — use as a template.
+Full schema with annotations for every fielduse as a template.
 
 ```yaml
-# Warden Policy — Comprehensive Reference
+# Warden PolicyComprehensive Reference
 # =========================================
 #
 # This file documents the full policy schema with examples for every field.
 # Copy this file (or any example in this directory) and adjust it for your
 # MCP server. Relative paths are resolved against THIS FILE's directory, not
 # your shell's CWD. The executable must be an absolute path because the
-# sandbox binds its parent directory — a bare command name would resolve
+# sandbox binds its parent directorya bare command name would resolve
 # nowhere inside.
 #
 # Run with: warden run --policy policy.example.yaml -- <command...>
@@ -268,7 +268,7 @@ command: ["/usr/bin/node", "./server/dist/index.js"]
 filesystem:
   # Read-only grants: the server can open and read files here but cannot
   # modify, create, or delete anything. Grant the smallest set of directories
-  # the server actually needs — never the whole home or project root unless
+  # the server actually needsnever the whole home or project root unless
   # required.
   read:
     - "./data/cache"      # Example: local response cache
@@ -289,7 +289,7 @@ filesystem:
 # `network.allow` before performing any DNS lookup or connection. DNS lookups
 # for disallowed hosts are blocked at the sandbox boundary.
 #
-# Only bare hostnames or IP literals are accepted — ports, paths, and URLs are
+# Only bare hostnames or IP literals are acceptedports, paths, and URLs are
 # rejected (the egress layer handles port selection). Wildcards are not
 # supported; list each host your server needs to reach.
 network:
@@ -303,7 +303,7 @@ network:
 # ── Environment ──────────────────────────────────────────────────────────────
 #
 # Only the names listed here are forwarded from the parent shell. Values are
-# NEVER stored in the policy file — this list only controls what gets passed
+# NEVER stored in the policy filethis list only controls what gets passed
 # through. An empty allowlist means the sandboxed process starts with no
 # environment variables (except those explicitly set by the runtime).
 #
@@ -352,7 +352,7 @@ Example gateway registry mixing both supported YAML families. Remote entries
 #
 # Use ${VAR} for required secrets (fails closed when unset) and
 # ${VAR:-default} for optional values. Values stay in the gateway file and the
-# parent environment — generated policies store NAMES only, never secrets.
+# parent environmentgenerated policies store NAMES only, never secrets.
 
 upstreams:
   - id: "context7"
@@ -375,7 +375,7 @@ backends:
 
   sentry:
     http_url: "https://mcp.sentry.dev/mcp"
-    description: "Sentry issues (remote — not sandboxable)"
+    description: "Sentry issues (remotenot sandboxable)"
 ```
 
 Example MCP gateway config (`gateway-mcp.json` shape):
@@ -416,13 +416,13 @@ command: ["/usr/bin/node", "./path/to/your/server.js"]
 ```
 
 The executable **must be an absolute path** inside the sandbox because Warden
-bind-mounts only the paths you list — a bare name like `node` would resolve
+bind-mounts only the paths you lista bare name like `node` would resolve
 nowhere.
 
 ### Home directory grants
 
 Several examples pass `HOME` through `env.allow` and grant read access to
-`~/.config`-style paths. This is intentional — many Node.js and Python
+`~/.config`-style paths. This is intentionalmany Node.js and Python
 libraries expect `HOME` to be set. **Do not combine `HOME` with a broad
 `filesystem.read` grant** (especially `~/.ssh`); see
 [Security Review](security.md#5-credential-exposure) for details.
@@ -430,14 +430,14 @@ libraries expect `HOME` to be set. **Do not combine `HOME` with a broad
 ### Empty allowlists are explicit
 
 Notice that `network.allow: []` and `env.allow: []` appear in the filesystem
-example. An empty list is *not* the same as omitting the key — the former
+example. An empty list is *not* the same as omitting the keythe former
 explicitly denies everything, the latter falls back to the default (which
 varies by field). Being explicit in your policy makes intent clear and helps
 `warden init` produce a correct starter.
 
 ## Next steps
 
-- Check the [Compatibility Matrix](compatibility.md) — 18 tested
+- Check the [Compatibility Matrix](compatibility.md)18 tested
   servers with exact policies pinned as regression fixtures.
 - Read the [Schema Reference](schema.md) to understand every field.
 - Run `warden trace -- <your-server>` to see what a server actually touches.

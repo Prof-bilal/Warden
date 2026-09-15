@@ -11,7 +11,7 @@
 #
 # Use ${VAR} for required secrets (fails closed when unset) and
 # ${VAR:-default} for optional values. Values stay in the gateway file and the
-# parent environment — generated policies store NAMES only, never secrets.
+# parent environmentgenerated policies store NAMES only, never secrets.
 
 upstreams:
   - id: "context7"
@@ -34,4 +34,4 @@ backends:
 
   sentry:
     http_url: "https://mcp.sentry.dev/mcp"
-    description: "Sentry issues (remote — not sandboxable)"
+    description: "Sentry issues (remotenot sandboxable)"

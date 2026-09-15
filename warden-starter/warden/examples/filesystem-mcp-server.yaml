@@ -1,4 +1,4 @@
-# Example Warden policy — @modelcontextprotocol/server-filesystem
+# Example Warden policy@modelcontextprotocol/server-filesystem
 # Copy this and adjust the command path, read grants, and env as needed.
 #
 # Relative paths below are resolved against THIS FILE's directory, not your
@@ -23,11 +23,11 @@ network:
 
 env:
   # No environment variables are required by this server. If your Node.js
-  # runtime needs specific vars, add them here — values are never stored,
+  # runtime needs specific vars, add them herevalues are never stored,
   # only the names are forwarded from the parent shell.
   allow: []
 
 limits:
-  # Minimal footprint — the server does pure local filesystem I/O.
+  # Minimal footprintthe server does pure local filesystem I/O.
   memory_mb: 128
   timeout_s: 60

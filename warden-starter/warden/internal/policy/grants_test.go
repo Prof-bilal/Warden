@@ -9,7 +9,7 @@ import (
 
 func TestProposeFileGrant(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+		t.Skip("POSIX paths not absolute on Windowsskip POSIX grant logic tests")
 	}
 	grant, write, ok := ProposeFileGrant("openat", "/srv/data/file.txt")
 	if !ok || grant != "/srv/data/file.txt" || write {
@@ -72,7 +72,7 @@ func TestAddHost(t *testing.T) {
 
 func TestAddFileGrantSubsumes(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+		t.Skip("POSIX paths not absolute on Windowsskip POSIX grant logic tests")
 	}
 	p := Policy{}
 	if _, err := p.AddFileGrant("/srv/data/file.txt", false); err != nil {
@@ -96,7 +96,7 @@ func TestAddFileGrantSubsumes(t *testing.T) {
 
 func TestSaveRoundTrip(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("POSIX paths not absolute on Windows — skip POSIX grant logic tests")
+		t.Skip("POSIX paths not absolute on Windowsskip POSIX grant logic tests")
 	}
 	path := filepath.Join(t.TempDir(), "policy.yaml")
 	p := Policy{Filesystem: Filesystem{Read: []string{"/srv/ro"}}}

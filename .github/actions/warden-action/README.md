@@ -39,6 +39,7 @@ jobs:
 | `run` | Command to run inside the sandbox | Yes | - |
 | `backend` | Sandbox backend (auto, linux, docker) | No | `auto` |
 | `approve` | Enable interactive approval mode | No | `false` |
+| `warden-version` | Warden release tag to download from GitHub Releases (default: latest) | No | latest |
 | `working-directory` | Working directory for the command | No | `.` |
 
 ## Outputs

@@ -95,6 +95,15 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		"--network", "none",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges=true",
+	)
+	// Run as the invoking user so bind mounts owned by that user stay
+	// writable despite --cap-drop ALL (no CAP_DAC_OVERRIDE). Windows has
+	// no uid/gid concept (os.Getuid/os.Getgid return -1), so there the
+	// flag is omitted and the container keeps its image-default user.
+	if uid, gid := os.Getuid(), os.Getgid(); uid >= 0 && gid >= 0 {
+		args = append(args, "--user", fmt.Sprintf("%d:%d", uid, gid))
+	}
+	args = append(args,
 		"--pids-limit", "256",
 		"--ulimit", "nofile=1024:1024",
 		"--read-only",
@@ -106,6 +115,26 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 	}
 
 	addBind := func(src, dst, mode string) {
+		// Resolve relative paths to absolute. Docker resolves -v src:dst
+		// differently: src is resolved on the host, dst inside the
+		// container (where WORKDIR is /). Using relative paths causes the
+		// host CWD to mount at the container's root instead of the same
+		// path, breaking any command that references the original path.
+		if !filepath.IsAbs(src) {
+			if abs, err := filepath.Abs(src); err == nil {
+				src = abs
+			}
+		}
+		// Container-internal destinations are POSIX-rooted ("/.warden/...").
+		// filepath.IsAbs does not recognize those on a Windows host, and the
+		// expansion below would turn them into host-CWD-prefixed paths that
+		// mount the proxy bridge at the wrong container location. Only
+		// genuinely relative destinations are expanded.
+		if !filepath.IsAbs(dst) && !strings.HasPrefix(dst, "/") {
+			if abs, err := filepath.Abs(dst); err == nil {
+				dst = abs
+			}
+		}
 		args = append(args, "-v", src+":"+dst+":"+mode)
 		seen[src] = true
 	}
@@ -119,6 +148,13 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 
 	mode := make(map[string]string)
 	for _, path := range p.Filesystem.Read {
+		// /tmp and /run are provided as tmpfs mounts above; binding either
+		// read-only would collide with those tmpfs mounts ("Duplicate mount
+		// point" from the daemon, exit 125) — same reason the write loop
+		// below skips them. Paths under /tmp bind fine over the tmpfs.
+		if path == "/tmp" || path == "/run" {
+			continue
+		}
 		if mode[path] == "write" {
 			return nil, fmt.Errorf("docker args: %q is granted as both read and write", path)
 		}
@@ -135,6 +171,11 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 			if path == base || isUnder(path, base) {
 				return nil, fmt.Errorf("docker args: %q is inside the read-only runtime base %s and cannot be granted write", path, base)
 			}
+		}
+		// /tmp and /run are already provided as tmpfs mounts above;
+		// skip them to avoid "Duplicate mount point" errors from Docker.
+		if path == "/tmp" || path == "/run" {
+			continue
 		}
 		mode[path] = "write"
 		addBind(path, path, "rw")
@@ -276,7 +317,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 // resolveBridgeExecutable returns a Linux ELF warden binary that can run
 // inside the container as the proxy bridge. On Linux hosts the current
 // executable works. On other hosts (e.g. macOS talking to Docker Desktop's
-// Linux VM), the Darwin binary cannot execute in the container — callers
+// Linux VM), the Darwin binary cannot execute in the containercallers
 // must set WARDEN_DOCKER_BRIDGE to a Linux-built warden.
 func resolveBridgeExecutable() (string, error) {
 	if v := strings.TrimSpace(os.Getenv("WARDEN_DOCKER_BRIDGE")); v != "" {

@@ -607,7 +607,7 @@ func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []str
 	}
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Dim(sep))
-	// Sandbox active line — green, not just color
+	// Sandbox active linegreen, not just color
 	fmt.Fprintf(os.Stderr, "%s %s\n", ui.Green(ui.CheckMark()), ui.Green("Sandbox active"))
 	fmt.Fprintf(os.Stderr, "%s\n", ui.Dim("Warden fails closed when sandboxing is unavailable."))
 	fmt.Fprintln(os.Stderr, "")
@@ -1198,6 +1198,7 @@ func printProxyHelp() {
 	fmt.Fprintln(os.Stderr, "  --policy <file>            MCP proxy policy file (required)")
 	fmt.Fprintln(os.Stderr, "  --listen <addr>            Listen address (default: localhost:8765)")
 	fmt.Fprintln(os.Stderr, "  --upstream <url>           Override upstream from policy")
+	fmt.Fprintln(os.Stderr, "  --transport <type>         Force transport: http, sse, or auto (default: auto)")
 	fmt.Fprintln(os.Stderr, "  --help                     Show this help")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
@@ -1223,7 +1224,7 @@ func printProxyHelp() {
 }
 
 func cmdProxy(args []string) {
-	policyPath, listen, upstreamOverride, err := parseProxyArgs(args)
+	policyPath, listen, upstreamOverride, transportOverride, err := parseProxyArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
 		printProxyHelp()
@@ -1246,6 +1247,11 @@ func cmdProxy(args []string) {
 		p.MCP.Upstream = upstreamOverride
 	}
 
+	// Override transport if provided via command line
+	if transportOverride != "" {
+		p.MCP.Transport = transportOverride
+	}
+
 	if p.MCP.Upstream == "" {
 		fmt.Fprintf(os.Stderr, "warden proxy: policy must specify mcp.upstream\n")
 		os.Exit(2)
@@ -1259,11 +1265,13 @@ func cmdProxy(args []string) {
 	}
 	defer auditFile.Close()
 
-	// Build the MCP proxy policy from the loaded policy, honoring the CLI
-	// override for --upstream. Only local stdio upstreams are supported;
-	// HTTP/SSE upstreams are rejected by NewProxyServer (not implemented).
+	// Build the MCP proxy policy from the loaded policy, honoring CLI
+	// overrides for --upstream and --transport. All three upstream families
+	// are supported: stdio (subprocess bridge), HTTP (Streamable HTTP), and
+	// SSE (server-sent events).
 	mcpPolicy := mcpproxy.MCPPolicy{
 		Upstream:      p.MCP.Upstream,
+		Transport:     mcpproxy.MCPTransport(p.MCP.Transport),
 		AllowTools:    p.MCP.AllowTools,
 		DenyPatterns:  p.MCP.DenyPatterns,
 		MaxPayloadKB:  p.MCP.MaxPayloadKB,
@@ -1310,7 +1318,7 @@ func cmdProxy(args []string) {
 	fmt.Fprintln(os.Stderr, "\nwarden proxy: shutting down")
 }
 
-func parseProxyArgs(args []string) (policyPath, listen, upstream string, err error) {
+func parseProxyArgs(args []string) (policyPath, listen, upstream, transport string, err error) {
 	listen = "localhost:8765" // default
 
 	for i := 0; i < len(args); i++ {
@@ -1318,21 +1326,21 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream string, err err
 		switch {
 		case arg == "--policy" || arg == "-policy":
 			if i+1 >= len(args) {
-				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
 			}
 			if policyPath != "" {
-				return "", "", "", fmt.Errorf("--policy specified twice")
+				return "", "", "", "", fmt.Errorf("--policy specified twice")
 			}
 			policyPath = args[i+1]
 			i++
 		case strings.HasPrefix(arg, "--policy="):
 			if policyPath != "" {
-				return "", "", "", fmt.Errorf("--policy specified twice")
+				return "", "", "", "", fmt.Errorf("--policy specified twice")
 			}
 			policyPath = strings.TrimPrefix(arg, "--policy=")
 		case arg == "--listen" || arg == "-listen":
 			if i+1 >= len(args) {
-				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
 			}
 			listen = args[i+1]
 			i++
@@ -1340,24 +1348,32 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream string, err err
 			listen = strings.TrimPrefix(arg, "--listen=")
 		case arg == "--upstream" || arg == "-upstream":
 			if i+1 >= len(args) {
-				return "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
 			}
 			upstream = args[i+1]
 			i++
 		case strings.HasPrefix(arg, "--upstream="):
 			upstream = strings.TrimPrefix(arg, "--upstream=")
+		case arg == "--transport" || arg == "-transport":
+			if i+1 >= len(args) {
+				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+			}
+			transport = args[i+1]
+			i++
+		case strings.HasPrefix(arg, "--transport="):
+			transport = strings.TrimPrefix(arg, "--transport=")
 		case strings.HasPrefix(arg, "-"):
-			return "", "", "", fmt.Errorf("unknown flag %q (want --policy, --listen, or --upstream)", arg)
+			return "", "", "", "", fmt.Errorf("unknown flag %q (want --policy, --listen, --upstream, or --transport)", arg)
 		default:
-			return "", "", "", fmt.Errorf("unexpected argument %q", arg)
+			return "", "", "", "", fmt.Errorf("unexpected argument %q", arg)
 		}
 	}
 
 	if policyPath == "" {
-		return "", "", "", fmt.Errorf("missing required flag --policy")
+		return "", "", "", "", fmt.Errorf("missing required flag --policy")
 	}
 
-	return policyPath, listen, upstream, nil
+	return policyPath, listen, upstream, transport, nil
 }
 
 func printK8sHelp() {

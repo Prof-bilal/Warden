@@ -1,4 +1,4 @@
-# Fixture policy — @modelcontextprotocol/server-sqlite (compat: pass)
+# Fixture policy@modelcontextprotocol/server-sqlite (compat: pass)
 # SQLite needs WRITE on the db directory (WAL + journal sidecars), not just
 # the db file. The write grant on ./data covers ./data/db.sqlite3.
 command: ["/usr/bin/node", "./server/dist/index.js"]
