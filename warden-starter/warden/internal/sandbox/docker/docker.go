@@ -95,7 +95,15 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		"--network", "none",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges=true",
-		"--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+	)
+	// Run as the invoking user so bind mounts owned by that user stay
+	// writable despite --cap-drop ALL (no CAP_DAC_OVERRIDE). Windows has
+	// no uid/gid concept (os.Getuid/os.Getgid return -1), so there the
+	// flag is omitted and the container keeps its image-default user.
+	if uid, gid := os.Getuid(), os.Getgid(); uid >= 0 && gid >= 0 {
+		args = append(args, "--user", fmt.Sprintf("%d:%d", uid, gid))
+	}
+	args = append(args,
 		"--pids-limit", "256",
 		"--ulimit", "nofile=1024:1024",
 		"--read-only",
@@ -117,7 +125,12 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 				src = abs
 			}
 		}
-		if !filepath.IsAbs(dst) {
+		// Container-internal destinations are POSIX-rooted ("/.warden/...").
+		// filepath.IsAbs does not recognize those on a Windows host, and the
+		// expansion below would turn them into host-CWD-prefixed paths that
+		// mount the proxy bridge at the wrong container location. Only
+		// genuinely relative destinations are expanded.
+		if !filepath.IsAbs(dst) && !strings.HasPrefix(dst, "/") {
 			if abs, err := filepath.Abs(dst); err == nil {
 				dst = abs
 			}

@@ -1,8 +1,10 @@
 package docker
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -48,6 +50,16 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("docker args missing %q\nargs: %v", want, args)
 		}
+	}
+	// --user maps the invoking user where the OS has uid/gid (Linux/macOS);
+	// on Windows os.Getuid/os.Getgid return -1 and the flag is omitted.
+	if runtime.GOOS == "windows" {
+		if strings.Contains(joined, "--user ") {
+			t.Fatalf("windows docker args must not include --user; args: %v", args)
+		}
+	} else if !strings.Contains(joined, fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid())) {
+		t.Fatalf("docker args missing invoking-user mapping %q\nargs: %v",
+			fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid()), args)
 	}
 }
 
