@@ -1,3 +1,9 @@
+# Personal / AI-assistant workspace artifacts (local only)
+.claude/
+.codex/
+.agents/
+.freebuff/
+
 # Marketing folder (local only, not pushed to GitHub)
 marketing/
 
@@ -38,6 +44,9 @@ __pycache__/
 
 # Go build binary
 warden-starter/warden/warden
+# Cross-compiled release binaries (built by `make build-all` in the module)
+warden-starter/warden/dist/
+
 
 # Proof-harness output (generated artifacts, plan §6)
 evidence/
