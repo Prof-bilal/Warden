@@ -21,7 +21,7 @@ inputs:
     required: false
     default: 'false'
   warden-version:
-    description: 'Warden release tag to download from GitHub Releases (default: latest). When unset, a checked-in dist/warden-linux-amd64 binary is preferred.'
+    description: 'Warden release tag to download from GitHub Releases (default: latest). A checked-in dist/warden-linux-amd64 binary takes precedence when present; otherwise the latest release is used.'
     required: false
     default: ''
   working-directory:
@@ -66,7 +66,9 @@ runs:
         BIN_NAME="warden-linux-amd64"
         TARGET="/usr/local/bin/warden"
 
-        # 1) Repo-local dist binary (matches this commit; dist/ is committed).
+        # 1) Repo-local dist binary. dist/ is no longer committed to the repo
+        #    (built binaries are not tracked); the file is only present if a
+        #    workflow artifact or a local build placed it there.
         if [[ -x "dist/$BIN_NAME" ]]; then
           echo "::notice::Using checked-in dist/$BIN_NAME"
           sudo install -m 0755 "dist/$BIN_NAME" "$TARGET"
@@ -94,10 +96,21 @@ runs:
         echo "::warning::Could not download release binary, falling back to build from source"
 
         # 3) Build from source (Go is available on GitHub Actions runners).
-        GO_SRC="warden-starter/warden/cmd/warden"
-        if [[ -d "$GO_SRC" ]] && command -v go &> /dev/null; then
-          echo "::notice::Building Warden from source"
-          CGO_ENABLED=0 go build -o "$TARGET" "./$GO_SRC/"
+        #    Build from the module directory: the only Go module in this repo
+        #    lives at warden-starter/warden (module
+        #    github.com/warden-sandbox/warden); there is no module at the
+        #    workspace root, so a root-level `go build` of this package cannot
+        #    resolve it.
+        #    The runner's Go toolchain must satisfy the `go` directive in
+        #    warden-starter/warden/go.mod (modern Go auto-switches toolchains
+        #    when allowed; otherwise Go itself reports a clear version error).
+        MOD_DIR="warden-starter/warden"
+        if [[ -f "$MOD_DIR/go.mod" ]] && command -v go &> /dev/null; then
+          echo "::notice::Building Warden from source ($MOD_DIR, $(go env GOVERSION))"
+          if ! ( cd "$MOD_DIR" && CGO_ENABLED=0 go build -o "$TARGET" ./cmd/warden ); then
+            echo "::error::go build failed in $MOD_DIR. Check that the Go toolchain ($(go env GOVERSION)) satisfies the go directive in $MOD_DIR/go.mod ($(sed -n 's/^go //p' "$MOD_DIR/go.mod" | head -1))."
+            exit 1
+          fi
           warden version
           exit 0
         fi

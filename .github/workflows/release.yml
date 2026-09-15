@@ -30,7 +30,8 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22.x"
+          # Match go.mod (go 1.24). Do not pin below the module requirement.
+          go-version: "1.24.x"
 
       - name: Build binaries
         run: make build-all

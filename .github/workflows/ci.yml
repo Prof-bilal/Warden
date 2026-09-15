@@ -226,3 +226,72 @@ jobs:
           python-version: "3.x"
       - run: pip install mkdocs-material
       - run: mkdocs build --strict
+
+  # Repository hygiene guard. Runs at the workspace root: the job-level
+  # defaults override the workflow-level working-directory (which points at
+  # the Go module) so the check sees the whole tree. Verifies:
+  #   1. exactly one Go module exists, at the canonical path
+  #   2. no generated/dependency directories are tracked (node_modules,
+  #      dist, mkdocs site, Next build output, evidence)
+  #   3. no native binaries (ELF/Mach-O/PE) are tracked
+  # Tracked files override .gitignore, so ignore rules alone cannot prevent
+  # 2 and 3 once a path has been committed; hence these checks.
+  repo-hygiene:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exactly one Go module
+        # The only supported module is warden-starter/warden
+        # (github.com/warden-sandbox/warden). Stray go.mod files (the
+        # historical root stubs) made root-level `go build` and the
+        # warden-action build-from-source fallback resolve against the wrong
+        # module; fail loudly instead of letting that trap return.
+        # If a second module is ever genuinely required, update this guard
+        # AND .github/actions/warden-action/action.yml together.
+        run: |
+          set -euo pipefail
+          mods="$(find . -name go.mod -not -path './.git/*' -not -path '*/node_modules/*' | sort)"
+          count="$(printf '%s\n' "$mods" | grep -c . || true)"
+          echo "go.mod files found: $count"
+          printf '%s\n' "$mods" | sed 's/^/  /'
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Expected exactly 1 go.mod in the repository, found $count"
+            exit 1
+          fi
+          if [ "$mods" != "./warden-starter/warden/go.mod" ]; then
+            echo "::error::Expected the single go.mod at warden-starter/warden/go.mod, found: $mods"
+            exit 1
+          fi
+          echo "OK: single Go module at warden-starter/warden"
+      - name: No generated directories tracked
+        # Bans tracked files under generated/dependency output directories.
+        # ("site" only bans the generated docs output; a future source
+        # directory genuinely named site/ would need a path-specific rule.)
+        run: |
+          set -euo pipefail
+          hits="$(git ls-files | grep -E '(^|/)(node_modules|dist|site|\.next|evidence)/' || true)"
+          if [ -n "$hits" ]; then
+            echo "::error::Generated artifacts are tracked in git. Untrack with: git rm -r --cached <path>"
+            printf '%s\n' "$hits" | head -20 | sed 's/^/  /'
+            total="$(printf '%s\n' "$hits" | wc -l)"
+            if [ "$total" -gt 20 ]; then echo "  ... and $((total-20)) more"; fi
+            exit 1
+          fi
+          echo "OK: no generated directories tracked"
+      - name: No native binaries tracked
+        # Magic bytes via file(1): ELF executables/shared objects, Mach-O,
+        # and PE (Windows). Text launchers (e.g. the npm wrapper bin/warden)
+        # and regular assets are unaffected.
+        run: |
+          set -euo pipefail
+          hits="$(git ls-files -z | xargs -0 -r file --mime-type --no-dereference 2>/dev/null \
+            | grep -E 'application/(x-executable|x-sharedlib|x-mach-binary|x-dosexec)' || true)"
+          if [ -n "$hits" ]; then
+            echo "::error::Native binaries are tracked in git. Build outputs belong in Releases / npm, not the repo:"
+            printf '%s\n' "$hits" | sed 's/^/  /'
+            exit 1
+          fi
+          echo "OK: no native binaries tracked"

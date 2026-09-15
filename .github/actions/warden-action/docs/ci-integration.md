@@ -414,13 +414,29 @@ Compared to Docker:
 - **Linux only**: GitHub Actions on Linux runners only
 - **No Windows**: Windows runners not yet supported  
 - **No interactive**: Approval mode disabled in CI
-- **Binary distribution**: Requires Warden binary (work in progress)
+- **Linux amd64 binaries only**: released and source-built binaries target Linux amd64
+
+### How the action installs the Warden binary
+
+The install step uses the first source that works, in this order:
+
+1. **Repo-local `dist/warden-linux-amd64`.** `dist/` is gitignored and no
+   longer committed to the repository, so a fresh checkout does **not** have
+   it — the file only exists if an earlier workflow step (build, artifact
+   download) placed it there.
+2. **GitHub Releases download** (default path). The `warden-version` input
+   selects the release tag (`latest` by default); binaries are published by
+   the release workflow on every `v*` tag.
+3. **Build from source.** If no binary is available, the action builds
+   `warden-starter/warden` (the Go module) with the runner's Go toolchain.
+   The toolchain must satisfy the `go` directive in
+   `warden-starter/warden/go.mod` — older toolchains fail with a clear
+   error instead of building an unusable binary.
 
 ### Planned Improvements
 
 - Windows runner support
 - macOS runner support
-- Pre-built binary distribution
 - Integration with GitHub security features
 - SARIF output for security events
 
