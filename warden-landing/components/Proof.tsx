@@ -75,15 +75,18 @@ export default function Proof() {
 
         <p className="mt-6 text-[0.8125rem] leading-[1.6] text-muted/80">
           We publish only claims backed by committed test fixtures and source
-          code. Attack-simulation benchmarks are not included until a
-          reproducible harness and fixtures are committed to the repo. See{" "}
+          code. Attack simulations are now reproducible end-to-end: the
+          harness{" "}
           <a
             className="underline decoration-muted/40 hover:text-paper"
-            href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/ROADMAP.md"
+            href="https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/testdata/attacks/run-attacks.sh"
           >
-            ROADMAP.md
+            testdata/attacks/run-attacks.sh
           </a>{" "}
-          for what&apos;s still in progress.
+          runs seven attacks unsandboxed (control must land) and sandboxed
+          (must be contained), confirms containment host-side — collector
+          logs, vault hashes, escape probes — and writes evidence files on
+          every run. Measured on Linux x86_64: 7/7 contained.
         </p>
       </div>
     </section>

@@ -166,6 +166,30 @@ go build -o warden ./cmd/warden
 ./testdata/proof/run-proof.sh          # writes evidence/ and prints the verdict table
 ```
 
+### Attack simulations — 7/7 contained
+
+The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side** — collector request logs, vault sha256 integrity, escape-probe files — never by trusting the sandboxed process's own output. Measured results (Linux x86_64, warden built from source):
+
+| Attack | Without Warden (control) | With Warden (sandbox) | Verdict |
+|---|---|---|---|
+| **fs_exfil** — copy decoy SSH keys + AWS creds | EXFILTRATED | BLOCKED (0 copies) | ✅ |
+| **net_exfil** — POST fingerprint to collector | Delivered (collector hit) | BLOCKED (0 hits) | ✅ |
+| **env_steal** — harvest 3 planted decoy secrets | SECRETS_STOLEN | BLOCKED (0 visible) | ✅ |
+| **process_spawn** — host probe + escape-probe write | FULL_SYSTEM_ACCESS | BLOCKED (no probe file) | ✅ |
+| **symlink_traverse** — read through a link outside grants | PARTIAL_ACCESS | BLOCKED | ✅ |
+| **ransomware** — XOR-encrypt + delete decoy docs | FILES_DESTROYED | NO_DAMAGE (vault byte-identical) | ✅ |
+| **cpu_bomb** — unbounded busy-loop | ran away (130k iters/3s) | TIMEOUT_KILLED (count frozen) | ✅ |
+
+Reproduce:
+
+```bash
+cd warden-starter/warden
+go build -o warden ./cmd/warden
+bash testdata/attacks/run-attacks.sh   # exits 0 only if every control landed AND everything was contained
+```
+
+All data is decoy data the harness creates itself (fake keys, XOR "encryption", loopback-only collectors) — safe to run on your machine. Evidence format and scenario details: [testdata/attacks/README.md](warden-starter/warden/testdata/attacks/README.md).
+
 ### Policy builder output
 
 <p align="center">
@@ -185,7 +209,7 @@ go build -o warden ./cmd/warden
 
 CI runs the test matrix on Linux, macOS, and Windows runners, plus cross-builds for `windows/amd64` and `darwin/arm64`. The GitHub Action that ships Warden to CI users is tested end-to-end on real runners (`.github/workflows/test-warden-action.yml`).
 
-> **Honesty note:** illustrative attack-simulation numbers that appear on the landing page are *not* independently verified measurements and are labeled as such there. The proof harness above is the reproducible, evidence-backed verification.
+> **Honesty note:** the attack table above comes from the reproducible harness — every number is re-measured on each run with committed evidence files. Illustrative figures elsewhere (landing page galleries) that predate the harness are labeled there and are superseded by harness output.
 
 ## 📦 Install
 
