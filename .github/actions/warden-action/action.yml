@@ -182,8 +182,15 @@ runs:
         cd "$WORKING_DIR"
 
         if [[ "$WARDEN_POLICY_INPUT" == *$'\n'* ]]; then
-          POLICY_PATH="$RUNNER_TEMP/warden-inline-policy.yaml"
+          # Write inline policies into the working directory, not RUNNER_TEMP:
+          # warden resolves a policy's relative filesystem grants against the
+          # policy file's directory, so a temp-dir policy would anchor "." at
+          # RUNNER_TEMP and leave the workspace (and the sandboxed script)
+          # outside the sandbox. Set WARDEN_POLICY_INLINE in BOTH branches so
+          # the flag always reflects this use, never a previous one.
+          POLICY_PATH="$PWD/.warden-action-policy.yaml"
           printf '%s\n' "$WARDEN_POLICY_INPUT" > "$POLICY_PATH"
+          echo "WARDEN_POLICY_INLINE=true" >> "$GITHUB_ENV"
           echo "::notice::Using inline policy (written to $POLICY_PATH)"
         else
           POLICY_PATH="$WARDEN_POLICY_INPUT"
@@ -191,6 +198,7 @@ runs:
             echo "::error::Policy file not found: $POLICY_PATH"
             exit 1
           fi
+          echo "WARDEN_POLICY_INLINE=false" >> "$GITHUB_ENV"
           echo "::notice::Using policy: $POLICY_PATH"
         fi
         echo "WARDEN_POLICY_PATH=$POLICY_PATH" >> "$GITHUB_ENV"
@@ -231,8 +239,16 @@ runs:
         # Prefer the working directory (always policy-granted as ".") over
         # RUNNER_TEMP, which may sit outside the sandbox filesystem grants.
         SCRIPT="$(pwd)/.warden-action-cmd.sh"
-        # Ensure a trailing newline so the final line always executes.
-        printf '%s\n' "$WARDEN_COMMAND" > "$SCRIPT"
+        # Prefix the command with a cd to the script's own directory (the
+        # working directory): the docker backend starts the process at the
+        # image WORKDIR ("/"), unlike the linux backend which inherits this
+        # step's cwd, so without the cd a docker-backend run would resolve
+        # every relative path in the command against "/". A trailing newline
+        # ensures the final line always executes.
+        {
+          printf 'cd "$(dirname "$0")" || exit 1\n'
+          printf '%s\n' "$WARDEN_COMMAND"
+        } > "$SCRIPT"
         chmod +x "$SCRIPT"
         
         WARDEN_ARGS=(run --policy "$POLICY_PATH")
@@ -261,6 +277,11 @@ runs:
         EXIT_CODE=$?
         
         rm -f "$SCRIPT"
+        # Clean up an inline policy written into the workspace by the
+        # validation step. File policies are user files — never removed.
+        if [[ "${WARDEN_POLICY_INLINE:-}" == "true" ]]; then
+          rm -f "$POLICY_PATH"
+        fi
         
         echo "::endgroup::"
         

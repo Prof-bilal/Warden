@@ -51,6 +51,37 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	}
 }
 
+// /tmp and /run are provided as tmpfs mounts; binding either exactly at its
+// root makes the Docker daemon reject the container with "Duplicate mount
+// point" (exit 125) — the failure that broke the warden-action smoke tests.
+func TestBuildDockerArgsTmpfsPathsNeverBindAtRoot(t *testing.T) {
+	bridge := filepath.Join(t.TempDir(), "warden")
+	if err := os.WriteFile(bridge, []byte("x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{
+			Read:  []string{"/tmp", "/run"},
+			Write: []string{"/tmp"},
+		},
+	}
+	args, err := BuildDockerArgs([]string{filepath.Join(t.TempDir(), "true")}, p, bridge, t.TempDir(), "alpine:3.20")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(args, " ")
+	for _, forbidden := range []string{"-v /tmp:", "-v /run:"} {
+		if strings.Contains(joined, forbidden) {
+			t.Fatalf("docker args bind %q exactly at a tmpfs path; daemon would reject with Duplicate mount point\nargs: %v", forbidden, args)
+		}
+	}
+	for _, want := range []string{"--tmpfs /tmp:", "--tmpfs /run"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("docker args missing tmpfs mount %q\nargs: %v", want, args)
+		}
+	}
+}
+
 func TestBuildDockerArgsRejectsReadWriteConflict(t *testing.T) {
 	dir := t.TempDir()
 	bridge := filepath.Join(t.TempDir(), "warden")

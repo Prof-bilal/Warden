@@ -95,6 +95,7 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		"--network", "none",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges=true",
+		"--user", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		"--pids-limit", "256",
 		"--ulimit", "nofile=1024:1024",
 		"--read-only",
@@ -134,6 +135,13 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 
 	mode := make(map[string]string)
 	for _, path := range p.Filesystem.Read {
+		// /tmp and /run are provided as tmpfs mounts above; binding either
+		// read-only would collide with those tmpfs mounts ("Duplicate mount
+		// point" from the daemon, exit 125) — same reason the write loop
+		// below skips them. Paths under /tmp bind fine over the tmpfs.
+		if path == "/tmp" || path == "/run" {
+			continue
+		}
 		if mode[path] == "write" {
 			return nil, fmt.Errorf("docker args: %q is granted as both read and write", path)
 		}
