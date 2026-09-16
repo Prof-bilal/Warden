@@ -7,7 +7,6 @@ category: security
 tags: ["mcp", "sandboxing"]
 image: /diagrams/sandbox-boundary.webp
 draft: false
-sample: true
 ---
 
 An MCP (Model Context Protocol) server is a program that an AI client launches on your machine and talks to over stdio. From the operating system's point of view, that server is just another process you started. It runs as your user, with your permissions: it can read every file you can read, open connections to any host you can reach, and see every environment variable in your shell.

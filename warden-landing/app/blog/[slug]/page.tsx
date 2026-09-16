@@ -135,13 +135,6 @@ export default async function ArticlePage({
           />
         )}
 
-        {article.sample && (
-          <p className="mt-6 rounded-lg border border-progress/30 bg-progress-subtle px-4 py-3 font-hero text-[0.875rem] text-paper">
-            Sample contentthis article demonstrates the publishing system.
-            Replace it with a real article before promoting it.
-          </p>
-        )}
-
         <div className="mt-10">
           <ArticleMarkdown content={article.body} />
         </div>
