@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SITE_URL } from "@/lib/seo";
+import { getAllArticles } from "@/lib/blog";
 import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
 import BoundaryDemo from "@/components/BoundaryDemo";
@@ -45,6 +47,10 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
+  // Latest articles surfaced on the homepage so every post is within
+  // one internal link of the site's strongest page.
+  const latestArticles = getAllArticles().slice(0, 3);
+
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -89,6 +95,43 @@ export default function Home() {
       <Capabilities />
       <Windows />
       <Compatibility />
+      {latestArticles.length > 0 && (
+        <section className="border-t border-ink-800">
+          <div className="mx-auto max-w-content px-6 py-20">
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <h2 className="font-hero text-[1.75rem] font-bold leading-[1.2] tracking-[-0.02em] text-paper">
+                Latest from the blog
+              </h2>
+              <Link
+                href="/blog"
+                className="font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
+              >
+                View all articles →
+              </Link>
+            </div>
+            <ul className="mt-10 grid gap-4 md:grid-cols-3">
+              {latestArticles.map((article) => (
+                <li key={article.slug}>
+                  <Link
+                    href={`/blog/${article.slug}`}
+                    className="group flex h-full flex-col rounded-2xl border border-ink-700 bg-ink-900 p-6 transition-colors hover:border-blueprint/60"
+                  >
+                    <h3 className="font-hero text-[1.0625rem] font-bold leading-snug text-paper">
+                      {article.title}
+                    </h3>
+                    <p className="mt-2 flex-1 font-hero text-[0.875rem] leading-[1.6] text-muted">
+                      {article.description}
+                    </p>
+                    <span className="mt-4 font-hero text-[0.8125rem] text-blueprint transition-colors group-hover:text-paper">
+                      Read article →
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
       <Cta />
       <Footer />
     </main>

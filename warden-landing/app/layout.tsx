@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Newsreader, JetBrains_Mono } from "next/font/google";
@@ -97,6 +98,14 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable} ${heroMono.variable}`}
     >
       <head>
+        {/* Google Tag Manager */}
+        <script
+          id="gtm-script"
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-P9BH885W');`,
+          }}
+        />
+        {/* End Google Tag Manager */}
         <meta
           name="google-site-verification"
           content="Q2f7-V2KDOxOTZEYUebS_woBqRa1L-kgFr-Q5zBN7ks"
@@ -116,7 +125,33 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema()) }}
         />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe
+            src="https://www.googletagmanager.com/ns.html?id=GTM-P9BH885W"
+            height="0"
+            width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
+        {/* End Google Tag Manager (noscript) */}
+        {/* Google tag (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-GC7ENDGEP3"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-GC7ENDGEP3');
+          `}
+        </Script>
+        {/* End Google tag (gtag.js) */}
+        {children}
+      </body>
     </html>
   );
 }

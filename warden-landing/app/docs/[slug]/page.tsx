@@ -12,7 +12,7 @@ import { breadcrumbSchema } from "@/lib/schema";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
-  "../warden-starter/warden/docs"
+  "content/docs"
 );
 
 function getDocsDir() {

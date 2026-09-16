@@ -18,6 +18,9 @@ export default function Footer() {
           <Link href="/docs" className="transition-colors hover:text-paper">
             Docs
           </Link>
+          <Link href="/blog" className="transition-colors hover:text-paper">
+            Blog
+          </Link>
           <Link
             href="/docs/roadmap"
             className="transition-colors hover:text-paper"

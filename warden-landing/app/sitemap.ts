@@ -6,7 +6,7 @@ import { AUTHORS, CATEGORIES, getAllArticles } from "@/lib/blog";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
-  "../warden-starter/warden/docs"
+  "content/docs"
 );
 
 function getAllDocSlugs(): string[] {
@@ -14,7 +14,9 @@ function getAllDocSlugs(): string[] {
     return fs
       .readdirSync(DOCS_DIR)
       .filter((f) => f.endsWith(".md"))
-      .map((f) => f.replace(/\.md$/, ""));
+      .map((f) => f.replace(/\.md$/, ""))
+      // /docs/index duplicates the docs hub at /docs — keep it out of the sitemap.
+      .filter((slug) => slug !== "index");
   } catch {
     return [];
   }
