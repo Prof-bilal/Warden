@@ -7,7 +7,6 @@ category: engineering
 tags: ["policy", "internals"]
 image: /diagrams/policy-flow.webp
 draft: false
-sample: true
 ---
 
 A Warden policy is a small YAML file that declares exactly what an MCP server is allowed to do. This article walks the path that file takes from `warden run` to the kernel, and why each step is designed to fail closed.

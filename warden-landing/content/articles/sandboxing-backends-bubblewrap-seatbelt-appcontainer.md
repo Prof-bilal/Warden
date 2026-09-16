@@ -7,7 +7,6 @@ category: engineering
 tags: ["linux", "windows"]
 image: /diagrams/linux-backend.webp
 draft: false
-sample: true
 ---
 
 Every operating system already ships a kernel-level sandbox mechanism. Warden doesn't invent oneit compiles the same policy file into whichever mechanism the host provides. This article explains the three backends and what each one actually enforces.

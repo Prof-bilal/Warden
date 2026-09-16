@@ -15,8 +15,6 @@ export interface Article {
   tags: string[];
   image?: string;
   draft: boolean;
-  /** Placeholder article proving the publishing system; replace with real content. */
-  sample: boolean;
   body: string;
 }
 
@@ -72,7 +70,6 @@ interface FrontMatter {
   tags?: string[];
   image?: string;
   draft?: boolean;
-  sample?: boolean;
 }
 
 function parseArticle(fileName: string): Article | null {
@@ -106,7 +103,6 @@ function parseArticle(fileName: string): Article | null {
     tags: Array.isArray(fm.tags) ? fm.tags : [],
     ...(fm.image ? { image: fm.image } : {}),
     draft: fm.draft === true,
-    sample: fm.sample === true,
     body: content.trim(),
   };
 }
