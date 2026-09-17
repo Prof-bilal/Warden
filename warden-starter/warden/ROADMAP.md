@@ -4,4 +4,4 @@ The project roadmap lives at the repository root: [`ROADMAP.md`](../../ROADMAP.m
 
 It covers the completed M0–M8 milestones and the speculative long-term bet
 (AI agent & browser isolation). The module directory intentionally keeps no
-copy — one source of truth avoids drift.
+copyone source of truth avoids drift.

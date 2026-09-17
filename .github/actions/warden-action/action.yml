@@ -278,7 +278,7 @@ runs:
         
         rm -f "$SCRIPT"
         # Clean up an inline policy written into the workspace by the
-        # validation step. File policies are user files — never removed.
+        # validation step. File policies are user filesnever removed.
         if [[ "${WARDEN_POLICY_INLINE:-}" == "true" ]]; then
           rm -f "$POLICY_PATH"
         fi

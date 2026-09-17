@@ -14,7 +14,7 @@ interface CreateMetadataOptions {
   path: string;
   /**
    * Path to a real OG image asset. Defaults to the site-wide OG image.
-   * Pass null to omit og/twitter images entirely — use when a route-level
+   * Pass null to omit og/twitter images entirelyuse when a route-level
    * opengraph-image file convention supplies the image.
    */
   image?: string | null;

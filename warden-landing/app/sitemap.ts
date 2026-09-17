@@ -73,7 +73,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  // Article lastModified comes from frontmatter (updated ?? date) — real dates only.
+  // Article lastModified comes from frontmatter (updated ?? date)real dates only.
   const articlePages: MetadataRoute.Sitemap = getAllArticles().map(
     (article) => ({
       url: `${SITE_URL}/blog/${article.slug}`,

@@ -150,7 +150,7 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 	for _, path := range p.Filesystem.Read {
 		// /tmp and /run are provided as tmpfs mounts above; binding either
 		// read-only would collide with those tmpfs mounts ("Duplicate mount
-		// point" from the daemon, exit 125) — same reason the write loop
+		// point" from the daemon, exit 125)same reason the write loop
 		// below skips them. Paths under /tmp bind fine over the tmpfs.
 		if path == "/tmp" || path == "/run" {
 			continue

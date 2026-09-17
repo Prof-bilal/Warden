@@ -110,7 +110,7 @@ STARTED="$SBOX_OUT/started.txt"
 CLAIM="ok"
 if [ ! -f "$STARTED" ] || ! grep -q "$MARKER" "$STARTED" 2>/dev/null; then
     CLAIM="fail"
-    echo "❌ POSITIVE CONTROL FAILED: target never started — all results void"
+    echo "❌ POSITIVE CONTROL FAILED: target never startedall results void"
 fi
 if [ ! -f "$STEPS" ]; then
     CLAIM="fail"
@@ -198,12 +198,12 @@ EOF
 
 # --- emit evidence.md ----------------------------------------------------------------
 {
-    echo "# Warden proof evidence — $STAMP"
+    echo "# Warden proof evidence$STAMP"
     echo ""
     echo "- platform: $(uname -s)-$(uname -m)"
     echo "- warden: $WARDEN_VER"
     echo "- run exit: $RUN_EXIT"
-    echo "- positive control (target started): $([ "$CLAIM" = "ok" ] && echo "PASS" || echo "**FAIL — all results void**")"
+    echo "- positive control (target started): $([ "$CLAIM" = "ok" ] && echo "PASS" || echo "**FAILall results void**")"
     echo ""
     echo "| step | expected | observed | verdict |"
     echo "|------|----------|----------|---------|"
@@ -230,5 +230,5 @@ if [ "$VERDICT" = "ok" ]; then
     echo "   artifacts: $OUTDIR"
     exit 0
 fi
-echo "❌ proof FAILED — see $OUTDIR/evidence.md"
+echo "❌ proof FAILEDsee $OUTDIR/evidence.md"
 exit 1

@@ -3,10 +3,10 @@
 #
 # For every attack scenario the harness runs TWO phases and compares them:
 #
-#   control phase   the attack runs UNSANDBOXED — it must land (succeed),
+#   control phase   the attack runs UNSANDBOXEDit must land (succeed),
 #                   proving the attack is real; otherwise the scenario is VOID
 #   sandbox phase   the same attack runs under `warden run` with a
-#                   deny-by-default policy — it must be contained
+#                   deny-by-default policyit must be contained
 #
 # Each phase gets a FRESH decoy world (vault + workspace), so the control
 # phase's damage can never consume the sandbox phase's fixtures.
@@ -19,7 +19,7 @@
 #   - cpu-bomb iteration count (did the timeout actually stop the runaway?)
 #
 # Safety: every byte the harness touches is decoy data it created itself
-# (fake keys, decoy vault, XOR "encryption" — no real crypto), all network
+# (fake keys, decoy vault, XOR "encryption"no real crypto), all network
 # destinations are loopback, and nothing outside the harness's own temp dirs
 # is modified.
 #
@@ -67,7 +67,7 @@ BOMB_CTRL_SECS=3                                # control bomb runtime before ki
 BOMB_MIN_ITERS=200                              # control must loop at least this much
 
 # Decoy env secrets planted for attack 03 (outside the sandbox env allowlist;
-# exported so the CONTROL phase can steal them — the sandbox phase must not
+# exported so the CONTROL phase can steal themthe sandbox phase must not
 # see them, which is exactly what env filtering enforces).
 export DECOY_AWS_KEY="DECOY-AKIA-NOT-REAL"
 export DECOY_GITHUB_TOKEN="DECOY-GH-NOT-REAL"
@@ -92,7 +92,7 @@ make_world() {
     echo "DECOY-MASTER-KEY-NOT-REAL"   > "$vault/vault-master.key"
     local i
     for i in 1 2 3 4 5; do
-        printf 'decoy document %d — nothing valuable\n' "$i" > "$work/decoy-docs/file$i.txt"
+        printf 'decoy document %dnothing valuable\n' "$i" > "$work/decoy-docs/file$i.txt"
     done
 
     # Baseline integrity hashes for this phase's vault
@@ -167,19 +167,19 @@ run_target_phase() {
             -e "s|@OUT@|$out|g" \
             -e "s|@TIMEOUT@|$SBOX_TIMEOUT|g" \
             "$FIXTURE_DIR/policy.yaml.template" > "$policy"
-        echo "▶ [$tag] warden run — deny-by-default, no network, timeout ${SBOX_TIMEOUT}s"
+        echo "▶ [$tag] warden rundeny-by-default, no network, timeout ${SBOX_TIMEOUT}s"
         XDG_STATE_HOME="$R/xdg-state" "$WARDEN" run --policy "$policy" $BACKEND_ARGS -- /bin/sh "$target" \
             > "$R/run-$tag-stdout.log" 2> "$R/run-$tag-stderr.txt"
         echo $? > "$R/run-$tag.exit"
         # A sandbox run that dies before starting the target produces no
-        # scenario rows at all — surface warden's own output on the console
+        # scenario rows at allsurface warden's own output on the console
         # so startup failures are self-describing in CI logs.
         if [ -s "$R/run-$tag-stderr.txt" ]; then
             echo "⚠ [$tag] warden stderr:"
             cat "$R/run-$tag-stderr.txt"
         fi
         if [ ! -s "$out/steps.txt" ]; then
-            echo "❌ [$tag] target never started — full warden output:"
+            echo "❌ [$tag] target never startedfull warden output:"
             cat "$R/run-$tag-stdout.log" "$R/run-$tag-stderr.txt" 2>/dev/null
         fi
         cp "$R/xdg-state/warden/audit.jsonl" "$OUTDIR/audit.jsonl" 2>/dev/null || true
@@ -210,9 +210,9 @@ run_target_phase() {
 }
 
 # --- cpu-bomb scenario (07) ------------------------------------------------------------
-# Control: busy-loop unbounded for BOMB_CTRL_SECS, then SIGKILL — proves the
+# Control: busy-loop unbounded for BOMB_CTRL_SECS, then SIGKILLproves the
 # bomb runs away without a limit. Sandbox: `warden run` with timeout
-# ${BOMB_TIMEOUT}s — warden must terminate it; afterwards the iteration count
+# ${BOMB_TIMEOUT}swarden must terminate it; afterwards the iteration count
 # must stay frozen (nothing is still looping host-side).
 run_bomb_phase() {
     local phase="$1"
@@ -285,10 +285,10 @@ SANDBOX_POSTS=$(grep -c "POST /exfil/sbox" "$OUTDIR/collector.log" 2>/dev/null)
 if [ "$CTRL_POSTS" = "1" ] && [ "$SANDBOX_POSTS" = "0" ]; then
     note "net_exfil: collector saw exactly the control POST; the sandboxed POST never arrived (0)"
 elif [ "$CTRL_POSTS" != "1" ]; then
-    note "net_exfil: INCONCLUSIVE — control POST missing ($CTRL_POSTS); net scenario VOID"
+    note "net_exfil: INCONCLUSIVEcontrol POST missing ($CTRL_POSTS); net scenario VOID"
     CONFIRM="void-net"
 else
-    note "net_exfil: CONTAINMENT FAILED — sandboxed POST reached the collector"
+    note "net_exfil: CONTAINMENT FAILEDsandboxed POST reached the collector"
     CONFIRM="fail"
 fi
 
@@ -296,14 +296,14 @@ SBX_VAULT="$R/world-sbox/vault"
 if diff -q "$OUTDIR/vault-integrity-sbox-before.txt" "$OUTDIR/vault-integrity-sbox-after.txt" >/dev/null 2>&1; then
     note "vault integrity: sandbox-phase decoy vault byte-identical after the run (ransomware + probe touched nothing)"
 else
-    note "vault integrity: CHANGED in the sandbox phase — containment failed"
+    note "vault integrity: CHANGED in the sandbox phasecontainment failed"
     CONFIRM="fail"
 fi
 
 if [ ! -e "$SBX_VAULT/escape-probe.txt" ]; then
     note "escape probe: no file appeared in the vault from inside the sandbox"
 else
-    note "escape probe: FILE CREATED by the sandboxed run — sandbox escape"
+    note "escape probe: FILE CREATED by the sandboxed runsandbox escape"
     CONFIRM="fail"
 fi
 
@@ -314,7 +314,7 @@ fi
 if [ "$SECRET_COPIES" = "0" ]; then
     note "fs_exfil: zero decoy-secret copies in the sandbox output dir"
 else
-    note "fs_exfil: CONTAINMENT FAILED — decoy secrets copied out"
+    note "fs_exfil: CONTAINMENT FAILEDdecoy secrets copied out"
     CONFIRM="fail"
 fi
 
@@ -403,7 +403,7 @@ done
 VERDICT="ok"
 [ "$CONFIRM" != "ok" ] && VERDICT="FAILED"
 [ "$FAILCT" -gt 0 ] && VERDICT="FAILED"
-# VOID scenarios mean we could not verify containment — never a passing result.
+# VOID scenarios mean we could not verify containmentnever a passing result.
 [ "$VOIDCT" -gt 0 ] && VERDICT="FAILED"
 WARDEN_VER="$("$WARDEN" version 2>/dev/null | head -1)"
 SBOX_EXIT=$(cat "$R/run-sandbox.exit" 2>/dev/null || echo "?")
@@ -444,12 +444,12 @@ EOF
 
 # --- evidence.md ----------------------------------------------------------------------------
 {
-    echo "# Warden attack-simulation evidence — $STAMP"
+    echo "# Warden attack-simulation evidence$STAMP"
     echo ""
     echo "- platform: $(uname -s)-$(uname -m)"
     echo "- warden: $WARDEN_VER"
     echo "- sandbox backend: ${WARDEN_BACKEND:-auto (warden-detected)}"
-    echo "- control (unsandboxed) exit: $CTRL_EXIT — every attack must land for results to count"
+    echo "- control (unsandboxed) exit: $CTRL_EXITevery attack must land for results to count"
     echo "- sandbox exit: $SBOX_EXIT"
     echo ""
     echo "| attack | expected | control (unsandboxed) | sandbox | verdict |"
@@ -478,7 +478,7 @@ EOF
     echo ""
     echo "### Safety"
     echo ""
-    echo "All data is decoy data created by the harness (fake keys, decoy vault, XOR transform — no real crypto). Network destinations are loopback only. The sandboxed run's own audit stream is in \`audit.jsonl\`."
+    echo "All data is decoy data created by the harness (fake keys, decoy vault, XOR transformno real crypto). Network destinations are loopback only. The sandboxed run's own audit stream is in \`audit.jsonl\`."
     echo ""
     echo "Raw artifacts: \`control-steps.txt\`, \`sandbox-steps.txt\`, \`control-metrics.txt\`, \`sandbox-metrics.txt\`, \`collector.log\`, \`vault-integrity-*.txt\`, \`audit.jsonl\`, \`summary.json\`, \`results.jsonl\`."
 } > "$OUTDIR/evidence.md"
@@ -493,5 +493,5 @@ if [ "$VERDICT" = "ok" ]; then
     echo "   evidence: $OUTDIR"
     exit 0
 fi
-echo "❌ attack simulation FAILED or VOID — see $OUTDIR/evidence.md"
+echo "❌ attack simulation FAILED or VOIDsee $OUTDIR/evidence.md"
 exit 1

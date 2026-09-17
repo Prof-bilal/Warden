@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>The sandbox runtime for MCP servers</strong><br>
-  Run any MCP server with only the access you grant it — nothing else exists.
+  Run any MCP server with only the access you grant itnothing else exists.
 </p>
 
 <p align="center">
@@ -37,13 +37,13 @@
 
 ## 💥 The Problem
 
-MCP servers (Claude Desktop, Cursor, VS Code Copilot, and every other MCP client) run as plain processes with **full access to your machine**. The MCP spec requires zero process isolation — the default install path is *"run this script from GitHub with your user's permissions."* That server can read your SSH keys, harvest your AWS credentials, and phone any host on the internet.
+MCP servers (Claude Desktop, Cursor, VS Code Copilot, and every other MCP client) run as plain processes with **full access to your machine**. The MCP spec requires zero process isolationthe default install path is *"run this script from GitHub with your user's permissions."* That server can read your SSH keys, harvest your AWS credentials, and phone any host on the internet.
 
 **Warden fixes this.** It runs MCP servers inside OS-native sandboxes with deny-by-default access control:
 
 | | Without Warden | With Warden |
 |---|---|---|
-| **Filesystem** | Entire home directory, dotfiles, SSH keys | Only paths you list — everything else is *invisible* |
+| **Filesystem** | Entire home directory, dotfiles, SSH keys | Only paths you listeverything else is *invisible* |
 | **Network** | Any host, any port, raw DNS | Only allowlisted hostnames, forced through an egress proxy |
 | **Environment** | All of your shell env (secrets included) | Only the variables you name |
 | **Resources** | Unbounded CPU/memory/time | Memory + wall-clock limits, killed on breach |
@@ -73,7 +73,7 @@ EOF
 warden run --policy policy.yaml
 ```
 
-The server sees `./data` (read), `./output` (write), `api.github.com` (network), and `GITHUB_TOKEN` (env). **Everything else does not exist** — blocked paths return "not found", not "permission denied", so the sandbox can't even be probed.
+The server sees `./data` (read), `./output` (write), `api.github.com` (network), and `GITHUB_TOKEN` (env). **Everything else does not exist**blocked paths return "not found", not "permission denied", so the sandbox can't even be probed.
 
 Don't want to write the policy blind? Watch the server once, unsandboxed:
 
@@ -106,7 +106,7 @@ warden init                      # generates a starter policy.yaml from the trac
 └──────────────────────────────────────────────────────┘
 ```
 
-Warden translates one simple YAML policy into the low-level primitives each platform actually needs. The sandboxed process talks stdio straight through to the MCP client — sandboxing is invisible to the protocol.
+Warden translates one simple YAML policy into the low-level primitives each platform actually needs. The sandboxed process talks stdio straight through to the MCP clientsandboxing is invisible to the protocol.
 
 | OS | Enforcement | Notes |
 |---|---|---|
@@ -115,7 +115,7 @@ Warden translates one simple YAML policy into the low-level primitives each plat
 | **Windows** | AppContainer restricted token + WFP egress filters + ETW audit + Job Objects | CI-verified; needs elevation (admin) |
 | **Fallback** | Docker containers (`--network none`, read-only root, tmpfs) | Any OS with a daemon |
 
-**Fail-closed everywhere:** if the sandbox primitives can't be applied — bwrap missing, AppContainer refused, WFP filters unavailable, ETW session blocked — Warden **refuses to run** rather than execute unsandboxed. A plain-process fallback is never acceptable.
+**Fail-closed everywhere:** if the sandbox primitives can't be appliedbwrap missing, AppContainer refused, WFP filters unavailable, ETW session blockedWarden **refuses to run** rather than execute unsandboxed. A plain-process fallback is never acceptable.
 
 ### Network enforcement
 
@@ -126,10 +126,10 @@ Egress goes through a local allowlist proxy; DNS resolution happens **after** th
 | | Feature | Detail |
 |---|---|---|
 | 🔒 | **Deny by default** | Ungranted paths are invisible (ENOENT), not "permission denied" |
-| 🖥️ | **OS-native backends** | bubblewrap / Seatbelt / AppContainer — no VM, no daemon needed |
+| 🖥️ | **OS-native backends** | bubblewrap / Seatbelt / AppContainerno VM, no daemon needed |
 | 🌐 | **Pre-DNS network blocking** | Hostname allowlist enforced before any DNS query leaves |
 | 📝 | **Policy generation** | `warden trace` + `warden init` watch a real run and write the policy |
-| 📜 | **Audit trail** | Every access attempt logged as JSONL — including blocked ones |
+| 📜 | **Audit trail** | Every access attempt logged as JSONLincluding blocked ones |
 | 👍 | **Interactive approval** | `--approve` prompts on first blocked access instead of failing |
 | 🚦 | **Resource limits** | Memory (RSS-sampled) + wall-clock timeout with clean process-tree kill |
 | 🔀 | **Gateway integration** | `warden gateway init/run/wrap/list` to sandbox servers in a gateway registry |
@@ -139,7 +139,7 @@ Egress goes through a local allowlist proxy; DNS resolution happens **after** th
 
 Warden is verified with **escape tests** (the sandboxed process tries to escape, and must fail), a **reproducible proof harness**, and a **compatibility matrix** against real MCP servers. Everything below is reproducible on your machine.
 
-### Proof harness — 8/8 steps PASS
+### Proof harness8/8 steps PASS
 
 The harness (`warden-starter/warden/testdata/proof/run-proof.sh`) runs a scripted target against a real sandboxed `warden run` and checks every expected outcome:
 
@@ -166,21 +166,21 @@ go build -o warden ./cmd/warden
 ./testdata/proof/run-proof.sh          # writes evidence/ and prints the verdict table
 ```
 
-### Attack simulations — 7/7 contained, re-verified on every CI push
+### Attack simulations7/7 contained, re-verified on every CI push
 
-The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side** — collector request logs, vault sha256 integrity, escape-probe files — never by trusting the sandboxed process's own output.
+The attack harness (`warden-starter/warden/testdata/attacks/run-attacks.sh`) runs each attack **twice**: unsandboxed as a control (the attack must land, or the scenario is void) and sandboxed under Warden (it must be contained). Containment is confirmed **host-side**collector request logs, vault sha256 integrity, escape-probe filesnever by trusting the sandboxed process's own output.
 
 This harness runs **in CI on every push** (the [`attack-sim` job](.github/workflows/ci.yml); docker backend on ubuntu-24.04 runners, evidence files attached as workflow artifacts). Measured results from the main-branch run [34964319944](https://github.com/Prof-bilal/Warden/actions/runs/34964319944):
 
 | Attack | Without Warden (control) | With Warden (sandbox) | Verdict |
 |---|---|---|---|
-| **fs_exfil** — copy decoy SSH keys + AWS creds | EXFILTRATED | BLOCKED (0 copies) | ✅ |
-| **net_exfil** — POST fingerprint to collector | Delivered (collector hit) | BLOCKED (0 hits) | ✅ |
-| **env_steal** — harvest 3 planted decoy secrets | SECRETS_STOLEN | BLOCKED (0 visible) | ✅ |
-| **process_spawn** — host probe + escape-probe write | FULL_SYSTEM_ACCESS | BLOCKED (no probe file) | ✅ |
-| **symlink_traverse** — read through a link outside grants | PARTIAL_ACCESS | BLOCKED | ✅ |
-| **ransomware** — XOR-encrypt + delete decoy docs | FILES_DESTROYED | NO_DAMAGE (vault byte-identical) | ✅ |
-| **cpu_bomb** — unbounded busy-loop | ran away (749k iters/3s) | TIMEOUT_KILLED (bounded, 808k iters/6s) | ✅ |
+| **fs_exfil**copy decoy SSH keys + AWS creds | EXFILTRATED | BLOCKED (0 copies) | ✅ |
+| **net_exfil**POST fingerprint to collector | Delivered (collector hit) | BLOCKED (0 hits) | ✅ |
+| **env_steal**harvest 3 planted decoy secrets | SECRETS_STOLEN | BLOCKED (0 visible) | ✅ |
+| **process_spawn**host probe + escape-probe write | FULL_SYSTEM_ACCESS | BLOCKED (no probe file) | ✅ |
+| **symlink_traverse**read through a link outside grants | PARTIAL_ACCESS | BLOCKED | ✅ |
+| **ransomware**XOR-encrypt + delete decoy docs | FILES_DESTROYED | NO_DAMAGE (vault byte-identical) | ✅ |
+| **cpu_bomb**unbounded busy-loop | ran away (749k iters/3s) | TIMEOUT_KILLED (bounded, 808k iters/6s) | ✅ |
 
 Reproduce locally (docker backend = CI-equivalent; on a Linux desktop with bwrap you can drop `WARDEN_BACKEND` for the native backend):
 
@@ -190,7 +190,7 @@ go build -o warden ./cmd/warden
 WARDEN_BACKEND=docker bash testdata/attacks/run-attacks.sh   # exits 0 only if every control landed AND everything was contained
 ```
 
-All data is decoy data the harness creates itself (fake keys, XOR "encryption", loopback-only collectors) — safe to run on your machine. Evidence format and scenario details: [testdata/attacks/README.md](warden-starter/warden/testdata/attacks/README.md).
+All data is decoy data the harness creates itself (fake keys, XOR "encryption", loopback-only collectors)safe to run on your machine. Evidence format and scenario details: [testdata/attacks/README.md](warden-starter/warden/testdata/attacks/README.md).
 
 ### Policy builder output
 
@@ -212,12 +212,12 @@ All data is decoy data the harness creates itself (fake keys, XOR "encryption", 
 
 CI runs the test matrix on Linux, macOS, and Windows runners, plus cross-builds for `windows/amd64` and `darwin/arm64`. The `attack-sim` job re-measures attack containment on every push and uploads the run's evidence (`summary.json`, per-scenario results, collector log, vault hash manifests, sandbox audit stream) as workflow artifacts. The GitHub Action that ships Warden to CI users is tested end-to-end on real runners (`.github/workflows/test-warden-action.yml`).
 
-> **Honesty note:** every number in the attack table is re-measured in CI on each push, and each run publishes its full evidence as a workflow artifact — the table above cites one specific run. Illustrative figures elsewhere (landing page galleries) that predate the harness are labeled there and are superseded by harness output.
+> **Honesty note:** every number in the attack table is re-measured in CI on each push, and each run publishes its full evidence as a workflow artifactthe table above cites one specific run. Illustrative figures elsewhere (landing page galleries) that predate the harness are labeled there and are superseded by harness output.
 
 ## 📦 Install
 
 ```bash
-# npm (recommended — wraps the GitHub Releases binary)
+# npm (recommendedwraps the GitHub Releases binary)
 npm install -g warden-sandbox-cli
 
 # Direct download (Linux/macOS/Windows binaries + SHA256SUMS)
@@ -249,23 +249,23 @@ warden update                                       # Update to the latest relea
 | **Policy schema** | [docs/schema.md](warden-starter/warden/docs/schema.md) |
 | **CLI reference** | [docs/cli.md](warden-starter/warden/docs/cli.md) |
 | **Security & threat model** | [docs/security.md](warden-starter/warden/docs/security.md) |
-| **Example policies** | [examples/](warden-starter/warden/examples/) — filesystem, GitHub, Slack, PostgreSQL, Brave Search |
+| **Example policies** | [examples/](warden-starter/warden/examples/)filesystem, GitHub, Slack, PostgreSQL, Brave Search |
 | **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| **Use in CI** | [warden-action](.github/actions/warden-action/) — sandbox any build step |
+| **Use in CI** | [warden-action](.github/actions/warden-action/)sandbox any build step |
 
 ## 🗺️ Status & Roadmap
 
 Milestones M0–M8 are complete: Linux → network enforcement → trace/init/limits → macOS → Windows → distribution → real-world MCP compatibility testing (18 servers). Current status is tracked in [ROADMAP.md](ROADMAP.md), with open work items in [REMAINING_WORK.md](warden-starter/warden/REMAINING_WORK.md).
 
-Not yet hardened against a determined local attacker — see the [threat model](warden-starter/warden/docs/security.md) for the honest limitation list (symlinks inside granted paths, HTTP/HTTPS-only proxy interception, no CPU throttling, and friends).
+Not yet hardened against a determined local attackersee the [threat model](warden-starter/warden/docs/security.md) for the honest limitation list (symlinks inside granted paths, HTTP/HTTPS-only proxy interception, no CPU throttling, and friends).
 
 ## 🤝 Contributing
 
-Contributions are welcome — example policies, platform testing, docs, and code. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, repo layout, and PR guidelines.
+Contributions are welcomeexample policies, platform testing, docs, and code. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, repo layout, and PR guidelines.
 
 ## 🛡️ Security
 
-Found a sandbox escape or a way to make Warden run unsandboxed? Please report it privately — see [SECURITY.md](SECURITY.md). Please don't open a public issue for exploitable behavior.
+Found a sandbox escape or a way to make Warden run unsandboxed? Please report it privatelysee [SECURITY.md](SECURITY.md). Please don't open a public issue for exploitable behavior.
 
 ## ⚖️ License
 

@@ -91,7 +91,7 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 | Warden Policy | Docker | Kubernetes |
 |---|---|---|
 | `limits.memory_mb: 512` | `--memory 512m` | `resources.limits.memory: 512Mi` |
-| `limits.timeout_s: 300` | not emitted | not emitted — enforce timeouts outside the manifest (e.g. wrap the entrypoint in `timeout`) |
+| `limits.timeout_s: 300` | not emitted | not emittedenforce timeouts outside the manifest (e.g. wrap the entrypoint in `timeout`) |
 
 ## Generated Security Controls
 

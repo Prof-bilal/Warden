@@ -3,7 +3,7 @@
 #
 # Busy-loops until a STOP file appears, publishing its iteration count so the
 # orchestrator can measure that it was really consuming CPU. The control
-# phase never creates STOP (the orchestrator kills the process — proving the
+# phase never creates STOP (the orchestrator kills the processproving the
 # bomb runs away unbounded); the sandbox phase relies on the policy's
 # wall-clock timeout to terminate it.
 STOP="@STOP@"

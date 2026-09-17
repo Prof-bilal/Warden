@@ -920,6 +920,6 @@ func TestStdioBridgeFiltersEnvironment(t *testing.T) {
 	// If envfilter passed all vars, env would still work. The key test is
 	// that the subprocess doesn't crash and the proxy handles the I/O.
 	if !waitAudit(auditPath, "stdio_proxy") {
-		t.Fatal("audit log missing stdio_proxy record — subprocess may not have started")
+		t.Fatal("audit log missing stdio_proxy recordsubprocess may not have started")
 	}
 }

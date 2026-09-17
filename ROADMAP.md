@@ -161,7 +161,7 @@ proxy, which is the more complex piece.
 
 ---
 
-## The Long Bet — AI agent & browser isolation (Speculative)
+## The Long BetAI agent & browser isolation (Speculative)
 
 > **Status:** research-grounded strategy sketch, explicitly **not** a
 > near-term roadmap item. This is a sequenced bet with evidence, kept here
@@ -171,18 +171,18 @@ proxy, which is the more complex piece.
 ### The problem
 
 AI agents that control a desktop (see [Anthropic's computer use](https://www.anthropic.com/news/3-5-models-and-computer-use))
-can see screens, move mice, click buttons, and type — full desktop control.
+can see screens, move mice, click buttons, and typefull desktop control.
 Running these agents on your main computer is dangerous: a malicious
 instruction hidden in a website could steal passwords, send emails, or
 exfiltrate files. Today users must either buy a VPS ($5–50/mo) or configure
 a local VM (complex, resource-heavy). Neither is simple.
 
 **Agents in scope:** Claude Computer Use, OpenAI Operator (browser agent),
-AutoGPT, and general-purpose agent platforms — all require full computer
+AutoGPT, and general-purpose agent platformsall require full computer
 access to operate.
 
 **Security risks introduced:** prompt injection (attacker-hidden
-instructions in web content — OpenAI states this is "unfixable"),
+instructions in web contentOpenAI states this is "unfixable"),
 same-origin bypass in agentic browsers, credential theft via file access,
 data exfiltration, and supply-chain weaknesses in browser automation
 libraries (CVE-2025-47241 affected 1,500+ projects).
@@ -193,7 +193,7 @@ libraries (CVE-2025-47241 affected 1,500+ projects).
 |---|---|---|
 | Cloud VM (EC2, DigitalOcean) | Complete isolation | Recurring cost, technical barrier |
 | Local VM (VirtualBox/QEMU) | Free, complete isolation | Complex setup, resource-heavy |
-| Docker | Lightweight | No GUI support — poor fit for desktop control |
+| Docker | Lightweight | No GUI supportpoor fit for desktop control |
 
 None are simple, purpose-built for AI agents, or auditable.
 
@@ -207,7 +207,7 @@ MCP servers:
 warden agent run --policy policy.yaml -- agent-command
 ```
 
-Reuse map — everything below exists today for MCP servers:
+Reuse mapeverything below exists today for MCP servers:
 
 - **Tiers:** Tier 1 (namespace/bwrap) → Tier 2 (container/Docker) →
   Tier 3 (microVM/Firecracker)
@@ -223,8 +223,8 @@ approach.
 
 ### Sequencing (if signal justifies it)
 
-1. **Phase 1:** Tier 1 agent mode — namespace isolation + virtual display
-2. **Phase 2:** Tier 2 — container isolation
+1. **Phase 1:** Tier 1 agent modenamespace isolation + virtual display
+2. **Phase 2:** Tier 2container isolation
 3. **Phase 3:** Tier 3 (microVM) + full approval flow
 4. **Phase 4:** marketplace / policy templates for popular agents
 

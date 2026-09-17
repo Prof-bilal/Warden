@@ -2,7 +2,7 @@
 
 Thank you for helping make MCP servers safe to run. This guide covers everything you need: repo layout, environment setup, what to work on, and how we review.
 
-Warden is a **security tool with a fail-closed contract**: if a sandbox primitive is unavailable, Warden must refuse to run — never fall back to executing unsandboxed. Every contribution is reviewed against that contract.
+Warden is a **security tool with a fail-closed contract**: if a sandbox primitive is unavailable, Warden must refuse to runnever fall back to executing unsandboxed. Every contribution is reviewed against that contract.
 
 ## Ways to contribute
 
@@ -11,11 +11,11 @@ You don't need to write Go to help:
 | | Contribution | Good first issue? |
 |---|---|---|
 | 📝 | **Example policies** for MCP servers you use (see [examples/](warden-starter/warden/examples/)) | ✅ Yes |
-| 🧪 | **Platform testing** — run the [proof harness](warden-starter/warden/testdata/proof/) on your hardware (especially macOS) and report results | ✅ Yes |
-| 📚 | **Docs** — fix stale claims, improve guides, add worked examples | ✅ Yes |
-| 🐛 | **Bug reports** — use the issue templates; compat problems have a dedicated [template](.github/ISSUE_TEMPLATE/compat_report.md) | ✅ Yes |
-| 🧩 | **Compatibility matrix** — test a new MCP server and add its fixture (see [docs/compatibility.md](warden-starter/warden/docs/compatibility.md)) | ✅ Yes |
-| 🔧 | **Backends & core code** — bubblewrap/Seatbelt/AppContainer/Docker backends, proxy, policy engine | After a discussion |
+| 🧪 | **Platform testing**run the [proof harness](warden-starter/warden/testdata/proof/) on your hardware (especially macOS) and report results | ✅ Yes |
+| 📚 | **Docs**fix stale claims, improve guides, add worked examples | ✅ Yes |
+| 🐛 | **Bug reports**use the issue templates; compat problems have a dedicated [template](.github/ISSUE_TEMPLATE/compat_report.md) | ✅ Yes |
+| 🧩 | **Compatibility matrix**test a new MCP server and add its fixture (see [docs/compatibility.md](warden-starter/warden/docs/compatibility.md)) | ✅ Yes |
+| 🔧 | **Backends & core code**bubblewrap/Seatbelt/AppContainer/Docker backends, proxy, policy engine | After a discussion |
 
 ## Repository layout
 
@@ -67,7 +67,7 @@ go build -o warden ./cmd/warden
 ./warden run --policy ../examples/policy.example.yaml -- echo hello
 ```
 
-Before changing shared code, verify it cross-builds — backends are platform-gated, so your OS only compiles some of them:
+Before changing shared code, verify it cross-buildsbackends are platform-gated, so your OS only compiles some of them:
 
 ```bash
 GOOS=darwin  GOARCH=arm64 go build ./...
@@ -83,11 +83,11 @@ go test ./internal/policy/ -run TestNormalize -v     # one test
 ./testdata/proof/run-proof.sh                        # end-to-end proof harness (writes evidence/)
 ```
 
-The proof harness is the fastest way to check that sandbox semantics still hold end-to-end after a change. Its `evidence/` output is gitignored — don't commit run artifacts.
+The proof harness is the fastest way to check that sandbox semantics still hold end-to-end after a change. Its `evidence/` output is gitignoreddon't commit run artifacts.
 
 ## What to work on
 
-1. **Pick from the issue tracker** — issues labeled `good first issue` are scoped for newcomers.
+1. **Pick from the issue tracker**issues labeled `good first issue` are scoped for newcomers.
 2. **Platform verification** is always valuable: run the proof harness on macOS (native + Docker fallback) and Windows, and open an issue with your `evidence/` summary.
 3. **Bigger changes** (backend work, schema changes, new subcommands): open an issue or discussion first so we can agree on the approach before you invest time. The [architecture doc](ARCHITECTURE.md) and [design notes](warden-starter/warden/docs/design.md) explain the constraints.
 
@@ -114,17 +114,17 @@ These are non-negotiable in review:
 - [ ] Cross-builds pass (`GOOS=darwin`, `GOOS=windows`)
 - [ ] New behavior has tests
 - [ ] Docs updated if behavior or user-facing surface changed
-- [ ] One logical change per PR — easier to review, easier to roll back
+- [ ] One logical change per PReasier to review, easier to roll back
 
-Review promise: maintainers aim to respond to new PRs within a few days. Security-relevant changes get the deepest review — expect questions about the failure modes of every code path.
+Review promise: maintainers aim to respond to new PRs within a few days. Security-relevant changes get the deepest reviewexpect questions about the failure modes of every code path.
 
 ## Reporting security issues
 
-**Do not open a public issue for a vulnerability.** See [SECURITY.md](SECURITY.md) for private reporting — especially anything that looks like a sandbox escape or a fail-open path.
+**Do not open a public issue for a vulnerability.** See [SECURITY.md](SECURITY.md) for private reportingespecially anything that looks like a sandbox escape or a fail-open path.
 
 ## Community
 
-- [Discussions](https://github.com/Prof-bilal/Warden/discussions) — questions, ideas, show-and-tell
-- [Issue tracker](https://github.com/Prof-bilal/Warden/issues) — bugs and scoped work
+- [Discussions](https://github.com/Prof-bilal/Warden/discussions)questions, ideas, show-and-tell
+- [Issue tracker](https://github.com/Prof-bilal/Warden/issues)bugs and scoped work
 
 By participating, you agree to keep the collaboration respectful and on-topic.
