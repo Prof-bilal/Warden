@@ -62,6 +62,26 @@ const sections: Section[] = [
       { slug: "testing-platforms", label: "Cross-platform testing" },
     ],
   },
+  {
+    title: "More",
+    collapsible: true,
+    items: [
+      { slug: "about", label: "About Warden" },
+      { slug: "how-to-use", label: "How to use Warden" },
+      { slug: "approve", label: "Interactive Approval Mode" },
+      { slug: "gateway", label: "Gateway Integration" },
+      { slug: "client-proxy", label: "Warden Client Proxy" },
+      { slug: "container-k8s", label: "Container & Kubernetes Mode" },
+      { slug: "proof", label: "Proof & Test Results" },
+      { slug: "deploy", label: "Deploying the docs to GitHub Pages" },
+      { slug: "prd", label: "Product Requirements Document" },
+      { slug: "mvp", label: "Minimum Viable Product" },
+      { slug: "beta", label: "External Beta Program (M8)" },
+      { slug: "design", label: "Code Review Guide" },
+      { slug: "codestyle", label: "Code Style Guide" },
+      { slug: "license", label: "License" },
+    ],
+  },
 ];
 
 export default function DocsSidebar() {

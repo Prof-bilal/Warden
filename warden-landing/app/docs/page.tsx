@@ -106,73 +106,6 @@ const CARDS = [
   },
 ];
 
-const DOCS_DIR = path.join(process.cwd(), "content", "docs");
-
-// Docs that are not featured in CARDS above still get linked in a
-// "More documentation" section so every docs page is reachable from
-// the hub (no orphan pages).
-const CURATED_HREFS = new Set(CARDS.map((c) => c.href));
-
-const MORE_ORDER = [
-  "about",
-  "how-to-use",
-  "approve",
-  "gateway",
-  "client-proxy",
-  "container-k8s",
-  "proof",
-  "deploy",
-  "prd",
-  "mvp",
-  "beta",
-  "design",
-  "reviewing",
-  "codestyle",
-  "license",
-];
-
-function getDocTitle(slug: string): string {
-  try {
-    const raw = fs.readFileSync(path.join(DOCS_DIR, `${slug}.md`), "utf-8");
-    const h1 = raw.split("\n").find((l) => l.startsWith("# "));
-    if (h1) return h1.replace(/^#\s*/, "").trim();
-  } catch {
-    // fall through to humanized slug
-  }
-  return slug.replace(/-/g, " ");
-}
-
-function getMoreDocs(): { slug: string; title: string }[] {
-  let slugs: string[] = [];
-  try {
-    slugs = fs
-      .readdirSync(DOCS_DIR)
-      .filter((f) => f.endsWith(".md"))
-      .map((f) => f.replace(/\.md$/, ""))
-      .filter(
-        (s) =>
-          s !== "index" &&
-          !CURATED_HREFS.has(`/docs/${s}`) &&
-          !s.startsWith("policy-") &&
-          s !== "write-policy"
-      );
-  } catch {
-    return [];
-  }
-  return slugs
-    .sort((a, b) => {
-      const ai = MORE_ORDER.indexOf(a);
-      const bi = MORE_ORDER.indexOf(b);
-      return (
-        (ai === -1 ? MORE_ORDER.length : ai) -
-          (bi === -1 ? MORE_ORDER.length : bi) || a.localeCompare(b)
-      );
-    })
-    .map((slug) => ({ slug, title: getDocTitle(slug) }));
-}
-
-const MORE_DOCS = getMoreDocs();
-
 export default function Docs() {
   return (
     <main className="min-h-screen bg-ink-950">
@@ -232,26 +165,7 @@ export default function Docs() {
           </article>
         </div>
 
-        {/* More documentation */}
-        {MORE_DOCS.length > 0 && (
-          <section className="pb-4">
-            <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted">
-              More documentation
-            </h2>
-            <ul className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
-              {MORE_DOCS.map((doc) => (
-                <li key={doc.slug}>
-                  <a
-                    href={`/docs/${doc.slug}`}
-                    className="font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
-                  >
-                    {doc.title}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+
       </div>
       <Footer />
     </main>
