@@ -149,7 +149,12 @@ function getMoreDocs(): { slug: string; title: string }[] {
       .readdirSync(DOCS_DIR)
       .filter((f) => f.endsWith(".md"))
       .map((f) => f.replace(/\.md$/, ""))
-      .filter((s) => s !== "index" && !CURATED_HREFS.has(`/docs/${s}`));
+      .filter(
+        (s) =>
+          s !== "index" &&
+          !CURATED_HREFS.has(`/docs/${s}`) &&
+          !s.startsWith("policy-")
+      );
   } catch {
     return [];
   }
