@@ -11,10 +11,24 @@ const sections: { title: string; items: SidebarItem[] }[] = [
     items: [
       { slug: "install", label: "Installation" },
       { slug: "quickstart", label: "Quickstart" },
+      { slug: "write-policy", label: "Write a Policy" },
       { slug: "schema", label: "Policy schema" },
       { slug: "examples", label: "Example policies" },
       { slug: "compatibility", label: "Compatibility" },
       { slug: "faq", label: "FAQ" },
+    ],
+  },
+  {
+    title: "Server Guides",
+    items: [
+      { slug: "policy-github", label: "GitHub" },
+      { slug: "policy-slack", label: "Slack" },
+      { slug: "policy-filesystem", label: "Filesystem" },
+      { slug: "policy-postgres", label: "PostgreSQL" },
+      { slug: "policy-sqlite", label: "SQLite" },
+      { slug: "policy-brave", label: "Brave Search" },
+      { slug: "policy-gdrive", label: "Google Drive" },
+      { slug: "policy-notion", label: "Notion" },
     ],
   },
   {
@@ -32,8 +46,6 @@ const sections: { title: string; items: SidebarItem[] }[] = [
       { slug: "features", label: "Features (in depth)", external: true },
     ],
   },
-
-
   {
     title: "Contributing",
     items: [

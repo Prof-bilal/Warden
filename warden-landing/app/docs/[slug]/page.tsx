@@ -91,6 +91,7 @@ export async function generateMetadata({
 const PUBLIC_SLUGS = [
   "install",
   "quickstart",
+  "write-policy",
   "schema",
   "cli",
   "compatibility",
@@ -102,11 +103,20 @@ const PUBLIC_SLUGS = [
   "contributing",
   "testing",
   "testing-platforms",
+  "policy-github",
+  "policy-slack",
+  "policy-filesystem",
+  "policy-postgres",
+  "policy-sqlite",
+  "policy-brave",
+  "policy-gdrive",
+  "policy-notion",
 ];
 
 const slugToLabel: Record<string, string> = {
   install: "Installation",
   quickstart: "Quickstart",
+  "write-policy": "Write a Policy",
   schema: "Policy schema",
   cli: "CLI reference",
   compatibility: "Compatibility",
@@ -118,6 +128,14 @@ const slugToLabel: Record<string, string> = {
   contributing: "Contributing",
   testing: "Testing guide",
   "testing-platforms": "Cross-platform testing",
+  "policy-github": "GitHub Policy",
+  "policy-slack": "Slack Policy",
+  "policy-filesystem": "Filesystem Policy",
+  "policy-postgres": "PostgreSQL Policy",
+  "policy-sqlite": "SQLite Policy",
+  "policy-brave": "Brave Search Policy",
+  "policy-gdrive": "Google Drive Policy",
+  "policy-notion": "Notion Policy",
 };
 
 export default async function DocPage({
