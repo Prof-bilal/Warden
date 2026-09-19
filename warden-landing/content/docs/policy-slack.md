@@ -67,6 +67,6 @@ warden run --policy policy-slack.yaml
 
 ## Resources
 
-- [Slack MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/slack)
+- [Slack MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/slack)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)

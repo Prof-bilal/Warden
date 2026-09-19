@@ -72,6 +72,6 @@ Isliye directory pe write grant dena zaroori hai.
 
 ## Resources
 
-- [SQLite MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/sqlite)
+- [SQLite MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)

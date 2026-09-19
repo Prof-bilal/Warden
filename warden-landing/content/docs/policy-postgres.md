@@ -80,6 +80,6 @@ warden run --policy policy-postgres.yaml
 
 ## Resources
 
-- [PostgreSQL MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/postgres)
+- [PostgreSQL MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/postgres)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)

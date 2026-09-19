@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 type SidebarItem = { slug: string; label: string; external?: boolean };
 
-const sections: { title: string; items: SidebarItem[] }[] = [
+type Section = {
+  title: string;
+  items: SidebarItem[];
+  collapsible?: boolean;
+};
+
+const sections: Section[] = [
   {
     title: "Guide",
     items: [
@@ -20,6 +27,7 @@ const sections: { title: string; items: SidebarItem[] }[] = [
   },
   {
     title: "Server Guides",
+    collapsible: true,
     items: [
       { slug: "policy-github", label: "GitHub" },
       { slug: "policy-slack", label: "Slack" },
@@ -58,36 +66,67 @@ const sections: { title: string; items: SidebarItem[] }[] = [
 
 export default function DocsSidebar() {
   const pathname = usePathname();
+  const serverGuidesExpanded = sections.find((s) => s.collapsible);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    "Server Guides": true,
+  });
+
+  const toggle = (title: string) => {
+    setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
   return (
     <nav className="docs-sidebar" aria-label="Documentation navigation">
-      {sections.map((section) => (
-        <div key={section.title} className="mb-6">
-          <h4 className="mb-2 px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted">
-            {section.title}
-          </h4>
-          <ul className="space-y-0.5">
-            {section.items.map((item) => {
-              const href = item.external ? "/features" : `/docs/${item.slug}`;
-              const isActive = pathname === href;
-              return (
-                <li key={item.slug}>
-                  <Link
-                    href={href}
-                    className={`block rounded-md px-3 py-1.5 font-hero text-[0.875rem] transition-colors ${
-                      isActive
-                        ? "bg-blueprint/10 font-medium text-blueprint"
-                        : "text-muted hover:bg-ink-800 hover:text-paper"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
+      {sections.map((section) => {
+        const isOpen = section.collapsible ? (expanded[section.title] ?? false) : true;
+        return (
+          <div key={section.title} className="mb-6">
+            {section.collapsible ? (
+              <button
+                onClick={() => toggle(section.title)}
+                className="mb-2 flex w-full items-center justify-between px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted hover:text-paper transition-colors"
+              >
+                {section.title}
+                <svg
+                  className={`h-3 w-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            ) : (
+              <h4 className="mb-2 px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted">
+                {section.title}
+              </h4>
+            )}
+            {(!section.collapsible || isOpen) && (
+              <ul className="space-y-0.5">
+                {section.items.map((item) => {
+                  const href = item.external ? "/features" : `/docs/${item.slug}`;
+                  const isActive = pathname === href;
+                  return (
+                    <li key={item.slug}>
+                      <Link
+                        href={href}
+                        className={`block rounded-md px-3 py-1.5 font-hero text-[0.875rem] transition-colors ${
+                          isActive
+                            ? "bg-blueprint/10 font-medium text-blueprint"
+                            : "text-muted hover:bg-ink-800 hover:text-paper"
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </nav>
   );
 }

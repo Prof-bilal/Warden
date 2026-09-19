@@ -65,6 +65,6 @@ warden run --policy policy-github.yaml
 
 ## Resources
 
-- [GitHub MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/github)
+- [GitHub MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/github)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)

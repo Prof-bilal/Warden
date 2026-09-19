@@ -64,6 +64,6 @@ warden run --policy policy-brave.yaml
 
 ## Resources
 
-- [Brave Search MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/brave-search)
+- [Brave Search MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/brave-search)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)

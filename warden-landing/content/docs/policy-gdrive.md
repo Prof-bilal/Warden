@@ -75,6 +75,6 @@ warden run --policy policy-gdrive.yaml
 
 ## Resources
 
-- [Google Drive MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/gdrive)
+- [Google Drive MCP Server](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/gdrive)
 - [Schema Reference](schema.md)
 - [Write a Policy](write-policy.md)
