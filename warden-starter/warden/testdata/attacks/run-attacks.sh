@@ -449,7 +449,7 @@ EOF
     echo "- platform: $(uname -s)-$(uname -m)"
     echo "- warden: $WARDEN_VER"
     echo "- sandbox backend: ${WARDEN_BACKEND:-auto (warden-detected)}"
-    echo "- control (unsandboxed) exit: $CTRL_EXITevery attack must land for results to count"
+    echo "- control (unsandboxed) exit: $CTRL_EXIT — every attack must land for results to count"
     echo "- sandbox exit: $SBOX_EXIT"
     echo ""
     echo "| attack | expected | control (unsandboxed) | sandbox | verdict |"
