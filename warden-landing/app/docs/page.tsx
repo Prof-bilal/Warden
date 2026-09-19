@@ -153,7 +153,8 @@ function getMoreDocs(): { slug: string; title: string }[] {
         (s) =>
           s !== "index" &&
           !CURATED_HREFS.has(`/docs/${s}`) &&
-          !s.startsWith("policy-")
+          !s.startsWith("policy-") &&
+          s !== "write-policy"
       );
   } catch {
     return [];
