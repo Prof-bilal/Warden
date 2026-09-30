@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "WardenSandbox Runtime for MCP Servers",
+    default: "Warden: Sandbox Runtime for MCP Servers",
     template: "%s | Warden",
   },
   description:
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Warden",
-    title: "WardenSandbox Runtime for MCP Servers",
+    title: "Warden: Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
     images: [
@@ -63,14 +63,14 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "WardenSandbox Runtime for MCP Servers",
+        alt: "Warden: Sandbox Runtime for MCP Servers",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WardenSandbox Runtime for MCP Servers",
+    title: "Warden: Sandbox Runtime for MCP Servers",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
     images: ["/og-image.png"],

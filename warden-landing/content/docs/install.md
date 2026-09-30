@@ -1,4 +1,4 @@
-# Install
+# How to Install Warden
 
 ## Day-one options
 

@@ -28,8 +28,8 @@ export async function generateMetadata({
   if (!author) return { title: "Not Found" };
 
   return createMetadata({
-    title: author.name,
-    description: `Articles by ${author.name}, ${author.role.toLowerCase()}, published on the Warden blog.`,
+    title: `Articles by ${author.name}`,
+    description: author.bio,
     path: `/author/${author.slug}`,
   });
 }
@@ -73,7 +73,7 @@ export default async function AuthorPage({
         </nav>
 
         <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          {author.name}
+          Articles by {author.name}
         </h1>
         <p className="mt-2 text-[0.9375rem] text-blueprint">{author.role}</p>
         <p className="mt-4 text-[1.0625rem] leading-relaxed text-muted">

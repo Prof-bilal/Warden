@@ -1,6 +1,10 @@
 ---
 title: "Why MCP Servers Need Sandboxes"
 description: "MCP servers run as local processes with your full user permissions. Here's why deny-by-default sandboxing is the missing trust boundary between AI tooling and your machine."
+tldr:
+  - "An MCP server is a local process with your user permissions."
+  - "A third-party server can read files, open connections, and see environment variables unless something else constrains it."
+  - "Warden starts that process with no access and allows only the files, hosts, and variables named in a policy."
 date: "2026-09-14"
 author: prof-bilal
 category: security

@@ -1,4 +1,4 @@
-# Example Policies
+# Example Warden Policies
 
 Copy any of these policies as a starting point for your own MCP server, then
 adjust the `command` path, grants, and env allowlist to match your setup.

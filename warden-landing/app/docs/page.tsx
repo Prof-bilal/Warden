@@ -9,31 +9,31 @@ import Footer from "@/components/Footer";
 import DocsSidebar from "@/components/DocsSidebar";
 
 export const metadata: Metadata = {
-  title: "Documentation",
+  title: { absolute: "Warden documentation" },
   description:
-    "Warden documentation: install, quickstart, policy schema, CLI reference, compatibility matrix, security review, and more.",
+    "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
   alternates: {
     canonical: `${SITE_URL}/docs`,
   },
   openGraph: {
-    title: "Documentation",
+    title: "Warden documentation",
     description:
-      "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
+      "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
     url: `${SITE_URL}/docs`,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden Documentation",
+        alt: "Warden documentation",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Documentation",
+    title: "Warden documentation",
     description:
-      "Install, quickstart, policy schema, CLI reference, compatibility matrix, and security review for Warden.",
+      "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
@@ -199,11 +199,11 @@ export default function Docs() {
           {/* Main content */}
           <article className="min-w-0 flex-1">
             <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
-              Docs.
+              Warden documentation
             </h1>
             <p className="mt-5 max-w-[34rem] font-hero text-[1.0625rem] leading-[1.65] text-muted">
               Install it, run your first sandboxed server, then go deep on the
-              policy schema. Start with Install and Quickstartin that order.
+              policy schema. Start with Install and Quickstart, in that order.
             </p>
 
             <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">

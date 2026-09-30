@@ -8,7 +8,14 @@ import Footer from "@/components/Footer";
 import MarkdownContent from "@/components/MarkdownContent";
 import DocsSidebar from "@/components/DocsSidebar";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbSchema } from "@/lib/schema";
+import { breadcrumbSchema, faqPageSchema } from "@/lib/schema";
+import {
+  docSocialTitle,
+  docTitle,
+  extractDocDescription,
+  extractDocHeadline,
+  extractFaqItems,
+} from "@/lib/doc-seo";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
@@ -52,21 +59,18 @@ export async function generateMetadata({
   const content = readDoc(slug);
   if (!content) return { title: "Not Found" };
 
-  const firstLine = content.split("\n").find((l) => l.startsWith("# "));
-  const title = firstLine
-    ? firstLine.replace(/^#\s*/, "")
-    : slug.replace(/-/g, " ");
-
-  const description = `Warden documentation: ${title}. Learn how to use Warden to sandbox MCP servers.`;
+  const title = extractDocHeadline(content, slug.replace(/-/g, " "));
+  const description = extractDocDescription(content, title);
+  const socialTitle = docSocialTitle(title);
 
   return {
-    title,
+    title: docTitle(title),
     description,
     alternates: {
       canonical: `${SITE_URL}/docs/${slug}`,
     },
     openGraph: {
-      title: `${title} | Warden`,
+      title: socialTitle,
       description,
       url: `${SITE_URL}/docs/${slug}`,
       type: "article",
@@ -75,50 +79,18 @@ export async function generateMetadata({
           url: `${SITE_URL}/og-image.png`,
           width: 1200,
           height: 630,
-          alt: `${title} | Warden Documentation`,
+          alt: socialTitle,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | Warden`,
+      title: socialTitle,
       description,
       images: [`${SITE_URL}/og-image.png`],
     },
   };
 }
-
-const PUBLIC_SLUGS = [
-  "install",
-  "quickstart",
-  "schema",
-  "cli",
-  "compatibility",
-  "faq",
-  "architecture",
-  "examples",
-  "security",
-  "roadmap",
-  "contributing",
-  "testing",
-  "testing-platforms",
-];
-
-const slugToLabel: Record<string, string> = {
-  install: "Installation",
-  quickstart: "Quickstart",
-  schema: "Policy schema",
-  cli: "CLI reference",
-  compatibility: "Compatibility",
-  faq: "FAQ",
-  architecture: "Architecture",
-  examples: "Example policies",
-  security: "Security review",
-  roadmap: "Roadmap",
-  contributing: "Contributing",
-  testing: "Testing guide",
-  "testing-platforms": "Cross-platform testing",
-};
 
 export default async function DocPage({
   params,
@@ -129,12 +101,10 @@ export default async function DocPage({
   const content = readDoc(slug);
   if (!content) notFound();
 
-  const firstLine = content.split("\n").find((l) => l.startsWith("# "));
-  const title = firstLine
-    ? firstLine.replace(/^#\s*/, "")
-    : slug.replace(/-/g, " ");
+  const title = extractDocHeadline(content, slug.replace(/-/g, " "));
+  const description = extractDocDescription(content, title);
+  const faqItems = slug === "faq" ? extractFaqItems(content) : [];
 
-  const slugs = PUBLIC_SLUGS;
   const allSlugs = getAllDocSlugs();
   const currentIndex = allSlugs.indexOf(slug);
   const prevSlug = currentIndex > 0 ? allSlugs[currentIndex - 1] : null;
@@ -142,18 +112,16 @@ export default async function DocPage({
     currentIndex < allSlugs.length - 1 ? allSlugs[currentIndex + 1] : null;
 
   const slugToTitle = (s: string) => {
-    if (slugToLabel[s]) return slugToLabel[s];
     const c = readDoc(s);
     if (!c) return s.replace(/-/g, " ");
-    const h1 = c.split("\n").find((l) => l.startsWith("# "));
-    return h1 ? h1.replace(/^#\s*/, "") : s.replace(/-/g, " ");
+    return extractDocHeadline(c, s.replace(/-/g, " "));
   };
 
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     headline: title,
-    description: `Warden documentation: ${title}`,
+    description,
     url: `${SITE_URL}/docs/${slug}`,
     author: {
       "@type": "Person",
@@ -180,6 +148,11 @@ export default async function DocPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
+      {faqItems.length > 0 && (
+        <JsonLd
+          data={faqPageSchema(`${SITE_URL}/docs/${slug}`, faqItems)}
+        />
+      )}
       <JsonLd
         data={breadcrumbSchema([
           { name: "Home", url: `${SITE_URL}/` },

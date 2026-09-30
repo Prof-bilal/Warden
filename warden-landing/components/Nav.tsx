@@ -15,6 +15,7 @@ const links = [
   { href: "/#compatibility", label: "Compatibility" },
   { href: "/testing", label: "Testing" },
   { href: "/blog", label: "Blog" },
+  { href: "/guides", label: "Guides" },
   { href: "/about", label: "About" },
   { href: "/docs", label: "Docs" },
 ];

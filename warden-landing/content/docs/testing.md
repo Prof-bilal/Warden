@@ -1,4 +1,4 @@
-# Testing Guide
+# How to Test Warden
 
 ## Test pyramid for this project
 

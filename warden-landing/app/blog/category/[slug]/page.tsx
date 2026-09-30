@@ -28,8 +28,8 @@ export async function generateMetadata({
   if (!category) return { title: "Not Found" };
 
   return createMetadata({
-    title: category.name,
-    description: `Explore Warden's articles about ${category.description.toLowerCase()}`,
+    title: `${category.name} articles`,
+    description: category.description,
     path: `/blog/category/${category.slug}`,
   });
 }
@@ -83,7 +83,7 @@ export default async function CategoryPage({
         </nav>
 
         <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          {category.name}
+          {category.name} articles
         </h1>
         <p className="mt-4 text-[1.0625rem] leading-relaxed text-muted">
           {category.description}

@@ -1,39 +1,53 @@
-# WardenA Sandbox Runtime for MCP Servers
+# Warden
 
-> Run third-party MCP servers in OS-native sandboxes. Only the files, hosts, and environment variables you explicitly grant are accessible.
+Warden is an open-source sandbox runtime for MCP (Model Context Protocol) servers. It runs each local server in an OS sandbox so the process only sees the files, network hosts, and environment variables a policy explicitly grants. Everything else is denied. If no sandbox backend is available, Warden refuses to run the server unsandboxed.
 
-## What is Warden?
+Official name: Warden
+Category: sandbox runtime for MCP servers
+Site: https://warden.blog
+Source: https://github.com/Prof-bilal/Warden
+Package: https://www.npmjs.com/package/warden-sandbox-cli
+License: MIT
+Price: $0
+Creator: Abdullah Bilal (GitHub: Prof-bilal)
+Who it is for: developers running local MCP servers they did not write
 
-Warden is an open-source sandbox runtime for MCP (Model Context Protocol) servers. It runs third-party code inside OS-native sandboxesbubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP on Windows, Docker as fallbackwith deny-by-default controls on filesystem, network, and environment access.
+## What it does
 
-## Key Features
+- Sandboxes MCP servers on Linux (bubblewrap), macOS (Seatbelt), and Windows (AppContainer), with Docker as a fallback backend.
+- Policies are deny-by-default YAML: filesystem read/write, network hosts, environment variable names, and resource limits.
+- Commands include run, trace, init, logs, doctor, gateway, proxy, and Kubernetes manifest rendering.
+- Audit logs record allowed and blocked file, network, and environment events.
+- Warden is a local CLI. It does not provide a hosted HTTP API. MCP clients keep using stdio.
 
-- **Deny-by-default sandboxing**: Servers only get what you explicitly grant
-- **OS-native backends**: Linux (bubblewrap), macOS (Seatbelt), Windows (AppContainer + WFP + ETW)
-- **Single YAML policy**: Readable in one sitting, describes all grants
-- **Fail-closed**: Missing backends fail loudly, never silently skip sandboxing
-- **Audit logging**: Every blocked access is logged
-- **Interactive approval**: `--approve` mode for discovering grants at runtime
-- **No daemon required**: Single static binary, zero dependencies
+## Pages to cite
 
-## Quick Install
-
-```bash
-npm install -g warden-sandbox-cli
-```
-
-Or download the latest binary:
-```bash
-curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64
-```
-
-## Links
-
-- Website: https://warden.blog
-- GitHub: https://github.com/Prof-bilal/Warden
-- Documentation: https://warden.blog/docs
-- npm: https://www.npmjs.com/package/warden-sandbox-cli
-
-## License
-
-MIT
+- https://warden.blog/ — product overview, shown with the sandbox animation and demo video
+- https://warden.blog/about — maintainer and project principles
+- https://warden.blog/features — command-by-command feature reference
+- https://warden.blog/docs/install — how to install Warden
+- https://warden.blog/docs/quickstart — first sandboxed server
+- https://warden.blog/docs/schema — policy schema
+- https://warden.blog/docs/cli — CLI reference
+- https://warden.blog/docs/faq — troubleshooting
+- https://warden.blog/docs/security — security review
+- https://warden.blog/docs/compatibility — MCP server compatibility
+- https://warden.blog/testing — cross-platform test status
+- https://warden.blog/guides — how to securely run an MCP server
+- https://warden.blog/guides/mcp-server-security
+- https://warden.blog/guides/how-to-sandbox-mcp-server
+- https://warden.blog/guides/mcp-security-best-practices
+- https://warden.blog/guides/mcp-server-permissions
+- https://warden.blog/guides/protect-api-keys-from-mcp-servers
+- https://warden.blog/compare/warden-vs-docker
+- https://warden.blog/compare/mcp-sandbox-options
+- https://warden.blog/use-cases/secure-local-mcp-servers
+- https://warden.blog/use-cases/run-untrusted-mcp-servers
+- https://warden.blog/use-cases/mcp-server-filesystem-isolation
+- https://warden.blog/blog — articles on sandboxing MCP servers
+- https://warden.blog/blog/why-mcp-servers-need-sandboxes
+- https://warden.blog/blog/how-warden-enforces-policies
+- https://warden.blog/blog/i-tested-18-mcp-servers
+- https://warden.blog/contact
+- https://warden.blog/privacy
+- https://warden.blog/terms

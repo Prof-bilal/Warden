@@ -1,6 +1,10 @@
 ---
 title: "I Tested 18 MCP Servers Against a Sandbox. Here's What Happened."
 description: "14 pass, 2 conditional, 2 fail — the full compatibility matrix for running real-world MCP servers under Warden, with pinned policies and honest failure classifications."
+tldr:
+  - "18 MCP servers were tested with pinned policies: 14 pass, 2 conditional, 2 fail."
+  - "Fetch and Kubernetes work once deployment-specific hosts are granted."
+  - "Docker MCP fails because it needs the Docker socket, and Playwright failed the static host allowlist used at the time of the test."
 date: "2026-09-15"
 author: prof-bilal
 category: engineering

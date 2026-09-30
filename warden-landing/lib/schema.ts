@@ -45,7 +45,16 @@ export function organizationSchema() {
       "@type": "ImageObject",
       url: `${SITE_URL}/icon.png`,
     },
-    sameAs: [GITHUB_URL],
+    sameAs: [
+      GITHUB_URL,
+      "https://www.npmjs.com/package/warden-sandbox-cli",
+    ],
+    founder: {
+      "@type": "Person",
+      name: "Abdullah Bilal",
+      alternateName: "Prof-bilal",
+      url: "https://github.com/Prof-bilal",
+    },
     description:
       "Open-source sandbox runtime for MCP servers. Run third-party AI tooling code safely.",
   };
@@ -95,6 +104,25 @@ export function personSchema(author: Author) {
     url: `${SITE_URL}/author/${author.slug}`,
     description: author.bio,
     sameAs: [author.url],
+  };
+}
+
+export function faqPageSchema(
+  url: string,
+  questions: { question: string; answer: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    url,
+    mainEntity: questions.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
   };
 }
 

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { SITE_URL } from "@/lib/seo";
 import { AUTHORS, CATEGORIES, getAllArticles } from "@/lib/blog";
+import { getAllTopics } from "@/lib/topics";
 
 const DOCS_DIR = path.resolve(
   process.cwd(),
@@ -40,6 +41,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${SITE_URL}/docs`,
       changeFrequency: "weekly",
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/guides`,
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
     {
       url: `${SITE_URL}/about`,
@@ -95,6 +101,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
+  const topicPages: MetadataRoute.Sitemap = getAllTopics().map((topic) => ({
+    url: `${SITE_URL}${topic.path}`,
+    lastModified: new Date(topic.date),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
   const docPages: MetadataRoute.Sitemap = getAllDocSlugs().map((slug) => ({
     url: `${SITE_URL}/docs/${slug}`,
     changeFrequency: "monthly" as const,
@@ -106,6 +119,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...articlePages,
     ...categoryPages,
     ...authorPages,
+    ...topicPages,
     ...docPages,
   ];
 }

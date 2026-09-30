@@ -7,31 +7,31 @@ import Footer from "@/components/Footer";
 import { Github } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "About Warden",
+  title: { absolute: "Sandbox every server by default." },
   description:
-    "About Wardenan open-source sandbox runtime for MCP servers. Learn about the mission, security posture, and current beta status.",
+    "Warden is an open-source sandbox runtime for MCP servers. It makes the safe path the easy path, with a policy file small enough to read in one sitting.",
   alternates: {
     canonical: `${SITE_URL}/about`,
   },
   openGraph: {
-    title: "About Warden",
+    title: "Sandbox every server by default.",
     description:
-      "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
+      "Warden is an open-source sandbox runtime for MCP servers. It makes the safe path the easy path, with a policy file small enough to read in one sitting.",
     url: `${SITE_URL}/about`,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "About Warden",
+        alt: "Sandbox every server by default.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "About Warden",
+    title: "Sandbox every server by default.",
     description:
-      "Learn about Warden's mission to make the safe path the easy path for MCP server sandboxing.",
+      "Warden is an open-source sandbox runtime for MCP servers. It makes the safe path the easy path, with a policy file small enough to read in one sitting.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
@@ -110,9 +110,10 @@ export default function About() {
             Sandbox every server by default.
           </h1>
           <p className="mx-auto mt-4 max-w-[38rem] font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
+            Warden is an open-source sandbox runtime for MCP servers, maintained by Abdullah Bilal.
             Modern AI tooling runs third-party code with first-party trust. MCP servers install
             with a one-liner and inherit everything you can do. Warden exists to make the safe
-            path the easy pathwith a policy file small enough to read in one sitting.
+            path the easy path, with a policy file small enough to read in one sitting.
           </p>
         </div>
       </section>

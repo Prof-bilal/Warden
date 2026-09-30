@@ -1,6 +1,10 @@
 ---
 title: "Deny-by-Default: Why 'Permission Denied' Isn't Enough"
 description: "Warden makes ungranted paths invisible instead of unreadable — bind mounts, not permission bits. Why invisibility is the stronger boundary, and how it's tested."
+tldr:
+  - "A permission-denied error tells a process that the path exists."
+  - "On Linux, Warden bind-mounts only granted paths, so an ungranted directory is not visible."
+  - "The policy is a short YAML list of filesystem, network, and environment grants."
 date: "2026-09-15"
 author: prof-bilal
 category: security

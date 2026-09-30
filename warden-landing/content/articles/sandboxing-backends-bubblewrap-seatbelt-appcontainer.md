@@ -1,6 +1,10 @@
 ---
 title: "Warden backends: bubblewrap, Seatbelt, AppContainer"
 description: "How Warden maps one deny-by-default policy onto three different OS sandbox mechanismsLinux bubblewrap, macOS Seatbelt, and Windows AppContainer with WFP and Job Objects."
+tldr:
+  - "One policy.yaml is compiled into the sandbox the host already provides."
+  - "Linux uses bubblewrap, macOS uses Seatbelt, and Windows uses AppContainer with WFP and Job Objects."
+  - "Where a native backend cannot match the guarantee, Warden says so and can fall back to Docker instead of pretending."
 date: "2026-09-14"
 author: prof-bilal
 category: engineering
