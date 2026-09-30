@@ -53,7 +53,7 @@ Entry point. Subcommands:
   a non-overwriting policy file from a JSONL trace log.
 - `warden logs`view/tail the audit log for a past or running session.
 - Plus `doctor`, `gateway`, `proxy` (MCP message filtering), `k8s`
-  (container/Kubernetes rendering), `update`, and `version` — see
+  (container/Kubernetes rendering), `update`, and `version`see
   `warden-starter/warden/docs/cli.md` for the full reference.
 
 ### 2. Policy Engine

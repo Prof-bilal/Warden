@@ -5,7 +5,7 @@ The Warden Client Proxy sits between MCP clients (Claude Desktop, Cursor, ChatGP
 > ⚠️ **What the proxy does and does not isolate:** the proxy filters MCP
 > JSON-RPC messages and restricts a stdio subprocess's environment to
 > `env.allow`. It does **not** sandbox a stdio upstream's filesystem or
-> network access — wrap `warden proxy` itself in `warden run` (or a
+> network accesswrap `warden proxy` itself in `warden run` (or a
 > container) when the upstream must be isolated. See
 > [Security Considerations](#security-considerations) below.
 

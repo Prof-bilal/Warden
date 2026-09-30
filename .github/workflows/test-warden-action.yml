@@ -33,7 +33,7 @@ jobs:
           "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
           # warden anchors a policy's relative grants (".") at the policy
           # file's directory, so template policies must be copied to the
-          # workspace root before use — using them in place would grant the
+          # workspace root before useusing them in place would grant the
           # templates/ directory instead of the workspace under test.
           cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
       
@@ -176,7 +176,7 @@ jobs:
           run: |
             # Egress goes through warden's in-container proxy (HTTP_PROXY),
             # which answers DENIED requests with HTTP 403 while curl still
-            # exits 0 (curl only fails on transport errors) — so the exit
+            # exits 0 (curl only fails on transport errors)so the exit
             # code proves nothing. Assert on the served HTTP code instead:
             # denied = 403 (proxy deny) or 000 (transport refused); a 2xx/3xx
             # means the request actually escaped the sandbox.
@@ -292,7 +292,7 @@ jobs:
           policy: ./warden-scan-policy.yaml
           run: |
             # Create test files under ./tmp (a write grant in
-            # security-scan.yaml) — the workspace root is read-only in-sandbox.
+            # security-scan.yaml)the workspace root is read-only in-sandbox.
             echo "password = 'secret123'" > tmp/test-file.py
             echo "api_key = 'sk-test123'" > tmp/test-file.js
             

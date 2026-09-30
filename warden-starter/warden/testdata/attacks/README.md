@@ -3,14 +3,14 @@
 Reproducible attack simulations that verify Warden's containment claims with
 committed, machine-checkable evidence. Every scenario runs **twice**:
 
-1. **Control phase** — the attack runs *unsandboxed* and must actually land.
+1. **Control phase**the attack runs *unsandboxed* and must actually land.
    If the attack can't succeed without Warden, the scenario is **VOID**
    (it proves nothing either way).
-2. **Sandbox phase** — the identical attack runs under `warden run` with a
+2. **Sandbox phase**the identical attack runs under `warden run` with a
    deny-by-default policy and must be contained.
 
 Containment verdicts are confirmed **host-side** from artifacts the sandboxed
-process cannot forge — not by trusting its output:
+process cannot forgenot by trusting its output:
 
 | Check | Artifact |
 |---|---|
@@ -62,7 +62,7 @@ run-*-stdout.log             run-*-stderr.txt         what each phase printed
 - **Decoy data only.** Every "secret", key, and document is created by the
   harness with obviously-fake content (`DECOY-...-NOT-REAL`). The harness
   never reads real user files.
-- **No real crypto.** "Ransomware" is an XOR with `0x5A` — an irreversible
+- **No real crypto.** "Ransomware" is an XOR with `0x5A`an irreversible
   *looking* transform for the demo, trivially reversible, and applied only to
   harness-created decoys.
 - **Loopback network only.** The exfil collector is a local HTTP server on

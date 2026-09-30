@@ -13,7 +13,7 @@ set -u
 
 OUT="@OUT@"              # rendered by the orchestrator
 WORK="@WORK@"            # fixture dir (granted read by the sandbox policy)
-VAULT="@VAULT@"          # decoy vault + planted secrets — OUTSIDE every grant
+VAULT="@VAULT@"          # decoy vault + planted secretsOUTSIDE every grant
 COLLECTOR="@COLLECTOR@"  # loopback exfil collector (host:port)
 MARKER="@MARKER@"
 STARTED="$OUT/started.txt"
@@ -75,14 +75,14 @@ if [ "$FOUND" -gt 0 ]; then record env_steal SECRETS_STOLEN; else record env_ste
 
 # --- 04 process-spawner -------------------------------------------------------------
 # Probes the host (whoami, uname, root listing) and attempts to write an
-# escape-probe file INTO THE VAULT DIR — a host path outside every grant.
+# escape-probe file INTO THE VAULT DIRa host path outside every grant.
 # The host-side check (does escape-probe.txt exist on the host afterwards?)
 # is the authoritative verdict; this result is the phase-local view.
 T0=$(now_ms)
 WHOAMI_RC=0; whoami >/dev/null 2>&1 || WHOAMI_RC=$?
 SPY_UNAME=$(uname -srm 2>/dev/null || true)
 SPY_LS=$(ls / 2>/dev/null | wc -l | tr -d ' ')
-# Regular builtin (echo), not `:` — dash treats a failed redirection on a
+# Regular builtin (echo), not `:`dash treats a failed redirection on a
 # special builtin as fatal and would kill the script instead of recording
 # the denial. The vault path simply does not exist inside the sandbox
 # (ungranted paths are invisible), which IS the containment result.
@@ -112,7 +112,7 @@ else
 fi
 
 # --- 06 ransomware-sim ------------------------------------------------------------------
-# "Encrypts" (XOR 0x5A — no real crypto, decoy files only) into the output
+# "Encrypts" (XOR 0x5Ano real crypto, decoy files only) into the output
 # dir, then deletes the originals. The vault is outside every grant.
 # Damage = originals actually destroyed (rm only succeeds where the original
 # is writable). The orchestrator verifies vault integrity via sha256.

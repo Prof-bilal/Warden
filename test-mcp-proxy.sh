@@ -3,7 +3,7 @@
 #
 # Verifies the honest/functional proxy contract:
 #   1. Plain http:// to a remote host is rejected at startup (fail-closed);
-#      only loopback may use plain http — https:// remote upstreams are supported
+#      only loopback may use plain httphttps:// remote upstreams are supported
 #   2. A stdio upstream starts a real JSON-RPC bridge on TCP
 #   3. Allowed tool calls are forwarded end-to-end
 #   4. Disallowed tool calls are answered with a JSON-RPC error

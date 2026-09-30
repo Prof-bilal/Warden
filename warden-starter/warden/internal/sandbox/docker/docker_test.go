@@ -65,7 +65,7 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 
 // /tmp and /run are provided as tmpfs mounts; binding either exactly at its
 // root makes the Docker daemon reject the container with "Duplicate mount
-// point" (exit 125) — the failure that broke the warden-action smoke tests.
+// point" (exit 125)the failure that broke the warden-action smoke tests.
 func TestBuildDockerArgsTmpfsPathsNeverBindAtRoot(t *testing.T) {
 	bridge := filepath.Join(t.TempDir(), "warden")
 	if err := os.WriteFile(bridge, []byte("x"), 0o755); err != nil {

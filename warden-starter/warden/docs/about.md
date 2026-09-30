@@ -43,7 +43,7 @@ program ([join it](beta.md)). Pending: Homebrew tap. Track milestones in
 Deny-by-default on filesystem, network, and environment. No silent fallback
 to unsandboxed runsa missing backend fails loudly. Every blocked access
 is logged. Known limitations (no CPU throttling, no fully arbitrary hosts —
-only a single leading wildcard label is supported — unix-socket grants,
+only a single leading wildcard label is supportedunix-socket grants,
 Seatbelt deprecation) are documented honestly in the
 [Security Review](security.md) and [Compatibility](compatibility.md) pages —
 not buried.
