@@ -198,14 +198,21 @@ func wfpSupported() error {
 	return nil
 }
 
+// rpcAuthnWinNT is RPC_C_AUTHN_WINNT (rpcdce.h): the NTLM SSP. FwpmEngineOpen0
+// accepts only RPC_C_AUTHN_WINNT or RPC_C_AUTHN_DEFAULT for authnService, even
+// for a local (NULL serverName) session. Passing RPC_C_AUTHN_NONE (0) is
+// rejected with ERROR_NOT_SUPPORTED (50), which reads like "this host has no
+// WFP" and fail-closes a perfectly healthy engine.
+const rpcAuthnWinNT = 10
+
 // fwpmOpen opens a handle to the filter engine.
 func fwpmOpen() (windows.Handle, error) {
 	var engine windows.Handle
 	r, _, _ := procFwpmEngineOpen.Call(
-		0, // serverName (local)
-		0, // authnService (ignored with NULL server)
-		0, // authIdentity
-		0, // session
+		0,             // serverName: NULL, local engine
+		rpcAuthnWinNT, // authnService: RPC_C_AUTHN_WINNT (allowed values are WINNT and DEFAULT)
+		0, // authIdentity: NULL, use the calling thread's credentials
+		0, // session: NULL, default session flags
 		uintptr(unsafe.Pointer(&engine)),
 	)
 	if err := fwpmResultError("FwpmEngineOpen", r); err != nil {

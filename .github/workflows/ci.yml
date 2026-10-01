@@ -193,6 +193,27 @@ jobs:
           $p = [WardenProbe]::GetProcAddress($nt, "NtCreateLowBoxToken")
           $state = if ($p -eq [IntPtr]::Zero) { "MISSING err=" + [Runtime.InteropServices.Marshal]::GetLastWin32Error() } else { "0x" + $p.ToString("X") }
           Write-Host ("ntdll!NtCreateLowBoxToken = " + $state)
+          # Can this runner actually open a WFP engine session, and with which
+          # authnService? fwpmOpen() must pass RPC_C_AUTHN_WINNT (10); 0 is
+          # RPC_C_AUTHN_NONE, which WFP rejects with ERROR_NOT_SUPPORTED (50).
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class WardenWfp{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);}'
+          foreach ($a in @(10, 0)) {
+            $h = [IntPtr]::Zero
+            $r = [WardenWfp]::FwpmEngineOpen0($null, [uint32]$a, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
+            if ($r -eq 0) {
+              Write-Host ("FwpmEngineOpen0 authnService={0}: OK handle=0x{1:X}" -f $a, $h)
+              [void][WardenWfp]::FwpmEngineClose0($h)
+            } else {
+              Write-Host ("FwpmEngineOpen0 authnService={0}: FAILED code=0x{1:X} ({1})" -f $a, $r)
+            }
+          }
+          $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $pr = New-Object Security.Principal.WindowsPrincipal($id)
+          Write-Host ("elevated: " + $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) + " user=" + $id.Name)
+          foreach ($svc in @("bfe", "wscsvc", "mpssvc")) {
+            $s = Get-Service $svc -ErrorAction SilentlyContinue
+            if ($s) { Write-Host ("svc {0}: {1} ({2})" -f $s.Name, $s.Status, $s.StartType) } else { Write-Host ("svc {0}: not found" -f $svc) }
+          }
           & "$env:RUNNER_TEMP/warden-native.exe" doctor
           Write-Host ("doctor exit code: " + $LASTEXITCODE)
           try {
