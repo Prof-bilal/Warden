@@ -39,6 +39,7 @@ export const metadata: Metadata = {
 };
 
 const CARDS = [
+  { title: "Policy packs & client setup", body: "Candidate profiles, multi-client setup, private backups, undo, and local verification.", href: "/docs/ecosystem-setup" },
   {
     title: "Install",
     body: "Linux, macOS, Windows, Docker fallbackor build from source with Go 1.22+. What each platform needs before warden will run.",
@@ -61,7 +62,7 @@ const CARDS = [
   },
   {
     title: "Compatibility matrix",
-    body: "18 tested servers with exact policies: 14 pass, 2 conditional, 2 fail with classified reasons.",
+    body: "18 server policy fixtures with classified verdicts. Fixture validation and fresh runtime verification are separate evidence levels.",
     href: "/docs/compatibility",
   },
   {

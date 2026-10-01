@@ -1,0 +1,32 @@
+name: Policy pack or adapter contribution
+description: Propose maintained, version-bound MCP integration evidence.
+title: "[MCP integration]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Use fake fixtures. Do not include tokens, env values, tool payloads, configuration backups or private signing keys."
+  - type: input
+    id: upstream
+    attributes:
+      label: Maintained upstream and pinned artifact/version
+    validations:
+      required: true
+  - type: textarea
+    id: grants
+    attributes:
+      label: Task profile and required permissions
+      description: List narrow file grants, hostnames, credential names/scopes and transport limits; never credential values.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproducible allowed and denied workflow
+      description: Include host version, OS/backend, protocol, policy/artifact hashes, date and synthetic fixture steps. Distinguish fixture tests from real workflows.
+    validations:
+      required: true
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Maintenance and rollback
+      description: Review owner/contact, update review cadence, revocation source, prior-artifact rollback and known limitations.

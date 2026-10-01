@@ -6,6 +6,7 @@ name: CI
 # runs the Windows job, which is the only place the WFP/AppContainer/ETW
 # escape and lifecycle tests execute for real.
 on:
+  workflow_call:
   pull_request:
   push:
     # '**' matches every branch but not tag pushes (release.yml owns tags).
@@ -19,6 +20,22 @@ defaults:
     working-directory: warden-starter/warden
 
 jobs:
+  npm-wrapper:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: warden-starter/warden/build/npm-wrapper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
+      - run: npm pack --dry-run
+
   linux:
     runs-on: ubuntu-latest
     steps:
@@ -90,6 +107,28 @@ jobs:
           fi
       - run: go build ./...
       - run: go vet ./...
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Gateway and creator regression (real sandbox, two transports)
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/warden-growth" ./cmd/warden
+          "$RUNNER_TEMP/warden-growth" packs prepare filesystem --output "$RUNNER_TEMP/warden-prepared" --backend linux
+          WARDEN_BIN="$RUNNER_TEMP/warden-growth" WARDEN_MCP_SDK="$RUNNER_TEMP/warden-prepared/node_modules/@modelcontextprotocol/sdk" node testdata/ecosystem/smoke-growth.mjs
+      - name: Packed npm installation and real filesystem server scenarios
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./build/npm-wrapper/package.json').version")"
+          go build -ldflags "-X github.com/warden-sandbox/warden/internal/version.Version=$VERSION" -o "$RUNNER_TEMP/warden-preview" ./cmd/warden
+          WARDEN_BIN="$RUNNER_TEMP/warden-preview" WARDEN_SMOKE_RUNTIME="$RUNNER_TEMP/warden-prepared" node testdata/ecosystem/smoke-npm-release.mjs > "$RUNNER_TEMP/warden-npm-report.json"
+          cat "$RUNNER_TEMP/warden-npm-report.json"
+      - name: Actual Codex host with packed npm launcher (no inference)
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/warden-codex-host" --ignore-scripts --no-audit --no-fund @openai/codex@0.159.2
+          INPUTS="$(node -e "const r=require(process.argv[1]); console.log(require('node:path').join(r.evidenceDirectory,'private','scenario-inputs.json'))" "$RUNNER_TEMP/warden-npm-report.json")"
+          WARDEN_CODEX_BIN="$RUNNER_TEMP/warden-codex-host/node_modules/.bin/codex" WARDEN_SCENARIO_INPUTS="$INPUTS" node testdata/ecosystem/smoke-codex-host.mjs
       - name: bwrap escape tests (must actually run)
         id: bwrap
         run: go test -v -count=1 ./internal/sandbox/linux/... 2>&1 | tee linux-test.log
@@ -124,8 +163,19 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - run: go build ./...
       - run: go vet ./...
+      - name: Native Windows MCP gateway lifecycle
+        shell: pwsh
+        run: |
+          go build -o "$env:RUNNER_TEMP/warden-native.exe" ./cmd/warden
+          if ($LASTEXITCODE -ne 0) { throw "native CLI build failed" }
+          $env:WARDEN_BIN = "$env:RUNNER_TEMP/warden-native.exe"
+          node testdata/ecosystem/smoke-native-gateway.mjs
+          if ($LASTEXITCODE -ne 0) { throw "native gateway regression failed" }
       - shell: pwsh
         run: go test -v ./...
         id: test
@@ -179,9 +229,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
       - run: go clean -cache
       - run: go build ./...
       - run: go vet ./...
+      - name: Native macOS MCP gateway lifecycle
+        run: |
+          go build -o "$RUNNER_TEMP/warden-native" ./cmd/warden
+          WARDEN_BIN="$RUNNER_TEMP/warden-native" node testdata/ecosystem/smoke-native-gateway.mjs
       - name: Seatbelt integration tests (must actually run)
         id: darwin
         shell: bash
@@ -216,6 +273,21 @@ jobs:
         with:
           go-version: '1.26.x'
       - run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build ./...
+
+  website:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: warden-landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: warden-landing/package-lock.json
+      - run: npm ci
+      - run: npm run build
 
   docs:
     runs-on: ubuntu-latest

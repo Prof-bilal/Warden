@@ -1,5 +1,11 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The website and CLI share the policy catalog in the parent repository.
+  turbopack: {
+    root: fileURLToPath(new URL("..", import.meta.url)),
+  },
   async headers() {
     return [
       {

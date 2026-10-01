@@ -59,10 +59,10 @@ network directly, or leaks DNS queries outside the proxy.
   allowlist, preventing DNS leakage for blocked hosts.
 
 **Gaps.**
-- If `bwrap --unshare-net` fails because unprivileged user namespaces are
-  disabled on the host, the fallback falls open: the proxy is present but
-  the process may have host network access. Warden should fail closed in
-  this scenario but currently does not always detect it.
+- Backend discovery checks executable availability, not every kernel primitive.
+  If namespace creation fails, the sandbox command fails; Warden does not retry
+  directly or launch with host networking. Client setup additionally exercises
+  an inert process in the selected backend before applying configuration.
 
 ### 4. Audit log tampering
 
@@ -97,8 +97,9 @@ into the sandbox.
   directory) is granted in `filesystem.read`, the sandboxed process can
   read SSH keys. This is a policy-authoring mistake, not a Warden bug, but
   it is easy to make inadvertently.
-- The `warden trace` flow runs unsandboxed, so sensitive env vars are
-  visible in the trace log until the generated policy removes them.
+- The `warden trace` flow runs unsandboxed. Observed secrets can remain in logs;
+  generating a policy does not redact earlier trace output. Use disposable
+  test data and fake credentials with trusted code.
 
 ### 6. Resource exhaustion
 
@@ -114,8 +115,9 @@ other workloads or causing OOM kills on the host.
 - Both breaches are recorded as structured audit events.
 
 **Gaps.**
-- macOS (Seatbelt) and Docker backends do not enforce memory or timeout
-  limits; the values are parsed but silently ignored.
+- macOS samples process-tree memory and applies a wall-clock timer; Docker
+  applies a memory cap and a supervised timeout. Sampling can permit brief
+  overshoot and is not a CPU throttle. Verify limits on your selected backend.
 - No platform currently throttles CPU usage or uses cgroups for resource
   isolation.
 
@@ -141,21 +143,21 @@ traffic to unauthorized destinations.
 
 | Area | Limitation |
 |---|---|
-| Network enforcement | Relies on `bwrap --unshare-net`; if user namespaces are disabled on the host, Warden falls back to Docker or runs with broader access. |
+| Network enforcement | Linux requires isolated namespaces; failure ends execution. Docker is an isolated backend fallback when selected by backend discovery; no direct unsandboxed retry exists. |
 | CPU limits | No CPU throttling or cgroup-based limits on any platform. |
 | Process-tree visibility | Limits apply to the direct child process tree only; grandchildren spawned via `fork()` + `exec()` outside the tracked tree may escape limits. |
 | macOS Seatbelt | Deprecated by Apple; may be removed in a future macOS release with no Warden fallback on native. |
 | Docker fallback | Requires a running Docker daemon. The in-container proxy bridge must be a Linux ELF binaryon macOS this requires cross-compilation. |
 | Windows AppContainer | WFP and the ETW audit session require an elevated (admin) process; warden fails closed without it. The kernel (WPP-style) ETW providers accept one enabling session, so another controller holding them (PerfView, an EDR) also fails the run closed. |
 | Windows audit visibility | A denied file open is enforced by the AppContainer token before it reaches the file system, so it produces no ETW eventa denial shows up as an absent allowed operation, not a blocked record. Kernel-Network payloads are captured but not yet decoded; network allow/deny audit comes from the egress proxy and the WFP deny filters. |
-| strace auditing | Adds ~2–5x overhead on Linux; `strace` must be installed. On the native bwrap backend it is **required**: `warden run` refuses to start (fail-closed) without it, because Warden always opens its persistent audit log and traces file/network syscalls from outside the sandbox. The Docker fallback does not use `strace`. |
+| strace auditing | Workload-dependent overhead; no fresh benchmark is claimed here. Native Linux requires strace for file/network auditing and refuses launch without it. Docker does not use strace. |
 | Egress proxy scope | Only intercepts HTTP/HTTPS traffic. Raw TCP and UDP connections cannot be filtered by the proxy. |
 
 ## Security Best Practices for Users
 
-1. **Run `warden trace` before writing policy by hand.** It records actual
-   syscalls and generates a conservative starter policy that you can
-   review and tighten.
+1. **Trace only trusted code in a disposable test environment.** Tracing runs
+   unsandboxed and observes only the exercised workload. Use fake credentials;
+   review the resulting candidate policy and test allowed/denied operations.
 
 2. **Never pass `HOME` in `env.allow` unless you also restrict
    `filesystem.read` appropriately.** The combination of `HOME` + a broad

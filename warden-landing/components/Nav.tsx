@@ -7,15 +7,12 @@ import { Download, Github, Menu, Star, X } from "lucide-react";
 import { formatCount } from "@/lib/stats";
 
 const links = [
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/features", label: "Features" },
-  { href: "/#how-to-use", label: "How to use" },
-  { href: "/#backends", label: "Backends" },
-  { href: "/#proof", label: "Proof" },
-  { href: "/#compatibility", label: "Compatibility" },
-  { href: "/testing", label: "Testing" },
+  { href: "/setup", label: "Setup" },
+  { href: "/policies", label: "Policy packs" },
+  { href: "/integrations", label: "Connections" },
+  { href: "/creators", label: "Creators" },
+  { href: "/compatibility", label: "Compatibility" },
   { href: "/blog", label: "Blog" },
-  { href: "/about", label: "About" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -202,7 +199,7 @@ export default function Nav() {
             </a>
             <button
               onClick={() => setOpen(!open)}
-              className="flex items-center justify-center rounded-sm border border-ink-600 p-1.5 text-muted transition-colors hover:text-paper md:hidden"
+              className="flex items-center justify-center rounded-sm border border-ink-600 p-1.5 text-muted transition-colors hover:text-paper lg:hidden"
               aria-label={open ? "Close menu" : "Open menu"}
             >
               {open ? <X size={18} /> : <Menu size={18} />}
@@ -211,7 +208,7 @@ export default function Nav() {
         </div>
 
         {open && (
-          <nav className="border-t border-ink-700 px-6 py-4 md:hidden">
+          <nav className="border-t border-ink-700 px-6 py-4 lg:hidden">
             <div className="flex flex-col gap-3">
               {links.map((l) => (
                 <Link

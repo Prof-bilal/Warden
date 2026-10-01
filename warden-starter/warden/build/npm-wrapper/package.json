@@ -1,18 +1,22 @@
 {
   "name": "warden-sandbox-cli",
-  "version": "0.1.17",
-  "description": "npm wrapper for the Warden sandbox CLI",
+  "version": "0.2.0-beta.1",
+  "description": "Warden MCP sandbox CLI with reversible client setup, MCP gateway and signed creator checks (preview)",
   "bin": {
     "warden": "bin/warden"
   },
   "files": [
     "bin/",
+    "lib/",
+    "scripts/verify-package.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "prepack": "node -e \"const fs=require('fs'); for (const f of ['bin/warden','README.md','LICENSE']) { if (!fs.existsSync(f)) { console.error('prepack: missing required file '+f); process.exit(1); } }\""
+    "prepack": "node scripts/verify-package.js",
+    "test": "node --test test/*.test.js"
   },
+  "publishConfig": { "access": "public", "tag": "beta" },
   "engines": {
     "node": ">=18"
   },

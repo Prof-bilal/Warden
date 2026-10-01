@@ -68,8 +68,11 @@ func TestCompareVersions(t *testing.T) {
 		{"0.1.11", "v0.1.11", 0},
 		{"0.2.0", "0.1.11", 1},
 		{"1.0.0", "0.9.9", 1},
-		{"0.1.11-rc1", "0.1.11", 0}, // suffix ignored
-		{"0.1", "0.1.0", 0},         // missing fields are zero
+		{"0.1.11-rc1", "0.1.11", -1},
+		{"0.2.0-beta.2", "0.2.0-beta.10", -1},
+		{"0.2.0-beta.1", "0.2.0-alpha.1", 1},
+		{"0.2.0", "0.2.0-beta.1", 1},
+		{"0.1", "0.1.0", 0}, // missing fields are zero
 		{"0.1.0", "0.1", 0},
 	}
 	for _, tc := range cases {
@@ -129,8 +132,34 @@ func TestReplace(t *testing.T) {
 	}
 }
 
+func TestCachedChecksumManifestPrivateAndAtomic(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "SHA256SUMS")
+	data := []byte(strings.Repeat("a", 64) + "  warden-linux-amd64\n")
+	for i := 0; i < 2; i++ {
+		if err := replaceFile(target, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := os.ReadFile(target)
+	if err != nil || string(got) != string(data) {
+		t.Fatalf("manifest not persisted: %q, %v", got, err)
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("manifest mode: %o", info.Mode().Perm())
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("temporary manifest files left behind: %v, %v", entries, err)
+	}
+}
+
 func TestValidateVersion(t *testing.T) {
-	ok := []string{"0.1.12", "v0.1.12", "1.0.0", "0.1"}
+	ok := []string{"0.1.12", "v0.1.12", "1.0.0", "0.1", "0.2.0-beta.1", "v0.2.0-rc1"}
 	for _, in := range ok {
 		got, err := validateVersion(in)
 		if err != nil {
@@ -141,7 +170,7 @@ func TestValidateVersion(t *testing.T) {
 			t.Errorf("validateVersion(%q) retained v-prefix: %q", in, got)
 		}
 	}
-	bad := []string{"", "latest", "../x", "0.1.12;rm", "0.1.12/x", "abc", "0.1.12-rc1"}
+	bad := []string{"", "latest", "../x", "0.1.12;rm", "0.1.12/x", "abc", "0.2.0-beta.01", "0.2-beta.1", "0.2.0-beta/1"}
 	for _, in := range bad {
 		if _, err := validateVersion(in); err == nil {
 			t.Errorf("validateVersion(%q) = nil, want error", in)

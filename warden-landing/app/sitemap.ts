@@ -3,20 +3,20 @@ import fs from "fs";
 import path from "path";
 import { SITE_URL } from "@/lib/seo";
 import { AUTHORS, CATEGORIES, getAllArticles } from "@/lib/blog";
+import { clients, policyPacks } from "@/lib/ecosystem";
 
-const DOCS_DIR = path.resolve(
-  process.cwd(),
-  "content/docs"
-);
+const DOCS_DIR = path.resolve(process.cwd(), "content/docs");
 
 function getAllDocSlugs(): string[] {
   try {
-    return fs
-      .readdirSync(DOCS_DIR)
-      .filter((f) => f.endsWith(".md"))
-      .map((f) => f.replace(/\.md$/, ""))
-      // /docs/index duplicates the docs hub at /docs — keep it out of the sitemap.
-      .filter((slug) => slug !== "index");
+    return (
+      fs
+        .readdirSync(DOCS_DIR)
+        .filter((f) => f.endsWith(".md"))
+        .map((f) => f.replace(/\.md$/, ""))
+        // /docs/index duplicates the docs hub at /docs — keep it out of the sitemap.
+        .filter((slug) => slug !== "index")
+    );
   } catch {
     return [];
   }
@@ -80,7 +80,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(article.updated ?? article.date),
       changeFrequency: "monthly" as const,
       priority: 0.8,
-    })
+    }),
   );
 
   const categoryPages: MetadataRoute.Sitemap = CATEGORIES.map((category) => ({
@@ -103,6 +103,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     ...staticPages,
+    ...[
+      "/setup",
+      "/policies",
+      "/compatibility",
+      "/protection",
+      "/integrations",
+      "/creators",
+      "/verify",
+      "/maintenance",
+      ...clients.map((c) => `/setup/${c.id}`),
+      ...policyPacks.map((p) => `/policies/${p.id}`),
+    ].map((route) => ({
+      url: `${SITE_URL}${route}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
     ...articlePages,
     ...categoryPages,
     ...authorPages,

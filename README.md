@@ -4,6 +4,19 @@
 
 <h1 align="center">Warden</h1>
 
+Development checkout: [policy packs and reversible client setup](warden-landing/content/docs/ecosystem-setup.md)
+now have website flows and CLI commands. Profiles remain candidates while live
+upstream/client evidence is collected. See [implementation status](BATCH_1_3_STATUS.md).
+
+The development checkout also adds a standard bounded MCP gateway, creator
+evidence/badges and maintenance tools across the CLI and website. See
+[batches 4–6 status](BATCH_4_6_STATUS.md) and the
+[gateway guide](warden-landing/content/docs/mcp-gateway.md).
+
+The `0.2.0-beta.1` candidate now includes verified npm downloads and real Linux
+filesystem-server/Codex checks. See [release preparation and scenario results](RELEASE_PREVIEW_STATUS.md)
+for the tested scope and remaining publishing gates. This candidate is not published yet.
+
 <p align="center">
   <strong>The sandbox runtime for MCP servers</strong><br>
   Run any MCP server with only the access you grant itnothing else exists.

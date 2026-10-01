@@ -1,0 +1,62 @@
+:root {
+  --bg: #09090b;
+  --panel: #111113;
+  --panel-2: #16161a;
+  --border: #27272a;
+  --border-soft: #1e1e22;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --faint: #71717a;
+  --green: #16a34a;
+  --green-soft: #22c55e;
+  --green-dim: rgba(22, 163, 74, 0.16);
+  --red: #dc2626;
+  --red-soft: #ef4444;
+  --red-dim: rgba(220, 38, 38, 0.14);
+  --amber: #f59e0b;
+  --cyan: #22d3ee;
+  --violet: #8b5cf6;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.dot-bg {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Shared heading kicker style used across scenes */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--faint);
+}

@@ -86,6 +86,12 @@ export default function Home() {
       />
       <Nav />
       <Hero />
+      <section className="border-y border-ink-700 bg-ink-900/60">
+        <div className="mx-auto grid max-w-content gap-8 px-6 py-12 md:grid-cols-[1fr_auto] md:items-center">
+          <div><p className="text-xs uppercase tracking-widest text-blueprint">MCP setup workspace</p><h2 className="mt-3 text-2xl font-semibold">Choose your client. Review your server’s access.</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Explore six candidate policy profiles and reversible setup for Claude, Cursor, Codex, VS Code, Gemini, and other local MCP hosts.</p></div>
+          <div className="flex flex-wrap gap-3"><Link href="/setup" className="rounded-lg bg-blueprint px-5 py-3 text-sm font-semibold text-ink-950">Start setup →</Link><Link href="/policies" className="rounded-lg border border-ink-600 px-5 py-3 text-sm text-paper">Browse profiles</Link></div>
+        </div>
+      </section>
       <BoundaryDemo />
       <HowItWorks />
       <Backends />

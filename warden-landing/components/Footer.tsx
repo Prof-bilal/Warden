@@ -6,6 +6,13 @@ export default function Footer() {
       <div className="mx-auto flex max-w-content flex-col items-start justify-between gap-4 px-6 py-10 font-hero text-[0.8125rem] text-muted md:flex-row md:items-center">
         <span>wardenMIT licensed</span>
         <div className="flex flex-wrap gap-6">
+          <Link href="/setup" className="transition-colors hover:text-paper">Setup</Link>
+          <Link href="/policies" className="transition-colors hover:text-paper">Policy packs</Link>
+          <Link href="/integrations" className="transition-colors hover:text-paper">Connections</Link>
+          <Link href="/creators" className="transition-colors hover:text-paper">Creators</Link>
+          <Link href="/verify" className="transition-colors hover:text-paper">Verify evidence</Link>
+          <Link href="/maintenance" className="transition-colors hover:text-paper">Maintenance</Link>
+          <Link href="/testing" className="transition-colors hover:text-paper">Testing</Link>
           <Link href="/#how-it-works" className="transition-colors hover:text-paper">
             How it works
           </Link>

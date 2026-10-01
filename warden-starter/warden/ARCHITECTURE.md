@@ -1,5 +1,51 @@
 # Architecture
 
+## Ecosystem gateway and creator evidence (development checkout)
+
+The existing run boundary and YAML schema are unchanged. `connect`/`serve` add
+standard stdio/authenticated Streamable HTTP around `internal/mcpbridge`, with
+separate version-1 JSON MCP rules. Local upstreams launch only through a
+digest-pinned Warden run subprocess; remote HTTP upstreams use independent
+session state and credentials and cannot receive process isolation. Gateway
+rules deny unnamed tools/resources/prompts, enforce exact string argument
+constraints, refresh tool definitions before calls, and optionally pin definition
+hashes. Unsupported capability paths fail explicitly.
+
+The advertised protocol is the bounded 2025-11-25 request/response subset.
+Initialization may request another version: Warden offers 2025-11-25 and strips
+unsupported client capabilities before upstream initialization. The client must
+accept that version before sending initialized. HTTP session requests must carry
+the negotiated MCP-Protocol-Version header. Negotiation adds no permissions.
+2026-07-28/MRTR, tasks, pagination, subscriptions and server-originated sampling,
+elicitation and roots remain unsupported. HTTP uses loopback binding, authority
+and Origin checks, authenticated owner-bound sessions, bounded size/time/session
+limits, cancellation cleanup, and private stop credentials. Existing-issuer
+RS256 verification uses a trusted local JWKS and resource audience; no dynamic
+OAuth discovery fetch or upstream OAuth exchange is implied. The legacy proxy
+retains its custom TCP behavior and documented unsandboxed upstream limitation.
+
+`internal/attestation` hashes artifact trees and signs completed allowed/denied
+stdio checks with Ed25519. Evidence also binds policies, MCP rules, manifests,
+argv, the Warden binary, platform/backend, protocol, issuer and expiry. Verification
+requires independent issuer trust and a fresh trusted local revocation snapshot.
+It does not certify complete safety or bind all system interpreter/base-runtime
+content. `internal/maintenance` supplies conservative permission diffs and explicit
+local aggregate events; gateway journals redact payloads/credentials by construction.
+Signing keys, gateway journals and control files are checked against resolved
+upstream grants, executable directories and readable runtime paths, including
+existing ancestor symlinks. This private-state guard adds no sandbox grants.
+Native platform, full protocol, issuer federation, live-host and pilot release
+gates are recorded in the repository's batch status, rather than inferred from
+unit tests or signature validity.
+
+The npm preview launcher verifies the versioned GitHub release checksum before
+installing or executing cached bytes and writes setup progress only to stderr.
+Preview packages pin their exact release; stable caches exclude previews. The Go
+updater saves the authenticated checksum manifest beside its verified cache so
+the npm launcher can validate later offline launches. These HTTPS manifests do
+not provide independent publisher signature verification. Native release gates
+and scenario coverage are recorded in `../../RELEASE_PREVIEW_STATUS.md`.
+
 ## Goals
 
 1. **Transparent to the MCP client.** The AI client (Claude, an IDE, etc.)

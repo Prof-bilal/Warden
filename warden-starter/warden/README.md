@@ -1,5 +1,19 @@
 # Warden
 
+Development ecosystem gateway: `warden connect` (stdio) and `warden serve`
+(authenticated HTTP) combine reviewed MCP rules with local process sandboxing.
+`warden creator` creates/verifies signed allowed/denied evidence;
+`policy-diff` and `report` support upgrades and explicit local pilot measurement.
+See [gateway guide](docs/mcp-gateway.md), [creator program](docs/creator-program.md)
+and [maintenance guide](docs/ecosystem-maintenance.md). Full protocol, native
+platform and public release gates remain documented work.
+
+Development checkout: new `packs`, `clients`, `wrap`, `unwrap`, and `inventory`
+commands provide candidate policy profiles and reversible local setup. These
+are not yet a published-release or live-client compatibility claim. Read
+[the boundary baseline](docs/ecosystem-baseline.md) and
+[the setup guide](../../warden-landing/content/docs/ecosystem-setup.md).
+
 **A lightweight sandbox runtime for MCP servers.**
 
 MCP servers routinely run as plain Node or Python processes on your machine

@@ -15,7 +15,11 @@ permissions:
   id-token: write
 
 jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -33,8 +37,28 @@ jobs:
           # Match go.mod (go 1.24). Do not pin below the module requirement.
           go-version: "1.24.x"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate candidate release version
+        id: candidate
+        run: |
+          RELEASE_VERSION="$(node -p "require('./build/npm-wrapper/package.json').version")"
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then RELEASE_VERSION="${GITHUB_REF_NAME#v}"; fi
+          export RELEASE_VERSION
+          node -e "require('./build/npm-wrapper/lib/runtime').parseVersion(process.env.RELEASE_VERSION)"
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Build binaries
-        run: make build-all
+        env:
+          VERSION: ${{ steps.candidate.outputs.version }}
+        run: make build-all VERSION="$VERSION"
+
+      - name: Check Go sources before releasing
+        run: |
+          go vet ./...
+          go test ./...
 
       - name: Generate checksums
         run: |
@@ -50,6 +74,7 @@ jobs:
         with:
           files: warden-starter/warden/dist/*
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
   publish-npm:
     if: github.event_name == 'push'
@@ -63,7 +88,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       - name: Update package.json version from tag
@@ -77,21 +102,25 @@ jobs:
           fi
 
       - name: Verify package tarball integrity
+        id: package
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           TAR="warden-sandbox-cli-${VERSION}.tgz"
-          # Build tarball locally instead of `npm pack` (which hits the
-          # registry and counts as a download, inflating download stats).
-          tar -czf "$TAR" -C . bin/ README.md LICENSE package.json
+          # Pack local sources using npm's real inclusion/lifecycle rules.
+          npm test
+          npm pack --json > "$RUNNER_TEMP/warden-pack.json"
           echo "Tarball contents:"
           tar -tf "$TAR"
           # bin requires the launcher.
           tar -tf "$TAR" | grep -qx 'package/bin/warden'
+          tar -tf "$TAR" | grep -qx 'package/lib/runtime.js'
+          tar -tf "$TAR" | grep -qx 'package/scripts/verify-package.js'
           # Metadata must ship the landing homepage, not a GitHub fallback.
           tar -xOf "$TAR" package/package.json | grep -q 'warden-six-rouge.vercel.app'
           tar -xOf "$TAR" package/package.json | grep -q 'Prof-bilal/Warden'
           echo "Tarball integrity OK"
+          echo "tarball=$TAR" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm (skip if version already exists)
         run: |
@@ -99,7 +128,9 @@ jobs:
           if npm view "warden-sandbox-cli@$VERSION" version 2>/dev/null; then
             echo "Version $VERSION already publishedskipping (rerun-safe)"
           else
-            npm publish --access public
+            TAG=latest
+            if [[ "$VERSION" == *-* ]]; then TAG=beta; fi
+            npm publish "./${{ steps.package.outputs.tarball }}" --access public --tag "$TAG"
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

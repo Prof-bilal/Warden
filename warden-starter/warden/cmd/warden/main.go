@@ -39,7 +39,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help"}
+var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report"}
 
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
@@ -47,7 +47,7 @@ func main() {
 	// bridge or update itself. The check is cached (24h) and has a 0.8s
 	// timeout so it never blocks the CLI noticeably. Warning goes to
 	// stderr so `warden --version` stays script-friendly on stdout.
-	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "update")
+	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "__setup-probe" && os.Args[1] != "update")
 	if shouldWarn {
 		func() {
 			defer func() { _ = recover() }()
@@ -61,6 +61,35 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "connect", "serve", "stop":
+		if hasHelpFlag(os.Args[2:]) {
+			printConnectHelp(os.Args[1])
+			return
+		}
+		if err := cmdConnect(os.Args[1], os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden", os.Args[1]+":", err)
+			os.Exit(1)
+		}
+	case "creator", "policy-diff", "report":
+		if hasHelpFlag(os.Args[2:]) {
+			printGrowthHelp(os.Args[1])
+			return
+		}
+		if err := cmdGrowth(os.Args[1], os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden", os.Args[1]+":", err)
+			os.Exit(1)
+		}
+	case "__setup-probe":
+		os.Exit(0)
+	case "packs", "clients", "wrap", "unwrap", "inventory":
+		if hasHelpFlag(os.Args[2:]) {
+			printEcosystemHelp(os.Args[1])
+			return
+		}
+		if err := cmdEcosystem(os.Args[1], os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "warden %s: %v\n", os.Args[1], err)
+			os.Exit(1)
+		}
 	case "__proxy-bridge":
 		cmdProxyBridge(os.Args[2:])
 	case "run":
@@ -144,8 +173,11 @@ func main() {
 }
 
 func hasHelpFlag(args []string) bool {
-	for _, a := range args {
-		if a == "--help" || a == "-h" || a == "help" {
+	for i, a := range args {
+		if a == "--" {
+			break
+		}
+		if a == "--help" || a == "-h" || (i == 0 && a == "help") {
 			return true
 		}
 	}
@@ -191,7 +223,18 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  logs       Inspect the audit log")
 	fmt.Fprintln(os.Stderr, "  doctor     Check sandbox readiness")
 	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
+	fmt.Fprintln(os.Stderr, "  packs      Browse and generate candidate policy packs")
+	fmt.Fprintln(os.Stderr, "  clients    List client configuration adapters")
+	fmt.Fprintln(os.Stderr, "  wrap       Preview or apply a client launcher wrapper")
+	fmt.Fprintln(os.Stderr, "  unwrap     Undo a managed launcher change")
+	fmt.Fprintln(os.Stderr, "  inventory  Inspect configured stdio connections and drift")
 	fmt.Fprintln(os.Stderr, "  proxy      Run MCP client proxy with filtering")
+	fmt.Fprintln(os.Stderr, "  connect    Filter a sandboxed stdio MCP connection")
+	fmt.Fprintln(os.Stderr, "  serve      Serve authenticated MCP over HTTP")
+	fmt.Fprintln(os.Stderr, "  stop       Stop managed gateway connections")
+	fmt.Fprintln(os.Stderr, "  creator    Create and verify signed creator evidence")
+	fmt.Fprintln(os.Stderr, "  policy-diff Review policy changes before an upgrade")
+	fmt.Fprintln(os.Stderr, "  report     Record and summarize explicit local pilot events")
 	fmt.Fprintln(os.Stderr, "  k8s        Generate container/K8s manifests from policy")
 	fmt.Fprintln(os.Stderr, "  version    Show version")
 	fmt.Fprintln(os.Stderr, "  update     Update warden to the latest release")
@@ -210,8 +253,8 @@ func printUsage() {
 		sec = ui.Cyan(sec)
 	}
 	fmt.Fprintln(os.Stderr, sec)
-	fmt.Fprintln(os.Stderr, "  Warden fails closed when sandbox enforcement")
-	fmt.Fprintln(os.Stderr, "  is unavailable. It never runs unsandboxed.")
+	fmt.Fprintln(os.Stderr, "  Sandboxed execution fails closed when enforcement")
+	fmt.Fprintln(os.Stderr, "  is unavailable. Trace mode runs unsandboxed.")
 	fmt.Fprintln(os.Stderr, "  The server gets only the permissions your policy")
 	fmt.Fprintln(os.Stderr, "  explicitly grants.")
 	fmt.Fprintln(os.Stderr, "")
@@ -221,6 +264,12 @@ func printUsage() {
 // printCommandHelp dispatches to the right help function for "warden help <cmd>".
 func printCommandHelp(cmd string) {
 	switch cmd {
+	case "connect", "serve", "stop":
+		printConnectHelp(cmd)
+	case "creator", "policy-diff", "report":
+		printGrowthHelp(cmd)
+	case "packs", "clients", "wrap", "unwrap", "inventory":
+		printEcosystemHelp(cmd)
 	case "run":
 		printRunHelp()
 	case "trace":
@@ -321,6 +370,7 @@ func printRunHelp() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
 	fmt.Fprintln(os.Stderr, "  --policy <file>            Security policy to enforce (required)")
+	fmt.Fprintln(os.Stderr, "  --policy-sha256 <digest>   Refuse a policy changed since review (used by wrap)")
 	fmt.Fprintln(os.Stderr, "  --backend <name>           Backend: auto (default), linux, seatbelt, windows, docker")
 	fmt.Fprintln(os.Stderr, "  --approve                  Prompt on first out-of-policy access")
 	fmt.Fprintln(os.Stderr, "  --approve-timeout <dur>    Per-prompt timeout (e.g. 30s, 2m); requires --approve")
@@ -626,6 +676,11 @@ func cmdVersion() {
 }
 
 func cmdRun(args []string) {
+	expectedDigest, args, digestErr := parsePolicyDigest(args)
+	if digestErr != nil {
+		fmt.Fprintln(os.Stderr, "warden run:", digestErr)
+		os.Exit(2)
+	}
 	approveEnabled, approveTimeout, rest, err := parseApproveFlags(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
@@ -640,11 +695,15 @@ func cmdRun(args []string) {
 	}
 
 	if approveEnabled {
+		if expectedDigest != "" {
+			fmt.Fprintln(os.Stderr, "warden run: digest-pinned policies require explicit review instead of automatic approval mutations")
+			os.Exit(2)
+		}
 		cmdRunWithApproval(policyPath, backend, cmdTail, approveTimeout)
 		return // unreachable: cmdRunWithApproval always exits
 	}
 
-	p, err := policy.Load(policyPath)
+	p, err := policy.LoadVerified(policyPath, expectedDigest)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 		os.Exit(2)

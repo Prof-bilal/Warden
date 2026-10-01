@@ -9,6 +9,8 @@ package policy
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -105,9 +107,21 @@ type MCP struct {
 // Load reads and parses a policy file from path, resolves relative paths
 // against the policy's directory, and validates the result.
 func Load(path string) (Policy, error) {
+	return LoadVerified(path, "")
+}
+
+// LoadVerified binds a reviewed configuration to the exact bytes being parsed.
+// An empty digest preserves the normal editable-policy workflow.
+func LoadVerified(path, expectedSHA256 string) (Policy, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Policy{}, fmt.Errorf("read policy %q: %w", path, err)
+	}
+	if expectedSHA256 != "" {
+		h := sha256.Sum256(data)
+		if hex.EncodeToString(h[:]) != expectedSHA256 {
+			return Policy{}, fmt.Errorf("policy changed since wrapping; undo and review before wrapping again")
+		}
 	}
 
 	var p Policy

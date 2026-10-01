@@ -18,6 +18,10 @@ const sections: Section[] = [
     items: [
       { slug: "install", label: "Installation" },
       { slug: "quickstart", label: "Quickstart" },
+      { slug: "ecosystem-setup", label: "Policy packs & client setup" },
+      { slug: "mcp-gateway", label: "Agent connections & HTTP" },
+      { slug: "creator-program", label: "Creator evidence & badges" },
+      { slug: "ecosystem-maintenance", label: "Upgrades & local reports" },
       { slug: "write-policy", label: "Write a Policy" },
       { slug: "schema", label: "Policy schema" },
       { slug: "examples", label: "Example policies" },

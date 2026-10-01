@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -91,19 +92,33 @@ func assetName() (string, error) {
 	return fmt.Sprintf("warden-%s-%s%s", o, a, ext), nil
 }
 
-// validateVersion rejects anything that is not a strict dotted numeric semver
-// (optional leading v). Never interpolate untrusted version strings into paths
+// validateVersion accepts dotted numeric releases and three-component SemVer
+// prereleases (optional leading v). Never interpolate version strings into paths
 // or URLs without this gate.
 func validateVersion(v string) (string, error) {
 	v = strings.TrimSpace(v)
 	v = strings.TrimPrefix(v, "v")
+	if len(v) > 128 {
+		return "", fmt.Errorf("release version too long")
+	}
+	core, pre, hasPre := strings.Cut(v, "-")
+	if hasPre {
+		if len(strings.Split(core, ".")) != 3 || !regexp.MustCompile(`^[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*$`).MatchString(pre) {
+			return "", fmt.Errorf("invalid prerelease version")
+		}
+		for _, part := range strings.Split(pre, ".") {
+			if regexp.MustCompile(`^\d+$`).MatchString(part) && len(part) > 1 && part[0] == '0' {
+				return "", fmt.Errorf("prerelease numeric identifiers cannot have leading zeros")
+			}
+		}
+	}
 	if v == "" {
 		return "", fmt.Errorf("version must not be empty")
 	}
 	if strings.ContainsAny(v, "/\\|*?;<>$`\"'\n\r\t ") {
 		return "", fmt.Errorf("version %q contains illegal characters", v)
 	}
-	parts := strings.Split(v, ".")
+	parts := strings.Split(core, ".")
 	if len(parts) < 1 || len(parts) > 4 {
 		return "", fmt.Errorf("version %q is not a dotted numeric semver", v)
 	}
@@ -113,8 +128,7 @@ func validateVersion(v string) (string, error) {
 		}
 		for _, c := range p {
 			if c < '0' || c > '9' {
-				// Allow a single prerelease suffix only after stripping above;
-				// we require pure numeric components.
+				// The core remains numeric after separating the prerelease suffix.
 				return "", fmt.Errorf("version %q must be numeric dotted (got component %q)", v, p)
 			}
 		}
@@ -257,39 +271,70 @@ func verifyChecksum(data []byte, name, sumsData string) error {
 	return nil
 }
 
-// CompareVersions returns -1, 0, or 1 comparing dotted numeric versions
-// (v-prefix optional; prerelease/build suffixes are ignored).
+// CompareVersions compares numeric versions and SemVer prerelease identifiers.
+// A stable release ranks above its preview; build metadata is ignored.
 // Exported for tests.
 func CompareVersions(a, b string) int {
-	norm := func(s string) []int {
-		s = strings.TrimPrefix(strings.TrimSpace(s), "v")
-		if i := strings.IndexAny(s, "-+"); i >= 0 {
-			s = s[:i]
+	trim := func(s string) string { return strings.SplitN(strings.TrimPrefix(strings.TrimSpace(s), "v"), "+", 2)[0] }
+	a, b = trim(a), trim(b)
+	ac, ap, ah := strings.Cut(a, "-")
+	bc, bp, bh := strings.Cut(b, "-")
+	cmp := func(x, y string) int {
+		x, y = strings.TrimLeft(x, "0"), strings.TrimLeft(y, "0")
+		if len(x) < len(y) {
+			return -1
 		}
-		fields := strings.Split(s, ".")
-		out := make([]int, 0, len(fields))
-		for _, f := range fields {
-			var n int
-			fmt.Sscanf(f, "%d", &n)
-			out = append(out, n)
+		if len(x) > len(y) {
+			return 1
 		}
-		return out
+		return strings.Compare(x, y)
 	}
-	av, bv := norm(a), norm(b)
+	av, bv := strings.Split(ac, "."), strings.Split(bc, ".")
 	for i := 0; i < len(av) || i < len(bv); i++ {
-		var x, y int
+		x, y := "0", "0"
 		if i < len(av) {
 			x = av[i]
 		}
 		if i < len(bv) {
 			y = bv[i]
 		}
-		if x != y {
-			if x < y {
+		if result := cmp(x, y); result != 0 {
+			return result
+		}
+	}
+	if !ah || !bh {
+		if ah == bh {
+			return 0
+		}
+		if ah {
+			return -1
+		}
+		return 1
+	}
+	av, bv = strings.Split(ap, "."), strings.Split(bp, ".")
+	numeric := regexp.MustCompile(`^\d+$`)
+	for i := 0; i < len(av) || i < len(bv); i++ {
+		if i >= len(av) {
+			return -1
+		}
+		if i >= len(bv) {
+			return 1
+		}
+		x, y := av[i], bv[i]
+		if x == y {
+			continue
+		}
+		xn, yn := numeric.MatchString(x), numeric.MatchString(y)
+		if xn && yn {
+			return cmp(x, y)
+		}
+		if xn != yn {
+			if xn {
 				return -1
 			}
 			return 1
 		}
+		return strings.Compare(x, y)
 	}
 	return 0
 }
@@ -331,6 +376,10 @@ func InstallPath(version string) (string, error) {
 // executable cannot be overwritten in place, so it is renamed aside first.
 // Exported for tests.
 func Replace(target string, data []byte) error {
+	return replaceFile(target, data, 0o755)
+}
+
+func replaceFile(target string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(target)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("creating install dir: %w", err)
@@ -350,7 +399,7 @@ func Replace(target string, data []byte) error {
 		return fmt.Errorf("closing new binary: %w", err)
 	}
 	if runtime.GOOS != "windows" {
-		if err := os.Chmod(tmpName, 0o755); err != nil {
+		if err := os.Chmod(tmpName, mode); err != nil {
 			os.Remove(tmpName)
 			return fmt.Errorf("setting mode: %w", err)
 		}
@@ -533,6 +582,12 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 		return false, err
 	}
 	if err := verifyInstalledBinary(dest, target); err != nil {
+		_ = os.Remove(dest)
+		return false, err
+	}
+	// Persist the authenticated release manifest so the npm launcher can check
+	// this updated cache offline, rather than trust any existing executable.
+	if err := replaceFile(filepath.Join(filepath.Dir(dest), "SHA256SUMS"), sums, 0o600); err != nil {
 		_ = os.Remove(dest)
 		return false, err
 	}

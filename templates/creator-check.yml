@@ -1,0 +1,37 @@
+# Copy into a creator repository after reviewing preparation and fixture paths.
+# Ephemeral test identity only. Production issuer keys must never be available
+# to untrusted PR code. This workflow does not enroll public issuer trust.
+name: Warden creator checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install and prove sandbox prerequisites
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap strace
+          # Configure a scoped bwrap AppArmor profile on restricted Ubuntu
+          # runners using this repository's reviewed Linux CI recipe first.
+          # This control must pass; never bypass the sandbox on failure.
+          bwrap --unshare-user --unshare-net --ro-bind / / -- /bin/true
+      - name: Reproduce disposable creator workflow
+        working-directory: warden-starter/warden
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/warden-check" ./cmd/warden
+          "$RUNNER_TEMP/warden-check" packs prepare filesystem --output "$RUNNER_TEMP/prepared-runtime" --backend linux
+          WARDEN_BIN="$RUNNER_TEMP/warden-check" WARDEN_MCP_SDK="$RUNNER_TEMP/prepared-runtime/node_modules/@modelcontextprotocol/sdk" node testdata/ecosystem/smoke-growth.mjs
+          # Replace the disposable manifest/artifact with your prepared server
+          # and fake fixture checks. Review the generated candidate grants.

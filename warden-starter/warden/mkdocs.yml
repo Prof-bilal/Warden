@@ -27,6 +27,10 @@ nav:
   - Understand:
     - Architecture: architecture.md
     - Security Review: security.md
+    - MCP Boundary Baseline: ecosystem-baseline.md
+    - MCP Gateway: mcp-gateway.md
+    - Creator Evidence: creator-program.md
+    - Ecosystem Maintenance: ecosystem-maintenance.md
     - Proof & Test Results: proof.md
     - Compatibility Matrix: compatibility.md
   - Community:
