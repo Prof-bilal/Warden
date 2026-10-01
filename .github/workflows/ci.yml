@@ -165,6 +165,7 @@ jobs:
         os: [windows-latest, windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v4
       - name: WFP engine open probe (temporary)
         shell: pwsh
         run: |
@@ -190,13 +191,28 @@ jobs:
             $first = Get-NetFirewallRule -ErrorAction Stop | Select-Object -First 1
             Write-Host ("firewall rules readable: " + ($null -ne $first))
           } catch { Write-Host ("Get-NetFirewallRule FAILED: " + $_) }
+          # Can BFE accept a write at all? An inbound allow rule is additive and
+          # harmless on an ephemeral runner; if netsh can install one while
+          # FwpmEngineOpen0 still fails, the refusal is specific to the engine
+          # session call rather than to the host's filtering platform.
+          try {
+            $out = netsh advfirewall firewall add rule name=wardenwpprobe dir=in action=allow 2>&1
+            Write-Host ("netsh add rule: " + (($out -join ' | ') -replace '\s+', ' '))
+            $del = netsh advfirewall firewall delete rule name=wardenwpprobe 2>&1
+            Write-Host ("netsh delete rule: " + (($del -join ' | ') -replace '\s+', ' '))
+          } catch { Write-Host ("netsh rule write FAILED: " + $_) }
 
   # GitHub-hosted Windows runners run elevated, so the WFP/AppContainer/ETW
   # escape and lifecycle tests execute for real instead of skipping: this job
   # is the verifier for the Windows backend's syscall mirrors and the ETW
   # session (see syscalls.go and etw.go).
+  #
+  # TEMPORARY: pinned to windows-2022 because windows-latest (Server 2025,
+  # build 26100) refuses FwpmEngineOpen0 with ERROR_NOT_SUPPORTED, which
+  # fail-closes every native run. The wfp-image-probe job confirms which
+  # hosted image can actually open a WFP session; unpin once decided.
   windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
