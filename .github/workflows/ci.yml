@@ -152,55 +152,121 @@ jobs:
           fi
       - run: go test -count=1 ./...
 
-  # TEMPORARY (diagnosis round): windows-latest (Server 2025, build 26100)
-  # returns ERROR_NOT_SUPPORTED (50) from FwpmEngineOpen0 while elevated with
-  # BFE running, which fail-closes the native backend. This job reports, per
-  # hosted image, whether an engine session can be opened at all so the Windows
-  # job can be pinned to an image that actually hosts WFP. Delete with the
-  # probe step once the image is chosen.
-  wfp-image-probe:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, windows-2022]
-    runs-on: ${{ matrix.os }}
+  # TEMPORARY (diagnosis round 6): FwpmEngineOpen0 returns ERROR_NOT_SUPPORTED
+  # (50) on both hosted images while elevated and with BFE accepting writes, so
+  # this round isolates identity vs. policy vs. service state: NTLM/LSA policy
+  # dump, an engine open from a SYSTEM scheduled task, a permissive-NTLM retry,
+  # and a BFE restart retry, plus the System event log around each attempt.
+  # Delete this job together with the Windows probe step once diagnosed.
+  wfp-engine-probe:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: WFP engine open probe (temporary)
+      - name: WFP engine probe (temporary)
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
+          $stamp = Get-Date
           $os = Get-CimInstance Win32_OperatingSystem
-          Write-Host ("os: " + $os.Caption + " build " + $os.BuildNumber)
+          Write-Host ("os: {0} build {1}" -f $os.Caption, $os.BuildNumber)
           $id = [Security.Principal.WindowsIdentity]::GetCurrent()
           $pr = New-Object Security.Principal.WindowsPrincipal($id)
-          Write-Host ("elevated: " + $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) + " user=" + $id.Name)
-          $s = Get-Service bfe -ErrorAction SilentlyContinue
-          if ($s) { Write-Host ("svc bfe: " + $s.Status + " (" + $s.StartType + ")") } else { Write-Host "svc bfe: not found" }
-          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class WfpProbe{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);}'
-          foreach ($a in @(10, 4294967295, 0)) {
+          Write-Host ("user: {0} elevated: {1}" -f $id.Name, $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class Wfp{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmGetAppIdFromFileName0(string fileName,out IntPtr appId);[DllImport("fwpuclnt.dll")]public static extern void FwpmFreeMemory0(ref IntPtr mem);}'
+          function Probe-Open([uint32]$authn) {
             $h = [IntPtr]::Zero
-            $r = [WfpProbe]::FwpmEngineOpen0($null, [uint32]$a, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
-            if ($r -eq 0) { Write-Host ("authnService=" + $a + ": ENGINE OPEN OK"); [void][WfpProbe]::FwpmEngineClose0($h) }
-            else { Write-Host ("authnService=" + $a + ": FAILED 0x" + [Convert]::ToString($r,16)) }
+            try { $r = [Wfp]::FwpmEngineOpen0($null, $authn, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h) }
+            catch { return ("threw " + $_.Exception.Message) }
+            if ($r -eq 0) { [void][Wfp]::FwpmEngineClose0($h); return "OPEN OK" }
+            return ("FAILED 0x" + [Convert]::ToString($r,16))
           }
+          # Baseline: both authnService values the docs allow.
+          Write-Host ("baseline open(RPC_C_AUTHN_WINNT): " + (Probe-Open 10))
+          Write-Host ("baseline open(RPC_C_AUTHN_DEFAULT): " + (Probe-Open 4294967295))
+          # Sanity: a fwpuclnt call that does not open an engine session. If
+          # this works while the engine open fails, the DLL and BFE RPC are
+          # reachable and the refusal is specific to session creation.
           try {
-            $o = netsh advfirewall show allprofile 2>&1 | Select-Object -First 2
-            Write-Host ("netsh: " + (($o -join ' | ') -replace '\s+', ' '))
-          } catch { Write-Host ("netsh FAILED: " + $_) }
+            $blob = [IntPtr]::Zero
+            $r = [Wfp]::FwpmGetAppIdFromFileName0("C:\Windows\System32\cmd.exe", [ref]$blob)
+            if ($r -eq 0) { Write-Host "FwpmGetAppIdFromFileName0: OK"; [Wfp]::FwpmFreeMemory0([ref]$blob) }
+            else { Write-Host ("FwpmGetAppIdFromFileName0: FAILED 0x" + [Convert]::ToString($r,16)) }
+          } catch { Write-Host ("FwpmGetAppIdFromFileName0 threw: " + $_.Exception.Message) }
+          foreach ($n in @('bfe','mpssvc','wscsvc')) {
+            $svc = Get-Service $n -ErrorAction SilentlyContinue
+            if ($svc) { Write-Host ("svc {0}: {1} ({2})" -f $svc.Name, $svc.Status, $svc.StartType) }
+            else { Write-Host ("svc {0}: absent" -f $n) }
+          }
+          # NTLM/LSA policy: FwpmEngineOpen0 acquires NTLM credentials for the
+          # local RPC session, so a refusing policy here would surface as a
+          # session-open failure rather than an access-denied one.
+          function Dump-Reg([string]$path, [string[]]$names) {
+            Write-Host ("reg {0}:" -f $path)
+            try { $p = Get-ItemProperty -Path $path -ErrorAction Stop }
+            catch { Write-Host ("  <unreadable: {0}>" -f $_.Exception.Message); return }
+            foreach ($n in $names) {
+              $v = $p.$n
+              if ($null -eq $v) { Write-Host ("  {0} = <not set>" -f $n) }
+              else { Write-Host ("  {0} = {1}" -f $n, ($v -join ',')) }
+            }
+          }
+          Dump-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' @('LmCompatibilityLevel','NoLmHash','LimitBlankPasswordUse','RestrictAnonymous')
+          Dump-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0' @('RestrictSendingNTLMTraffic','RestrictReceivingNTLMTraffic','AuditReceivingNTLMTraffic','NtlmMinClientSec','NtlmMinServerSec')
+          Dump-Reg 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders' @('SecurityProviders')
           try {
-            $first = Get-NetFirewallRule -ErrorAction Stop | Select-Object -First 1
-            Write-Host ("firewall rules readable: " + ($null -ne $first))
-          } catch { Write-Host ("Get-NetFirewallRule FAILED: " + $_) }
-          # Can BFE accept a write at all? An inbound allow rule is additive and
-          # harmless on an ephemeral runner; if netsh can install one while
-          # FwpmEngineOpen0 still fails, the refusal is specific to the engine
-          # session call rather than to the host's filtering platform.
+            $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace 'root\Microsoft\Windows\DeviceGuard' -ErrorAction Stop
+            Write-Host ("deviceguard vbs={0} securityServicesRunning={1}" -f $dg.VirtualizationBasedSecurityStatus, ($dg.SecurityServicesRunning -join ','))
+          } catch { Write-Host ("deviceguard: <n/a>") }
+          # Same call under the SYSTEM account: if it opens there, the refusal
+          # is about the runneradmin logon session rather than the host.
+          $sysScript = 'C:\Windows\Temp\warden-wfp-sys.ps1'
+          $sysOut = 'C:\Windows\Temp\warden-wfp-sys.out'
+          Remove-Item $sysOut -Force -ErrorAction SilentlyContinue
+          $body = @'
+          $ErrorActionPreference = "Continue"
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class Wfp{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);}'
+          $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $h = [IntPtr]::Zero
+          $r = [Wfp]::FwpmEngineOpen0($null, [uint32]10, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
+          if ($r -eq 0) { $res = "ENGINE OPEN OK"; [void][Wfp]::FwpmEngineClose0($h) } else { $res = "FAILED 0x" + [Convert]::ToString($r,16) }
+          Set-Content -Path 'C:\Windows\Temp\warden-wfp-sys.out' -Value ("whoami=" + $id.Name + " result=" + $res) -Encoding UTF8
+          '@
+          Set-Content -Path $sysScript -Value $body -Encoding UTF8
           try {
-            $out = netsh advfirewall firewall add rule name=wardenwpprobe dir=in action=allow 2>&1
-            Write-Host ("netsh add rule: " + (($out -join ' | ') -replace '\s+', ' '))
-            $del = netsh advfirewall firewall delete rule name=wardenwpprobe 2>&1
-            Write-Host ("netsh delete rule: " + (($del -join ' | ') -replace '\s+', ' '))
-          } catch { Write-Host ("netsh rule write FAILED: " + $_) }
+            $tr = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $sysScript + '"'
+            schtasks /Create /TN wardenwfp /TR $tr /SC ONCE /ST 23:59 /RU SYSTEM /RL HIGHEST /F | Out-Null
+            schtasks /Run /TN wardenwfp | Out-Null
+            for ($i = 0; $i -lt 30 -and -not (Test-Path $sysOut); $i++) { Start-Sleep -Seconds 2 }
+            if (Test-Path $sysOut) { Write-Host ("SYSTEM probe: " + ((Get-Content $sysOut -Raw) -replace '\s+',' ')) }
+            else { Write-Host "SYSTEM probe: no output within 60s" }
+          } catch { Write-Host ("SYSTEM probe failed: " + $_.Exception.Message) }
+          finally { schtasks /Delete /TN wardenwfp /F 2>$null | Out-Null }
+          # Permissive NTLM policy retry (ephemeral runner; both values are the
+          # "allow" defaults). If the open starts working, the image ships a
+          # refusing NTLM policy and the failure is host configuration.
+          foreach ($n in @('RestrictSendingNTLMTraffic','RestrictReceivingNTLMTraffic')) {
+            try {
+              New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0' -Name $n -Value 0 -PropertyType DWord -Force | Out-Null
+            } catch { Write-Host ("set {0} failed: {1}" -f $n, $_.Exception.Message) }
+          }
+          Write-Host ("open after permissive NTLM policy: " + (Probe-Open 10))
+          # BFE restart retry: a stale RPC/session state would clear here. This
+          # is last because it transiently drops the firewall stack.
+          try {
+            Restart-Service bfe -Force -ErrorAction Stop
+            Start-Sleep -Seconds 8
+            Write-Host ("svc bfe after restart: " + (Get-Service bfe).Status)
+          } catch { Write-Host ("bfe restart failed: " + $_.Exception.Message) }
+          Write-Host ("open after bfe restart: " + (Probe-Open 10))
+          # System events since the probe started: BFE/RPC/LSA entries explain
+          # the refusal in the host's own words.
+          Get-WinEvent -FilterHashtable @{LogName='System'; StartTime=$stamp} -ErrorAction SilentlyContinue |
+            Select-Object -First 40 |
+            ForEach-Object {
+              $msg = (($_.Message -replace '\s+',' '))
+              if ($msg.Length -gt 220) { $msg = $msg.Substring(0,220) }
+              Write-Host ("evt {0} id={1} {2}: {3}" -f $_.TimeCreated.ToString('HH:mm:ss'), $_.Id, $_.ProviderName, $msg)
+            }
 
   # GitHub-hosted Windows runners run elevated, so the WFP/AppContainer/ETW
   # escape and lifecycle tests execute for real instead of skipping: this job
