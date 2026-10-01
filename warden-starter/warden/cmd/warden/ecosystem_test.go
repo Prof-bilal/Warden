@@ -146,7 +146,15 @@ func TestBackupStorageMustStayOutsideReadGrant(t *testing.T) {
 	}
 	// A file inside private storage can expose saved launcher credentials even
 	// when its parent directory is not granted. Refuse that overlap as well.
-	storage := clientconfig.StateDirectory(config)
+	// Production (PrepareWithCommand) canonicalizes the config's parent
+	// directory before deriving Hash(config), so the storage bucket lives
+	// under the canonical path. Hashing the raw path here would pick a
+	// different bucket and hide the overlap from the check.
+	configPath := config
+	if parent, err := filepath.EvalSymlinks(filepath.Dir(config)); err == nil {
+		configPath = filepath.Join(parent, filepath.Base(config))
+	}
+	storage := clientconfig.StateDirectory(configPath)
 	content, _ = json.Marshal(filepath.Join(storage, "record.json"))
 	_ = os.WriteFile(policy, []byte("filesystem:\n  read: ["+string(content)+"]\n"), 0600)
 	result = runEcosystemTest(t, bin, "wrap", "--client", "generic", "--config", config, "--server", "s", "--policy", policy, "--dry-run")

@@ -90,16 +90,21 @@ var (
 // then makes every Run fail with "procedure could not be found". We require
 // Find() to succeed for every required symbol before committing to a DLL.
 func initWFP() {
-	required := []string{
-		"FwpmEngineOpen0",
-		"FwpmEngineClose0",
-		"FwpmTransactionBegin0",
-		"FwpmTransactionCommit0",
-		"FwpmTransactionAbort0",
-		"FwpmSublayerAdd0",
-		"FwpmFilterAdd0",
-		"FwpmFreeMemory0",
-		"FwpmFilterDeleteById0",
+	// Each entry lists the export spellings accepted for one slot, in
+	// preference order. The exported sublayer symbol is FwpmSubLayerAdd0
+	// (capital L, per fwpmu.h); GetProcAddress is case-sensitive, so the
+	// lowercase "Sublayer" spelling only exists on hypothetical builds and is
+	// kept as a fallback candidate rather than the required name.
+	required := [][]string{
+		{"FwpmEngineOpen0"},
+		{"FwpmEngineClose0"},
+		{"FwpmTransactionBegin0"},
+		{"FwpmTransactionCommit0"},
+		{"FwpmTransactionAbort0"},
+		{"FwpmSubLayerAdd0", "FwpmSublayerAdd0"},
+		{"FwpmFilterAdd0"},
+		{"FwpmFreeMemory0"},
+		{"FwpmFilterDeleteById0"},
 	}
 	candidates := []string{"fwpuclnt.dll", "iphlapi.dll"}
 	for _, name := range candidates {
@@ -109,13 +114,20 @@ func initWFP() {
 		}
 		procs := make([]*windows.LazyProc, len(required))
 		ok := true
-		for i, sym := range required {
-			p := d.NewProc(sym)
-			if err := p.Find(); err != nil {
+		for i, syms := range required {
+			found := (*windows.LazyProc)(nil)
+			for _, sym := range syms {
+				p := d.NewProc(sym)
+				if err := p.Find(); err == nil {
+					found = p
+					break
+				}
+			}
+			if found == nil {
 				ok = false
 				break
 			}
-			procs[i] = p
+			procs[i] = found
 		}
 		if !ok {
 			continue

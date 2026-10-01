@@ -183,7 +183,7 @@ jobs:
             $h = [WardenProbe]::LoadLibraryExW($dll, [IntPtr]::Zero, [uint32]0)
             if ($h -eq [IntPtr]::Zero) { Write-Host ("{0}: LOAD FAILED err={1}" -f $dll, [Runtime.InteropServices.Marshal]::GetLastWin32Error()); continue }
             Write-Host ("{0}: loaded 0x{1:X}" -f $dll, $h)
-            foreach ($s in @("FwpmEngineOpen0","FwpmEngineClose0","FwpmTransactionBegin0","FwpmTransactionCommit0","FwpmTransactionAbort0","FwpmSublayerAdd0","FwpmFilterAdd0","FwpmFreeMemory0","FwpmFilterDeleteById0")) {
+            foreach ($s in @("FwpmEngineOpen0","FwpmEngineClose0","FwpmTransactionBegin0","FwpmTransactionCommit0","FwpmTransactionAbort0","FwpmSubLayerAdd0","FwpmSublayerAdd0","FwpmFilterAdd0","FwpmFreeMemory0","FwpmFilterDeleteById0")) {
               $p = [WardenProbe]::GetProcAddress($h, $s)
               $state = if ($p -eq [IntPtr]::Zero) { "MISSING" } else { "0x" + $p.ToString("X") }
               Write-Host ("  {0} = {1}" -f $s, $state)
