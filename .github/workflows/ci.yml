@@ -152,6 +152,45 @@ jobs:
           fi
       - run: go test -count=1 ./...
 
+  # TEMPORARY (diagnosis round): windows-latest (Server 2025, build 26100)
+  # returns ERROR_NOT_SUPPORTED (50) from FwpmEngineOpen0 while elevated with
+  # BFE running, which fail-closes the native backend. This job reports, per
+  # hosted image, whether an engine session can be opened at all so the Windows
+  # job can be pinned to an image that actually hosts WFP. Delete with the
+  # probe step once the image is chosen.
+  wfp-image-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: WFP engine open probe (temporary)
+        shell: pwsh
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Host ("os: " + $os.Caption + " build " + $os.BuildNumber)
+          $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $pr = New-Object Security.Principal.WindowsPrincipal($id)
+          Write-Host ("elevated: " + $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) + " user=" + $id.Name)
+          $s = Get-Service bfe -ErrorAction SilentlyContinue
+          if ($s) { Write-Host ("svc bfe: " + $s.Status + " (" + $s.StartType + ")") } else { Write-Host "svc bfe: not found" }
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class WfpProbe{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);}'
+          foreach ($a in @(10, 4294967295, 0)) {
+            $h = [IntPtr]::Zero
+            $r = [WfpProbe]::FwpmEngineOpen0($null, [uint32]$a, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
+            if ($r -eq 0) { Write-Host ("authnService=" + $a + ": ENGINE OPEN OK"); [void][WfpProbe]::FwpmEngineClose0($h) }
+            else { Write-Host ("authnService=" + $a + ": FAILED 0x" + [Convert]::ToString($r,16)) }
+          }
+          try {
+            $o = netsh advfirewall show allprofile 2>&1 | Select-Object -First 2
+            Write-Host ("netsh: " + (($o -join ' | ') -replace '\s+', ' '))
+          } catch { Write-Host ("netsh FAILED: " + $_) }
+          try {
+            $first = Get-NetFirewallRule -ErrorAction Stop | Select-Object -First 1
+            Write-Host ("firewall rules readable: " + ($null -ne $first))
+          } catch { Write-Host ("Get-NetFirewallRule FAILED: " + $_) }
+
   # GitHub-hosted Windows runners run elevated, so the WFP/AppContainer/ETW
   # escape and lifecycle tests execute for real instead of skipping: this job
   # is the verifier for the Windows backend's syscall mirrors and the ETW
@@ -207,6 +246,31 @@ jobs:
               Write-Host ("FwpmEngineOpen0 authnService={0}: FAILED code=0x{1:X} ({1})" -f $a, $r)
             }
           }
+          # RPC_C_AUTHN_DEFAULT candidates (0xFF and 0xFFFFFFFF are both cited
+          # for it) plus a DYNAMIC session struct: the docs allow only WINNT
+          # and DEFAULT, and WINNT was rejected above.
+          foreach ($a in @(4294967295, 255)) {
+            $h = [IntPtr]::Zero
+            $r = [WardenWfp]::FwpmEngineOpen0($null, [uint32]$a, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
+            if ($r -eq 0) { Write-Host ("FwpmEngineOpen0 authnService={0}: OK" -f $a); [void][WardenWfp]::FwpmEngineClose0($h) }
+            else { Write-Host ("FwpmEngineOpen0 authnService={0}: FAILED code=0x{1:X} ({1})" -f $a, $r) }
+          }
+          # Is the host firewall stack itself functional? netsh/Get-NetFirewall*
+          # reach BFE through the same RPC, so a success there isolates the
+          # failure to our engine-open call rather than to the host.
+          try {
+            Get-NetFirewallProfile -ErrorAction Stop | ForEach-Object { Write-Host ("firewall profile {0}: enabled={1}" -f $_.Name, $_.Enabled) }
+          } catch { Write-Host ("Get-NetFirewallProfile FAILED: " + $_) }
+          try {
+            $first = Get-NetFirewallRule -ErrorAction Stop | Select-Object -First 1
+            Write-Host ("Get-NetFirewallRule readable: " + ($null -ne $first))
+          } catch { Write-Host ("Get-NetFirewallRule FAILED: " + $_) }
+          try {
+            $o = netsh advfirewall show allprofile 2>&1 | Select-Object -First 2
+            Write-Host ("netsh: " + (($o -join ' | ') -replace '\s+', ' '))
+          } catch { Write-Host ("netsh FAILED: " + $_) }
+          $osinfo = Get-CimInstance Win32_OperatingSystem
+          Write-Host ("os: " + $osinfo.Caption + " build " + $osinfo.BuildNumber)
           $id = [Security.Principal.WindowsIdentity]::GetCurrent()
           $pr = New-Object Security.Principal.WindowsPrincipal($id)
           Write-Host ("elevated: " + $pr.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) + " user=" + $id.Name)
