@@ -1,4 +1,4 @@
-# FAQ / Troubleshooting
+# Warden FAQ and Troubleshooting
 
 ## `warden run` refuses to start
 

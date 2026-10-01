@@ -7,31 +7,31 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Cross-Platform Testing",
+  title: { absolute: "Test Warden on every platform." },
   description:
-    "Test Warden on Linux, macOS, Windows, and Docker. All 10 core tests pass on every platform with identical security guarantees.",
+    "Test Warden on Linux, macOS, Windows, and Docker. The same policy file carries the same security guarantees on every platform.",
   alternates: {
     canonical: `${SITE_URL}/testing`,
   },
   openGraph: {
-    title: "Cross-Platform Testing",
+    title: "Test Warden on every platform.",
     description:
-      "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
+      "Test Warden on Linux, macOS, Windows, and Docker. The same policy file carries the same security guarantees on every platform.",
     url: `${SITE_URL}/testing`,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden Cross-Platform Testing",
+        alt: "Test Warden on every platform.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cross-Platform Testing",
+    title: "Test Warden on every platform.",
     description:
-      "All 10 core tests pass on Linux, macOS, Windows, and Docker. Same policy file, same security guarantees.",
+      "Test Warden on Linux, macOS, Windows, and Docker. The same policy file carries the same security guarantees on every platform.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };

@@ -1,6 +1,10 @@
 ---
 title: "How Warden Enforces Policies"
 description: "A walkthrough of the Warden enforcement path: how a policy.yaml becomes OS-level sandbox rules, how deny-by-default checks run, and what happens on failure."
+tldr:
+  - "A policy.yaml names the command and the grants. Anything not listed is denied."
+  - "Warden compiles that file into bubblewrap, Seatbelt, or AppContainer rules before the process starts."
+  - "If the sandbox cannot be built, Warden does not run the server unsandboxed."
 date: "2026-09-14"
 author: prof-bilal
 category: engineering

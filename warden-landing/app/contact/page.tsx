@@ -15,7 +15,7 @@ function XIcon({ size = 16 }: { size?: number }) {
 }
 
 export const metadata: Metadata = createMetadata({
-  title: "Contact",
+  title: { absolute: "Talk to us in the open." },
   description:
     "How to reach the Warden project: GitHub issues and discussions, the project Discord, and the npm package page.",
   path: "/contact",

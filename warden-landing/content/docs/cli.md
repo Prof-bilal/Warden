@@ -1,4 +1,4 @@
-# CLI Reference
+# Warden CLI Reference
 
 Every subcommand, flag, and exit behavior below matches the CLI source
 (`cmd/warden`). With no subcommand, `warden` prints usage and exits 1.

@@ -1,6 +1,10 @@
 ---
 title: "AI Tried to Escape My Sandbox. It Couldn't."
 description: "I built Warden to sandbox MCP servers, then gave AI a scenario to break out. On Linux 8/8 proof-harness steps held; on Windows 5/5 attack scenarios were blocked. Here's the evidence."
+tldr:
+  - "The Linux proof harness passed 8 of 8 steps with verdict ok."
+  - "Five Windows attack scenarios — files, network, environment, process spawn, and symlink traversal — were blocked."
+  - "The article states what those runs do not prove: untested bypasses, remote MCP servers, and full desktop access are out of scope."
 date: "2026-09-15"
 author: prof-bilal
 category: security

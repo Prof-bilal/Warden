@@ -9,9 +9,9 @@ import { SITE_URL, createMetadata } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createMetadata({
-  title: "Blog",
+  title: "Articles on sandboxing MCP servers",
   description:
-    "Articles from the Warden team on sandboxing MCP servers, policy enforcement, OS-level security, and running AI tooling safely.",
+    "Articles on sandboxing MCP servers, policy enforcement, OS-level security, and running AI tooling safely.",
   path: "/blog",
 });
 
@@ -41,12 +41,61 @@ export default function BlogIndex() {
           Blog
         </p>
         <h1 className="mt-3 font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
-          Warden articles
+          Articles on sandboxing MCP servers
         </h1>
         <p className="mt-4 font-hero text-[1.0625rem] leading-relaxed text-muted">
           Sandboxing, policy enforcement, and platform internals for MCP
-          servers and AI tooling.
+          servers and AI tooling. Warden is the open-source sandbox runtime
+          these articles describe.
         </p>
+
+        <nav aria-label="Topic guides" className="mt-8">
+          <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted">
+            Start with a question
+          </h2>
+          <ul className="mt-3 space-y-2 font-hero text-[0.9375rem]">
+            <li>
+              <Link href="/blog/why-mcp-servers-need-sandboxes" className="text-paper hover:text-blueprint">
+                Why an MCP server needs a sandbox
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog/how-warden-enforces-policies" className="text-paper hover:text-blueprint">
+                How a Warden policy becomes an OS sandbox
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog/sandboxing-backends-bubblewrap-seatbelt-appcontainer" className="text-paper hover:text-blueprint">
+                How Linux, macOS, and Windows backends differ
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog/i-tested-18-mcp-servers" className="text-paper hover:text-blueprint">
+                Which of 18 MCP servers can run under Warden
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog/deny-by-default-invisible-not-denied" className="text-paper hover:text-blueprint">
+                Why hiding a path is stronger than permission denied
+              </Link>
+            </li>
+            <li>
+              <Link href="/blog/ai-tried-to-escape-my-sandbox" className="text-paper hover:text-blueprint">
+                What the published escape tests actually showed
+              </Link>
+            </li>
+            <li>
+              <Link href="/guides/mcp-server-security" className="text-paper hover:text-blueprint">
+                How to securely run an MCP server
+              </Link>
+            </li>
+            <li>
+              <Link href="/docs/install" className="text-paper hover:text-blueprint">
+                How to install Warden and run a server
+              </Link>
+            </li>
+          </ul>
+        </nav>
 
         <nav
           aria-label="Blog categories"

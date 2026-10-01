@@ -15,31 +15,32 @@ import Windows from "@/components/Windows";
 import Compatibility from "@/components/Compatibility";
 import Cta from "@/components/Cta";
 import Footer from "@/components/Footer";
+import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = {
-  title: { absolute: "WardenSandbox Runtime for MCP Servers" },
+  title: { absolute: "Give MCP servers a sandbox, not your filesystem." },
   description:
     "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "WardenSandbox Runtime for MCP Servers",
+    title: "Give MCP servers a sandbox, not your filesystem.",
     description:
-      "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
+      "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
     url: SITE_URL,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "WardenA Sandbox Runtime for MCP Servers",
+        alt: "Give MCP servers a sandbox, not your filesystem.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WardenSandbox Runtime for MCP Servers",
+    title: "Give MCP servers a sandbox, not your filesystem.",
     description:
       "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
     images: [`${SITE_URL}/og-image.png`],
@@ -59,7 +60,9 @@ export default function Home() {
     operatingSystem: ["Linux", "macOS", "Windows"],
     description:
       "A sandbox runtime for MCP servers. Runs third-party code in OS-native sandboxes with deny-by-default filesystem, network, and environment controls.",
+    "@id": `${SITE_URL}/#software`,
     url: SITE_URL,
+    isAccessibleForFree: true,
     downloadUrl: "https://github.com/Prof-bilal/Warden/releases",
     installUrl: "https://www.npmjs.com/package/warden-sandbox-cli",
     softwareVersion: "0.1.17",
@@ -71,7 +74,8 @@ export default function Home() {
     },
     author: {
       "@type": "Person",
-      name: "Prof-bilal",
+      name: "Abdullah Bilal",
+      alternateName: "Prof-bilal",
       url: "https://github.com/Prof-bilal",
     },
     keywords: "MCP, sandbox, security, AI tooling, Model Context Protocol",
@@ -83,6 +87,19 @@ export default function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "@id": `${SITE_URL}/#webpage`,
+          url: SITE_URL,
+          name: "Give MCP servers a sandbox, not your filesystem.",
+          description:
+            "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
+          isPartOf: { "@type": "WebSite", name: "Warden", url: SITE_URL },
+          mainEntity: { "@id": `${SITE_URL}/#software` },
+        }}
       />
       <Nav />
       <Hero />

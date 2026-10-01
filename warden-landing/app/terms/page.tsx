@@ -6,7 +6,7 @@ import { createMetadata, SITE_URL } from "@/lib/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createMetadata({
-  title: "Terms",
+  title: "Terms of use",
   description:
     "Terms of use for the Warden website and its published content. Warden itself is open source under the MIT license.",
   path: "/terms",
@@ -24,7 +24,7 @@ export default function Terms() {
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          Terms
+          Terms of use
         </h1>
 
         <div className="prose-warden mt-10">

@@ -1,4 +1,4 @@
-# Quickstart
+# Warden Quickstart
 
 Sandbox your first MCP server in five minutes. We'll use the `filesystem`
 server fixturelocal file I/O only, so the policy stays tiny.

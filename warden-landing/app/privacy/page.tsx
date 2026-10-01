@@ -6,7 +6,7 @@ import { createMetadata, SITE_URL } from "@/lib/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 
 export const metadata: Metadata = createMetadata({
-  title: "Privacy",
+  title: "Privacy policy",
   description:
     "What Warden's website collects and does not collect: no third-party analytics, no advertising trackers, and anonymous install counting with no IP addresses stored.",
   path: "/privacy",
@@ -24,7 +24,7 @@ export default function Privacy() {
       <Nav />
       <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
         <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          Privacy
+          Privacy policy
         </h1>
 
         <div className="prose-warden mt-10">

@@ -14,6 +14,8 @@ export interface Article {
   categorySlug: string;
   tags: string[];
   image?: string;
+  /** Short factual bullets shown above the article. Omitted when unset. */
+  tldr?: string[];
   draft: boolean;
   body: string;
 }
@@ -69,6 +71,7 @@ interface FrontMatter {
   category?: string;
   tags?: string[];
   image?: string;
+  tldr?: string[];
   draft?: boolean;
 }
 
@@ -102,6 +105,9 @@ function parseArticle(fileName: string): Article | null {
     categorySlug: fm.category,
     tags: Array.isArray(fm.tags) ? fm.tags : [],
     ...(fm.image ? { image: fm.image } : {}),
+    ...(Array.isArray(fm.tldr) && fm.tldr.length > 0
+      ? { tldr: fm.tldr.filter((item) => typeof item === "string" && item.trim()) }
+      : {}),
     draft: fm.draft === true,
     body: content.trim(),
   };

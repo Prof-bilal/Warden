@@ -1,4 +1,4 @@
-# Architecture
+# Warden Sandbox Architecture
 
 This document summarises how Warden works. For the full design including
 non-goals and rationale, see the [full design doc](design.md).

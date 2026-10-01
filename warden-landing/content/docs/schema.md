@@ -1,4 +1,4 @@
-# Policy Schema Reference
+# Warden Policy Schema
 
 This document describes the complete policy YAML schema used by Warden.
 See [Example Policies](examples.md#comprehensive-reference) for a

@@ -11,16 +11,16 @@ import CodeBlock from "@/components/CodeBlock";
 import CopyableCode from "@/components/CopyableCode";
 
 export const metadata: Metadata = {
-  title: "Features",
+  title: { absolute: "Every Warden feature, explained in depth." },
   description:
-    "Every Warden feature in depth: sandboxed runs, policy tooling, audit logs, gateway, proxy, Kubernetes rendering, and self-updatewith exact commands.",
+    "Every Warden feature in depth: sandboxed runs, policy tooling, audit logs, gateway, proxy, Kubernetes rendering, and self-update, with exact commands.",
   alternates: {
     canonical: `${SITE_URL}/features`,
   },
   openGraph: {
-    title: "Warden Featuresevery command, in depth",
+    title: "Every Warden feature, explained in depth.",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime with usage commands.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, and update: the complete feature surface of the Warden sandbox runtime, with usage commands.",
     url: `${SITE_URL}/features`,
     type: "article",
     images: [
@@ -28,15 +28,15 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden Features",
+        alt: "Every Warden feature, explained in depth.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden Featuresevery command, in depth",
+    title: "Every Warden feature, explained in depth.",
     description:
-      "run, init, trace, logs, doctor, gateway, proxy, k8s, updatethe complete feature surface of the Warden sandbox runtime.",
+      "run, init, trace, logs, doctor, gateway, proxy, k8s, and update: the complete feature surface of the Warden sandbox runtime.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
@@ -355,11 +355,12 @@ export default function FeaturesPage() {
             Feature Reference
           </span>
           <h1 className="mt-5 max-w-3xl font-hero text-[2.25rem] font-bold leading-[1.12] tracking-[-0.02em] text-paper sm:text-[2.75rem]">
-            Every feature. Explained in depth.
+            Every Warden feature, explained in depth.
           </h1>
           <p className="mt-4 max-w-2xl font-hero text-[1rem] leading-[1.65] text-muted">
-            Nine commands cover the entire Warden surfacefrom sandboxing a
-            single server to wrapping a whole MCP client config. Everything
+            Warden is a local sandbox runtime for MCP servers. Nine commands
+            cover that surface, from sandboxing a single server to wrapping a
+            whole MCP client config. Everything
             below ships today and is backed by the test suite. For the full
             policy schema, see{" "}
             <Link

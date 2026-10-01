@@ -28,6 +28,9 @@ export default function Footer() {
           <Link href="/blog" className="transition-colors hover:text-paper">
             Blog
           </Link>
+          <Link href="/guides" className="transition-colors hover:text-paper">
+            MCP security guides
+          </Link>
           <Link
             href="/docs/roadmap"
             className="transition-colors hover:text-paper"

@@ -1,6 +1,10 @@
 ---
 title: "Windows Sandboxing Is 10x Harder Than Linux"
 description: "Bubblewrap just works. AppContainer + WFP + ETW + Job Objects do not — two DLL binding bugs, caught only by real Windows CI, and what they teach about cross-platform security tools."
+tldr:
+  - "The Windows backend needs AppContainer, WFP, ETW, and Job Objects together."
+  - "Two bugs bound ETW and WFP to the wrong or missing DLL, and only a real Windows CI run caught them."
+  - "If those primitives do not initialize, Warden refuses the run instead of starting the server unsandboxed."
 date: "2026-09-15"
 author: prof-bilal
 category: engineering

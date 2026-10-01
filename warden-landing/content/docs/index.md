@@ -1,4 +1,4 @@
-# Warden
+# What Warden Is
 
 **Your MCP servers run with your keys to the kingdom. Warden takes them back.**
 

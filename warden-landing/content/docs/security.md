@@ -1,4 +1,4 @@
-# Security Review
+# Warden Security Review
 
 Warden is designed with a deny-by-default threat model: nothing is accessible
 inside the sandbox unless the policy explicitly grants it. This document

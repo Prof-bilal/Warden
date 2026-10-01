@@ -125,6 +125,19 @@ export default async function ArticlePage({
           )}
         </div>
 
+        {article.tldr && article.tldr.length > 0 && (
+          <section className="mt-8 rounded-2xl border border-ink-700 bg-ink-900 px-5 py-4">
+            <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-grant">
+              Answer in short
+            </h2>
+            <ul className="mt-3 list-disc space-y-1.5 pl-5 font-hero text-[0.9375rem] leading-[1.6] text-muted">
+              {article.tldr.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {article.image && (
           <Image
             src={article.image}
@@ -148,8 +161,8 @@ export default async function ArticlePage({
                 className="text-paper transition-colors hover:text-blueprint"
               >
                 {author.name}
-              </Link>{" "}
-             {author.role}.
+              </Link>
+              . {author.bio}
             </p>
           </div>
         )}
