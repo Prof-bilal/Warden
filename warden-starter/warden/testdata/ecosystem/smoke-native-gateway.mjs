@@ -25,7 +25,11 @@ try {
   const stdio = spawn(bin, ["connect", ...args], { env, stdio: ["pipe", "pipe", "pipe"] }); children.push(stdio); let errors = "", next = 0; stdio.stderr.on("data", b => errors += b);
   const pending = new Map(); readline.createInterface({ input: stdio.stdout }).on("line", line => { const m = JSON.parse(line); pending.get(m.id)?.(m); pending.delete(m.id); });
   const rpc = (method, params) => new Promise((done, reject) => { const id = ++next, timer = setTimeout(() => reject(Error(`native RPC timeout: ${errors}`)), 30000); pending.set(id, m => { clearTimeout(timer); done(m); }); stdio.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n"); });
-  assert((await rpc("initialize", init)).result); stdio.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
+  // Surface the full JSON-RPC error and captured gateway stderr when
+  // initialize is refused: a fail-closed `warden run` (missing sandbox
+  // backend) reports its reason on stderr and must be diagnosable from CI.
+  const initialized = await rpc("initialize", init);
+  assert(initialized.result, `initialize refused: ${JSON.stringify(initialized)} stderr=${JSON.stringify(errors)}`); stdio.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
   const read = await rpc("tools/call", { name: "read", arguments: { path: allowed } }); assert.match(JSON.stringify(read.result), /native-allowed-sentinel/);
   assert.equal((await rpc("tools/call", { name: "write", arguments: { path: allowed, content: "overwrite" } })).result.isError, true);
   assert.equal((await rpc("tools/call", { name: "read", arguments: { path: outside } })).result.isError, true);

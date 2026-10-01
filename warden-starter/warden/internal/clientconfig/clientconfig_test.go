@@ -226,7 +226,18 @@ func TestStateDirectoryResolvesAncestorSymlinks(t *testing.T) {
 	}
 	t.Setenv("WARDEN_SETUP_STATE_DIR", filepath.Join(link, "new-state"))
 	got := StateDirectory(filepath.Join(dir, "config"))
-	if !strings.HasPrefix(got, filepath.Join(target, "new-state")) {
-		t.Fatalf("state alias not canonicalized: %s", got)
+	// StateDirectory resolves ancestor symlinks, so the expected prefix must
+	// be canonical too: on macOS the temp root itself resolves
+	// /var -> /private/var and the literal target path would never match.
+	want := filepath.Join(target, "new-state")
+	if real, e := filepath.EvalSymlinks(target); e == nil {
+		want = filepath.Join(real, "new-state")
+	}
+	if !strings.HasPrefix(got, want) {
+		t.Fatalf("state alias not canonicalized: %s (want prefix %s)", got, want)
+	}
+	// The alias itself must be gone from the resolved path.
+	if strings.Contains(got, string(filepath.Separator)+"alias"+string(filepath.Separator)) {
+		t.Fatalf("state directory still routes through the symlink alias: %s", got)
 	}
 }

@@ -168,11 +168,45 @@ jobs:
           node-version: '24'
       - run: go build ./...
       - run: go vet ./...
-      - name: Native Windows MCP gateway lifecycle
+      # TEMPORARY (diagnosis round): probe why windows.Supported() is false on
+      # this runner (WFP DLL exports / lowbox token), print doctor's backend
+      # resolution, and let the smoke + go test steps report every failure in
+      # one run. Revert to a single hard-fail smoke step once diagnosed.
+      - name: Windows backend probe (diagnostics)
         shell: pwsh
         run: |
           go build -o "$env:RUNNER_TEMP/warden-native.exe" ./cmd/warden
           if ($LASTEXITCODE -ne 0) { throw "native CLI build failed" }
+          Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class WardenProbe{[DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern IntPtr LoadLibraryExW(string n,IntPtr h,uint f);[DllImport("kernel32.dll",CharSet=CharSet.Ansi,ExactSpelling=true,SetLastError=true)]public static extern IntPtr GetProcAddress(IntPtr m,string p);}'
+          Write-Host ("OS version: " + [System.Environment]::OSVersion.Version)
+          foreach ($dll in @("fwpuclnt.dll", "iphlapi.dll")) {
+            $h = [WardenProbe]::LoadLibraryExW($dll, [IntPtr]::Zero, [uint32]0)
+            if ($h -eq [IntPtr]::Zero) { Write-Host ("{0}: LOAD FAILED err={1}" -f $dll, [Runtime.InteropServices.Marshal]::GetLastWin32Error()); continue }
+            Write-Host ("{0}: loaded 0x{1:X}" -f $dll, $h)
+            foreach ($s in @("FwpmEngineOpen0","FwpmEngineClose0","FwpmTransactionBegin0","FwpmTransactionCommit0","FwpmTransactionAbort0","FwpmSublayerAdd0","FwpmFilterAdd0","FwpmFreeMemory0","FwpmFilterDeleteById0")) {
+              $p = [WardenProbe]::GetProcAddress($h, $s)
+              $state = if ($p -eq [IntPtr]::Zero) { "MISSING" } else { "0x" + $p.ToString("X") }
+              Write-Host ("  {0} = {1}" -f $s, $state)
+            }
+          }
+          $nt = [WardenProbe]::LoadLibraryExW("ntdll.dll", [IntPtr]::Zero, [uint32]0)
+          $p = [WardenProbe]::GetProcAddress($nt, "NtCreateLowBoxToken")
+          $state = if ($p -eq [IntPtr]::Zero) { "MISSING err=" + [Runtime.InteropServices.Marshal]::GetLastWin32Error() } else { "0x" + $p.ToString("X") }
+          Write-Host ("ntdll!NtCreateLowBoxToken = " + $state)
+          & "$env:RUNNER_TEMP/warden-native.exe" doctor
+          Write-Host ("doctor exit code: " + $LASTEXITCODE)
+          try {
+            docker info --format "docker ostype={{.OSType}} server={{.ServerVersion}}"
+            Write-Host ("docker info exit code: " + $LASTEXITCODE)
+          } catch {
+            Write-Host ("docker probe unavailable: " + $_)
+          }
+          exit 0
+      - name: Native Windows MCP gateway lifecycle
+        id: smoke
+        continue-on-error: true
+        shell: pwsh
+        run: |
           $env:WARDEN_BIN = "$env:RUNNER_TEMP/warden-native.exe"
           node testdata/ecosystem/smoke-native-gateway.mjs
           if ($LASTEXITCODE -ne 0) { throw "native gateway regression failed" }
@@ -219,6 +253,13 @@ jobs:
           if ($out -notmatch '(?m)^\s*--- PASS:' -and $out -notmatch '(?m)^\s*--- SKIP:') {
             throw "all targeted Windows tests failed; output above"
           }
+      # TEMPORARY companion to continue-on-error above: every step still runs,
+      # but the job fails if the smoke test failed. Remove together with the
+      # probe step after diagnosis.
+      - name: Native gateway regression result
+        if: always() && steps.smoke.outcome == 'failure'
+        shell: pwsh
+        run: throw "native gateway regression failed (diagnostics in the smoke step above)"
 
   # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
   # escape and lifecycle tests execute for real instead of skipping.

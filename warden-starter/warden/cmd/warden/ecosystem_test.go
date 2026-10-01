@@ -118,6 +118,19 @@ func TestChangedPinnedPolicyRefusesBeforeLaunch(t *testing.T) {
 	}
 }
 
+// backupOverlapRefused reports whether wrap refused the policy because a
+// grant overlaps the private backup storage. The production check has two
+// phrasings: the direct path comparison and the symlink-resolved comparison
+// (on macOS the temp root resolves /var -> /private/var, so the resolved
+// branch fires first). Both are the same security refusal, so the assertion
+// matches the shared "overlaps ... backup storage" reason rather than one
+// branch's exact wording. The refusal itself is never weakened.
+func backupOverlapRefused(r ecosystemResult) bool {
+	return r.exitCode != 0 &&
+		strings.Contains(r.stderr, "overlaps") &&
+		strings.Contains(r.stderr, "backup storage")
+}
+
 func TestBackupStorageMustStayOutsideReadGrant(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("WARDEN_SETUP_STATE_DIR", filepath.Join(dir, "private-state"))
@@ -128,7 +141,7 @@ func TestBackupStorageMustStayOutsideReadGrant(t *testing.T) {
 	content, _ := json.Marshal(dir)
 	_ = os.WriteFile(policy, []byte("filesystem:\n  read: ["+string(content)+"]\n"), 0600)
 	result := runEcosystemTest(t, bin, "wrap", "--client", "generic", "--config", config, "--server", "s", "--policy", policy, "--dry-run")
-	if result.exitCode == 0 || !strings.Contains(result.stderr, "backup storage overlaps") {
+	if !backupOverlapRefused(result) {
 		t.Fatalf("backup secret exposure not refused: %+v", result)
 	}
 	// A file inside private storage can expose saved launcher credentials even
@@ -137,7 +150,7 @@ func TestBackupStorageMustStayOutsideReadGrant(t *testing.T) {
 	content, _ = json.Marshal(filepath.Join(storage, "record.json"))
 	_ = os.WriteFile(policy, []byte("filesystem:\n  read: ["+string(content)+"]\n"), 0600)
 	result = runEcosystemTest(t, bin, "wrap", "--client", "generic", "--config", config, "--server", "s", "--policy", policy, "--dry-run")
-	if result.exitCode == 0 || !strings.Contains(result.stderr, "backup storage overlaps") {
+	if !backupOverlapRefused(result) {
 		t.Fatalf("file grant inside private storage was accepted: %+v", result)
 	}
 }
