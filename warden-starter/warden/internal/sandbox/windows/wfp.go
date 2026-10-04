@@ -195,18 +195,39 @@ func wfpSupported() error {
 			return failClose("WFP engine", fmt.Errorf("required WFP procedure %q not found in %s: %w", p.Name, wfpDLLName(), err))
 		}
 	}
-	// Export presence is not capability: GitHub-hosted Windows runners ship
+	// Export presence is not capability. GitHub-hosted Windows runners ship
 	// fwpuclnt.dll but refuse FwpmEngineOpen0 with ERROR_NOT_SUPPORTED (50)
 	// for every authnService, elevated or not, even from the SYSTEM account,
 	// and the same refusal hits netsh/Get-NetFirewallProfile (diagnosed in
-	// the ci.yml wfp-engine-probe rounds). Probe a real engine session so
-	// Supported() reports the host's true capability: callers then skip
-	// Windows sandbox tests instead of fail-closing every run.
+	// the ci.yml wfp-engine-probe rounds). Deeper hosted images still accept
+	// the engine open but fail the first filter write with RPC_X_BAD_STUB_DATA
+	// (0x6f7) on FwpmFilterAdd. Run the install path's exact sequence against
+	// a throwaway sublayer and abort the transaction so nothing persists:
+	// Supported() then reports the host's true ability to enforce egress
+	// rules, and callers skip instead of failing on a refuse-to-run sandbox.
 	engine, err := fwpmOpen()
 	if err != nil {
 		return err
 	}
-	_, _, _ = procFwpmEngineClose.Call(uintptr(engine))
+	defer func() { _, _, _ = procFwpmEngineClose.Call(uintptr(engine)) }()
+	if r, _, _ := procFwpmTransactionBegin.Call(uintptr(engine), 0); r != 0 {
+		return failClose("WFP engine", fwpmResultError("FwpmTransactionBegin", r))
+	}
+	subLayer := makeSubLayerGUID("warden-capability-probe")
+	sub := fwpmSublayer{subLayerKey: subLayer, displayData: fwpmDisplayData{name: utf16Ptr("warden capability probe")}}
+	if r, _, _ := procFwpmSublayerAdd.Call(uintptr(engine), uintptr(unsafe.Pointer(&sub)), 0); r != 0 {
+		_ = fwpmAbort(engine)
+		return failClose("WFP engine", fwpmResultError("FwpmSublayerAdd", r))
+	}
+	var probeIDs []uint64
+	if err := addBlockAll(engine, subLayer, guidLayerALEAuthConnectV4, &probeIDs); err != nil {
+		_ = fwpmAbort(engine)
+		return err
+	}
+	// Abort rolls the probe back: no filter, no sublayer, nothing persists.
+	if err := fwpmAbort(engine); err != nil {
+		return failClose("WFP engine", err)
+	}
 	return nil
 }
 

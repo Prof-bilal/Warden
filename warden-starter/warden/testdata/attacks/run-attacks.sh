@@ -227,15 +227,28 @@ run_bomb_phase() {
     local t0 t1
     if [ "$phase" = "ctrl" ]; then
         echo "▶ [cpu-bomb control] unsandboxed for ${BOMB_CTRL_SECS}s, then SIGKILL"
-        t0=$(date +%s)
-        /bin/sh "$work/cpu-bomb.sh" &
-        BOMB_PID=$!
-        sleep "$BOMB_CTRL_SECS"
-        kill -9 "$BOMB_PID" 2>/dev/null
-        wait "$BOMB_PID" 2>/dev/null
-        BOMB_PID=""
-        t1=$(date +%s)
-        echo "$((t1 - t0))" > "$R/bomb-ctrl-wall.txt"
+        # A starved runner can checkpoint zero iterations (killed between
+        # writes, or the loop never got scheduled). The control must land for
+        # the scenario to count, so retry instead of voiding on one flake.
+        local attempt iters
+        for attempt in 1 2 3; do
+            rm -f "$work/bomb-count.txt"
+            t0=$(date +%s)
+            /bin/sh "$work/cpu-bomb.sh" &
+            BOMB_PID=$!
+            sleep "$BOMB_CTRL_SECS"
+            kill -9 "$BOMB_PID" 2>/dev/null
+            wait "$BOMB_PID" 2>/dev/null
+            BOMB_PID=""
+            t1=$(date +%s)
+            echo "$((t1 - t0))" > "$R/bomb-ctrl-wall.txt"
+            iters=$(tail -1 "$work/bomb-count.txt" 2>/dev/null | tr -d ' '); [ -z "$iters" ] && iters=0
+            if [ "$iters" -ge "$BOMB_MIN_ITERS" ] 2>/dev/null; then
+                break
+            fi
+            echo "  ⚠ [cpu-bomb control] attempt $attempt checkpointed only $iters iterations; retrying"
+            sleep 1
+        done
     else
         echo "▶ [cpu-bomb sandbox] warden run with timeout ${BOMB_TIMEOUT}s"
         local policy="$R/policy-bomb.yaml"

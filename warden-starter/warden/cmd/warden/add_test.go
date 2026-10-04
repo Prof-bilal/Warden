@@ -123,13 +123,15 @@ func TestListClientConfigs(t *testing.T) {
 }
 
 func TestDefaultRuntimeDirIsUnderDataHome(t *testing.T) {
-	t.Setenv("XDG_DATA_HOME", "/tmp/xdg-data")
+	// Must be absolute under the running OS's path rules (Windows rejects /tmp).
+	base := filepath.Join(t.TempDir(), "xdg-data")
+	t.Setenv("XDG_DATA_HOME", base)
 	dir := defaultRuntimeDir("slack", "default")
-	if !strings.HasPrefix(dir, "/tmp/xdg-data/warden/runtimes/") {
+	if !strings.HasPrefix(dir, filepath.Join(base, "warden", "runtimes", "slack")) {
 		t.Fatalf("unexpected runtime dir %q", dir)
 	}
 	dir = defaultRuntimeDir("npm", "pkg")
-	if !strings.HasPrefix(dir, "/tmp/xdg-data/warden/runtimes/npm/") {
+	if !strings.HasPrefix(dir, filepath.Join(base, "warden", "runtimes", "npm")) {
 		t.Fatalf("unexpected runtime dir %q", dir)
 	}
 }

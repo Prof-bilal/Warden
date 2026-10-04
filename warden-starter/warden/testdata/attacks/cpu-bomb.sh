@@ -13,7 +13,9 @@ DONEF="@DONEF@"
 i=0
 while [ ! -f "$STOP" ]; do
     i=$((i + 1))
-    [ $((i % 1000)) -eq 0 ] && echo "$i" > "$COUNTF" 2>/dev/null
+    # Checkpoint every 200 iterations: a SIGKILL (control phase) can land
+    # between writes, so finer granularity keeps the measured count honest.
+    [ $((i % 200)) -eq 0 ] && echo "$i" > "$COUNTF" 2>/dev/null
 done
 echo "$i" > "$COUNTF" 2>/dev/null
 echo "STOPPED-GRACEFULLY" > "$DONEF" 2>/dev/null
