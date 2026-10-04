@@ -26,6 +26,14 @@ type Launcher struct {
 	Args    []string `json:"args"`
 	HadArgs bool     `json:"had_args"`
 }
+
+// tableHeader records a top-level TOML table header's key path and byte
+// offset so entries can be inserted and removed without disturbing the rest.
+type tableHeader struct {
+	path  []string
+	start int
+}
+
 type Document struct {
 	data    []byte
 	format  string
@@ -33,6 +41,7 @@ type Document struct {
 	entries map[string]Launcher
 	fields  map[string]map[string]span
 	insert  map[string]int
+	tables  []tableHeader
 }
 
 // Parse validates the whole document, rejects duplicate JSON keys, and keeps
@@ -227,6 +236,150 @@ func cleanJSONC(b []byte) error {
 	return nil
 }
 
+// ValidEntryName restricts server entry names so the same name round-trips
+// through JSON object keys and bare TOML table keys.
+func ValidEntryName(name string) error {
+	if len(name) == 0 || len(name) > 64 {
+		return fmt.Errorf("entry name must be 1-64 characters")
+	}
+	for _, r := range name {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+			return fmt.Errorf("entry name %q may only contain letters, digits, '-' and '_'", name)
+		}
+	}
+	return nil
+}
+
+// Insert adds a brand-new stdio server entry, refusing a name that already
+// exists. JSON/JSONC entries are spliced into the servers section in place;
+// TOML entries are appended as a new [mcp_servers.<name>] table. The result
+// is re-parsed and verified before it is returned.
+func (d *Document) Insert(name string, l Launcher) ([]byte, error) {
+	if err := ValidEntryName(name); err != nil {
+		return nil, err
+	}
+	if _, err := d.Launcher(name); err == nil {
+		return nil, fmt.Errorf("server entry %q already exists", name)
+	}
+	encodedCmd, _ := json.Marshal(l.Command)
+	encodedArgs, _ := json.Marshal(l.Args)
+	if l.Args == nil {
+		encodedArgs = []byte("[]")
+	}
+	var out []byte
+	if d.format == "toml" {
+		var b strings.Builder
+		if n := len(d.data); n > 0 && d.data[n-1] != '\n' {
+			b.WriteString("\n")
+		}
+		b.WriteString("\n[mcp_servers." + name + "]\ncommand = " + string(encodedCmd) + "\n")
+		b.WriteString("args = " + string(encodedArgs) + "\n")
+		out = append(append([]byte{}, d.data...), b.String()...)
+	} else {
+		entry := []byte(`"` + name + `": {"command": ` + string(encodedCmd))
+		if l.HadArgs {
+			entry = append(entry, []byte(`, "args": `+string(encodedArgs))...)
+		}
+		entry = append(entry, '}')
+		if len(d.root.members) > 0 {
+			entry = append(entry, ',')
+		}
+		// Splice right after the opening brace of the servers section so any
+		// existing members, comments and ordering below stay untouched.
+		at := d.root.start + 1
+		out = make([]byte, 0, len(d.data)+len(entry))
+		out = append(out, d.data[:at]...)
+		out = append(out, entry...)
+		out = append(out, d.data[at:]...)
+	}
+	parsed, err := Parse(out, d.format)
+	if err != nil {
+		return nil, fmt.Errorf("inserted configuration failed validation")
+	}
+	got, err := parsed.Launcher(name)
+	if err != nil || !Equal(got, l) {
+		return nil, fmt.Errorf("inserted launcher failed validation")
+	}
+	return out, nil
+}
+
+// Remove deletes one stdio server entry, keeping surrounding bytes (other
+// entries, comments, unrelated fields) intact. The result is re-parsed and
+// verified before it is returned.
+func (d *Document) Remove(name string) ([]byte, error) {
+	if _, err := d.Launcher(name); err != nil {
+		return nil, err
+	}
+	var out []byte
+	if d.format == "toml" {
+		out = d.removeTOML(name)
+	} else {
+		n := d.root.members[name]
+		clean := d.data
+		if d.format == "jsonc" {
+			clean = append([]byte(nil), d.data...)
+			_ = cleanJSONC(clean) // length-preserving, so offsets stay valid
+		}
+		start, end := n.keyStart, n.end
+		i := end
+		for i < len(clean) && (clean[i] == ' ' || clean[i] == '\t' || clean[i] == '\n' || clean[i] == '\r') {
+			i++
+		}
+		if i < len(clean) && clean[i] == ',' {
+			end = i + 1 // entry is not last: drop its trailing comma
+		} else {
+			j := start - 1
+			for j >= 0 && (clean[j] == ' ' || clean[j] == '\t' || clean[j] == '\n' || clean[j] == '\r') {
+				j--
+			}
+			if j >= 0 && clean[j] == ',' {
+				start = j // entry is last: drop the preceding comma
+			}
+		}
+		out = applyEdits(d.data, []edit{{span{start, end}, nil}})
+	}
+	parsed, err := Parse(out, d.format)
+	if err != nil {
+		return nil, fmt.Errorf("removal produced invalid configuration")
+	}
+	if _, err := parsed.Launcher(name); err == nil {
+		return nil, fmt.Errorf("removal did not delete the entry")
+	}
+	return out, nil
+}
+
+// removeTOML deletes the [mcp_servers.<name>] table plus any subtables that
+// belong to it, stopping at the next unrelated top-level table.
+func (d *Document) removeTOML(name string) []byte {
+	const prefix = "mcp_servers"
+	idx := -1
+	end := len(d.data)
+	for i, h := range d.tables {
+		if len(h.path) == 2 && h.path[0] == prefix && h.path[1] == name {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return append([]byte{}, d.data...)
+	}
+	own := d.tables[idx].path
+	for _, h := range d.tables[idx+1:] {
+		subtable := len(h.path) > len(own)
+		for j := range own {
+			if h.path[j] != own[j] {
+				subtable = false
+				break
+			}
+		}
+		if !subtable {
+			end = h.start
+			break
+		}
+	}
+	return append(append([]byte{}, d.data[:d.tables[idx].start]...), d.data[end:]...)
+}
+
 func (d *Document) Launcher(name string) (Launcher, error) {
 	l, ok := d.entries[name]
 	if !ok {
@@ -395,8 +548,21 @@ func (d *Document) parseTOML() error {
 		if n.Kind == unstable.Table || n.Kind == unstable.ArrayTable {
 			table = nil
 			it := n.Key()
+			firstOffset := -1
 			for it.Next() {
+				if firstOffset < 0 {
+					// Key Raw offsets are absolute document offsets; the
+					// table header '[' (or '[[') sits just before the first.
+					firstOffset = int(it.Node().Raw.Offset)
+				}
 				table = append(table, string(it.Node().Data))
+			}
+			if firstOffset >= 0 {
+				start := firstOffset - 1
+				for start > 0 && d.data[start-1] == '[' {
+					start--
+				}
+				d.tables = append(d.tables, tableHeader{path: append([]string{}, table...), start: start})
 			}
 			continue
 		}

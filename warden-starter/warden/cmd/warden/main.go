@@ -28,6 +28,7 @@ import (
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/container"
 	"github.com/warden-sandbox/warden/internal/mcpproxy"
+	"github.com/warden-sandbox/warden/internal/mcpserver"
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/proxy"
 	"github.com/warden-sandbox/warden/internal/sandbox"
@@ -39,7 +40,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report"}
+var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp"}
 
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
@@ -81,6 +82,15 @@ func main() {
 		}
 	case "__setup-probe":
 		os.Exit(0)
+	case "add":
+		if hasHelpFlag(os.Args[2:]) {
+			printAddHelp()
+			return
+		}
+		if err := cmdAdd(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden add:", err)
+			os.Exit(1)
+		}
 	case "packs", "clients", "wrap", "unwrap", "inventory":
 		if hasHelpFlag(os.Args[2:]) {
 			printEcosystemHelp(os.Args[1])
@@ -88,6 +98,15 @@ func main() {
 		}
 		if err := cmdEcosystem(os.Args[1], os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "warden %s: %v\n", os.Args[1], err)
+			os.Exit(1)
+		}
+	case "mcp":
+		if hasHelpFlag(os.Args[2:]) {
+			printMCPHelp()
+			os.Exit(0)
+		}
+		if err := cmdMCP(); err != nil {
+			fmt.Fprintln(os.Stderr, "warden mcp:", err)
 			os.Exit(1)
 		}
 	case "__proxy-bridge":
@@ -225,6 +244,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
 	fmt.Fprintln(os.Stderr, "  packs      Browse and generate candidate policy packs")
 	fmt.Fprintln(os.Stderr, "  clients    List client configuration adapters")
+	fmt.Fprintln(os.Stderr, "  add        Connect an MCP server to a client (sandboxed)")
 	fmt.Fprintln(os.Stderr, "  wrap       Preview or apply a client launcher wrapper")
 	fmt.Fprintln(os.Stderr, "  unwrap     Undo a managed launcher change")
 	fmt.Fprintln(os.Stderr, "  inventory  Inspect configured stdio connections and drift")
@@ -236,6 +256,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  policy-diff Review policy changes before an upgrade")
 	fmt.Fprintln(os.Stderr, "  report     Record and summarize explicit local pilot events")
 	fmt.Fprintln(os.Stderr, "  k8s        Generate container/K8s manifests from policy")
+	fmt.Fprintln(os.Stderr, "  mcp        Expose Warden tools to MCP clients over stdio")
 	fmt.Fprintln(os.Stderr, "  version    Show version")
 	fmt.Fprintln(os.Stderr, "  update     Update warden to the latest release")
 	fmt.Fprintln(os.Stderr, "  help       Show help for a command")
@@ -270,6 +291,8 @@ func printCommandHelp(cmd string) {
 		printGrowthHelp(cmd)
 	case "packs", "clients", "wrap", "unwrap", "inventory":
 		printEcosystemHelp(cmd)
+	case "add":
+		printAddHelp()
 	case "run":
 		printRunHelp()
 	case "trace":
@@ -290,6 +313,8 @@ func printCommandHelp(cmd string) {
 		printProxyHelp()
 	case "k8s":
 		printK8sHelp()
+	case "mcp":
+		printMCPHelp()
 	case "help":
 		printUsage()
 	default:
@@ -355,6 +380,59 @@ func min(a, b, c int) int {
 		return b
 	}
 	return c
+}
+
+// printAddHelp prints help for the one-command client connection flow.
+func printAddHelp() {
+	title := "WARDEN ADD"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Connect an MCP server to a client in one command, sandboxed behind Warden.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden add <pack> to <client> [options]")
+	fmt.Fprintln(os.Stderr, "  warden add <npm-package>[@version] to <client> [options]")
+	fmt.Fprintln(os.Stderr, "  warden add <pack> --client <client> [options]")
+	fmt.Fprintln(os.Stderr, "  warden add --list-clients")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Clients:"))
+	fmt.Fprintln(os.Stderr, "  claude-desktop, claude-code, cursor, codex, vscode, gemini, cline, cascade, generic")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
+	fmt.Fprintln(os.Stderr, "  --client <id>         Alternative to the positional 'to <client>' form")
+	fmt.Fprintln(os.Stderr, "  --name <name>         Entry name in the client config (default: pack id / package name)")
+	fmt.Fprintln(os.Stderr, "  --scope project|user  Config scope (default: project; claude-desktop: user)")
+	fmt.Fprintln(os.Stderr, "  --config <file>       Explicit configuration path")
+	fmt.Fprintln(os.Stderr, "  --runtime <dir>       Prepared runtime directory (default: ~/.local/share/warden/runtimes/...)")
+	fmt.Fprintln(os.Stderr, "  --data <dir>          Data directory for packs that need one")
+	fmt.Fprintln(os.Stderr, "  --policy <file>       Use your own reviewed policy (its command becomes the upstream)")
+	fmt.Fprintln(os.Stderr, "  --allow-host <host>   Generic npm servers: grant network egress (repeatable)")
+	fmt.Fprintln(os.Stderr, "  --allow-env <name>    Generic npm servers: forward an env var (repeatable)")
+	fmt.Fprintln(os.Stderr, "  --allow-read <path>   Generic npm servers: grant a read path (repeatable)")
+	fmt.Fprintln(os.Stderr, "  --allow-write <path>  Generic npm servers: grant a write path (repeatable)")
+	fmt.Fprintln(os.Stderr, "  --backend <name>      Sandbox backend (default: auto)")
+	fmt.Fprintln(os.Stderr, "  --yes                 Apply without the confirmation prompt")
+	fmt.Fprintln(os.Stderr, "  --dry-run             Preview only; writes nothing")
+	fmt.Fprintln(os.Stderr, "  --list-clients        Show detected client configs and their entries (read-only)")
+	fmt.Fprintln(os.Stderr, "  --list-clients        Show detected client configs and their entries (read-only)")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
+	fmt.Fprintln(os.Stderr, "  warden add slack to claude-desktop")
+	fmt.Fprintln(os.Stderr, "  warden add notion to claude-desktop")
+	fmt.Fprintln(os.Stderr, "  warden add @modelcontextprotocol/server-everything@2025.7.1 to cursor")
+	fmt.Fprintln(os.Stderr, "  warden add @scope/server@1.2.3 to claude-code --allow-host api.example.com --allow-env SCOPE_KEY")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Behavior:"))
+	fmt.Fprintln(os.Stderr, "  Catalog packs (warden packs list) install their pinned npm release inside")
+	fmt.Fprintln(os.Stderr, "  the sandbox (install scripts disabled) and use the reviewed pack grants.")
+	fmt.Fprintln(os.Stderr, "  Other npm packages get a deny-by-default starter policy: no network, no")
+	fmt.Fprintln(os.Stderr, "  env, no data paths beyond the runtime. Grant only what the server needs")
+	fmt.Fprintln(os.Stderr, "  with --allow-* flags, or refine later with warden trace + warden init.")
+	fmt.Fprintln(os.Stderr, "  Credentials are never written into config files; missing env vars are")
+	fmt.Fprintln(os.Stderr, "  reported with export lines. Default is preview + confirmation prompt.")
+	fmt.Fprintln(os.Stderr, "  Undo: warden unwrap --client <client> --server <entry>.")
 }
 
 func printRunHelp() {
@@ -1433,6 +1511,37 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream, transport stri
 	}
 
 	return policyPath, listen, upstream, transport, nil
+}
+
+func printMCPHelp() {
+	title := "WARDEN MCP"
+	if ui.ColorEnabled() {
+		title = ui.Bold(ui.Cyan(title))
+	}
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, "Expose Warden tools to MCP clients (ChatGPT, Codex, IDEs) over stdio.")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
+	fmt.Fprintln(os.Stderr, "  warden mcp")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Tools exposed:"))
+	fmt.Fprintln(os.Stderr, "  inspect_policy   Show what a policy allows and denies (read-only)")
+	fmt.Fprintln(os.Stderr, "  run_sandbox      Execute a command under an explicit policy (mutating)")
+	fmt.Fprintln(os.Stderr, "  trace_execution  Summarize a run's audit events (read-only)")
+	fmt.Fprintln(os.Stderr, "  explain_denial   Explain why Warden blocked an access (read-only)")
+	fmt.Fprintln(os.Stderr, "  generate_policy  Propose a restrictive policy (never applied)")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Client config:"))
+	fmt.Fprintln(os.Stderr, "  {\"command\": \"warden\", \"args\": [\"mcp\"]}")
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
+	fmt.Fprintln(os.Stderr, "  The MCP layer is a thin adapter over the existing runtime.")
+	fmt.Fprintln(os.Stderr, "  All enforcement stays in the sandbox and policy engine;")
+	fmt.Fprintln(os.Stderr, "  deny-by-default semantics are unchanged.")
+}
+
+func cmdMCP() error {
+	return mcpserver.Serve(os.Stdin, os.Stdout)
 }
 
 func printK8sHelp() {

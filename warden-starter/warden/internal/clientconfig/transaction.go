@@ -27,6 +27,13 @@ type Record struct {
 	Backup     string   `json:"backup"`
 	Created    string   `json:"created"`
 	Active     bool     `json:"active"`
+	// EntryCreated marks records from PrepareCreate: undo removes the whole
+	// entry (and the file, when Warden created the config) instead of
+	// restoring a previous launcher.
+	EntryCreated bool `json:"entry_created,omitempty"`
+	// ConfigMissing records that the configuration file itself did not exist
+	// before Warden created it.
+	ConfigMissing bool `json:"config_missing,omitempty"`
 }
 
 type Plan struct {
@@ -34,6 +41,7 @@ type Plan struct {
 	Before, After                              []byte
 	Original, Wrapped                          Launcher
 	Unchanged                                  bool
+	EntryCreated, ConfigMissing                bool
 }
 
 func Hash(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
@@ -165,6 +173,86 @@ func PrepareWithCommand(config, format, server, policy, warden, backend string, 
 	return p, err
 }
 
+// PrepareCreate plans adding a brand-new sandboxed stdio server entry.
+// Unlike PrepareWithCommand it refuses an existing entry instead of patching
+// it, and can create the configuration file when it does not exist yet.
+func PrepareCreate(config, format, server, policyPath, warden, backend string, upstream []string) (Plan, error) {
+	if err := ValidEntryName(server); err != nil {
+		return Plan{}, err
+	}
+	config, err := filepath.Abs(config)
+	if err != nil {
+		return Plan{}, err
+	}
+	if err = os.MkdirAll(filepath.Dir(config), 0700); err != nil {
+		return Plan{}, err
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(config))
+	if err != nil {
+		return Plan{}, err
+	}
+	config = filepath.Join(parent, filepath.Base(config))
+	if stateDir(config) == "" {
+		return Plan{}, fmt.Errorf("private setup storage unavailable; set an absolute WARDEN_SETUP_STATE_DIR")
+	}
+	policyPath, err = filepath.Abs(policyPath)
+	if err != nil {
+		return Plan{}, err
+	}
+	pb, err := readRegular(policyPath)
+	if err != nil {
+		return Plan{}, err
+	}
+	p := Plan{Config: config, Server: server, Format: format, Policy: policyPath, PolicyHash: Hash(pb), EntryCreated: true}
+	var b []byte
+	if info, statErr := os.Lstat(config); statErr == nil {
+		if !info.Mode().IsRegular() {
+			return Plan{}, fmt.Errorf("refusing non-regular file or symlink")
+		}
+		if info.Size() > 8*1024*1024 {
+			return Plan{}, fmt.Errorf("file exceeds 8 MiB")
+		}
+		if b, err = os.ReadFile(config); err != nil {
+			return Plan{}, err
+		}
+		d, err := Parse(b, format)
+		if err != nil {
+			return Plan{}, err
+		}
+		if _, err = d.Launcher(server); err == nil {
+			return Plan{}, fmt.Errorf("server entry %q already exists; use wrap to sandbox it", server)
+		}
+		p.Before = b
+	} else if !os.IsNotExist(statErr) {
+		return Plan{}, statErr
+	} else {
+		p.ConfigMissing = true
+	}
+	args := []string{"run", "--policy", policyPath, "--policy-sha256", p.PolicyHash, "--backend", backend, "--"}
+	args = append(args, upstream...)
+	p.Wrapped = Launcher{Command: warden, Args: args, HadArgs: true}
+	if p.ConfigMissing && format == "toml" {
+		encodedCmd, _ := json.Marshal(warden)
+		encodedArgs, _ := json.Marshal(p.Wrapped.Args)
+		p.After = []byte("[mcp_servers." + server + "]\ncommand = " + string(encodedCmd) + "\nargs = " + string(encodedArgs) + "\n")
+		return p, nil
+	}
+	var d *Document
+	if p.ConfigMissing {
+		skeleton := []byte("{\n  \"mcpServers\": {}\n}\n")
+		if d, err = Parse(skeleton, format); err != nil {
+			return Plan{}, err
+		}
+		p.Before = skeleton
+	} else if d, err = Parse(b, format); err != nil {
+		return Plan{}, err
+	}
+	if p.After, err = d.Insert(server, p.Wrapped); err != nil {
+		return Plan{}, err
+	}
+	return p, nil
+}
+
 // Apply serializes Warden writers, checks the snapshot again, makes a private
 // backup, persists undo data first, and atomically replaces the configuration.
 // Hosts/editors do not honor our lock: the final comparison detects observed
@@ -176,6 +264,35 @@ func Apply(p Plan) (string, error) {
 	}
 	defer unlock()
 	if p.Unchanged {
+		return "", nil
+	}
+	if p.EntryCreated && p.ConfigMissing {
+		if _, err = os.Lstat(p.Config); err == nil {
+			return "", fmt.Errorf("config appeared since preview; no changes applied")
+		} else if !os.IsNotExist(err) {
+			return "", err
+		}
+		dir := stateDir(p.Config)
+		if err = privateDir(dir); err != nil {
+			return "", err
+		}
+		r := Record{Config: p.Config, Server: p.Server, Format: p.Format, Original: p.Original, Wrapped: p.Wrapped, AfterHash: Hash(p.After), Policy: p.Policy, PolicyHash: p.PolicyHash, Created: time.Now().UTC().Format(time.RFC3339), Active: true, EntryCreated: true, ConfigMissing: true}
+		rb, _ := json.MarshalIndent(r, "", "  ")
+		if err = AtomicWrite(statePath(p.Config, p.Server), rb); err != nil {
+			return "", err
+		}
+		if _, err = os.Lstat(p.Config); err == nil {
+			r.Active = false
+			rb, _ = json.MarshalIndent(r, "", "  ")
+			_ = AtomicWrite(statePath(p.Config, p.Server), rb)
+			return "", fmt.Errorf("config appeared during transaction; no changes applied")
+		}
+		if err = AtomicWrite(p.Config, p.After); err != nil {
+			r.Active = false
+			rb, _ = json.MarshalIndent(r, "", "  ")
+			_ = AtomicWrite(statePath(p.Config, p.Server), rb)
+			return "", err
+		}
 		return "", nil
 	}
 	current, err := readRegular(p.Config)
@@ -197,7 +314,7 @@ func Apply(p Plan) (string, error) {
 	if err := writeNew(backup, current); err != nil {
 		return "", err
 	}
-	r := Record{Config: p.Config, Server: p.Server, Format: p.Format, Original: p.Original, Wrapped: p.Wrapped, BeforeHash: Hash(p.Before), AfterHash: Hash(p.After), Policy: p.Policy, PolicyHash: p.PolicyHash, Backup: backup, Created: time.Now().UTC().Format(time.RFC3339), Active: true}
+	r := Record{Config: p.Config, Server: p.Server, Format: p.Format, Original: p.Original, Wrapped: p.Wrapped, BeforeHash: Hash(p.Before), AfterHash: Hash(p.After), Policy: p.Policy, PolicyHash: p.PolicyHash, Backup: backup, Created: time.Now().UTC().Format(time.RFC3339), Active: true, EntryCreated: p.EntryCreated}
 	rb, _ := json.MarshalIndent(r, "", "  ")
 	if err := AtomicWrite(statePath(p.Config, p.Server), rb); err != nil {
 		return "", err
@@ -242,6 +359,9 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 	}
 	if !r.Active {
 		return false, nil
+	}
+	if r.EntryCreated {
+		return undoCreated(config, r, dryRun)
 	}
 	current, err := readRegular(config)
 	if err != nil {
@@ -294,6 +414,79 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 		return true, err
 	}
 	return true, nil
+}
+
+// undoCreated reverses PrepareCreate: remove the managed entry from an
+// existing config, or delete the whole file when Warden created it. Drift is
+// refused; a missing entry is treated as already undone.
+func undoCreated(config string, r Record, dryRun bool) (bool, error) {
+	current, err := readRegular(config)
+	if err != nil {
+		if r.ConfigMissing && os.IsNotExist(err) {
+			if !dryRun {
+				if e := markRecordInactive(config, r); e != nil {
+					return false, e
+				}
+			}
+			return false, nil
+		}
+		return false, err
+	}
+	if r.ConfigMissing {
+		if Hash(current) != r.AfterHash {
+			return false, fmt.Errorf("config changed since add; refusing to delete it")
+		}
+		if dryRun {
+			return true, nil
+		}
+		if err = os.Remove(config); err != nil {
+			return true, err
+		}
+		if err = markRecordInactive(config, r); err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+	d, err := Parse(current, r.Format)
+	if err != nil {
+		return false, err
+	}
+	l, err := d.Launcher(r.Server)
+	if err != nil {
+		if !dryRun {
+			if e := markRecordInactive(config, r); e != nil {
+				return false, e
+			}
+		}
+		return false, nil
+	}
+	if !Equal(l, r.Wrapped) {
+		return false, fmt.Errorf("managed entry changed since add; refusing to remove it")
+	}
+	if dryRun {
+		return true, nil
+	}
+	var out []byte
+	if out, err = d.Remove(r.Server); err != nil {
+		return false, err
+	}
+	latest, err := readRegular(config)
+	if err != nil || !bytes.Equal(latest, current) {
+		return false, fmt.Errorf("config changed during undo")
+	}
+	if err = AtomicWrite(config, out); err != nil {
+		return true, err
+	}
+	if err = markRecordInactive(config, r); err != nil {
+		return true, err
+	}
+	return true, nil
+}
+
+func markRecordInactive(config string, r Record) error {
+	r.Active = false
+	rb, _ := json.MarshalIndent(r, "", "  ")
+	return AtomicWrite(statePath(config, r.Server), rb)
 }
 
 func loadRecord(config, server string) (Record, error) {

@@ -112,6 +112,9 @@ Docker is **never** preferred over a working native backend.
 ## Commands
 
 ```
+warden add <pack> to <client> [--yes] [--allow-host <host>] ...
+    Connect an MCP server to a client in one command (see below)
+
 warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker] [--approve] [--approve-timeout <dur>] -- <command...>
     Run a server under a policy (--approve prompts on first out-of-policy access)
 
@@ -150,6 +153,26 @@ in CI or for `warden run`/`--help`/`--version`). Colors respect
 [CLI ReferenceCLI Experience](./docs/cli.md#cli-experience). First-run
 shows a one-time welcome (`Welcome to Warden`); it never blocks
 `warden run` and is suppressed in CI.
+
+### One-command client connection (`warden add`)
+
+```bash
+warden add slack to claude-desktop
+warden add notion to claude-desktop
+warden add @scope/mcp-server@1.2.3 to claude-code \
+    --allow-host api.example.com --allow-env SCOPE_KEY
+```
+
+`add` prepares the pinned npm release inside the sandbox (install scripts
+disabled), generates a deny-by-default policy, and registers a wrapped
+launcher in the client's config after a preview + confirmation prompt.
+Catalog packs (`warden packs list`) carry reviewed grants; any other npm
+MCP package works with explicit `--allow-host/--allow-env/--allow-read/
+--allow-write` flags or your own `--policy`. Credentials are reported by
+name only and never written into config files. `warden add --list-clients`
+shows every detected client config and its current entries (read-only).
+Undo with `warden unwrap --client <client> --server <entry>`. See
+`warden help add`.
 
 See [Gateway Integration](./docs/gateway.md) and the
 [example configs](./examples/gateway-mcp.json) (`gateway-registry.yaml`).

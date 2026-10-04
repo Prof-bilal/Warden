@@ -15,28 +15,12 @@ import (
 	"github.com/warden-sandbox/warden/internal/sandbox"
 )
 
-func cmdPackPrepare(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("pack ID required")
-	}
-	pack, e := packs.Find(args[0])
-	if e != nil {
-		return e
-	}
-	if !strings.HasPrefix(pack.Artifact, "@") {
-		return fmt.Errorf("isolated prepare currently covers npm profiles; prepare Git/Python or the GitHub native binary separately")
-	}
-	fs := flag.NewFlagSet("packs prepare", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	output := fs.String("output", "", "new dedicated runtime directory")
-	backend := fs.String("backend", "auto", "installation sandbox")
-	if e = fs.Parse(args[1:]); e != nil || fs.NArg() != 0 || *output == "" {
-		return fmt.Errorf("usage: warden packs prepare <npm-pack> --output <new-directory> [--backend auto]")
-	}
-	if !validSetupBackend(*backend) {
-		return fmt.Errorf("invalid backend")
-	}
-	if _, e = sandbox.Resolve(*backend); e != nil {
+// prepareNPMRuntime installs one pinned npm artifact (name@version) into a
+// NEW directory dest inside the sandbox: registry-only egress, install
+// scripts disabled, isolated HOME and npm configuration. It performs no
+// post-install validation; callers verify the installed identity.
+func prepareNPMRuntime(artifact, dest, backend string) error {
+	if _, e := sandbox.Resolve(backend); e != nil {
 		return e
 	}
 	npm, e := exec.LookPath("npm")
@@ -65,7 +49,7 @@ func cmdPackPrepare(args []string) error {
 	if e != nil {
 		return e
 	}
-	dest, e := filepath.Abs(*output)
+	dest, e = filepath.Abs(dest)
 	if e != nil {
 		return e
 	}
@@ -118,11 +102,42 @@ func cmdPackPrepare(args []string) error {
 	}
 	// Invoke the trusted npm JS entry point through the selected Node runtime;
 	// no shebang/PATH-dependent resolution of the installer is necessary.
-	code, e := sandbox.Run([]string{node, realNPM, "install", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest, pack.Artifact + "@" + pack.Version}, p, *backend)
+	code, e := sandbox.Run([]string{node, realNPM, "install", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest, artifact}, p, backend)
 	if e != nil || code != 0 {
 		return fmt.Errorf("isolated preparation failed (exit %d); incomplete output retained; no direct retry: %v", code, e)
 	}
 	restoreEnvironment()
+	return nil
+}
+
+func cmdPackPrepare(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("pack ID required")
+	}
+	pack, e := packs.Find(args[0])
+	if e != nil {
+		return e
+	}
+	if !strings.HasPrefix(pack.Artifact, "@") {
+		return fmt.Errorf("isolated prepare currently covers npm profiles; prepare Git/Python or the GitHub native binary separately")
+	}
+	fs := flag.NewFlagSet("packs prepare", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	output := fs.String("output", "", "new dedicated runtime directory")
+	backend := fs.String("backend", "auto", "installation sandbox")
+	if e = fs.Parse(args[1:]); e != nil || fs.NArg() != 0 || *output == "" {
+		return fmt.Errorf("usage: warden packs prepare <npm-pack> --output <new-directory> [--backend auto]")
+	}
+	if !validSetupBackend(*backend) {
+		return fmt.Errorf("invalid backend")
+	}
+	if e = prepareNPMRuntime(pack.Artifact+"@"+pack.Version, *output, *backend); e != nil {
+		return e
+	}
+	dest, e := filepath.Abs(*output)
+	if e != nil {
+		return e
+	}
 	if _, e = packs.PreparedCommand(pack.ID, dest, func() string {
 		if pack.ID == "filesystem" {
 			return dest

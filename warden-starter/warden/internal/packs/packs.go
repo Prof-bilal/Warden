@@ -134,6 +134,61 @@ func narrowDirectory(path string) (string, error) {
 
 func Digest(data []byte) string { h := sha256.Sum256(data); return hex.EncodeToString(h[:]) }
 
+// ResolveEntry reads an installed npm package manifest and returns the
+// JavaScript entry point to run with Node. Preference order: a single
+// "bin" value (or the one named after the package), then "main", then
+// dist/index.js. The returned path is verified to exist.
+func ResolveEntry(root string) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(root, "package.json"))
+	if err != nil {
+		return "", fmt.Errorf("installed package manifest is missing")
+	}
+	var metadata struct {
+		Name string          `json:"name"`
+		Bin  json.RawMessage `json:"bin"`
+		Main string          `json:"main"`
+	}
+	if json.Unmarshal(raw, &metadata) != nil {
+		return "", fmt.Errorf("installed package manifest is invalid")
+	}
+	resolve := func(rel string) (string, error) {
+		entry := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(rel, "./")))
+		if info, statErr := os.Stat(entry); statErr != nil || info.IsDir() {
+			return "", fmt.Errorf("declared entry point %q is missing", rel)
+		}
+		return entry, nil
+	}
+	if len(metadata.Bin) > 0 {
+		var single string
+		if json.Unmarshal(metadata.Bin, &single) == nil && single != "" {
+			return resolve(single)
+		}
+		var bins map[string]string
+		if json.Unmarshal(metadata.Bin, &bins) == nil {
+			base := metadata.Name
+			if i := strings.LastIndex(base, "/"); i >= 0 {
+				base = base[i+1:]
+			}
+			if p, ok := bins[base]; ok {
+				return resolve(p)
+			}
+			if len(bins) == 1 {
+				for _, p := range bins {
+					return resolve(p)
+				}
+			}
+		}
+	}
+	if metadata.Main != "" {
+		return resolve(metadata.Main)
+	}
+	entry := filepath.Join(root, "dist", "index.js")
+	if _, err := os.Stat(entry); err != nil {
+		return "", fmt.Errorf("prepared entry point is missing")
+	}
+	return entry, nil
+}
+
 // PreparedCommand validates the local npm package manifest and selects its
 // installed entry point. Dependency preparation writes a package-lock; no npx
 // cache or online package resolution is needed for execution.
@@ -161,9 +216,9 @@ func PreparedCommand(id, runtimePath, dataPath string) ([]string, error) {
 	if json.Unmarshal(raw, &metadata) != nil || metadata.Name != pack.Artifact || metadata.Version != pack.Version {
 		return nil, fmt.Errorf("installed package identity/version differs from the reviewed profile")
 	}
-	entry := filepath.Join(root, "dist", "index.js")
-	if _, err = os.Stat(entry); err != nil {
-		return nil, fmt.Errorf("prepared entry point is missing")
+	entry, err := ResolveEntry(root)
+	if err != nil {
+		return nil, err
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {

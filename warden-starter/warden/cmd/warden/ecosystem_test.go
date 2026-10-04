@@ -82,7 +82,7 @@ func TestEcosystemHelpAndCatalog(t *testing.T) {
 		t.Fatal(r.stderr)
 	}
 	var packs []map[string]any
-	if json.Unmarshal([]byte(r.stdout), &packs) != nil || len(packs) != 6 {
+	if json.Unmarshal([]byte(r.stdout), &packs) != nil || len(packs) != 8 {
 		t.Fatal("catalog output invalid")
 	}
 	for _, p := range packs {

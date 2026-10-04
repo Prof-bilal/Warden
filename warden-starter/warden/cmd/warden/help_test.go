@@ -488,8 +488,8 @@ func TestSuggestCommand(t *testing.T) {
 		{"versio", "version"},
 		{"log", "logs"},
 		{"zzzzz", ""},
-		{"run", ""},   // exact match, no suggestion needed
-		{"help", ""},  // exact match
+		{"run", ""},  // exact match, no suggestion needed
+		{"help", ""}, // exact match
 		{"runn", "run"},
 		{"doctors", "doctor"},
 	}

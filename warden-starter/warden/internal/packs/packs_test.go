@@ -46,8 +46,8 @@ func TestAllProfilesValidateWithNarrowGrants(t *testing.T) {
 			t.Fatal("unexpected write grant")
 		}
 	}
-	if len(seen) != 6 {
-		t.Fatal("expected six initial profiles")
+	if len(seen) != 8 {
+		t.Fatal("expected eight initial profiles")
 	}
 }
 

@@ -258,7 +258,7 @@ func cmdClientConfig(cmd string, args []string) error {
 		} else if *dry || !*yes {
 			fmt.Fprintln(os.Stderr, "Undo preview passed. Use --yes to restore the launcher; unrelated settings stay intact.")
 		} else {
-			fmt.Fprintln(os.Stderr, "Original launcher restored. Restart your client.")
+			fmt.Fprintln(os.Stderr, "Managed change undone. Restart your client.")
 		}
 		return nil
 	}
