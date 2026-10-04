@@ -3,7 +3,7 @@
 .codex/
 .agents/
 .freebuff/
-
+.commandcode/
 # Marketing folder (local only, not pushed to GitHub)
 marketing/
 
@@ -58,3 +58,4 @@ warden-starter/warden/site/
 
 # Founder content notes (private, never publish to git)
 CONTENT_NOTES.md
+video/
