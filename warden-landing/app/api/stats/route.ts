@@ -14,9 +14,10 @@ export const revalidate = 3600;
 const GITHUB_URL =
   process.env.WARDEN_STATS_GITHUB_URL ||
   "https://api.github.com/repos/Prof-bilal/Warden";
+// npm's rolling last-month window: always live, never a frozen date range.
 const NPM_URL =
   process.env.WARDEN_STATS_NPM_URL ||
-  "https://api.npmjs.org/downloads/point/2024-01-01:2026-09-13/warden-sandbox-cli";
+  "https://api.npmjs.org/downloads/point/last-month/warden-sandbox-cli";
 
 const UPSTREAM_TIMEOUT_MS = 10000;
 

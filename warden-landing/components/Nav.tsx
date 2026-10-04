@@ -67,9 +67,9 @@ export default function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const starsLabel = stats.stars !== null ? formatCount(stats.stars) : "5";
+  const starsLabel = stats.stars !== null ? formatCount(stats.stars) : null;
   const downloadsLabel =
-    stats.downloads !== null ? formatCount(stats.downloads) : "1,952";
+    stats.downloads !== null ? formatCount(stats.downloads) : null;
 
   const logo = (
     <Image
@@ -158,10 +158,12 @@ export default function Nav() {
                 <path d="M0 0v16.8h6.8v3.5h3.4v-3.5h3.4v3.5h3.5v-3.5H24V0H0Zm20.5 13.4h-5.1V3.5h-2.8v9.9H7.4V3.5H3.4v9.9h17.1Z" />
               </svg>
               <span className="font-medium">npm</span>
-              <span className="flex items-center gap-1 rounded-full bg-ink-800 px-1.5 py-0.5 text-[0.625rem] text-muted">
-                <Download size={10} />
-                {downloadsLabel}
-              </span>
+              {downloadsLabel !== null && (
+                <span className="flex items-center gap-1 rounded-full bg-ink-800 px-1.5 py-0.5 text-[0.625rem] text-muted">
+                  <Download size={10} />
+                  {downloadsLabel}
+                </span>
+              )}
             </a>
             {/* Discord */}
             <a
@@ -193,10 +195,12 @@ export default function Nav() {
             >
               <Github size={13} className="text-muted" />
               <span className="font-medium">Warden</span>
-              <span className="flex items-center gap-1 rounded-full bg-ink-800 px-1.5 py-0.5 text-[0.625rem] text-muted">
-                <Star size={10} />
-                {starsLabel}
-              </span>
+              {starsLabel !== null && (
+                <span className="flex items-center gap-1 rounded-full bg-ink-800 px-1.5 py-0.5 text-[0.625rem] text-muted">
+                  <Star size={10} />
+                  {starsLabel}
+                </span>
+              )}
             </a>
             <button
               onClick={() => setOpen(!open)}

@@ -3,7 +3,7 @@
 export function formatCount(n: unknown): string | null {
   if (typeof n !== "number" || !Number.isFinite(n) || n < 0) return null;
   const v = Math.floor(n);
-  if (v < 10000) return String(v);
+  if (v < 1000) return String(v);
   const units: Array<[number, string]> = [
     [1e9, "B"],
     [1e6, "M"],
@@ -12,7 +12,11 @@ export function formatCount(n: unknown): string | null {
   for (const [threshold, suffix] of units) {
     if (v >= threshold) {
       const x = v / threshold;
-      const str = x >= 100 ? String(Math.round(x)) : x.toFixed(1);
+      // Truncate (never round up) so a displayed count never overstates.
+      const str =
+        x >= 100
+          ? String(Math.floor(x))
+          : (Math.floor(x * 10) / 10).toFixed(1).replace(/\.0$/, "");
       return str + suffix;
     }
   }

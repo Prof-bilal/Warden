@@ -56,9 +56,12 @@ describe("formatCount", () => {
     assert.equal(formatCount(999), "999");
   });
   it("compacts thousands/millions/billions", () => {
-    assert.equal(formatCount(1219), "1219"); // exact count below 10k
-    assert.equal(formatCount(1500), "1500"); // exact count below 10k
-    assert.equal(formatCount(23000), "23.0k");
+    assert.equal(formatCount(1000), "1k");
+    assert.equal(formatCount(1219), "1.2k"); // 2.3k-style compaction
+    assert.equal(formatCount(1500), "1.5k");
+    assert.equal(formatCount(2352), "2.3k"); // truncated, never rounded up
+    assert.equal(formatCount(9999), "9.9k");
+    assert.equal(formatCount(23000), "23k");
     assert.equal(formatCount(2500000), "2.5M");
     assert.equal(formatCount(1200000000), "1.2B");
   });
@@ -123,9 +126,22 @@ describe("route.ts contract", () => {
     assert.ok(src.includes("WARDEN_STATS_GITHUB_URL"));
     assert.ok(src.includes("WARDEN_STATS_NPM_URL"));
   });
+  it("npm count uses a live rolling window, not a frozen range", () => {
+    assert.ok(src.includes("/downloads/point/last-month/"));
+    assert.ok(!/downloads\/point\/\d{4}-\d{2}-\d{2}:/.test(src));
+  });
   it("response shape is exactly { stars, downloads }", () => {
     assert.ok(src.includes("stars:"));
     assert.ok(src.includes("downloads:"));
+  });
+});
+
+describe("Nav.tsx contract", () => {
+  const src = fs.readFileSync(path.join(DIR, "components", "Nav.tsx"), "utf8");
+  it("never hardcodes a download or star fallback", () => {
+    assert.ok(!src.includes("1,952"), "no frozen download count");
+    assert.ok(src.includes("downloadsLabel !== null"));
+    assert.ok(src.includes("starsLabel !== null"));
   });
 });
 
