@@ -1,6 +1,6 @@
 {
   "name": "warden-sandbox-cli",
-  "version": "0.2.0-beta.1",
+  "version": "0.2.0-beta.2",
   "description": "Warden MCP sandbox CLI with reversible client setup, MCP gateway and signed creator checks (preview)",
   "bin": {
     "warden": "bin/warden"

@@ -6,7 +6,7 @@ Warden runs your MCP servers with explicit filesystem, network and environment g
 
 ## 0.2.0 preview
 
-This checkout prepares `0.2.0-beta.1`. It is not published by editing this file.
+This checkout prepares `0.2.0-beta.2`. It is not published by editing this file.
 After the preview has been published, install it explicitly:
 
 ```bash
@@ -109,7 +109,7 @@ Preview packages use their exact version. Stable packages can use a newer cached
 stable binary, including one installed by `warden update`, but never select a
 cached preview. For an exact package-version pin or rollback, set
 `WARDEN_PIN_VERSION=1`. `warden update` follows stable by default; an explicit
-preview update requires `--version 0.2.0-beta.1` after that release exists.
+preview update requires `--version 0.2.0-beta.2` after that release exists.
 
 ### Supported platforms
 
