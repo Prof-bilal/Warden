@@ -255,9 +255,11 @@ func TestWFPDLLProbeResilient(t *testing.T) {
 	err := wfpSupported()
 	if err != nil {
 		// Any error from wfpSupported() must be the failClose-wrapped
-		// WFP error, not a panic or an unrelated code path.
+		// WFP error, not a panic or an unrelated code path. The capability
+		// probe can stop at any stage (DLL exports, engine open, filter
+		// transaction); every stage wraps a WFP error naming its component.
 		msg := err.Error()
-		if !strings.Contains(msg, "WFP engine") {
+		if !strings.Contains(msg, "WFP") {
 			t.Fatalf("wfpSupported returned non-WFP error: %v", err)
 		}
 	}
