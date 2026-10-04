@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Warden">
+  <!-- Warden plugin icon: shield (sandbox boundary) + check (allowed) + slash (denied).
+       Colors match the plugin UI: dark #0d1117, cyan #58a6ff, green #3fb950, red #f85149. -->
+  <rect width="512" height="512" rx="96" fill="#0d1117"/>
+  <rect x="8" y="8" width="496" height="496" rx="88" fill="none" stroke="#30363d" stroke-width="16"/>
+  <!-- Shield -->
+  <path d="M256 84 L392 136 V264 C392 344 332 404 256 432 C180 404 120 344 120 264 V136 Z"
+        fill="#0d1117" stroke="#58a6ff" stroke-width="22" stroke-linejoin="round"/>
+  <!-- Allow check -->
+  <path d="M196 260 L238 304 L322 200" fill="none" stroke="#3fb950" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Deny slash -->
+  <line x1="188" y1="336" x2="300" y2="336" stroke="#f85149" stroke-width="22" stroke-linecap="round"/>
+</svg>

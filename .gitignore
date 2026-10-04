@@ -59,3 +59,6 @@ warden-starter/warden/site/
 # Founder content notes (private, never publish to git)
 CONTENT_NOTES.md
 video/
+
+# Plugin packaging artifact (built, not tracked)
+warden-starter/warden/plugin.zip

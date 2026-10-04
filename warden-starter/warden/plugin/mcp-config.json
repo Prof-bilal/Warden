@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "warden": {
+      "command": "warden",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

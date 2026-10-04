@@ -1,0 +1,48 @@
+{
+  "schema_version": "v1",
+  "name_for_model": "warden",
+  "name_for_human": "Warden",
+  "description_for_model": "Run MCP servers and AI workloads in a sandbox you control. Inspect what a Warden policy allows and denies (filesystem, network, environment), execute a workload through the Warden sandbox under an explicit deny-by-default policy, trace what a sandboxed execution attempted, and explain why Warden blocked an access. Warden is enforcement, not advice: every allow/deny result comes from the real Warden runtime, and anything a policy does not explicitly grant is denied. Use inspect_policy and trace_execution for read-only inspection; run_sandbox executes the given command sandboxed and requires an explicit policy path; generate_policy only proposes YAML and never applies it. Never bypass the sandbox, never infer that an unlisted permission is granted, and never claim Warden guarantees complete security.",
+  "description_for_human": "Run AI and MCP workloads in a sandbox you control. Warden enforces deny-by-default filesystem, network, and environment permissions and shows you exactly what happened.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "mcp",
+    "command": "warden",
+    "args": ["mcp"],
+    "transport": "stdio"
+  },
+  "logo_url": "https://raw.githubusercontent.com/Prof-bilal/Warden/main/plugin/assets/icon.png",
+  "logo_asset": "plugin/assets/icon.png",
+  "contact_email": "support@warden.dev",
+  "legal_info_url": "https://github.com/Prof-bilal/Warden/blob/main/LICENSE",
+  "privacy_policy_url": "https://github.com/Prof-bilal/Warden#security",
+  "tools": [
+    {
+      "name": "inspect_policy",
+      "description": "Inspect what a Warden policy allows and denies (read-only)",
+      "confirmation": { "type": "none" }
+    },
+    {
+      "name": "run_sandbox",
+      "description": "Execute a command inside the Warden sandbox under an explicit policy (mutating: runs the command)",
+      "confirmation": { "type": "always" }
+    },
+    {
+      "name": "trace_execution",
+      "description": "Summarize what a sandboxed execution attempted (read-only)",
+      "confirmation": { "type": "none" }
+    },
+    {
+      "name": "explain_denial",
+      "description": "Explain why Warden blocked an access (read-only; never grants permission)",
+      "confirmation": { "type": "none" }
+    },
+    {
+      "name": "generate_policy",
+      "description": "Propose a restrictive Warden policy from explicit requirements (proposal only; never applied)",
+      "confirmation": { "type": "none" }
+    }
+  ]
+}
