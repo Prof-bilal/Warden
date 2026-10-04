@@ -195,6 +195,18 @@ func wfpSupported() error {
 			return failClose("WFP engine", fmt.Errorf("required WFP procedure %q not found in %s: %w", p.Name, wfpDLLName(), err))
 		}
 	}
+	// Export presence is not capability: GitHub-hosted Windows runners ship
+	// fwpuclnt.dll but refuse FwpmEngineOpen0 with ERROR_NOT_SUPPORTED (50)
+	// for every authnService, elevated or not, even from the SYSTEM account,
+	// and the same refusal hits netsh/Get-NetFirewallProfile (diagnosed in
+	// the ci.yml wfp-engine-probe rounds). Probe a real engine session so
+	// Supported() reports the host's true capability: callers then skip
+	// Windows sandbox tests instead of fail-closing every run.
+	engine, err := fwpmOpen()
+	if err != nil {
+		return err
+	}
+	_, _, _ = procFwpmEngineClose.Call(uintptr(engine))
 	return nil
 }
 
