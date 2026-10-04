@@ -219,6 +219,50 @@ Release builds stamp the version at link time (the npm launcher downloads
 that exact version's binary); unstamped source builds report `dev`.
 Accepts `version`, `--version`, `-version`, and `-v`.
 
+## `warden add`
+
+Connect one MCP server to one MCP client in a single command, sandboxed behind
+Warden:
+
+```bash
+warden add slack to claude-desktop
+warden add notion to claude-desktop
+warden add @scope/mcp-server@1.2.3 to claude-code \
+    --allow-host api.example.com --allow-env SCOPE_KEY
+warden add --list-clients
+```
+
+The first argument is a catalog pack id (`warden packs list`) or any npm MCP
+package (`name[@version]`). `add` prepares the pinned npm release inside the
+sandbox (registry-only egress, install scripts disabled), generates a
+deny-by-default policy, and registers a wrapped launcher in the client's
+config after a preview + confirmation prompt.
+
+| Flag | Meaning |
+|---|---|
+| `to <client>` / `--client <id>` | Target client adapter: `claude-desktop`, `claude-code`, `cursor`, `codex`, `vscode`, `gemini`, `cline`, `cascade`, `generic`. |
+| `--name <name>` | Entry name in the client config (default: pack id / package name). |
+| `--scope project\|user` | Config scope (default `project`; `claude-desktop` defaults to `user`). |
+| `--config <file>` | Explicit configuration path. |
+| `--runtime <dir>` | Prepared runtime directory (default `~/.local/share/warden/runtimes/...`, honors `XDG_DATA_HOME`). |
+| `--data <dir>` | Data directory for packs that need one. |
+| `--policy <file>` | Use your own reviewed policy; its `command` becomes the upstream. |
+| `--allow-host <host>` | Generic npm servers: grant network egress (repeatable). |
+| `--allow-env <name>` | Generic npm servers: forward an env var name (repeatable). |
+| `--allow-read <path>` / `--allow-write <path>` | Generic npm servers: grant a read/write path (repeatable). |
+| `--backend <name>` | Sandbox backend (default `auto`). |
+| `--yes` | Apply without the confirmation prompt. |
+| `--dry-run` | Preview only; writes nothing, starts no process. |
+| `--list-clients` | Show every detected client config and its current entries (read-only; cannot be combined with other arguments). |
+
+Behavior: catalog packs use their reviewed pack grants; any other npm package
+gets a deny-by-default starter policy (no network, no env, no paths beyond
+the runtime) extended only by the `--allow-*` flags. Credentials are reported
+by **name only** and never written into config files. Before writing, `add`
+probes the real sandbox with an inert Warden process and refuses to modify
+the config if the backend is unavailable. Undo anytime with
+`warden unwrap --client <client> --server <entry>`. See `warden help add`.
+
 ## `warden gateway`
 
 Wrap gateway-registered servers so the gateway launches each one sandboxed:

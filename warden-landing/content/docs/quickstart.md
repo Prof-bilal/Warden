@@ -3,6 +3,13 @@
 Sandbox your first MCP server in five minutes. We'll use the `filesystem`
 server fixturelocal file I/O only, so the policy stays tiny.
 
+> **One-command shortcut:** for catalog packs (slack, notion, github, brave,
+> context7, git, memory, filesystem) and any npm MCP package, skip the manual
+> steps and run `warden add <server> to <client>` — e.g.
+> `warden add slack to claude-desktop`. It prepares the runtime, writes the
+> policy, and registers the sandboxed launcher in your client's config after
+> a preview. See [Policy packs & client setup](ecosystem-setup.md).
+
 ## 1. Start from a fixture policy
 
 Every tested server has an exact policy under `testdata/compat/`. Copy the

@@ -39,6 +39,11 @@ export const metadata: Metadata = {
 };
 
 const CARDS = [
+  {
+    title: "Connect a server in one command",
+    body: "warden add slack to claude-desktop — sandboxed runtime, deny-by-default policy, preview, client config registration, and undo. Any npm MCP server works with explicit --allow-* flags.",
+    href: "/docs/ecosystem-setup",
+  },
   { title: "Policy packs & client setup", body: "Candidate profiles, multi-client setup, private backups, undo, and local verification.", href: "/docs/ecosystem-setup" },
   {
     title: "Install",

@@ -24,9 +24,11 @@ explicitly grant it.
 
 > **Status:** All backends implemented (Linux, macOS, Windows); npm and GitHub
 > Releases distribution is live. Verification state: Linux verified on real
-> hardware, Windows verified via CI escape tests, macOS CI-green and pending a
-> real-hardware harness run. See [TESTING.md](./TESTING.md) and
-> [REMAINING_WORK.md](./REMAINING_WORK.md) for the exact state.
+> hardware, macOS CI-green and pending a real-hardware harness run, and
+> Windows compile/unit-verified via CI — hosted runners cannot exercise real
+> WFP egress enforcement, so that needs a self-hosted Windows box. See
+> [TESTING.md](./TESTING.md) and [REMAINING_WORK.md](./REMAINING_WORK.md) for
+> the exact state.
 
 ## Quickstart
 

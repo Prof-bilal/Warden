@@ -30,6 +30,18 @@ Each sandbox backend should have an integration test layer that exercises the ac
 
 These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed.
 
+### Windows CI caveat (2026-10)
+
+The Windows CI job is green on hosted runners, but **hosted GitHub Windows
+runners cannot open the WFP engine** (`FwpmEngineOpen0` returns
+`ERROR_NOT_SUPPORTED` even though `fwpuclnt.dll` is present). Warden's
+`wfpSupported()` runs a full capability probe (transaction + sublayer + a
+real block-all filter, then abort) and fails closed cleanly, so WFP-dependent
+tests skip with a clear reason. A green Windows CI run therefore proves
+compilation and non-WFP unit tests — not WFP egress enforcement. Real
+verification requires a self-hosted Windows runner running
+`go test -v ./internal/sandbox/windows/...`.
+
 ## Escape tests
 
 Escape tests are the tests that validate the actual security promise of the product. They are not optional extras and should be treated as core correctness tests. Every escape test should do one of the following and assert the sandbox blocks it:

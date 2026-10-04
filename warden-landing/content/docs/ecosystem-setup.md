@@ -4,6 +4,31 @@ These commands are implemented in this development checkout. Build this checkout
 first; older published binaries may not include them. The [setup wizard](/setup)
 generates local commands. It does not read your computer or accept credentials.
 
+## One command instead of five
+
+If the server you want is a catalog pack (`warden packs list` — filesystem,
+git, memory, github, brave, context7, slack, notion) or **any npm MCP
+package**, `warden add` chains the whole flow for you: sandboxed runtime
+preparation, deny-by-default policy generation, preview + confirmation,
+client config registration, and an undo record.
+
+```bash
+warden add slack to claude-desktop
+warden add notion to claude-desktop
+warden add @scope/mcp-server@1.2.3 to claude-code \
+    --allow-host api.example.com --allow-env SCOPE_KEY
+warden add --list-clients   # read-only view of every detected client config
+```
+
+Any npm package not in the catalog gets a deny-by-default starter policy;
+grant only what it needs with repeatable `--allow-host` / `--allow-env` /
+`--allow-read` / `--allow-write` flags, or bring your own reviewed policy
+with `--policy`. Credentials are reported by name only and never written
+into configs. `--dry-run` previews without writing; `--yes` skips the
+prompt in scripts. Undo with `warden unwrap --client <client> --server
+<entry>`. The manual flow below remains for non-npm runtimes, custom data
+paths, and gateways.
+
 ## Choose a candidate profile
 
 ```bash

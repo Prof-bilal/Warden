@@ -90,20 +90,22 @@ escape test; this is tracked under the P1 follow-up below.
 
 ## P1Make the Windows CI job robust (so it fails loudly on skip, not silently)
 
-The Windows job assertion step (`windows-latest`, pwsh grep on
-`TestEtw|TestEscape|TestAppContainer|TestWFP`) is a good start, but it only
-runs when the `go test -v ./...` step passes. Since `TestEscapeNetworkBlocked
-Audited` panicked (process exit 1), the assertion step was **skipped**so the
-missing-FwpmEngineOpen bug above never got asserted, only observed downstream.
+The Windows job is green (hosted `windows-latest`), but hosted runners cannot
+exercise real WFP enforcement: `fwpuclnt.dll` is present yet
+`FwpmEngineOpen0` returns `ERROR_NOT_SUPPORTED` and `FwpmFilterAdd` fails with
+`RPC_X_BAD_STUB_DATA`. `wfpSupported()` now runs a full capability probe
+(transaction + sublayer + a real block-all filter on the ALE connect-v4 layer,
+then aborts — nothing persists), so WFP-dependent tests skip with a clear
+`WFP` reason instead of panicking. **This means a green Windows CI run does
+not prove WFP egress enforcement works** — that still requires a self-hosted
+Windows runner. The temporary `wfp-engine-probe` CI job and diagnostics step
+used during the investigation were removed once the root cause was confirmed.
 
-**TBD after P0 WFP fix:**
-- Confirm the assertion regex still matches the real test names after any rename.
-- If any escape/ETW test is skipped on the runner (elevated/privilege/evironment
-  reason), the assertion step must fail so the skip is caught rather than
-  silently ignored.
-- Consider gating the assertion to run even when `go test` exits non-zero (e.g.
-  parse the log for the targeted test names regardless), so a single panicking
-  test can't silence the assertion.
+Still open:
+
+- Add a self-hosted Windows runner and confirm `TestEscapeNetworkBlockedAudited` actually executes (not skips) there.
+- The assertion step only runs when `go test -v ./...` passes. If any escape/ETW test is skipped on the runner (privilege/environment reason), the assertion step must fail so the skip is caught rather than silently ignored.
+- Consider gating the assertion to run even when `go test` exits non-zero (e.g. parse the log for the targeted test names regardless), so a single panicking test can't silence the assertion.
 
 ---
 

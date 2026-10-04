@@ -18,6 +18,11 @@ a reasonthere is no local process to confine.
 
 ## Workflow
 
+> **One server, one client?** You don't need the gateway workflow. Run
+> `warden add <pack-or-npm-package> to <client>` to prepare, sandbox, and
+> register the server in one command. The flow below is for wrapping **many**
+> servers already registered in a gateway or client config.
+
 ```bash
 # 1. Generate deny-by-default policies (never overwrites existing files)
 warden gateway init --config mcp.json --policies ./policies

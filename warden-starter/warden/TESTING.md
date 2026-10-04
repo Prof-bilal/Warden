@@ -30,6 +30,32 @@ Each sandbox backend should have an integration test layer that exercises the ac
 
 These tests should be skipped gracefully when the primitive is unavailable; they should not fail the suite on a developer machine that does not have the right sandboxing toolchain installed. **However, on CI runners that *claim* to support a backend, tests must actually runnever silently skip.**
 
+### Windows CI status (2026-10)
+
+The Windows job is green on `windows-latest`, but with an important caveat:
+**hosted GitHub Windows runners cannot open the WFP engine.** `fwpuclnt.dll`
+ships on the image, but `FwpmEngineOpen0` returns `ERROR_NOT_SUPPORTED (50)`
+for every authentication service, and `FwpmFilterAdd` fails with
+`RPC_X_BAD_STUB_DATA` — so real WFP egress enforcement cannot be exercised
+there. `wfpSupported()` now runs a full capability probe (engine open →
+transaction → sublayer → a real `addBlockAll` on the ALE connect-v4 layer →
+abort, nothing persists) instead of only checking for the DLL, so the
+backend fails closed cleanly rather than panicking mid-test.
+
+Consequences:
+
+- WFP-dependent escape tests skip on hosted runners with a clear `WFP`
+  reason; the suite still passes.
+- **A green Windows CI run is not evidence that WFP egress enforcement
+  works.** Real verification requires a self-hosted Windows runner (or any
+  physical/VM Windows 10/11 host): run
+  `go test -v ./internal/sandbox/windows/...` there and confirm
+  `TestEscapeNetworkBlockedAudited` actually runs (not skips).
+- Earlier temporary diagnostics (a dedicated `wfp-engine-probe` CI job and a
+  diagnostics step) were removed after the root cause was identified; the
+  native gateway smoke job is gated by an inline WFP open probe that emits a
+  `::warning::` and skips when the engine is unavailable.
+
 ## Linux CI Status ✅
 
 **Linux sandbox escape tests pass on real hardware.**

@@ -9,6 +9,11 @@ directorynot your shell's current working directory.
 > `warden trace -- <your-server-command>` first, then `warden init`. The
 > auto-generated policy is conservative by design; review and tighten it
 > from there.
+>
+> For catalog packs (filesystem, git, memory, github, brave, context7, slack,
+> notion) and any npm MCP package, `warden add <server> to <client>` writes
+> these grants for you and registers the sandboxed launcher in your client's
+> config in one step — see the [CLI Reference](cli.md#warden-add).
 
 The source files live under `examples/` in the repo. The full content of each one is reproduced below so you don't have to leave this site.
 
