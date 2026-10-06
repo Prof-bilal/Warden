@@ -264,6 +264,7 @@ warden update                                       # Update to the latest relea
 | **Security & threat model** | [docs/security.md](warden-starter/warden/docs/security.md) |
 | **Example policies** | [examples/](warden-starter/warden/examples/)filesystem, GitHub, Slack, PostgreSQL, Brave Search |
 | **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **Warden Paid (spec)** | [docs/product/PAID.md](docs/product/PAID.md)commercial control plane on top of the OSS runtime |
 | **Use in CI** | [warden-action](.github/actions/warden-action/)sandbox any build step |
 
 ## 🗺️ Status & Roadmap

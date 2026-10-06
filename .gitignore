@@ -62,3 +62,6 @@ video/
 
 # Plugin packaging artifact (built, not tracked)
 warden-starter/warden/plugin.zip
+
+# Paid product docs (local only, not pushed to GitHub)
+docs/
