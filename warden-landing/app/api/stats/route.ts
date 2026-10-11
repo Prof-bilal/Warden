@@ -14,10 +14,13 @@ export const revalidate = 3600;
 const GITHUB_URL =
   process.env.WARDEN_STATS_GITHUB_URL ||
   "https://api.github.com/repos/Prof-bilal/Warden";
-// npm's rolling last-month window: always live, never a frozen date range.
-const NPM_URL =
-  process.env.WARDEN_STATS_NPM_URL ||
-  "https://api.npmjs.org/downloads/point/last-month/warden-sandbox-cli";
+// npm has no all-time endpoint; sum a range from package creation to today.
+const NPM_CREATED = "2026-09-06";
+function npmDownloadsUrl(): string {
+  if (process.env.WARDEN_STATS_NPM_URL) return process.env.WARDEN_STATS_NPM_URL;
+  const today = new Date().toISOString().slice(0, 10);
+  return `https://api.npmjs.org/downloads/range/${NPM_CREATED}:${today}/warden-sandbox-cli`;
+}
 
 const UPSTREAM_TIMEOUT_MS = 10000;
 
@@ -44,7 +47,10 @@ async function getJson(url: string): Promise<unknown | null> {
 }
 
 export async function GET() {
-  const [gh, npm] = await Promise.all([getJson(GITHUB_URL), getJson(NPM_URL)]);
+  const [gh, npm] = await Promise.all([
+    getJson(GITHUB_URL),
+    getJson(npmDownloadsUrl()),
+  ]);
   return NextResponse.json({
     stars: parseGitHubStars(gh),
     downloads: parseNpmDownloads(npm),

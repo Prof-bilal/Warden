@@ -52,7 +52,7 @@ export default function SocialProof() {
 
   const starsLabel = stats.stars !== null ? formatCount(stats.stars) : null;
   const downloadsLabel =
-    stats.downloads !== null ? `${formatCount(stats.downloads)}/mo` : null;
+    stats.downloads !== null ? formatCount(stats.downloads) : null;
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-3">

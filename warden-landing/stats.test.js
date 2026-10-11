@@ -40,6 +40,10 @@ function loadStatsLib() {
     .replace(
       /const v = \(data as Record<string, unknown>\)\.(stargazers_count|downloads);/g,
       "const v = data.$1;"
+    )
+    .replace(
+      /const d = \(item as Record<string, unknown>\)\.downloads;/g,
+      "const d = item.downloads;"
     );
   const fn = new Function(
     `${js}; return { formatCount, parseGitHubStars, parseNpmDownloads };`
@@ -89,8 +93,20 @@ describe("parseGitHubStars", () => {
 });
 
 describe("parseNpmDownloads", () => {
-  it("reads downloads", () => {
+  it("reads downloads from a point response", () => {
     assert.equal(parseNpmDownloads({ downloads: 1219 }), 1219);
+  });
+  it("sums a range response", () => {
+    assert.equal(
+      parseNpmDownloads({
+        downloads: [
+          { day: "2026-09-06", downloads: 1006 },
+          { day: "2026-09-09", downloads: 56 },
+          { day: "2026-09-10", downloads: 157 },
+        ],
+      }),
+      1219
+    );
   });
   it("rejects malformed bodies", () => {
     for (const bad of [
@@ -100,6 +116,9 @@ describe("parseNpmDownloads", () => {
       { downloads: "1219" },
       { downloads: -5 },
       { count: 1219 },
+      { downloads: [{ day: "x" }] },
+      { downloads: [{ day: "x", downloads: -1 }] },
+      { downloads: [{ day: "x", downloads: "1" }] },
     ])
       assert.equal(parseNpmDownloads(bad), null, JSON.stringify(bad));
   });
@@ -126,9 +145,10 @@ describe("route.ts contract", () => {
     assert.ok(src.includes("WARDEN_STATS_GITHUB_URL"));
     assert.ok(src.includes("WARDEN_STATS_NPM_URL"));
   });
-  it("npm count uses a live rolling window, not a frozen range", () => {
-    assert.ok(src.includes("/downloads/point/last-month/"));
-    assert.ok(!/downloads\/point\/\d{4}-\d{2}-\d{2}:/.test(src));
+  it("npm count is all-time since package creation", () => {
+    assert.ok(src.includes("npmDownloadsUrl"));
+    assert.ok(src.includes("NPM_CREATED"));
+    assert.ok(src.includes("/downloads/range/"));
   });
   it("response shape is exactly { stars, downloads }", () => {
     assert.ok(src.includes("stars:"));

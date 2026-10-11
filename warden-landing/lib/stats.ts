@@ -33,6 +33,15 @@ export function parseGitHubStars(data: unknown): number | null {
 export function parseNpmDownloads(data: unknown): number | null {
   if (typeof data !== "object" || data === null) return null;
   const v = (data as Record<string, unknown>).downloads;
-  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return null;
-  return Math.floor(v);
+  if (typeof v === "number" && Number.isFinite(v) && v >= 0)
+    return Math.floor(v);
+  if (!Array.isArray(v)) return null;
+  let total = 0;
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) return null;
+    const d = (item as Record<string, unknown>).downloads;
+    if (typeof d !== "number" || !Number.isFinite(d) || d < 0) return null;
+    total += Math.floor(d);
+  }
+  return total;
 }
