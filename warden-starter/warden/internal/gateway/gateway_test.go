@@ -110,6 +110,72 @@ func TestStarterPolicyDenyByDefault(t *testing.T) {
 	}
 }
 
+func TestRejectUnsafeServerNames(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, config string
+	}{
+		{"json traversal", "mcp.json", `{"mcpServers":{"../escape":{"command":"/bin/true"}}}`},
+		{"json absolute separator", "mcp.json", `{"mcpServers":{"/tmp/escape":{"command":"/bin/true"}}}`},
+		{"json backslash", "mcp.json", `{"mcpServers":{"..\\escape":{"command":"/bin/true"}}}`},
+		{"json newline", "mcp.json", `{"mcpServers":{"bad\nname":{"command":"/bin/true"}}}`},
+		{"windows drive", "mcp.json", `{"mcpServers":{"C:escape":{"command":"/bin/true"}}}`},
+		{"reserved filename", "mcp.json", `{"mcpServers":{"..":{"command":"/bin/true"}}}`},
+		{"yaml upstream traversal", "gateway.yaml", "upstreams:\n  - id: ../escape\n    command: /bin/true\n"},
+		{"yaml backend traversal", "gateway.yaml", "backends:\n  ../escape:\n    command: /bin/true\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writeTemp(t, tc.file, tc.config)
+			if _, err := Load(path); err == nil {
+				t.Fatal("expected unsafe server name to be rejected")
+			}
+		})
+	}
+}
+
+func TestWritePoliciesRejectsUnsafeName(t *testing.T) {
+	dir := t.TempDir()
+	cfg := &Config{Servers: []ServerEntry{{Name: "../escape", Command: []string{"/bin/true"}}}}
+	if _, _, err := WritePolicies(cfg, filepath.Join(dir, "policies")); err == nil {
+		t.Fatal("expected unsafe server name to be rejected")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "escape.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("policy escaped target dir: %v", err)
+	}
+}
+
+func TestRejectDuplicateServerNames(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, config string
+	}{
+		{"json aliases", "mcp.json", `{"mcpServers":{"same":{"type":"http","url":"https://example.com"}},"servers":{"same":{"command":"/bin/true"}}}`},
+		{"json duplicate key", "mcp.json", `{"mcpServers":{"same":{"command":"/bin/true"},"same":{"command":"/bin/false"}}}`},
+		{"yaml duplicate key", "gateway.yaml", "backends:\n  same:\n    command: /bin/true\n  same:\n    command: /bin/false\n"},
+		{"yaml repeated upstream", "gateway.yaml", "upstreams:\n  - id: same\n    command: /bin/true\n  - id: same\n    command: /bin/false\n"},
+		{"json trailing document", "mcp.json", `{"mcpServers":{"same":{"command":"/bin/true"}}}{"mcpServers":{"other":{"command":"/bin/false"}}}`},
+		{"yaml registries", "gateway.yaml", "upstreams:\n  - id: same\n    command: /bin/true\nbackends:\n  same:\n    command: /bin/false\n"},
+		{"yaml alias", "gateway.yaml", "upstreams:\n  - id: same\n    command: /bin/true\nmcpServers:\n  same:\n    command: /bin/false\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writeTemp(t, tc.file, tc.config)
+			if _, err := Load(path); err == nil {
+				t.Fatal("duplicate server name must fail closed")
+			}
+		})
+	}
+}
+
+func TestLoadYAMLServersAlias(t *testing.T) {
+	path := writeTemp(t, "gateway.yaml", "servers:\n  fs:\n    command: /bin/true\n")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	entry, err := cfg.Find("fs")
+	if err != nil || entry.Remote || len(entry.Command) != 1 || entry.Command[0] != "/bin/true" {
+		t.Fatalf("servers alias entry = %+v, %v", entry, err)
+	}
+}
+
 func TestWritePoliciesNoOverwrite(t *testing.T) {
 	p := writeTemp(t, "mcp.json", `{"mcpServers": {"a": {"command": "/bin/true"}}}`)
 	cfg, err := Load(p)

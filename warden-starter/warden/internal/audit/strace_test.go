@@ -38,6 +38,23 @@ func TestImportStraceRecordsAllowedAndBlockedAccesses(t *testing.T) {
 	}
 }
 
+func TestImportStraceNumericPIDPrefix(t *testing.T) {
+	trace := strings.NewReader(`300022 openat(AT_FDCWD, "/allowed/file", O_RDONLY) = 3
+300023 openat(AT_FDCWD, "/hidden/file", O_RDONLY) = -1 ENOENT (No such file or directory)
+`)
+	var out bytes.Buffer
+	if err := ImportStrace(trace, New(&out)); err != nil {
+		t.Fatal(err)
+	}
+	var events []Event
+	if err := json.Unmarshal([]byte("["+strings.ReplaceAll(strings.TrimSpace(out.String()), "\n", ",")+"]"), &events); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 2 || events[0].Resource != "/allowed/file" || !events[0].Allowed || events[1].Resource != "/hidden/file" || events[1].Allowed {
+		t.Fatalf("numeric-PID strace audit events = %+v", events)
+	}
+}
+
 func TestParseStraceLineUsesOnlyTheSyscallResult(t *testing.T) {
 	ev, ok := ParseStraceLine(`openat(AT_FDCWD, ") = -1 injected", O_RDONLY) = 3`)
 	if !ok || !ev.Allowed {

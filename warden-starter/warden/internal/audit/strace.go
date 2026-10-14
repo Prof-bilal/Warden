@@ -61,8 +61,12 @@ func ParseStraceLine(line string) (Event, bool) {
 		return Event{}, false
 	}
 	action := line[:open]
-	if end := strings.LastIndex(action, "] "); end >= 0 { // strace -f PID prefix
+	if end := strings.LastIndex(action, "] "); end >= 0 { // [pid 12] prefix
 		action = action[end+2:]
+	} else if pid, call, hasPrefix := strings.Cut(action, " "); hasPrefix {
+		if _, err := strconv.Atoi(pid); err == nil {
+			action = call // strace -f prints a bare numeric PID prefix
+		}
 	}
 	if !isAuditedCall(action) {
 		return Event{}, false

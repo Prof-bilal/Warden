@@ -32,11 +32,13 @@ package gateway
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 	"gopkg.in/yaml.v3"
@@ -150,17 +152,22 @@ type jsonDoc struct {
 }
 
 func parseJSON(path string, data []byte) (*Config, error) {
-	var doc jsonDoc
 	dec := json.NewDecoder(strings.NewReader(string(data)))
-	if err := dec.Decode(&doc); err != nil {
+	if err := checkJSONKeys(dec); err != nil {
 		return nil, fmt.Errorf("parse gateway config %q: invalid JSON: %w", path, err)
 	}
-	// Merge both keys; mcpServers wins on collision.
+	var doc jsonDoc
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, fmt.Errorf("parse gateway config %q: invalid JSON: %w", path, err)
+	}
 	merged := make(map[string]jsonServer, len(doc.MCPServers)+len(doc.Servers))
 	for k, v := range doc.Servers {
 		merged[k] = v
 	}
 	for k, v := range doc.MCPServers {
+		if _, exists := merged[k]; exists {
+			return nil, fmt.Errorf("gateway config %q: duplicate server %q across servers and mcpServers", path, k)
+		}
 		merged[k] = v
 	}
 	if len(merged) == 0 {
@@ -178,9 +185,61 @@ func parseJSON(path string, data []byte) (*Config, error) {
 	return cfg, nil
 }
 
+func checkJSONKeys(dec *json.Decoder) error {
+	var visit func() error
+	visit = func() error {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		delim, ok := tok.(json.Delim)
+		if !ok {
+			return nil
+		}
+		switch delim {
+		case '{':
+			seen := make(map[string]bool)
+			for dec.More() {
+				keyToken, err := dec.Token()
+				if err != nil {
+					return err
+				}
+				key := keyToken.(string)
+				if seen[key] {
+					return fmt.Errorf("duplicate JSON key %q", key)
+				}
+				seen[key] = true
+				if err := visit(); err != nil {
+					return err
+				}
+			}
+		case '[':
+			for dec.More() {
+				if err := visit(); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("unexpected JSON delimiter %q", delim)
+		}
+		_, err = dec.Token()
+		return err
+	}
+	if err := visit(); err != nil {
+		return err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("trailing JSON data")
+		}
+		return err
+	}
+	return nil
+}
+
 func jsonEntry(name string, js jsonServer) (ServerEntry, error) {
-	if name == "" {
-		return ServerEntry{}, fmt.Errorf("server name must not be empty")
+	if err := validateServerName(name); err != nil {
+		return ServerEntry{}, err
 	}
 	typ := strings.ToLower(strings.TrimSpace(js.Type))
 	url := strings.TrimSpace(js.URL)
@@ -265,34 +324,50 @@ func parseYAML(path string, data []byte) (*Config, error) {
 		return nil, fmt.Errorf("parse gateway config %q: invalid YAML: %w", path, err)
 	}
 	cfg := &Config{Path: path, Format: "yaml"}
+	seen := make(map[string]bool)
+	add := func(e ServerEntry) error {
+		if seen[e.Name] {
+			return fmt.Errorf("gateway config %q: duplicate server %q", path, e.Name)
+		}
+		seen[e.Name] = true
+		cfg.Servers = append(cfg.Servers, e)
+		return nil
+	}
 	for _, u := range doc.Upstreams {
 		e, err := upstreamEntry(u)
 		if err != nil {
 			return nil, fmt.Errorf("gateway config %q upstream %q: %w", path, u.ID, err)
 		}
-		cfg.Servers = append(cfg.Servers, e)
+		if err := add(e); err != nil {
+			return nil, err
+		}
 	}
 	for name, b := range doc.Backends {
 		e, err := backendEntry(name, b)
 		if err != nil {
 			return nil, fmt.Errorf("gateway config %q backend %q: %w", path, name, err)
 		}
-		cfg.Servers = append(cfg.Servers, e)
-	}
-	// Seen map guards against a file mixing registry + Claude shapes.
-	seen := make(map[string]bool, len(cfg.Servers))
-	for _, s := range cfg.Servers {
-		seen[s.Name] = true
+		if err := add(e); err != nil {
+			return nil, err
+		}
 	}
 	for name, js := range doc.MCPServers {
-		if seen[name] {
-			continue
-		}
 		e, err := jsonEntry(name, js)
 		if err != nil {
 			return nil, fmt.Errorf("gateway config %q server %q: %w", path, name, err)
 		}
-		cfg.Servers = append(cfg.Servers, e)
+		if err := add(e); err != nil {
+			return nil, err
+		}
+	}
+	for name, js := range doc.ServersMap {
+		e, err := jsonEntry(name, js)
+		if err != nil {
+			return nil, fmt.Errorf("gateway config %q server %q: %w", path, name, err)
+		}
+		if err := add(e); err != nil {
+			return nil, err
+		}
 	}
 	if len(cfg.Servers) == 0 {
 		return nil, fmt.Errorf("parse gateway config %q: no upstreams, backends, or mcpServers entries found", path)
@@ -308,6 +383,9 @@ func upstreamEntry(u yamlUpstream) (ServerEntry, error) {
 	}
 	if name == "" {
 		return ServerEntry{}, fmt.Errorf("upstream entry has neither id nor name")
+	}
+	if err := validateServerName(name); err != nil {
+		return ServerEntry{}, err
 	}
 	t := strings.ToLower(strings.TrimSpace(u.Transport))
 	if t == "" {
@@ -337,8 +415,8 @@ func upstreamEntry(u yamlUpstream) (ServerEntry, error) {
 }
 
 func backendEntry(name string, b yamlBack) (ServerEntry, error) {
-	if name == "" {
-		return ServerEntry{}, fmt.Errorf("backend name must not be empty")
+	if err := validateServerName(name); err != nil {
+		return ServerEntry{}, err
 	}
 	url := b.HTTPURL
 	if url == "" {
@@ -381,6 +459,9 @@ func checkEnv(env map[string]string) error {
 // grants are emptythe operator widens them after `warden trace`. Env
 // allowlists the NAMES from the gateway entry; values are never copied.
 func StarterPolicy(e ServerEntry) (policy.Policy, error) {
+	if err := validateServerName(e.Name); err != nil {
+		return policy.Policy{}, err
+	}
 	if e.Remote {
 		return policy.Policy{}, fmt.Errorf("cannot sandbox remote server %q: %s", e.Name, e.Reason)
 	}
@@ -410,6 +491,13 @@ func StarterPolicy(e ServerEntry) (policy.Policy, error) {
 	return p, nil
 }
 
+func validateServerName(name string) error {
+	if name == "" || name == "." || name == ".." || strings.ContainsAny(name, "/\\:") || strings.ContainsFunc(name, unicode.IsControl) {
+		return fmt.Errorf("invalid server name %q: names must be a single filename without path separators, colons or control characters", name)
+	}
+	return nil
+}
+
 // PolicyPath returns the per-server policy file for name inside dir.
 func PolicyPath(dir, name string) string {
 	return filepath.Join(dir, name+".yaml")
@@ -423,6 +511,9 @@ func WritePolicies(cfg *Config, dir string) (written, skipped []string, err erro
 		return nil, nil, fmt.Errorf("create policies dir %q: %w", dir, err)
 	}
 	for _, e := range cfg.Servers {
+		if err := validateServerName(e.Name); err != nil {
+			return written, skipped, err
+		}
 		if e.Remote {
 			skipped = append(skipped, e.Name+" (remote: not sandboxable)")
 			continue
