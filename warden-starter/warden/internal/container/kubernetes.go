@@ -15,23 +15,22 @@ type KubernetesManifests struct {
 	Deployment    *DeploymentManifest    `yaml:"deployment,omitempty"`
 	NetworkPolicy *NetworkPolicyManifest `yaml:"network_policy,omitempty"`
 	ConfigMap     *ConfigMapManifest     `yaml:"config_map,omitempty"`
-	SeccompProfile *SeccompProfileManifest `yaml:"seccomp_profile,omitempty"`
 }
 
 // DeploymentManifest represents a Kubernetes Deployment
 type DeploymentManifest struct {
-	APIVersion string            `yaml:"apiVersion"`
-	Kind       string            `yaml:"kind"`
-	Metadata   ObjectMeta        `yaml:"metadata"`
-	Spec       DeploymentSpec    `yaml:"spec"`
+	APIVersion string         `yaml:"apiVersion"`
+	Kind       string         `yaml:"kind"`
+	Metadata   ObjectMeta     `yaml:"metadata"`
+	Spec       DeploymentSpec `yaml:"spec"`
 }
 
 // NetworkPolicyManifest represents a Kubernetes NetworkPolicy
 type NetworkPolicyManifest struct {
-	APIVersion string               `yaml:"apiVersion"`
-	Kind       string               `yaml:"kind"`
-	Metadata   ObjectMeta           `yaml:"metadata"`
-	Spec       NetworkPolicySpec    `yaml:"spec"`
+	APIVersion string            `yaml:"apiVersion"`
+	Kind       string            `yaml:"kind"`
+	Metadata   ObjectMeta        `yaml:"metadata"`
+	Spec       NetworkPolicySpec `yaml:"spec"`
 }
 
 // ConfigMapManifest represents a Kubernetes ConfigMap
@@ -45,9 +44,9 @@ type ConfigMapManifest struct {
 
 // SeccompProfileManifest represents a SecurityProfile CRD
 type SeccompProfileManifest struct {
-	APIVersion string        `yaml:"apiVersion"`
-	Kind       string        `yaml:"kind"`
-	Metadata   ObjectMeta    `yaml:"metadata"`
+	APIVersion string         `yaml:"apiVersion"`
+	Kind       string         `yaml:"kind"`
+	Metadata   ObjectMeta     `yaml:"metadata"`
 	Spec       SeccompProfile `yaml:"spec"`
 }
 
@@ -61,14 +60,14 @@ type ObjectMeta struct {
 
 // DeploymentSpec represents the spec of a Deployment
 type DeploymentSpec struct {
-	Replicas int32            `yaml:"replicas,omitempty"`
-	Selector LabelSelector    `yaml:"selector"`
-	Template PodTemplateSpec  `yaml:"template"`
+	Replicas int32           `yaml:"replicas,omitempty"`
+	Selector LabelSelector   `yaml:"selector"`
+	Template PodTemplateSpec `yaml:"template"`
 }
 
 // LabelSelector represents a label selector
 type LabelSelector struct {
-	MatchLabels map[string]string `yaml:"matchLabels,omitempty"`
+	MatchLabels map[string]string `json:"matchLabels,omitempty" yaml:"matchLabels,omitempty"`
 }
 
 // PodTemplateSpec represents a pod template
@@ -79,26 +78,26 @@ type PodTemplateSpec struct {
 
 // PodSpec represents the specification of a pod
 type PodSpec struct {
-	SecurityContext      *PodSecurityContext       `yaml:"securityContext,omitempty"`
-	Containers           []Container               `yaml:"containers"`
-	Volumes              []VolumeSpec              `yaml:"volumes,omitempty"`
-	RestartPolicy        string                    `yaml:"restartPolicy,omitempty"`
-	ServiceAccountName   string                    `yaml:"serviceAccountName,omitempty"`
-	AutomountServiceAccountToken *bool             `yaml:"automountServiceAccountToken,omitempty"`
+	SecurityContext              *PodSecurityContext `yaml:"securityContext,omitempty"`
+	Containers                   []Container         `yaml:"containers"`
+	Volumes                      []VolumeSpec        `yaml:"volumes,omitempty"`
+	RestartPolicy                string              `yaml:"restartPolicy,omitempty"`
+	ServiceAccountName           string              `yaml:"serviceAccountName,omitempty"`
+	AutomountServiceAccountToken *bool               `yaml:"automountServiceAccountToken,omitempty"`
 }
 
 // Container represents a container in a pod
 type Container struct {
-	Name            string                     `yaml:"name"`
-	Image           string                     `yaml:"image"`
-	Command         []string                   `yaml:"command,omitempty"`
-	Args            []string                   `yaml:"args,omitempty"`
-	WorkingDir      string                     `yaml:"workingDir,omitempty"`
-	Env             []EnvVar                   `yaml:"env,omitempty"`
-	Resources       ResourceRequirements       `yaml:"resources,omitempty"`
-	VolumeMounts    []VolumeMountSpec          `yaml:"volumeMounts,omitempty"`
-	SecurityContext *ContainerSecurityContext  `yaml:"securityContext,omitempty"`
-	ImagePullPolicy string                     `yaml:"imagePullPolicy,omitempty"`
+	Name            string                    `yaml:"name"`
+	Image           string                    `yaml:"image"`
+	Command         []string                  `yaml:"command,omitempty"`
+	Args            []string                  `yaml:"args,omitempty"`
+	WorkingDir      string                    `yaml:"workingDir,omitempty"`
+	Env             []EnvVar                  `yaml:"env,omitempty"`
+	Resources       ResourceRequirements      `yaml:"resources,omitempty"`
+	VolumeMounts    []VolumeMountSpec         `yaml:"volumeMounts,omitempty"`
+	SecurityContext *ContainerSecurityContext `yaml:"securityContext,omitempty"`
+	ImagePullPolicy string                    `yaml:"imagePullPolicy,omitempty"`
 }
 
 // EnvVar represents an environment variable
@@ -131,12 +130,11 @@ func GenerateKubernetesManifests(p policy.Policy, options TranslateOptions) (*Ku
 	}
 	manifests.NetworkPolicy = networkPolicy
 
-	// Generate seccomp profile if needed
-	seccompProfile, err := generateSeccompProfileManifest(p, options)
-	if err != nil {
-		return nil, fmt.Errorf("generate seccomp profile: %w", err)
-	}
-	manifests.SeccompProfile = seccompProfile
+	// Seccomp is enforced by the standard Kubernetes RuntimeDefault
+	// securityContext emitted in the Deployment. Do not emit a
+	// Security Profiles Operator SeccompProfile CRD here: it is not part of
+	// stock Kubernetes and would make an otherwise portable manifest fail to
+	// apply unless an optional CRD/operator had been installed.
 
 	return manifests, nil
 }
@@ -149,7 +147,7 @@ func generateDeployment(p policy.Policy, config *KubernetesConfig, options Trans
 	}
 
 	labels := map[string]string{
-		"app":                name,
+		"app":                     name,
 		"warden.security/managed": "true",
 	}
 
@@ -186,10 +184,10 @@ func generateDeployment(p policy.Policy, config *KubernetesConfig, options Trans
 	// Pod specification
 	automountToken := false
 	podSpec := PodSpec{
-		SecurityContext: &config.SecurityContext,
-		Containers:      []Container{container},
-		Volumes:         config.Volumes,
-		RestartPolicy:   "Always",
+		SecurityContext:              &config.SecurityContext,
+		Containers:                   []Container{container},
+		Volumes:                      config.Volumes,
+		RestartPolicy:                "Always",
 		AutomountServiceAccountToken: &automountToken,
 	}
 
@@ -247,9 +245,9 @@ func generateNetworkPolicyManifest(p policy.Policy, options TranslateOptions) (*
 		// Note: This is a limitation - K8s NetworkPolicy works with IPs/CIDRs, not hostnames
 		// In practice, you'd need to resolve hostnames or use additional tools like Cilium
 		ports := []NetworkPolicyPort{
-			{Protocol: "TCP", Port: "80"},
-			{Protocol: "TCP", Port: "443"},
-			{Protocol: "TCP", Port: "53"}, // DNS
+			{Protocol: "TCP", Port: 80},
+			{Protocol: "TCP", Port: 443},
+			{Protocol: "TCP", Port: 53}, // DNS
 		}
 
 		egressRules = []NetworkPolicyRule{
@@ -273,7 +271,7 @@ func generateNetworkPolicyManifest(p policy.Policy, options TranslateOptions) (*
 			},
 		},
 		Spec: NetworkPolicySpec{
-			PodSelector: labels,
+			PodSelector: LabelSelector{MatchLabels: labels},
 			PolicyTypes: []string{"Egress"},
 			Egress:      egressRules,
 		},
@@ -333,17 +331,6 @@ func RenderKubernetesYAML(manifests *KubernetesManifests) (string, error) {
 		output.WriteString("# NetworkPolicy\n")
 		output.WriteString("---\n")
 		output.Write(networkPolicyYAML)
-		output.WriteString("\n")
-	}
-
-	if manifests.SeccompProfile != nil {
-		seccompYAML, err := yaml.Marshal(manifests.SeccompProfile)
-		if err != nil {
-			return "", fmt.Errorf("marshal seccomp profile: %w", err)
-		}
-		output.WriteString("# SeccompProfile\n")
-		output.WriteString("---\n")
-		output.Write(seccompYAML)
 		output.WriteString("\n")
 	}
 

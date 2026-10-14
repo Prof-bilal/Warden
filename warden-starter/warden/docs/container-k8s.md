@@ -57,7 +57,7 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 # Generates:
 # - Deployment with SecurityContext
 # - NetworkPolicy for egress control  
-# - SeccompProfile for syscall filtering
+# - RuntimeDefault seccomp security context for syscall filtering
 ```
 
 ## Policy Translation Reference
@@ -151,7 +151,7 @@ Examples:
 **Generated Resources:**
 - `Deployment` with security contexts and volume mounts
 - `NetworkPolicy` for egress traffic control
-- `SeccompProfile` for syscall filtering (if security-profiles-operator available)
+- Standard Kubernetes `RuntimeDefault` seccomp security context
 
 ### `warden k8s docker`
 
@@ -318,7 +318,7 @@ warden k8s render --policy prod-policy.yaml --namespace production
 ### Helm Chart Integration
 
 > **Not implemented.** `warden k8s render` emits plain Kubernetes YAML
-> (Deployment, NetworkPolicy, SeccompProfile); there is no Helm templating or
+> (Deployment and NetworkPolicy); there is no Helm templating or
 > `helm` subcommand today. To use Helm, vendor the rendered YAML into your
 > own chart as a starting point.
 
@@ -528,7 +528,7 @@ pipeline {
 
 - **SecurityContext**: Minimal overhead (~1% CPU)
 - **NetworkPolicy**: Low overhead with modern CNI
-- **SeccompProfile**: Very low overhead (~0.1% CPU)
+- **RuntimeDefault seccomp**: Very low overhead (~0.1% CPU)
 - **ReadOnlyRootFilesystem**: No performance impact
 
 ### Startup Time

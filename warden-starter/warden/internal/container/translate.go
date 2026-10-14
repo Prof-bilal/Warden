@@ -115,7 +115,7 @@ type SeccompProfileRef struct {
 
 // NetworkPolicySpec defines network access rules
 type NetworkPolicySpec struct {
-	PodSelector map[string]string   `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
+	PodSelector LabelSelector       `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
 	PolicyTypes []string            `json:"policy_types,omitempty" yaml:"policyTypes,omitempty"`
 	Ingress     []NetworkPolicyRule `json:"ingress,omitempty" yaml:"ingress,omitempty"`
 	Egress      []NetworkPolicyRule `json:"egress,omitempty" yaml:"egress,omitempty"`
@@ -131,13 +131,13 @@ type NetworkPolicyRule struct {
 // NetworkPolicyPort defines port access
 type NetworkPolicyPort struct {
 	Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
-	Port     string `json:"port,omitempty" yaml:"port,omitempty"`
+	Port     int    `json:"port,omitempty" yaml:"port,omitempty"`
 }
 
 // NetworkPolicyPeer defines network endpoints
 type NetworkPolicyPeer struct {
-	NamespaceSelector map[string]string `json:"namespace_selector,omitempty" yaml:"namespaceSelector,omitempty"`
-	PodSelector       map[string]string `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
+	NamespaceSelector LabelSelector `json:"namespace_selector,omitempty" yaml:"namespaceSelector,omitempty"`
+	PodSelector       LabelSelector `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
 }
 
 // ResourceRequirements defines resource limits and requests
@@ -395,8 +395,8 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 					// This is a simplified example - real implementation would need
 					// hostname-to-IP resolution or DNS-based filtering
 					Ports: []NetworkPolicyPort{
-						{Protocol: "TCP", Port: "80"},
-						{Protocol: "TCP", Port: "443"},
+						{Protocol: "TCP", Port: 80},
+						{Protocol: "TCP", Port: 443},
 					},
 				},
 			},

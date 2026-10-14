@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/policy"
+	"gopkg.in/yaml.v3"
 )
 
 // testPolicy returns a representative Warden policy exercising the main
@@ -134,5 +135,33 @@ func TestGenerateKubernetesManifests(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("rendered YAML missing %q\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "kind: SeccompProfile") {
+		t.Fatal("rendered Kubernetes bundle must not require the optional SeccompProfile CRD")
+	}
+	if !strings.Contains(out, "podSelector:\n        matchLabels:") {
+		t.Fatalf("NetworkPolicy selector must use matchLabels:\n%s", out)
+	}
+
+	decoder := yaml.NewDecoder(strings.NewReader(out))
+	var kinds []string
+	for {
+		var document map[string]any
+		if err := decoder.Decode(&document); err != nil {
+			if err.Error() == "EOF" {
+				break
+			}
+			t.Fatalf("rendered YAML is not parseable: %v", err)
+		}
+		if len(document) > 0 {
+			kind, ok := document["kind"].(string)
+			if !ok {
+				t.Fatalf("rendered document has no kind: %#v", document)
+			}
+			kinds = append(kinds, kind)
+		}
+	}
+	if strings.Join(kinds, ",") != "Deployment,NetworkPolicy" {
+		t.Fatalf("unexpected rendered Kubernetes kinds: %v", kinds)
 	}
 }
