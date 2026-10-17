@@ -12,6 +12,7 @@ const links = [
   { href: "/integrations", label: "Connections" },
   { href: "/creators", label: "Creators" },
   { href: "/compatibility", label: "Compatibility" },
+  { href: "/testing", label: "Testing" },
   { href: "/blog", label: "Blog" },
   { href: "/guides", label: "Guides" },
   { href: "/docs", label: "Docs" },
@@ -126,7 +127,7 @@ export default function Nav() {
             <span className="font-hero text-[1.0625rem] font-bold text-paper">warden</span>
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-3 xl:flex">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -204,7 +205,7 @@ export default function Nav() {
             </a>
             <button
               onClick={() => setOpen(!open)}
-              className="flex items-center justify-center rounded-sm border border-ink-600 p-1.5 text-muted transition-colors hover:text-paper lg:hidden"
+              className="flex items-center justify-center rounded-sm border border-ink-600 p-1.5 text-muted transition-colors hover:text-paper xl:hidden"
               aria-label={open ? "Close menu" : "Open menu"}
             >
               {open ? <X size={18} /> : <Menu size={18} />}
@@ -213,7 +214,7 @@ export default function Nav() {
         </div>
 
         {open && (
-          <nav className="border-t border-ink-700 px-6 py-4 lg:hidden">
+          <nav className="border-t border-ink-700 px-6 py-4 xl:hidden">
             <div className="flex flex-col gap-3">
               {links.map((l) => (
                 <Link
