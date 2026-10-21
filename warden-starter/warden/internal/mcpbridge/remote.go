@@ -93,7 +93,7 @@ func (r *Remote) request(ctx context.Context, m Message) (Message, error) {
 	var b []byte
 	if strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
 		s := bufio.NewScanner(io.LimitReader(resp.Body, int64(r.limit)+1))
-		s.Buffer(make([]byte, 4096), r.limit)
+		s.Buffer(nil, r.limit)
 		var data []string
 		size := 0
 		for s.Scan() {

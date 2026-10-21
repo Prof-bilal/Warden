@@ -66,6 +66,29 @@ jobs:
           sha256sum * > SHA256SUMS
           cat SHA256SUMS
 
+      - name: Sign checksums
+        if: github.event_name == 'push'
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.WARDEN_RELEASE_SIGNING_KEY }}
+        run: |
+          # `warden update` and the npm wrapper install only releases whose
+          # SHA256SUMS verifies against the pinned Ed25519 public key. Publishing
+          # without a signature would break every update, so an unset secret is
+          # a hard failure rather than a silent downgrade to integrity-only.
+          if [[ -z "$RELEASE_SIGNING_KEY" ]]; then
+            echo "::error::WARDEN_RELEASE_SIGNING_KEY is not configured; refusing to publish an unsigned release"
+            exit 1
+          fi
+          key="$(mktemp)"
+          pub="$(mktemp)"
+          trap 'rm -f "$key" "$pub"' EXIT
+          printf '%s\n' "$RELEASE_SIGNING_KEY" > "$key"
+          chmod 600 "$key"
+          openssl pkeyutl -sign -rawin -inkey "$key" -in dist/SHA256SUMS -out dist/SHA256SUMS.sig
+          openssl pkey -in "$key" -pubout -out "$pub"
+          openssl pkeyutl -verify -pubin -inkey "$pub" -rawin -in dist/SHA256SUMS -sigfile dist/SHA256SUMS.sig
+          ls -l dist/SHA256SUMS dist/SHA256SUMS.sig
+
       # actions do not inherit defaults.run.working-directory: the files glob
       # is resolved against the workspace root.
       - name: Create GitHub Release

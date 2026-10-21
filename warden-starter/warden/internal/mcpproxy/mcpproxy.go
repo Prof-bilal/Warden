@@ -704,8 +704,15 @@ func terminateChild(cmd *exec.Cmd, done <-chan error) {
 	case <-done:
 		return
 	case <-time.After(750 * time.Millisecond):
-		_ = cmd.Process.Signal(syscall.SIGKILL)
-		_ = <-done
+		// Kill is SIGKILL on Unix and TerminateProcess on Windows; using it
+		// keeps the escalation honest on both platforms.
+		_ = cmd.Process.Kill()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			// The child is unkillable or Wait is stuck; do not block the
+			// proxy shutdown forever.
+		}
 	}
 }
 
@@ -778,10 +785,8 @@ func toolNameFromParams(params interface{}) string {
 
 // isToolAllowed checks if a tool name is in the allowlist
 func (s *ProxyServer) isToolAllowed(toolName string) bool {
-	if len(s.policy.AllowTools) == 0 {
-		return true // No restrictions if allowlist is empty
-	}
-
+	// Deny by default: an empty allow list grants no tool at all. Callers
+	// must opt in explicitly, either by naming tools or with "*".
 	for _, allowed := range s.policy.AllowTools {
 		if allowed == toolName || allowed == "*" {
 			return true

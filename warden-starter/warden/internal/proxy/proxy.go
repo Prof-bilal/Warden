@@ -138,7 +138,18 @@ func (s *Server) serveConn(conn net.Conn) {
 	// A bridge transports one sandbox TCP connection verbatim. HTTP proxy
 	// requests are then parsed and authorized here, outside the namespace.
 	wrapped := &closeNotifyingConn{Conn: conn, done: make(chan struct{})}
-	if err := (&http.Server{Handler: s, ReadHeaderTimeout: 30 * time.Second}).Serve(&oneConnListener{conn: wrapped, done: wrapped.done}); err != nil && err != http.ErrServerClosed {
+	// Bound slow/malformed client input. WriteTimeout is intentionally left
+	// unset: ordinary responses are streamed with io.Copy (an SSE upstream
+	// can stay open indefinitely) and CONNECT is hijacked, so a write
+	// deadline would truncate legitimate long-lived traffic.
+	srv := &http.Server{
+		Handler:           s,
+		ReadHeaderTimeout: 30 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    32 << 10,
+	}
+	if err := srv.Serve(&oneConnListener{conn: wrapped, done: wrapped.done}); err != nil && err != http.ErrServerClosed {
 		return
 	}
 }

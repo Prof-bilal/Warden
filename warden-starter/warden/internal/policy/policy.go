@@ -88,7 +88,8 @@ type MCP struct {
 	Transport string `yaml:"transport,omitempty"`
 
 	// AllowTools lists MCP tool names that are allowed to be called.
-	// Empty list means all tools are allowed. Deny-by-default when specified.
+	// The tool namespace is deny-by-default: an empty or omitted list
+	// blocks every tool, and "*" allows any tool explicitly.
 	AllowTools []string `yaml:"allow_tools,omitempty"`
 
 	// DenyPatterns lists regex patterns that will block requests/responses

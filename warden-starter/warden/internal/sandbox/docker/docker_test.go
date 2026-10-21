@@ -3,13 +3,41 @@ package docker
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 )
+
+func TestWaitWithTimeoutRunsCleanup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics differ on Windows")
+	}
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Skipf("cannot start sleep: %v", err)
+	}
+	var called atomic.Bool
+	start := time.Now()
+	_, limitErr := waitWithTimeout(cmd, 1, func() {
+		called.Store(true)
+		_ = cmd.Process.Kill()
+	})
+	if limitErr == nil {
+		t.Fatal("expected a wall-clock timeout")
+	}
+	if !called.Load() {
+		t.Fatal("timeout did not run container cleanup")
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Fatalf("timeout path took %v; cleanup must not block shutdown", elapsed)
+	}
+}
 
 func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	readDir := t.TempDir()

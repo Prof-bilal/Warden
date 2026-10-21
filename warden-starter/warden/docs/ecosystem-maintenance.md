@@ -76,3 +76,10 @@ host-version coverage. A live pilot and its activation targets require actual us
 this checkout does not fabricate pilot outcomes. MCP bundles/plugins require a
 host-specific packaging review and signing/distribution process. No universal
 bundle or automatic publication is implied by the command/HTTP routes.
+
+Release signing: `SHA256SUMS` is signed with an Ed25519 key whose public half is
+pinned in `internal/selfupdate/selfupdate.go` and
+`build/npm-wrapper/lib/runtime.js`. The private half is the
+`WARDEN_RELEASE_SIGNING_KEY` repository secret; the release workflow refuses to
+publish without it. Rotate by publishing one transitional release signed with
+the old key before changing the pinned value in both places.

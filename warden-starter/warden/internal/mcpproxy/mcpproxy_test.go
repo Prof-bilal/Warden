@@ -112,10 +112,30 @@ func TestFilterMCPMessageToolAllowlist(t *testing.T) {
 	}
 }
 
+// TestEmptyToolAllowlistDeniesAll pins the deny-by-default contract: an MCP
+// proxy without allow_tools may not call any tool.
+func TestEmptyToolAllowlistDeniesAll(t *testing.T) {
+	s := testProxy(t, MCPPolicy{Upstream: "stdio:npx server"})
+	msg := MCPMessage{JSONRPC: "2.0", Method: "tools/call", Params: map[string]interface{}{"name": "read_file"}}
+	allowed, reason := s.filterMCPMessage(msg, "outbound")
+	if allowed {
+		t.Fatal("tools/call allowed with an empty allow list; want deny-by-default")
+	}
+	if reason == "" {
+		t.Fatal("expected a block reason")
+	}
+	// Non-tool methods still pass so the client can discover the server.
+	init := MCPMessage{JSONRPC: "2.0", Method: "initialize"}
+	if allowed, _ := s.filterMCPMessage(init, "outbound"); !allowed {
+		t.Fatal("initialize must still pass with an empty allow list")
+	}
+}
+
 func TestFilterMCPMessageDenyPattern(t *testing.T) {
 	// 36-char GitHub token, as used in the future.md schema sketch.
 	s := testProxy(t, MCPPolicy{
 		Upstream:     "stdio:npx server",
+		AllowTools:   []string{"create_issue"},
 		DenyPatterns: []string{"ghp_[A-Za-z0-9]{36}"},
 	})
 
@@ -516,6 +536,7 @@ func TestHTTPTransportDenyPatternBlocksBeforeEgress(t *testing.T) {
 
 	s, err := NewProxyServer(MCPPolicy{
 		Upstream:     srv.URL,
+		AllowTools:   []string{"create_issue"},
 		DenyPatterns: []string{"ghp_[A-Za-z0-9]{36}"},
 	}, audit.New(f))
 	if err != nil {
@@ -624,7 +645,7 @@ func TestHTTPTransportUpstreamOutageFailsClosed(t *testing.T) {
 	}
 	defer f.Close()
 
-	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL}, audit.New(f))
+	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL, AllowTools: []string{"read_file"}}, audit.New(f))
 	if err != nil {
 		t.Fatalf("NewProxyServer: %v", err)
 	}
@@ -697,7 +718,7 @@ func TestSSETransportRelaysServerEvents(t *testing.T) {
 	}
 	defer f.Close()
 
-	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL + "/stream", AuditRequests: true}, audit.New(f))
+	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL + "/stream", AllowTools: []string{"read_file"}, AuditRequests: true}, audit.New(f))
 	if err != nil {
 		t.Fatalf("NewProxyServer: %v", err)
 	}
@@ -811,7 +832,7 @@ func TestAllowToolsEmptyStringFiltered(t *testing.T) {
 
 func TestConcurrentClients(t *testing.T) {
 	srv, received := startMCPServer(t, echoHandler)
-	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL}, audit.New(nil))
+	s, err := NewProxyServer(MCPPolicy{Upstream: srv.URL, AllowTools: []string{"read_file"}}, audit.New(nil))
 	if err != nil {
 		t.Fatalf("NewProxyServer: %v", err)
 	}
@@ -853,7 +874,7 @@ func TestConcurrentClients(t *testing.T) {
 
 func TestMaxPayloadKBEdgeCases(t *testing.T) {
 	// Zero means no limit.
-	s := testProxy(t, MCPPolicy{Upstream: "stdio:npx server", MaxPayloadKB: 0})
+	s := testProxy(t, MCPPolicy{Upstream: "stdio:npx server", AllowTools: []string{"x"}, MaxPayloadKB: 0})
 	big := MCPMessage{JSONRPC: "2.0", Method: "tools/call", Params: map[string]interface{}{"name": "x", "data": string(make([]byte, 100*1024))}}
 	allowed, _ := s.filterMCPMessage(big, "outbound")
 	if !allowed {

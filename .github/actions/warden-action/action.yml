@@ -203,10 +203,14 @@ runs:
         fi
         echo "WARDEN_POLICY_PATH=$POLICY_PATH" >> "$GITHUB_ENV"
 
-        # Validate policy syntax (dry run)
+        # Validate policy syntax by actually parsing it. `warden run --help`
+        # short-circuits before the policy is read (it exits 0 even for a
+        # malformed file), so it never validated anything. `k8s validate`
+        # runs the same policy.Load schema check `warden run` uses and exits
+        # non-zero on a malformed policy.
         echo "::group::Policy validation"
-        if ! warden run --policy "$POLICY_PATH" --help > /dev/null 2>&1; then
-          echo "::error::Policy file validation failed"
+        if ! warden k8s validate --policy "$POLICY_PATH" > /dev/null 2>&1; then
+          echo "::error::Policy file validation failed: $POLICY_PATH"
           exit 1
         fi
         echo "::endgroup::"

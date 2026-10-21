@@ -33,8 +33,10 @@ downloaded lazily on the first `warden` invocation: the npm launcher prints
 `Downloading warden v<version>...`, fetches the matching GitHub Release
 binary (5 binaries + `SHA256SUMS` per release) into
 `~/.cache/warden/<version>/`, and then runs it. Later invocations reuse the
-cached binary. Checksum verification against the published `SHA256SUMS` is
-performed by `warden update` when upgrading.
+cached binary. Both the npm launcher and `warden update` authenticate
+`SHA256SUMS` with the pinned Ed25519 release key (`SHA256SUMS.sig`) before
+checking the binary's checksum, so a compromised release cannot substitute a
+matching binary and manifest pair.
 
 Releases that predate `warden update` do not include that commandupgrade
 those installs with:

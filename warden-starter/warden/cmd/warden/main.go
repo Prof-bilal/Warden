@@ -42,6 +42,27 @@ import (
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
 var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp"}
 
+// truncateForTerminal shortens s to fit width columns, appending "...".
+// COLUMNS is untrusted, so a width below the 17-column margin is clamped
+// instead of producing a negative slice bound (which panicked on COLUMNS=16).
+func truncateForTerminal(s string, width int) string {
+	if width <= 0 {
+		width = 80
+	}
+	r := []rune(s)
+	if len(r) <= width-14 {
+		return s
+	}
+	keep := width - 17
+	if keep < 1 {
+		keep = 1
+	}
+	if keep > len(r) {
+		keep = len(r)
+	}
+	return string(r[:keep]) + "..."
+}
+
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
 	// Show update warning on interactive invocations, but not for internal
@@ -693,10 +714,8 @@ func maybePrintRunSummary(policyPath, backend string, p policy.Policy, cmd []str
 		if len(cmd) > 1 {
 			displayCmd += " " + strings.Join(cmd[1:], " ")
 		}
-		// Truncate long command for narrow terminals
-		if len(displayCmd) > ui.TerminalWidth()-14 {
-			displayCmd = displayCmd[:ui.TerminalWidth()-17] + "..."
-		}
+		// Truncate long command for narrow terminals.
+		displayCmd = truncateForTerminal(displayCmd, ui.TerminalWidth())
 		fmt.Fprintf(os.Stderr, "%-12s %s\n", ui.Dim("Command"), displayCmd)
 	}
 	fmt.Fprintln(os.Stderr, "")

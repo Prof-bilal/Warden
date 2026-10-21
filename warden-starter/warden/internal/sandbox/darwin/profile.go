@@ -189,7 +189,14 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	b.WriteString("(allow network-outbound (remote ip \"localhost:18080\"))\n")
 	b.WriteString("(allow network-bind (local ip \"localhost:18080\"))\n")
 	b.WriteString("(allow network-inbound (local ip \"localhost:18080\"))\n")
-	b.WriteString("(allow network-outbound (remote unix-socket))\n")
+	// Scope Unix-socket egress to the proxy socket itself. A bare
+	// (remote unix-socket) rule admits every host socket (launchd/XPC,
+	// Docker, the SSH agent) regardless of policy, which is a standard
+	// sandbox escape. `subpath` is the filter form Seatbelt accepts for
+	// unix-socket endpoints and matches the socket file itself.
+	for _, variant := range symlinkVariants(socketPath) {
+		fmt.Fprintf(&b, "(allow network-outbound (remote unix-socket (subpath %q)))\n", variant)
+	}
 	for _, variant := range symlinkVariants(socketPath) {
 		writeLiteralAllow(&b, "file-read*", variant)
 		writeLiteralAllow(&b, "file-write*", variant)

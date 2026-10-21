@@ -6,6 +6,7 @@ package container
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
@@ -134,10 +135,18 @@ type NetworkPolicyPort struct {
 	Port     int    `json:"port,omitempty" yaml:"port,omitempty"`
 }
 
-// NetworkPolicyPeer defines network endpoints
+// NetworkPolicyPeer defines a single egress/ingress peer. Exactly one field
+// is set; pointers keep the unused alternatives out of the rendered YAML.
 type NetworkPolicyPeer struct {
-	NamespaceSelector LabelSelector `json:"namespace_selector,omitempty" yaml:"namespaceSelector,omitempty"`
-	PodSelector       LabelSelector `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
+	NamespaceSelector *LabelSelector `json:"namespace_selector,omitempty" yaml:"namespaceSelector,omitempty"`
+	PodSelector       *LabelSelector `json:"pod_selector,omitempty" yaml:"podSelector,omitempty"`
+	IpBlock           *IpBlockPeer   `json:"ipBlock,omitempty" yaml:"ipBlock,omitempty"`
+}
+
+// IpBlockPeer is an IP or CIDR peer for a Kubernetes NetworkPolicy.
+type IpBlockPeer struct {
+	CIDR   string   `json:"cidr" yaml:"cidr"`
+	Except []string `json:"except,omitempty" yaml:"except,omitempty"`
 }
 
 // ResourceRequirements defines resource limits and requests
@@ -238,6 +247,26 @@ type TranslateOptions struct {
 	Namespace string
 }
 
+// egressPeers converts the IP literals in a policy's network allowlist into
+// Kubernetes ipBlock peers. Hostnames and wildcards cannot be expressed in a
+// standard NetworkPolicy, so they are omitted and the resulting policy stays
+// deny-by-default; ValidateKubernetesPolicy warns about the omission.
+func egressPeers(hosts []string) []NetworkPolicyPeer {
+	var peers []NetworkPolicyPeer
+	for _, host := range hosts {
+		ip := net.ParseIP(host)
+		if ip == nil {
+			continue
+		}
+		cidr := ip.String() + "/32"
+		if ip.To4() == nil {
+			cidr = ip.String() + "/128"
+		}
+		peers = append(peers, NetworkPolicyPeer{IpBlock: &IpBlockPeer{CIDR: cidr}})
+	}
+	return peers
+}
+
 // generateDockerConfig creates Docker-specific security configuration
 func generateDockerConfig(p policy.Policy, options TranslateOptions) (*DockerConfig, error) {
 	config := &DockerConfig{
@@ -276,13 +305,9 @@ func generateDockerConfig(p policy.Policy, options TranslateOptions) (*DockerCon
 		}
 	}
 
-	// Handle network access
-	if len(p.Network.Allow) > 0 {
-		// Enable networking if hosts are allowed
-		config.NetworkMode = "bridge"
-		// Note: Docker doesn't have hostname-based filtering built-in
-		// This would require additional network proxy or firewall rules
-	}
+	// Network stays disabled. A plain `docker run` has no hostname filtering,
+	// so `--network bridge` would grant unrestricted egress. RenderDockerCommand
+	// refuses policies with a non-empty network.allow instead of weakening them.
 
 	// Handle resource limits
 	if p.Limits.MemoryMB > 0 {
@@ -379,27 +404,27 @@ func generateKubernetesConfig(p policy.Policy, options TranslateOptions) (*Kuber
 		volumeIndex++
 	}
 
-	// Handle network policy
-	if len(p.Network.Allow) == 0 {
-		// Deny all egress
-		config.NetworkPolicy = NetworkPolicySpec{
-			PolicyTypes: []string{"Egress"},
-			Egress:      []NetworkPolicyRule{}, // Empty = deny all
-		}
-	} else {
-		// Allow specific hosts (note: K8s NetworkPolicy works with IPs/CIDRs, not hostnames)
+	// Handle network policy. A Kubernetes NetworkPolicy matches IP/CIDR peers,
+	// not hostnames, and a rule with no `to` peers matches every destination.
+	// Emitting ports-only rules would therefore allow egress to any host, so
+	// only IP literals become peers and everything else stays denied.
+	if peers := egressPeers(p.Network.Allow); len(peers) > 0 {
 		config.NetworkPolicy = NetworkPolicySpec{
 			PolicyTypes: []string{"Egress"},
 			Egress: []NetworkPolicyRule{
 				{
-					// This is a simplified example - real implementation would need
-					// hostname-to-IP resolution or DNS-based filtering
+					To: peers,
 					Ports: []NetworkPolicyPort{
 						{Protocol: "TCP", Port: 80},
 						{Protocol: "TCP", Port: 443},
 					},
 				},
 			},
+		}
+	} else {
+		config.NetworkPolicy = NetworkPolicySpec{
+			PolicyTypes: []string{"Egress"},
+			Egress:      []NetworkPolicyRule{}, // Empty = deny all
 		}
 	}
 
@@ -492,8 +517,22 @@ func generateSeccompProfile(p policy.Policy, options TranslateOptions) (*Seccomp
 	return profile, nil
 }
 
-// RenderDockerCommand generates a docker run command from the policy
+// RenderDockerCommand generates a docker run command from the policy.
+//
+// A plain `docker run` cannot enforce a hostname allowlist: the only network
+// modes it offers are all-or-nothing (`none`/`bridge`/`host`). Emitting
+// `--network bridge` for a policy that lists hosts would grant unrestricted
+// egress, so we refuse instead of silently weakening the policy. Use
+// `warden run --backend docker`, which routes traffic through the egress-proxy
+// bridge, for network-restricted workloads.
 func RenderDockerCommand(p policy.Policy, options TranslateOptions) ([]string, error) {
+	if len(p.Network.Allow) > 0 {
+		return nil, fmt.Errorf(
+			"cannot render a docker command that enforces network.allow %v: plain `docker run` has no hostname filtering; use `warden run --backend docker` (egress-proxy bridge) for network-restricted workloads",
+			p.Network.Allow,
+		)
+	}
+
 	manifest, err := TranslatePolicy(p, options)
 	if err != nil {
 		return nil, fmt.Errorf("translate policy: %w", err)

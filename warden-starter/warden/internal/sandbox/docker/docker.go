@@ -8,6 +8,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -280,8 +281,11 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, fmt.Errorf("build docker args: %w", err)
 	}
 
+	// Name the container so a wall-clock timeout can stop the workload itself,
+	// not just the docker CLI. --rm still removes it on a normal exit.
+	containerName := fmt.Sprintf("warden-%d-%d", os.Getpid(), time.Now().UnixNano())
 	env := envfilter.Filter(parentEnv, p.EnvAllowlist())
-	runArgs := injectEnvFlags(append([]string{"run"}, args...), env, []string{
+	runArgs := injectEnvFlags(append([]string{"run", "--name", containerName}, args...), env, []string{
 		"HTTP_PROXY=http://127.0.0.1:18080",
 		"HTTPS_PROXY=http://127.0.0.1:18080",
 		"ALL_PROXY=http://127.0.0.1:18080",
@@ -298,7 +302,9 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	if err := sub.Start(); err != nil {
 		return 0, fmt.Errorf("start sandboxed process: %w", err)
 	}
-	runErr, limitErr := waitWithTimeout(sub, p.Limits.TimeoutS)
+	runErr, limitErr := waitWithTimeout(sub, p.Limits.TimeoutS, func() {
+		removeContainer(dockerBin, containerName, logger)
+	})
 	if limitErr != nil {
 		if logger != nil {
 			_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: limitErr.Limit, Allowed: false, Reason: limitErr.Error()})
@@ -371,7 +377,25 @@ func ensureImage(dockerBin, image string) error {
 	return fmt.Errorf("docker image %q is not available locally; pull it or set WARDEN_DOCKER_IMAGE to an image you already have", image)
 }
 
-func waitWithTimeout(cmd *exec.Cmd, timeoutS int) (error, *LimitExceededError) {
+// removeContainer force-removes a sandbox container by name. Signals to the
+// docker CLI stop the client, not the workload: without this the container
+// keeps running after Warden exits, outside its audit log and timeout.
+func removeContainer(dockerBin, name string, logger *audit.Logger) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, dockerBin, "rm", "-f", name).CombinedOutput()
+	if err != nil && logger != nil {
+		_ = logger.Log(audit.Event{
+			Type:     "limit",
+			Action:   "container_remove",
+			Resource: name,
+			Allowed:  false,
+			Reason:   strings.TrimSpace(string(out)),
+		})
+	}
+}
+
+func waitWithTimeout(cmd *exec.Cmd, timeoutS int, onTimeout func()) (error, *LimitExceededError) {
 	if timeoutS <= 0 {
 		return cmd.Wait(), nil
 	}
@@ -383,6 +407,11 @@ func waitWithTimeout(cmd *exec.Cmd, timeoutS int) (error, *LimitExceededError) {
 	case err := <-done:
 		return err, nil
 	case <-timer.C:
+		// Stop the workload before the client: terminating the docker process
+		// leaves the container it started running.
+		if onTimeout != nil {
+			onTimeout()
+		}
 		terminateSandbox(cmd)
 		select {
 		case err := <-done:

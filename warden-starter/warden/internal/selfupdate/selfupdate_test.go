@@ -1,6 +1,8 @@
 package selfupdate
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
@@ -9,6 +11,52 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestPinnedReleaseKeyIsWellFormed(t *testing.T) {
+	raw, err := hex.DecodeString(strings.TrimSpace(releaseSigningKeyHex))
+	if err != nil || len(raw) != ed25519.PublicKeySize {
+		t.Fatalf("pinned release key is not a 32-byte Ed25519 key: %q", releaseSigningKeyHex)
+	}
+	allZero := true
+	for _, b := range raw {
+		if b != 0 {
+			allZero = false
+			break
+		}
+	}
+	if allZero {
+		t.Fatal("pinned release key is all zeroes")
+	}
+}
+
+func TestVerifyManifestSignature(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := releaseSigningKeyHex
+	t.Cleanup(func() { releaseSigningKeyHex = old })
+	releaseSigningKeyHex = hex.EncodeToString(pub)
+
+	sums := []byte("abc123  warden-linux-amd64\n")
+	sig := ed25519.Sign(priv, sums)
+	if err := verifyManifestSignature(sums, sig); err != nil {
+		t.Fatalf("valid signature rejected: %v", err)
+	}
+	if err := verifyManifestSignature([]byte("tampered"), sig); err == nil {
+		t.Fatal("tampered manifest accepted")
+	}
+	if err := verifyManifestSignature(sums, sig[:32]); err == nil {
+		t.Fatal("truncated signature accepted")
+	}
+
+	// A build without a pinned key must refuse to install, not fall back to
+	// integrity-only verification.
+	releaseSigningKeyHex = ""
+	if err := verifyManifestSignature(sums, sig); err == nil {
+		t.Fatal("missing pinned key must fail closed")
+	}
+}
 
 func TestParseSums(t *testing.T) {
 	in := strings.Join([]string{

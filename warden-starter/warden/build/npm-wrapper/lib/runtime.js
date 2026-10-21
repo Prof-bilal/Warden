@@ -3,9 +3,27 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const https = require("node:https");
-const { createHash, randomBytes } = require("node:crypto");
+const { createHash, createPublicKey, randomBytes, verify: cryptoVerify } = require("node:crypto");
 const releaseBase = "https://github.com/Prof-bilal/Warden/releases/download/";
 const maxBinary = 64 * 1024 * 1024, maxSums = 1024 * 1024;
+// Ed25519 public key that signs each release's SHA256SUMS. The binary and the
+// checksum file ship in the same release, so integrity alone cannot stop a
+// compromised release from making an arbitrary binary match its own manifest.
+let releasePublicKeyHex = "9f4998ab7cc46e8cccab7acf4c4697fcfe2756b320e5bc60e385cdb74c4565ce";
+// Test-only seam: production code never changes the pinned key.
+function setReleasePublicKeyForTest(hex) { releasePublicKeyHex = hex; }
+function releasePublicKey() {
+  const raw = Buffer.from(releasePublicKeyHex, "hex");
+  if (raw.length !== 32) throw Error("invalid pinned release key");
+  // Ed25519 SubjectPublicKeyInfo prefix (RFC 8410) around the raw 32-byte key.
+  const spki = Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), raw]);
+  return createPublicKey({ key: spki, format: "der", type: "spki" });
+}
+function verifyChecksumSignature(sums, signature) {
+  if (sums.length > maxSums) throw Error("checksum file too large");
+  if (signature.length !== 64) throw Error("invalid release checksum signature");
+  if (!cryptoVerify(null, sums, releasePublicKey(), signature)) throw Error("release checksum signature does not verify; refusing to execute");
+}
 const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 function parseVersion(value) {
   const match = semver.exec(value);
@@ -135,21 +153,28 @@ async function ensureBinary(root, version, asset, fetch = download, progress = m
   privateDirectory(root);
   const dir = path.join(root, version);
   privateDirectory(dir);
-  const file = path.join(dir, asset), sumsFile = path.join(dir, "SHA256SUMS");
+  const file = path.join(dir, asset), sumsFile = path.join(dir, "SHA256SUMS"), sigFile = path.join(dir, "SHA256SUMS.sig");
   const base = `${releaseBase}v${version}/`;
-  let binary, sums;
+  let binary, sums, signature;
   try { binary = readRegular(file, maxBinary); } catch (error) { if (error.code !== "ENOENT") throw error; }
   try { sums = readRegular(sumsFile, maxSums); } catch (error) { if (error.code !== "ENOENT") throw error; }
-  if (!binary || !sums) {
+  try { signature = readRegular(sigFile, 64); } catch (error) { if (error.code !== "ENOENT") throw error; }
+  if (!binary || !sums || !signature) {
     progress(`Verifying Warden v${version} release download…`);
     if (!sums) sums = await fetch(`${base}SHA256SUMS`, maxSums);
+    if (!signature) signature = await fetch(`${base}SHA256SUMS.sig`, 64);
+    verifyChecksumSignature(sums, signature);
     if (!binary) binary = await fetch(`${base}${asset}`, maxBinary);
     verify(binary, sums, asset);
     atomicWrite(sumsFile, sums, 0o600);
+    atomicWrite(sigFile, signature, 0o600);
     if (!fs.existsSync(file)) atomicWrite(file, binary, 0o700);
   }
+  // Re-check the cache on every launch, including the signature: a tampered
+  // cache must not become trusted just because it exists.
+  verifyChecksumSignature(readRegular(sumsFile, maxSums), readRegular(sigFile, 64));
   verify(readRegular(file, maxBinary), readRegular(sumsFile, maxSums), asset);
   if (os.platform() !== "win32") fs.chmodSync(file, 0o700);
   return file;
 }
-module.exports = { parseVersion, compareVersions, platformAsset, cacheRoot, resolveVersion, checkedURL, download, checksum, verify, ensureBinary };
+module.exports = { parseVersion, compareVersions, platformAsset, cacheRoot, resolveVersion, checkedURL, download, checksum, verify, ensureBinary, setReleasePublicKeyForTest };

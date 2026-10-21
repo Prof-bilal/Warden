@@ -49,7 +49,7 @@ func StartProcess(ctx context.Context, warden string, args []string, env []strin
 		defer close(p.done)
 		defer close(p.replies)
 		s := bufio.NewScanner(out)
-		s.Buffer(make([]byte, 4096), limit)
+		s.Buffer(nil, limit)
 		for s.Scan() {
 			m, e := Parse(s.Bytes())
 			if e != nil {

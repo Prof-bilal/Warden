@@ -3,10 +3,11 @@ package policy
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/warden-sandbox/warden/internal/privatefile"
 )
 
 // This file holds the grant-mapping helpers shared by `warden init` (which
@@ -125,22 +126,37 @@ func dedupSorted(in []string) []string {
 	return out
 }
 
-// CoversFile reports whether the policy already grants path: an exact or
-// enclosing read grant covers reads, and an exact or enclosing write grant
-// covers both reads and writes (a write grant subsumes reads underneath it).
-func CoversFile(p Policy, path string) bool {
+// CoversWrite reports whether the policy grants a write to path: an exact or
+// enclosing write grant. A read grant never covers a write.
+func CoversWrite(p Policy, path string) bool {
 	path = filepath.Clean(path)
 	for _, dir := range p.Filesystem.Write {
 		if path == dir || Within(path, dir) {
 			return true
 		}
 	}
+	return false
+}
+
+// CoversRead reports whether the policy grants a read of path. A write grant
+// subsumes reads underneath it, and a read grant covers reads.
+func CoversRead(p Policy, path string) bool {
+	if CoversWrite(p, path) {
+		return true
+	}
+	path = filepath.Clean(path)
 	for _, dir := range p.Filesystem.Read {
 		if path == dir || Within(path, dir) {
 			return true
 		}
 	}
 	return false
+}
+
+// CoversFile reports whether the policy already grants path for either access
+// mode. It is equivalent to CoversRead, since a write grant subsumes reads.
+func CoversFile(p Policy, path string) bool {
+	return CoversRead(p, path)
 }
 
 // AddHost adds host to network.allow (lowercased, like `init` generates).
@@ -201,6 +217,10 @@ func (p *Policy) AddFileGrant(grant string, write bool) (bool, error) {
 // Save writes the policy back to path with owner-only permissions,
 // validating first. It marshals the struct, so comments and formatting from
 // a hand-written file are not preservedthe data is.
+//
+// The write is atomic and never follows a destination symlink: a hard crash
+// must not leave an empty policy behind, and a symlinked policy.yaml must not
+// redirect the save into an unrelated file.
 func (p Policy) Save(path string) error {
 	if err := p.Validate(); err != nil {
 		return err
@@ -209,7 +229,7 @@ func (p Policy) Save(path string) error {
 	if err != nil {
 		return fmt.Errorf("encode policy: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	if err := privatefile.AtomicWrite(path, data); err != nil {
 		return fmt.Errorf("write policy %q: %w", path, err)
 	}
 	return nil

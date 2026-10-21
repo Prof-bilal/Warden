@@ -74,10 +74,15 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 
 | Warden Policy | Docker | Kubernetes |
 |---|---|---|
-| `network.allow: []` | `--network none` | `NetworkPolicy` with empty egress rules |
-| `network.allow: ["api.github.com"]` | `--network bridge`* | `NetworkPolicy` with specific egress rules* |
+| `network.allow: []` | `--network none` | `NetworkPolicy` with empty egress rules (deny all) |
+| `network.allow: ["203.0.113.10"]` | refused (see note) | `NetworkPolicy` with an `ipBlock` peer |
+| `network.allow: ["api.github.com"]` | refused (see note) | no egress rules: a hostname cannot be matched, so egress is denied |
 
-*Note: Docker and K8s have FQDN filtering limitations - see [Network Limitations](#network-limitations) below.
+*Note: a plain `docker run` has no hostname filtering, so `warden k8s docker`
+refuses policies with a non-empty `network.allow` instead of emitting
+`--network bridge` (which would allow all egress). Use `warden run --backend
+docker` for network-restricted workloads. Standard NetworkPolicy matches
+IP/CIDR peers, not hostnames — see [Network Limitations](#network-limitations).
 
 ### Environment → Container Configuration
 
@@ -273,16 +278,9 @@ spec:
       app: mcp-server
   policyTypes:
   - Egress
-  egress:
-  - ports:
-    - protocol: TCP
-      port: 80
-    - protocol: TCP
-      port: 443
-    - protocol: TCP
-      port: 53
-    # Note: K8s NetworkPolicy requires IP/CIDR ranges
-    # FQDN filtering needs additional tooling
+  # No egress rules: `api.github.com` is a hostname, which a standard
+  # NetworkPolicy cannot match, so all egress is denied. Use an IP literal
+  # (e.g. 203.0.113.10) to get an ipBlock peer, or a DNS-aware CNI for FQDNs.
 ```
 
 ## Advanced Use Cases
@@ -388,13 +386,14 @@ network:
 3. **Manual Resolution**: Resolve hostnames to IP ranges and update policies
 
 ```yaml
-# Standard K8s (limited)
+# Standard K8s (limited to IP/CIDR peers)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 spec:
   egress:
   - to:
-    - namespaceSelector: {}  # Only works with IPs/CIDRs
+    - ipBlock:
+        cidr: 203.0.113.10/32
 
 # Cilium (FQDN support)
 apiVersion: cilium.io/v2

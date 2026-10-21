@@ -145,14 +145,19 @@ type eventHeader struct {
 // eventRecord mirrors the fixed prefix of EVENT_RECORD (evntcons.h), x64
 // layout, through the UserData pointer. Fields after UserData are never read.
 type eventRecord struct {
-	header            eventHeader // 80 bytes
-	bufferContext     [4]byte
-	extendedDataCount uint16
-	userDataLength    uint16
-	_                 uint32 // alignment to the pointers below
-	extendedData      uintptr
-	userData          uintptr
+	header            eventHeader // 0..80
+	bufferContext     [4]byte     // 80..84
+	extendedDataCount uint16      // 84..86
+	userDataLength    uint16      // 86..88
+	extendedData      uintptr     // 88..96
+	userContext       uintptr     // 96..104
+	userData          uintptr     // 104..112
 }
+
+// Compile-time guard for the hand-written EVENT_RECORD layout: if UserData
+// is not at offset 104 on this target, the decoder reads the wrong pointer
+// and silently drops every file-audit event.
+var _ [unsafe.Offsetof(eventRecord{}.userData) - 104]struct{}
 
 // maxEventPayload bounds how much UserData the callback will touch. ETW does
 // not deliver events larger than 64 KB.
@@ -397,10 +402,15 @@ func (t *traceSession) handleKernelFile(r *eventRecord) {
 	if r.userDataLength == 0 || int(r.userDataLength) > maxEventPayload || r.userData == 0 {
 		return
 	}
-	// userData is the address of the event payload; read it back out of the
-	// record (offset 96 on x64, see eventRecord) as a real pointer.
-	const eventRecordUserDataOffset = 96
-	payloadPtr := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(r), eventRecordUserDataOffset))
+	// r.userData (EVENT_RECORD.UserData, offset 104 on x64) is the address of
+	// the event payload. Load it as a pointer at the field's computed offset
+	// so the conversion stays inside unsafe.Pointer arithmetic (a direct
+	// uintptr->unsafe.Pointer conversion is flagged by vet and is not a valid
+	// unsafe pattern). The previous code re-read a hand-computed offset that
+	// pointed at ExtendedData, so every file event was dropped.
+	payloadPtr := *(*unsafe.Pointer)(unsafe.Add(
+		unsafe.Pointer(r), unsafe.Offsetof(eventRecord{}.userData),
+	))
 	payload := unsafe.Slice((*byte)(payloadPtr), int(r.userDataLength))
 	name, ok := decodeKernelFileEvent(payload)
 	if !ok {

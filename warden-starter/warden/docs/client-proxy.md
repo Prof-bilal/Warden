@@ -440,7 +440,8 @@ warden proxy --policy mcp-proxy-policy.yaml --listen 127.0.0.1:8765
 
 3. **"Tool not in allow list"**
    - Add the tool name to `mcp.allow_tools`
-   - Or remove `allow_tools` to allow all tools
+   - Or use `allow_tools: ["*"]` to allow all tools (an empty or
+     omitted list denies every tool)
 
 4. **"Blocked pattern detected"**
    - Review `mcp.deny_patterns` for overly broad rules

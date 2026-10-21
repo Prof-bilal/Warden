@@ -50,7 +50,7 @@ Every report must include:
 
 File this as a GitHub issue on the repo (reports are public so the whole community sees the friction log). Source: `.github/ISSUE_TEMPLATE/compat_report.md`.
 
-```markdown
+````markdown
 ---
 name: Compatibility report
 about: Run your MCP server under Warden and report friction (M8 beta)
@@ -93,7 +93,7 @@ labels: compatibility
 
 <!-- What was confusing? What did you try? Where did the docs or schema
      fail you? This is the most valuable sectionbe specific. -->
-```
+````
 
 ## What maintainers do with reports
 

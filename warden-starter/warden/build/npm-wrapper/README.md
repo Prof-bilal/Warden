@@ -97,8 +97,9 @@ the versioned GitHub release over HTTPS. It verifies SHA-256 before installation
 and before every cached launch. Download messages go to stderr so MCP stdout
 stays clean. Corruption, unsupported platforms and failed downloads stop launch.
 Downloads have size, time and redirect limits; redirects require trusted GitHub
-HTTPS hosts. Checksums authenticate downloaded bytes against the release
-manifest, not an independent release signing key.
+HTTPS hosts. The manifest itself is signed with the pinned Ed25519 release key
+(`SHA256SUMS.sig`), so a compromised release cannot substitute a matching
+binary and manifest pair; an unsigned or invalid signature stops launch.
 
 Linux and macOS cache under `~/.cache/warden/`; Windows uses
 `%LOCALAPPDATA%\\warden` (or the user's `AppData\\Local\\warden`). Older caches

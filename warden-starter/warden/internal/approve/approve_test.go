@@ -74,6 +74,13 @@ func TestShouldPromptFile(t *testing.T) {
 	if _, _, ok := ShouldPromptFile(ev, &pol, "/usr/bin/node"); ok {
 		t.Fatal("covered path must not prompt")
 	}
+
+	// A read grant must not suppress a write prompt: otherwise a write denial
+	// can never be upgraded through --approve.
+	writeEv := audit.Event{Type: "file", Action: "creat", Resource: filepath.Join(pkgDir, "newfile"), Allowed: false}
+	if g, w, ok := ShouldPromptFile(writeEv, &pol, "/usr/bin/node"); !ok || !w || g != pkgDir {
+		t.Fatalf("write under read grant = %q, %v, %v; want a write prompt for %q", g, w, ok, pkgDir)
+	}
 	pol.Filesystem.Read = nil
 
 	// Missing paths never prompt (routine probes, not denials worth asking).

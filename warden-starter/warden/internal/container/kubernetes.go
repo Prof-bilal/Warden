@@ -4,6 +4,7 @@ package container
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -237,26 +238,24 @@ func generateNetworkPolicyManifest(p policy.Policy, options TranslateOptions) (*
 
 	var egressRules []NetworkPolicyRule
 
-	if len(p.Network.Allow) == 0 {
-		// No network access allowed - empty egress rules
-		egressRules = []NetworkPolicyRule{}
-	} else {
-		// Allow specific hosts
-		// Note: This is a limitation - K8s NetworkPolicy works with IPs/CIDRs, not hostnames
-		// In practice, you'd need to resolve hostnames or use additional tools like Cilium
-		ports := []NetworkPolicyPort{
-			{Protocol: "TCP", Port: 80},
-			{Protocol: "TCP", Port: 443},
-			{Protocol: "TCP", Port: 53}, // DNS
-		}
-
+	// A NetworkPolicy rule with no `to` peers matches every destination, so
+	// ports-only rules would allow egress to any host. Only IP literals can be
+	// expressed as ipBlock peers; hostnames stay denied (and are warned about
+	// by ValidateKubernetesPolicy).
+	if peers := egressPeers(p.Network.Allow); len(peers) > 0 {
 		egressRules = []NetworkPolicyRule{
 			{
-				Ports: ports,
-				// To field would need specific IP ranges or namespace selectors
-				// This is a significant limitation of standard K8s NetworkPolicy
+				To: peers,
+				Ports: []NetworkPolicyPort{
+					{Protocol: "TCP", Port: 80},
+					{Protocol: "TCP", Port: 443},
+					{Protocol: "TCP", Port: 53},
+				},
 			},
 		}
+	} else {
+		// No expressible peers: deny all egress.
+		egressRules = []NetworkPolicyRule{}
 	}
 
 	policy := &NetworkPolicyManifest{
@@ -373,9 +372,18 @@ func sanitizeName(input string) string {
 func ValidateKubernetesPolicy(p policy.Policy) []string {
 	var warnings []string
 
-	// Check for FQDN network rules
-	if len(p.Network.Allow) > 0 {
-		warnings = append(warnings, "Network policy uses hostnames - K8s NetworkPolicy requires IP/CIDR ranges. Consider using Cilium or Istio for FQDN filtering.")
+	// Check for network rules a standard NetworkPolicy cannot express.
+	var hostnames []string
+	for _, host := range p.Network.Allow {
+		if net.ParseIP(host) == nil {
+			hostnames = append(hostnames, host)
+		}
+	}
+	if len(hostnames) > 0 {
+		warnings = append(warnings, fmt.Sprintf(
+			"network.allow entries %v are hostnames; Kubernetes NetworkPolicy can only enforce IP/CIDR peers, so they are denied. Use a DNS-aware CNI (Cilium/Calico FQDN or Istio) for hostname egress.",
+			hostnames,
+		))
 	}
 
 	// Check for complex filesystem patterns

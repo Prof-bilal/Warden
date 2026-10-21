@@ -250,7 +250,7 @@ func cmdConnect(cmd string, args []string) error {
 		readError := make(chan error, 1)
 		go func() {
 			scanner := bufio.NewScanner(os.Stdin)
-			scanner.Buffer(make([]byte, 4096), r.MaxBytes)
+			scanner.Buffer(nil, r.MaxBytes)
 			for scanner.Scan() {
 				b := append([]byte{}, scanner.Bytes()...)
 				m, _ := mcpbridge.Parse(b)

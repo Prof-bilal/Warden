@@ -1,17 +1,20 @@
 // Package selfupdate implements `warden update`: query the npm registry for
 // the latest warden-sandbox-cli version, download the matching GitHub Release
-// binary, verify it against SHA256SUMS, and install it into the versioned
+// binary, authenticate the release manifest (SHA256SUMS) with a pinned
+// Ed25519 key, verify the binary against it, and install it into the versioned
 // cache that the npm wrapper prefers.
 //
 // Security notes: HTTPS only to pinned hosts (registry.npmjs.org and
-// github.com); the binary is installed only after its SHA256 matches the
-// release checksum file; replacement is atomic (temp → rename); no shell
-// interpolation of version strings; downgrades are refused unless the user
-// passes an explicit --version.
+// github.com); the binary is installed only after its SHA256 matches a
+// checksum manifest whose signature verifies against the pinned release key;
+// replacement is atomic (temp → rename); no shell interpolation of version
+// strings; downgrades are refused unless the user passes an explicit
+// --version.
 package selfupdate
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -34,6 +37,17 @@ var (
 	apiURL       = "https://api.github.com/repos/Prof-bilal/Warden/releases/tags/"
 	githubDLBase = "https://github.com/Prof-bilal/Warden/releases/download/"
 )
+
+// releaseSigningKeyHex is the Ed25519 public key that signs each release's
+// SHA256SUMS. It is public by definition; the private half lives only in the
+// WARDEN_RELEASE_SIGNING_KEY CI secret. Authenticity matters because the
+// binary and its checksum file are published in the same release, so integrity
+// alone lets a compromised release make an arbitrary binary match its own
+// manifest.
+//
+// It is a var so tests can substitute a throwaway key. Rotation: publish one
+// transitional release signed with the old key, then update this value.
+var releaseSigningKeyHex = "9f4998ab7cc46e8cccab7acf4c4697fcfe2756b320e5bc60e385cdb74c4565ce"
 
 const (
 	apiTimeout  = 15 * time.Second
@@ -182,12 +196,13 @@ func npmVersionExists(version string) error {
 }
 
 // fetchRelease returns download URLs for the GitHub release assets for
-// v<version>. Prefers the Releases API; falls back to constructing the
-// canonical download URLs (checksum verification still protects integrity).
-func fetchRelease(version string) (binURL, sumsURL string, err error) {
+// v<version>: the binary, its checksum manifest, and the manifest signature.
+// Prefers the Releases API; falls back to constructing the canonical download
+// URLs (signature + checksum verification still protect authenticity).
+func fetchRelease(version string) (binURL, sumsURL, sigURL string, err error) {
 	name, err := assetName()
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	var rel release
 	if err := getJSON(apiURL+"v"+version, &rel); err == nil {
@@ -197,6 +212,8 @@ func fetchRelease(version string) (binURL, sumsURL string, err error) {
 				binURL = a.BrowserDownloadURL
 			case "SHA256SUMS":
 				sumsURL = a.BrowserDownloadURL
+			case "SHA256SUMS.sig":
+				sigURL = a.BrowserDownloadURL
 			}
 		}
 	}
@@ -206,7 +223,10 @@ func fetchRelease(version string) (binURL, sumsURL string, err error) {
 	if sumsURL == "" {
 		sumsURL = githubDLBase + "v" + version + "/SHA256SUMS"
 	}
-	return binURL, sumsURL, nil
+	if sigURL == "" {
+		sigURL = githubDLBase + "v" + version + "/SHA256SUMS.sig"
+	}
+	return binURL, sumsURL, sigURL, nil
 }
 
 // getBody downloads a release asset with a hard size cap.
@@ -267,6 +287,24 @@ func verifyChecksum(data []byte, name, sumsData string) error {
 	got := hex.EncodeToString(sum[:])
 	if got != want {
 		return fmt.Errorf("checksum mismatch for %s: got %s, want %s", name, got, want)
+	}
+	return nil
+}
+
+// verifyManifestSignature authenticates the checksum manifest with the pinned
+// release key. Integrity alone is insufficient: an attacker who can replace
+// release assets can replace SHA256SUMS too, so the updater refuses any
+// manifest it cannot tie to the Warden release key.
+func verifyManifestSignature(sums, sig []byte) error {
+	raw, err := hex.DecodeString(strings.TrimSpace(releaseSigningKeyHex))
+	if err != nil || len(raw) != ed25519.PublicKeySize {
+		return fmt.Errorf("this build has no valid pinned release key -- refusing to install an update")
+	}
+	if len(sig) != ed25519.SignatureSize {
+		return fmt.Errorf("release manifest signature is %d bytes, want %d -- refusing to install", len(sig), ed25519.SignatureSize)
+	}
+	if !ed25519.Verify(ed25519.PublicKey(raw), sums, sig) {
+		return fmt.Errorf("release manifest signature does not verify against the pinned Warden release key -- refusing to install")
 	}
 	return nil
 }
@@ -536,7 +574,7 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 	}
 
 	fmt.Fprintf(stderr, "Will install: warden %s (%s)\n", target, name)
-	fmt.Fprintf(stderr, "Source: GitHub Release v%s (SHA256 verified)\n", target)
+	fmt.Fprintf(stderr, "Source: GitHub Release v%s (Ed25519-signed SHA256 verified)\n", target)
 	fmt.Fprintf(stderr, "Destination: versioned cache (~/.cache/warden/%s/)\n", target)
 
 	if !opts.Yes {
@@ -555,8 +593,21 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 		}
 	}
 
-	binURL, sumsURL, err := fetchRelease(target)
+	binURL, sumsURL, sigURL, err := fetchRelease(target)
 	if err != nil {
+		return false, err
+	}
+
+	// Authenticate the manifest before downloading or trusting the binary.
+	sums, err := getBody(sumsURL)
+	if err != nil {
+		return false, fmt.Errorf("downloading checksums: %w", err)
+	}
+	sig, err := getBody(sigURL)
+	if err != nil {
+		return false, fmt.Errorf("downloading checksum signature: %w", err)
+	}
+	if err := verifyManifestSignature(sums, sig); err != nil {
 		return false, err
 	}
 
@@ -564,10 +615,6 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 	bin, err := getBody(binURL)
 	if err != nil {
 		return false, err
-	}
-	sums, err := getBody(sumsURL)
-	if err != nil {
-		return false, fmt.Errorf("downloading checksums: %w", err)
 	}
 	if err := verifyChecksum(bin, name, string(sums)); err != nil {
 		return false, err
@@ -577,7 +624,7 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(stderr, "Installing v%s (verified) -> %s\n", target, dest)
+	fmt.Fprintf(stderr, "Installing v%s (signed + verified) -> %s\n", target, dest)
 	if err := Replace(dest, bin); err != nil {
 		return false, err
 	}
@@ -585,9 +632,14 @@ func RunOpts(stdout, stderr io.Writer, opts Options) (bool, error) {
 		_ = os.Remove(dest)
 		return false, err
 	}
-	// Persist the authenticated release manifest so the npm launcher can check
-	// this updated cache offline, rather than trust any existing executable.
+	// Persist the authenticated release manifest and its signature so the npm
+	// launcher can verify this cache offline, rather than trust any existing
+	// executable.
 	if err := replaceFile(filepath.Join(filepath.Dir(dest), "SHA256SUMS"), sums, 0o600); err != nil {
+		_ = os.Remove(dest)
+		return false, err
+	}
+	if err := replaceFile(filepath.Join(filepath.Dir(dest), "SHA256SUMS.sig"), sig, 0o600); err != nil {
 		_ = os.Remove(dest)
 		return false, err
 	}

@@ -71,7 +71,17 @@ func ShouldPromptFile(ev audit.Event, pol *policy.Policy, cmdExe string) (grant 
 	if !ok {
 		return "", false, false
 	}
-	if grant == cmdExe || policy.CoversFile(*pol, grant) {
+	if grant == cmdExe {
+		return "", false, false
+	}
+	// Match the access mode: an existing read grant must not suppress a write
+	// prompt, or a write denial can never be resolved (and upgraded) through
+	// --approve.
+	if write {
+		if policy.CoversWrite(*pol, grant) {
+			return "", false, false
+		}
+	} else if policy.CoversRead(*pol, grant) {
 		return "", false, false
 	}
 	if _, err := os.Stat(grant); err != nil {

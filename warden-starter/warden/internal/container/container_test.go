@@ -58,8 +58,8 @@ func TestTranslatePolicyDocker(t *testing.T) {
 	if !m.Docker.ReadOnly {
 		t.Error("expected read-only root filesystem")
 	}
-	if m.Docker.NetworkMode != "bridge" {
-		t.Errorf("network mode = %q, want bridge", m.Docker.NetworkMode)
+	if m.Docker.NetworkMode != "none" {
+		t.Errorf("network mode = %q, want none (a plain docker run cannot enforce network.allow)", m.Docker.NetworkMode)
 	}
 	if len(m.Docker.CapDrop) != 1 || m.Docker.CapDrop[0] != "ALL" {
 		t.Errorf("cap drop = %v, want [ALL]", m.Docker.CapDrop)
@@ -79,7 +79,9 @@ func TestTranslatePolicyDocker(t *testing.T) {
 }
 
 func TestRenderDockerCommand(t *testing.T) {
-	cmd, err := RenderDockerCommand(testPolicy(), TranslateOptions{Image: "myapp:latest"})
+	p := testPolicy()
+	p.Network.Allow = nil
+	cmd, err := RenderDockerCommand(p, TranslateOptions{Image: "myapp:latest"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,6 +93,46 @@ func TestRenderDockerCommand(t *testing.T) {
 		if !strings.Contains(joined, want) {
 			t.Errorf("docker command missing %q: %s", want, joined)
 		}
+	}
+}
+
+func TestRenderDockerCommandRefusesNetworkAllowlist(t *testing.T) {
+	_, err := RenderDockerCommand(testPolicy(), TranslateOptions{Image: "myapp:latest"})
+	if err == nil {
+		t.Fatal("expected an error: a plain docker run cannot enforce network.allow")
+	}
+	if !strings.Contains(err.Error(), "network.allow") {
+		t.Errorf("error should mention network.allow, got: %v", err)
+	}
+}
+
+func TestNetworkPolicyUsesIPBlockPeers(t *testing.T) {
+	p := testPolicy()
+	p.Network.Allow = []string{"203.0.113.10", "api.github.com"}
+	m, err := GenerateKubernetesManifests(p, TranslateOptions{Image: "myapp:latest"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := m.NetworkPolicy.Spec.Egress
+	if len(rules) != 1 || len(rules[0].To) != 1 {
+		t.Fatalf("expected one egress rule with one ipBlock peer, got %#v", rules)
+	}
+	peer := rules[0].To[0]
+	if peer.IpBlock == nil || peer.IpBlock.CIDR != "203.0.113.10/32" {
+		t.Fatalf("expected ipBlock 203.0.113.10/32, got %#v", peer)
+	}
+}
+
+func TestNetworkPolicyDeniesHostnameOnlyAllowlist(t *testing.T) {
+	// testPolicy() allows only api.github.com, which a standard NetworkPolicy
+	// cannot express. It must fall back to deny-all rather than ports-only.
+	p := testPolicy()
+	m, err := GenerateKubernetesManifests(p, TranslateOptions{Image: "myapp:latest"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.NetworkPolicy.Spec.Egress) != 0 {
+		t.Fatalf("expected deny-all egress for a hostname-only allowlist, got %#v", m.NetworkPolicy.Spec.Egress)
 	}
 }
 

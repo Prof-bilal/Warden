@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/audit"
@@ -292,7 +293,9 @@ func TestJSONRPCEndToEnd(t *testing.T) {
 
 func TestLimitedBufferBoundsOutput(t *testing.T) {
 	buf := &limitedBuffer{max: 10}
-	buf.Write(bytes.Repeat([]byte("a"), 100))
+	if n, err := buf.Write(bytes.Repeat([]byte("a"), 100)); n != 100 || err != nil {
+		t.Fatalf("Write = (%d, %v), want (100, nil): a short count aborts os/exec", n, err)
+	}
 	s := buf.String()
 	if len(strings.TrimSuffix(s, "\n... (output truncated; full output in the sandboxed process's own logs)")) > 10 {
 		t.Errorf("buffer not bounded: %d bytes", len(s))
@@ -300,6 +303,23 @@ func TestLimitedBufferBoundsOutput(t *testing.T) {
 	if !strings.Contains(s, "truncated") {
 		t.Error("truncation must be disclosed")
 	}
+
+	// os/exec copies stdout and stderr concurrently into the same writer;
+	// this must be race-free and keep reporting full writes.
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 100; j++ {
+				if n, err := buf.Write([]byte("c")); n != 1 || err != nil {
+					t.Errorf("concurrent Write = (%d, %v), want (1, nil)", n, err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestWidgetsRender(t *testing.T) {

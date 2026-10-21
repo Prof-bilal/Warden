@@ -2,12 +2,15 @@ package mcpserver
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -268,22 +271,40 @@ func (s *Server) toolRunSandbox(args map[string]any) (*toolResult, error) {
 		StartedAt:  timeNow(),
 	})
 
-	execCmd := exec.Command(bin, runArgs...)
+	// Bound the whole run. Without this a hung server keeps the MCP tool
+	// call (and the caller's agent loop) blocked forever; maxRunSeconds is
+	// the outer backstop, independent of any policy limits.timeout_s.
+	ctx, cancel := context.WithTimeout(context.Background(), maxRunSeconds*time.Second)
+	defer cancel()
+	execCmd := exec.CommandContext(ctx, bin, runArgs...)
+	// Do not let inherited stdout/stderr pipes keep Wait blocked after the
+	// process is killed.
+	execCmd.WaitDelay = 5 * time.Second
 	buf := &limitedBuffer{max: maxOutputBytes}
 	execCmd.Stdout = buf
 	execCmd.Stderr = buf
 	execErr := execCmd.Run()
 
 	status := "completed"
-	if execErr != nil {
+	switch {
+	case ctx.Err() == context.DeadlineExceeded:
+		status = "timed out"
+	case execErr != nil:
 		status = "failed"
 	}
 	events, _ := readEventsFrom(logPath, startOffset)
 	allowed, denied, deniedSample := summarizeEvents(events)
 
+	// ProcessState is nil when the run could not even start (for example the
+	// warden binary is missing); ExitCode() would panic.
+	exitCode := -1
+	if execCmd.ProcessState != nil {
+		exitCode = execCmd.ProcessState.ExitCode()
+	}
+
 	res := &runOutput{
 		Status:       status,
-		ExitCode:     execCmd.ProcessState.ExitCode(),
+		ExitCode:     exitCode,
 		PolicyPath:   policyPath,
 		Command:      resolved,
 		AllowedOps:   allowed,
@@ -329,9 +350,12 @@ func resolveBackendName(backend string) string {
 func renderRunText(r *runOutput) string {
 	var b strings.Builder
 	b.WriteString("WARDEN EXECUTION\n\n")
-	if r.Status == "completed" {
+	switch r.Status {
+	case "completed":
 		b.WriteString("Status  ✓ completed\n")
-	} else {
+	case "timed out":
+		fmt.Fprintf(&b, "Status  ✗ timed out after %ds\n", maxRunSeconds)
+	default:
 		b.WriteString(fmt.Sprintf("Status  ✗ failed (exit code %d)\n", r.ExitCode))
 	}
 	if r.Backend != "" {
@@ -691,25 +715,34 @@ func argStrings(args map[string]any, key string) ([]string, error) {
 
 // limitedBuffer caps captured process output so a chatty or hostile server
 // cannot flood the conversation.
+// limitedBuffer captures at most max bytes while counting everything written.
+// os/exec copies stdout and stderr concurrently into the same writer, so the
+// state is mutex-guarded; and Write must report the full length it accepted,
+// otherwise os/exec aborts the copy with io.ErrShortWrite.
 type limitedBuffer struct {
+	mu    sync.Mutex
 	max   int
 	buf   bytes.Buffer
 	total int
 }
 
 func (l *limitedBuffer) Write(p []byte) (int, error) {
-	l.total += len(p)
-	if l.buf.Len() < l.max {
-		room := l.max - l.buf.Len()
+	n := len(p)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.total += n
+	if room := l.max - l.buf.Len(); room > 0 {
 		if len(p) > room {
 			p = p[:room]
 		}
 		l.buf.Write(p)
 	}
-	return len(p), nil
+	return n, nil
 }
 
 func (l *limitedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	s := l.buf.String()
 	if l.total > l.max {
 		s += "\n... (output truncated; full output in the sandboxed process's own logs)"

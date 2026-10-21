@@ -15,25 +15,30 @@ export default function IntegrationBuilder() {
   const [tools, setTools] = useState("read_text_file");
   const [constraint, setConstraint] = useState("{}");
   const [error, setError] = useState("");
+  // Parse into locals and assign only after BOTH fields validate. Assigning
+  // first (the previous behaviour) left `args` holding a non-array when the
+  // guard threw, so `args.map(...)` below crashed the page even with
+  // `valid === false`.
   let args: string[] = [];
   let constraints: Record<string, Record<string, string[]>> = {};
   let valid = true;
   try {
-    args = JSON.parse(argv);
+    const parsedArgs: string[] = JSON.parse(argv);
     if (
-      !Array.isArray(args) ||
-      !args.length ||
-      args.some((v) => typeof v !== "string" || !v.trim())
+      !Array.isArray(parsedArgs) ||
+      !parsedArgs.length ||
+      parsedArgs.some((v) => typeof v !== "string" || !v.trim())
     )
       throw Error();
-    constraints = JSON.parse(constraint);
+    const parsedConstraints: Record<string, Record<string, string[]>> =
+      JSON.parse(constraint);
     if (
-      !constraints ||
-      Array.isArray(constraints) ||
-      typeof constraints !== "object"
+      !parsedConstraints ||
+      Array.isArray(parsedConstraints) ||
+      typeof parsedConstraints !== "object"
     )
       throw Error();
-    for (const paths of Object.values(constraints)) {
+    for (const paths of Object.values(parsedConstraints)) {
       if (!paths || Array.isArray(paths) || typeof paths !== "object")
         throw Error();
       for (const [pointer, values] of Object.entries(paths)) {
@@ -46,6 +51,8 @@ export default function IntegrationBuilder() {
           throw Error();
       }
     }
+    args = parsedArgs;
+    constraints = parsedConstraints;
   } catch {
     valid = false;
   }

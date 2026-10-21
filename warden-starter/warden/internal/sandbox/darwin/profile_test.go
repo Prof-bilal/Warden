@@ -59,6 +59,25 @@ func TestBuildSeatbeltProfileDenyDefaultAndGrants(t *testing.T) {
 	}
 }
 
+// TestBuildSeatbeltProfileScopesUnixSockets guards the escape where a bare
+// (remote unix-socket) rule let the sandboxed process reach launchd/XPC or
+// any other host socket. The only permitted endpoint is the proxy socket.
+func TestBuildSeatbeltProfileScopesUnixSockets(t *testing.T) {
+	skipOnWindows(t)
+	socket := "/tmp/warden-proxy/egress.sock"
+	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{}, socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(profile, "(allow network-outbound (remote unix-socket))") {
+		t.Fatalf("profile grants every host unix socket\n%s", profile)
+	}
+	want := `(allow network-outbound (remote unix-socket (subpath "/tmp/warden-proxy/egress.sock")))`
+	if !strings.Contains(profile, want) {
+		t.Fatalf("profile missing scoped unix-socket rule %q\n%s", want, profile)
+	}
+}
+
 // TestBuildSeatbeltProfileNoIPLiterals guards the original macOS 26 bug:
 // Seatbelt only accepts * or localhost as the host part of a network
 // address, so no generated rule may contain an IP literal.

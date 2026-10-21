@@ -522,14 +522,84 @@ func privateDir(dir string) error {
 	return privatefile.Protect(dir, true)
 }
 
+const lockStaleAfter = 10 * time.Minute
+
+// lockRecord is written into the lock file so a later invocation can tell
+// whether the holder is still alive and report who owns the lock.
+type lockRecord struct {
+	PID     int   `json:"pid"`
+	Created int64 `json:"created_unix"`
+}
+
 func lock(config string) (func(), error) {
 	path := config + ".warden-lock"
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-	if err != nil {
-		return nil, fmt.Errorf("configuration is locked or not writable; no changes applied")
+	release := func() {
+		// Only remove the lock if we still own it: a stale sweep by another
+		// process may have replaced it.
+		if b, err := os.ReadFile(path); err == nil {
+			var rec lockRecord
+			if json.Unmarshal(b, &rec) == nil && rec.PID != 0 && rec.PID != os.Getpid() {
+				return
+			}
+		}
+		_ = os.Remove(path)
 	}
-	_ = f.Close()
-	return func() { _ = os.Remove(path) }, nil
+
+	for attempt := 0; attempt < 2; attempt++ {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err == nil {
+			_ = privatefile.Protect(path, false)
+			rec, _ := json.Marshal(lockRecord{PID: os.Getpid(), Created: time.Now().Unix()})
+			_, _ = f.Write(rec)
+			_ = f.Close()
+			return release, nil
+		}
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("cannot create lock %q: %w", path, err)
+		}
+		if !lockIsStale(path) {
+			return nil, fmt.Errorf(
+				"configuration is locked by %s (lock file %q); if no warden process is running, remove that file and retry",
+				lockHolder(path), path)
+		}
+		if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
+			return nil, fmt.Errorf("stale lock %q could not be removed: %w", path, rmErr)
+		}
+	}
+	return nil, fmt.Errorf("could not acquire configuration lock %q", path)
+}
+
+// lockIsStale reports whether an existing lock was abandoned. A recorded PID
+// that is no longer alive is definitive on platforms that can probe it; the
+// age fallback covers legacy/empty locks and PID reuse.
+func lockIsStale(path string) bool {
+	if b, err := os.ReadFile(path); err == nil {
+		var rec lockRecord
+		if json.Unmarshal(b, &rec) == nil && rec.PID > 0 && rec.PID != os.Getpid() && !processAlive(rec.PID) {
+			return true
+		}
+	}
+	st, err := os.Stat(path)
+	if err != nil {
+		return true
+	}
+	return time.Since(st.ModTime()) > lockStaleAfter
+}
+
+func lockHolder(path string) string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "another process"
+	}
+	var rec lockRecord
+	if json.Unmarshal(b, &rec) != nil || rec.PID == 0 {
+		return "another process (lock has no owner record)"
+	}
+	when := ""
+	if rec.Created > 0 {
+		when = " since " + time.Unix(rec.Created, 0).Format(time.RFC3339)
+	}
+	return fmt.Sprintf("pid %d%s", rec.PID, when)
 }
 
 func writeNew(path string, data []byte) error {
@@ -550,33 +620,7 @@ func writeNew(path string, data []byte) error {
 // AtomicWrite uses a same-directory temporary file and never follows a
 // destination symlink. Callers must hold the configuration lock for updates.
 func AtomicWrite(path string, data []byte) error {
-	if info, err := os.Lstat(path); err == nil && !info.Mode().IsRegular() {
-		return fmt.Errorf("refusing non-regular destination")
-	} else if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	f, err := os.CreateTemp(filepath.Dir(path), ".warden-tmp-")
-	if err != nil {
-		return err
-	}
-	name := f.Name()
-	defer os.Remove(name)
-	if err = privatefile.Protect(name, false); err != nil {
-		f.Close()
-		return err
-	}
-	if _, err = f.Write(data); err != nil {
-		f.Close()
-		return err
-	}
-	if err = f.Sync(); err != nil {
-		f.Close()
-		return err
-	}
-	if err = f.Close(); err != nil {
-		return err
-	}
-	return os.Rename(name, path)
+	return privatefile.AtomicWrite(path, data)
 }
 
 type InventoryEntry struct {

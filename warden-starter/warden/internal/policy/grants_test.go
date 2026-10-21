@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -116,6 +117,53 @@ func TestSaveRoundTrip(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("mode = %o, want 600", info.Mode().Perm())
+	}
+}
+
+func TestSaveRefusesSymlinkDestination(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on Windows")
+	}
+	dir := t.TempDir()
+	victim := filepath.Join(dir, "victim")
+	if err := os.WriteFile(victim, []byte("keep me"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "policy.yaml")
+	if err := os.Symlink(victim, link); err != nil {
+		t.Skip(err)
+	}
+	p := Policy{Filesystem: Filesystem{Read: []string{"/srv/ro"}}}
+	if err := p.Save(link); err == nil {
+		t.Fatal("Save followed a symlink; it must refuse a non-regular destination")
+	}
+	got, err := os.ReadFile(victim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "keep me" {
+		t.Fatalf("symlink target was modified: %q", got)
+	}
+}
+
+func TestSaveFailureLeavesExistingPolicyIntact(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "policy.yaml")
+	original := []byte("filesystem: {}\n")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Invalid host: validation must fail before anything is written, and the
+	// existing file must not be truncated.
+	p := Policy{Network: Network{Allow: []string{"not a host"}}}
+	if err := p.Save(path); err == nil {
+		t.Fatal("expected validation error")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, original) {
+		t.Fatalf("file changed on failed save: %q", got)
 	}
 }
 

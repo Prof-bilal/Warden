@@ -8,7 +8,7 @@ import { breadcrumbSchema } from "@/lib/schema";
 export const metadata: Metadata = createMetadata({
   title: "Privacy policy",
   description:
-    "What Warden's website collects and does not collect: no third-party analytics, no advertising trackers, and anonymous install counting with no IP addresses stored.",
+    "How the Warden website handles data: Google Analytics and Tag Manager measurement, anonymous install counting with no IP addresses stored, and server-side public statistics.",
   path: "/privacy",
 });
 
@@ -30,9 +30,24 @@ export default function Privacy() {
         <div className="prose-warden mt-10">
           <h2>Analytics</h2>
           <p>
-            This website does not use third-party analytics services and does
-            not set advertising or tracking cookies. We do not profile
-            visitors.
+            This website loads Google Tag Manager and Google Analytics to
+            understand which pages are visited. Google Analytics sets
+            first-party cookies (such as <code>_ga</code> and{" "}
+            <code>_ga_*</code>) and sends page-view data to Google. We do not
+            enable advertising features, build individual profiles, or sell or
+            share this data with anyone other than Google as our analytics
+            processor.
+          </p>
+          <p>
+            You can block this measurement with any content blocker, or opt out
+            with Google&apos;s{" "}
+            <a
+              href="https://tools.google.com/dlpage/gaoptout"
+              rel="noopener noreferrer"
+            >
+              Analytics opt-out add-on
+            </a>
+            .
           </p>
 
           <h2>Install counting</h2>
