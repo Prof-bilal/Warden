@@ -1,0 +1,909 @@
+# Egress and enforcement-integrity matrix.
+#
+# Conventions:
+#   - {{name}} placeholders are substituted from the runner's per-case vars.
+#   - A check name ending in ":x" (collector_hit, dns_hit, step_allow, ...) is
+#     parsed by the runner; unknown checks are UNSUPPORTED, never PASS.
+#   - "requires: netns" means the case needs the Linux test network namespace
+#     (controllable DNS + TEST-NET collectors) and is UNSUPPORTED elsewhere.
+#   - Forbidden collectors are checked globally: any hit is a FAIL.
+#   - Probe addresses are collectors bound by the runner; no external network
+#     or production endpoint is ever used.
+version: 1
+cases:
+  # ---------------------------------------------------------------------------
+  # A. Basic policy tests
+  # ---------------------------------------------------------------------------
+  - id: A1
+    group: A
+    title: Allowed hostname over HTTP succeeds
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-http", "audit_allow"]
+    allow_collector: allowed-http
+    notes: "Positive control: the only path out is the proxy; the collector is on TEST-NET."
+
+  - id: A2
+    group: A
+    title: Allowed hostname over HTTPS succeeds with the test CA
+    policy: allow-host
+    probe: ["https", "--url", "{{allowedHTTPSURL}}", "--ca", "{{caFile}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-https", "audit_allow"]
+    allow_collector: allowed-https
+    notes: "Test certificate only; the system trust store is not modified."
+
+  - id: A3
+    group: A
+    title: Denied hostname fails through the proxy
+    policy: allow-host
+    probe: ["http", "--url", "{{deniedURL}}", "--timeout", "10s"]
+    expect: deny
+    checks: ["audit_deny", "dns_absent:deniedHost"]
+    requires: [netns]
+    notes: "Denied before DNS resolution: no query for the denied name may reach the test resolver."
+
+  - id: A4
+    group: A
+    title: Allowed hostname on a denied port (schema observation)
+    kind: schema_observe
+    policy: allow-host-denied-port
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedAltHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["collector_hit:allowed-alt-http"]
+    requires: [netns]
+    reason: >-
+      The policy schema grants hostnames, not ports, so "allowed hostname on a denied port"
+      cannot be expressed or enforced. This case records what actually happens instead of
+      claiming a PASS: the request to a second service on the same allowlisted host is expected
+      to succeed, proving port-agnostic host grants.
+
+  - id: A5
+    group: A
+    title: Unlisted hostname fails even though it resolves to the allowed IP
+    policy: deny-host
+    probe: ["http", "--url", "http://{{dotHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: deny
+    checks: ["collector_absent:allowed-http", "dns_absent:dotHost"]
+    requires: [netns]
+    notes: "The name is not in network.allow; DNS would return 192.0.2.1, so the failure must be policy, not routing."
+
+  - id: A6
+    group: A
+    title: Direct IP access to an allowed service fails
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedIP}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: deny
+    checks: ["collector_absent:allowed-http"]
+    requires: [netns]
+    notes: "The policy grants a hostname, not the literal address."
+
+  - id: A7
+    group: A
+    title: A hostname resolving to a disallowed IP fails
+    policy: allow-host
+    extra: {allow_var: loopHost}
+    probe: ["http", "--url", "http://{{loopHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: deny
+    checks: ["dns_hit:loopHost", "collector_absent:allowed-http", "error_class_strong"]
+    requires: [netns]
+    notes: "The name is allowlisted but resolves to loopback; dialApproved must refuse the resolved address."
+
+  - id: A8
+    group: A
+    title: A disallowed hostname resolving to the allowed IP still fails
+    policy: deny-host
+    probe: ["http", "--url", "http://{{leakHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: deny
+    checks: ["collector_absent:allowed-http", "dns_absent:leakHost"]
+    requires: [netns]
+
+  - id: A9
+    group: A
+    title: Redirect from an allowed destination to a denied destination fails closed
+    policy: allow-host
+    probe: ["http", "--url", "{{redirectDenied}}", "--timeout", "15s", "--proxy-from-all"]
+    expect: deny
+    checks: ["redirect_positive", "collector_absent:denied-http"]
+    requires: [netns]
+    notes: "The first hop reaches the allowed collector; the redirected second hop is denied."
+
+  - id: A10
+    group: A
+    title: Redirect from an allowed hostname to a raw IP fails
+    policy: allow-host
+    probe: ["http", "--url", "{{redirectIP}}", "--timeout", "15s", "--proxy-from-all"]
+    expect: deny
+    checks: ["redirect_positive", "collector_absent:denied-http"]
+    requires: [netns]
+
+  # ---------------------------------------------------------------------------
+  # B. DNS tests
+  # ---------------------------------------------------------------------------
+  - id: B1
+    group: B
+    title: Allowed hostname resolution succeeds only through the intended resolver path
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-http", "dns_hit:allowedHost", "audit_allow"]
+    allow_collector: allowed-http
+    requires: [netns]
+    notes: "The proxy, not the workload, performs the lookup; the test resolver records it."
+
+  - id: B2
+    group: B
+    title: Denied hostname resolution is blocked and produces no usable result
+    policy: allow-host
+    probe: ["http", "--url", "{{deniedURL}}", "--timeout", "10s"]
+    expect: deny
+    checks: ["audit_deny", "dns_absent:deniedHost"]
+    requires: [netns]
+
+  - id: B3
+    group: B
+    title: DNS query to an unauthorized resolver is blocked
+    policy: allow-host
+    probe: ["dns", "--server", "{{dnsServer}}", "--name", "{{deniedHost}}", "--network", "udp", "--timeout", "5s"]
+    expect: deny
+    checks: ["dns_absent:deniedHost"]
+    requires: [netns]
+    notes: "Direct UDP/53 from the sandbox; the query must never arrive at the test resolver."
+
+  - id: B4
+    group: B
+    title: Direct UDP DNS to port 53 is blocked even for an allowed name
+    policy: allow-host
+    probe: ["dns", "--server", "{{dnsServer}}", "--name", "{{allowedHost}}", "--network", "udp", "--timeout", "5s"]
+    expect: deny
+    checks: ["dns_absent:allowedHost"]
+    requires: [netns]
+
+  - id: B5
+    group: B
+    title: Direct TCP DNS to port 53 is blocked
+    policy: allow-host
+    probe: ["dns", "--server", "{{dnsServer}}", "--name", "{{deniedHost}}", "--network", "tcp", "--timeout", "5s"]
+    expect: deny
+    checks: ["dns_absent:deniedHost"]
+    requires: [netns]
+
+  - id: B6
+    group: B
+    title: DNS over TLS to an unauthorized resolver is blocked
+    policy: allow-host
+    probe: ["raw", "--network", "tcp", "--addr", "{{dotAddr}}", "--payload", "DOT-QUERY-{{token}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["error_class_strong"]
+    requires: [netns]
+    notes: "The TCP transport to 853 is unreachable from the sandbox, so the TLS/DoT layer is never reached."
+
+  - id: B7
+    group: B
+    title: DNS over HTTPS to an unauthorized endpoint is blocked
+    policy: allow-host
+    probe: ["http", "--url", "{{dohURL}}", "--ca", "{{caFile}}", "--timeout", "8s"]
+    expect: deny
+    checks: ["error_class_strong"]
+    requires: [netns]
+    notes: "DoH by raw IP is not authorized by the hostname policy; only the proxy path is."
+
+  - id: B8
+    kind: multi
+    group: B
+    title: DNS rebinding cannot turn an allowed hostname into forbidden access
+    policy: allow-host
+    extra: {allow_var: rebindHost}
+    steps:
+      - name: first
+        probe: ["http", "--url", "http://{{rebindHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+      - name: second
+        probe: ["http", "--url", "http://{{rebindHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["step_allow:first", "step_denied:second", "dns_at_least:2", "no_forbidden"]
+    requires: [netns]
+    notes: "The first answer is the allowed IP, the second is loopback; the proxy must re-check every dial."
+
+  - id: B9
+    group: B
+    title: Mixed-case, trailing-dot and case-normalized host variants follow policy
+    policy: allow-host
+    probe: ["host-variants", "--host", "{{allowedHost}}", "--port", "{{allowedHTTP}}", "--path", "/{{token}}", "--timeout", "10s"]
+    expect: allow
+    checks: ["variants_allowed", "collector_hit:allowed-http"]
+    requires: [netns]
+    notes: "The test zone is ASCII, so IDNA/punycode is equivalent to the canonical form here; a non-ASCII zone would be needed for a true IDNA test."
+
+  - id: B10
+    kind: multi
+    group: B
+    title: Wildcard authorization does not cover the apex or a lookalike domain
+    policy: allow-wildcard
+    extra: {allow_var: wildcard}
+    steps:
+      - name: wildcard-allowed
+        probe: ["http", "--url", "http://{{wildcardHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+      - name: apex-denied
+        probe: ["http", "--url", "http://{{wildcardApex}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+      - name: lookalike-denied
+        probe: ["http", "--url", "http://{{wildcardLookalike}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["wildcard_allowed", "step_denied:apex-denied", "step_denied:lookalike-denied", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  # ---------------------------------------------------------------------------
+  # C. Direct socket tests
+  # ---------------------------------------------------------------------------
+  - id: C1
+    group: C
+    title: Raw TCP connection to a denied host fails
+    policy: no-network
+    probe: ["raw", "--network", "tcp", "--addr", "{{deniedHost}}:{{deniedTCP}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["dns_absent:deniedHost", "collector_absent:denied-tcp"]
+    requires: [netns]
+    notes: "No network grants at all; neither DNS nor a TCP route may be usable."
+
+  - id: C2
+    group: C
+    title: Raw TCP connection to a denied IP fails
+    policy: no-network
+    probe: ["raw", "--network", "tcp", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:denied-tcp"]
+
+  - id: C3
+    group: C
+    title: Raw UDP packet to a denied IP fails
+    policy: no-network
+    probe: ["raw", "--network", "udp", "--addr", "{{deniedIP}}:{{deniedUDP}}", "--payload", "UDP-{{token}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:denied-udp"]
+
+  - id: C4
+    group: C
+    title: IPv6 TCP connection to a denied destination fails
+    policy: no-network
+    probe: ["raw", "--network", "tcp6", "--addr", "[{{v6DeniedIP}}]:{{v6DeniedTCP}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:v6-denied-tcp"]
+    requires: [netns, ipv6]
+
+  - id: C5
+    group: C
+    title: IPv6 UDP packet to a denied destination fails
+    policy: no-network
+    probe: ["raw", "--network", "udp6", "--addr", "[{{v6DeniedIP}}]:{{v6DeniedUDP}}", "--payload", "V6-UDP-{{token}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:v6-denied-udp"]
+    requires: [netns, ipv6]
+
+  - id: C6
+    group: C
+    title: Loopback access to an unauthorized local collector fails
+    policy: allow-host
+    probe: ["raw", "--network", "tcp", "--addr", "127.0.0.1:{{loopbackTCP}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:loopback-tcp"]
+    notes: "The sandbox has its own loopback; a host-side loopback collector must not be reachable through it."
+
+  - id: C7
+    group: C
+    title: Private-address access is denied unless explicitly allowed
+    policy: allow-host
+    probe: ["raw", "--network", "tcp", "--addr", "{{privateIP}}:{{privateTCP}}", "--timeout", "5s"]
+    expect: deny
+    checks: ["collector_absent:private-tcp"]
+
+  - id: C8
+    group: C
+    title: Alternate ports cannot bypass a hostname denial
+    policy: allow-host
+    probe: ["http", "--url", "http://{{deniedHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: deny
+    checks: ["collector_absent:denied-http"]
+    requires: [netns]
+    notes: "The denied host is requested on the allowed collector's port; the allowlist is host-based."
+
+  - id: C9
+    kind: multi
+    group: C
+    title: A subprocess-created socket is subject to the same policy
+    policy: allow-host
+    steps:
+      - name: child-denied
+        probe: ["exec-self", "--timeout", "15s", "--", "raw", "--network", "tcp", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+      - name: child-allowed
+        probe: ["exec-self", "--timeout", "20s", "--", "http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["exec_self_denied", "step_allow:child-allowed", "no_forbidden"]
+
+  - id: C10
+    group: C
+    title: A child process cannot create a new network namespace
+    policy: allow-host
+    probe: ["unshare", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+    expect: observe
+    checks: ["unshare_denied", "post_unshare_denied"]
+    requires: [linux]
+    notes: "The linux backend sets --disable-userns; unshare(CLONE_NEWNET) must be refused."
+
+  # ---------------------------------------------------------------------------
+  # D. Proxy-bypass tests
+  # ---------------------------------------------------------------------------
+  - id: D1
+    group: D
+    title: Ignoring the configured proxy and connecting directly fails
+    policy: allow-host
+    probe: ["http", "--url", "http://{{deniedIP}}:{{deniedHTTP}}/{{token}}", "--no-proxy", "--timeout", "8s"]
+    expect: deny
+    checks: ["collector_absent:denied-http", "error_class_strong"]
+
+  - id: D2
+    group: D
+    title: Setting a different proxy at runtime does not bypass policy
+    policy: allow-host
+    probe: ["env-tamper", "--deny-addr", "{{deniedIP}}:{{deniedTCP}}", "--deny-url", "{{deniedURL}}", "--proxy", "127.0.0.1:1", "--timeout", "8s"]
+    expect: observe
+    checks: ["env_tamper_denied", "no_fake_proxy_reach"]
+
+  - id: D3
+    group: D
+    title: HTTP CONNECT to a denied destination is refused
+    policy: allow-host
+    probe: ["connect", "--target", "{{deniedHost}}:{{deniedHTTP}}", "--timeout", "8s"]
+    expect: deny
+    checks: ["collector_absent:denied-http", "audit_deny"]
+    requires: [netns]
+
+  - id: D4
+    group: D
+    title: HTTPS CONNECT to a denied destination is refused
+    policy: allow-host
+    probe: ["connect", "--target", "{{deniedHost}}:{{deniedHTTPS}}", "--timeout", "8s"]
+    expect: deny
+    checks: ["collector_absent:denied-https", "audit_deny"]
+    requires: [netns]
+
+  - id: D5
+    group: D
+    title: Absolute-form HTTP request to a denied host is refused
+    policy: allow-host
+    probe: ["absolute", "--url", "{{deniedURL}}", "--timeout", "8s"]
+    expect: deny
+    checks: ["collector_absent:denied-http", "audit_deny"]
+    requires: [netns]
+
+  - id: D6
+    group: D
+    title: SOCKS-style connections are not supported by the proxy
+    policy: allow-host
+    probe: ["socks", "--target", "{{deniedHost}}:{{deniedHTTP}}", "--timeout", "8s"]
+    expect: observe
+    checks: ["socks_rejected"]
+    requires: [netns]
+
+  - id: D7
+    group: D
+    title: A two-hop redirect chain cannot escape the allowlist
+    policy: allow-host
+    probe: ["http", "--url", "{{redirectChain}}", "--timeout", "15s", "--proxy-from-all"]
+    expect: deny
+    checks: ["redirect_positive", "collector_absent:denied-http", "error_class_strong"]
+    requires: [netns]
+
+  - id: D8
+    kind: multi
+    group: D
+    title: URL username/password fields do not confuse destination parsing
+    policy: allow-host
+    steps:
+      - name: userinfo-allowed
+        probe: ["userinfo", "--url", "http://user:pass@{{allowedHost}}:{{allowedHTTP}}/{{token}}", "--timeout", "10s"]
+      - name: userinfo-denied
+        probe: ["userinfo", "--url", "http://user:pass@{{deniedHost}}:{{deniedHTTP}}/{{token}}", "--timeout", "10s"]
+    expect: observe
+    checks: ["step_allow:userinfo-allowed", "step_denied:userinfo-denied", "no_forbidden"]
+    requires: [netns]
+
+  - id: D9
+    group: D
+    title: Alternate numeric IP formats cannot bypass the allowlist
+    policy: allow-host
+    probe: ["numeric", "--ip", "{{deniedIP}}", "--port", "{{deniedHTTP}}", "--path", "/{{token}}", "--timeout", "8s"]
+    expect: deny
+    checks: ["numeric_all_denied", "no_forbidden"]
+    notes: "Decimal, hexadecimal, octal, integer, IPv4-mapped and trailing-dot forms."
+
+  - id: D10
+    group: D
+    title: Hostname suffix and dot variants follow allowlist normalization
+    policy: allow-host
+    probe: ["host-variants", "--host", "{{allowedHost}}", "--port", "{{allowedHTTP}}", "--path", "/{{token}}", "--timeout", "10s"]
+    expect: allow
+    checks: ["variants_allowed", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: D11
+    kind: multi
+    group: D
+    title: Proxy authentication headers cannot authorize or leak
+    policy: allow-host
+    steps:
+      - name: auth-allowed
+        probe: ["absolute", "--url", "{{allowedURL}}", "--header", "Proxy-Authorization: Basic d2FyZGVuLWVncmVzcy10ZXN0", "--timeout", "8s"]
+      - name: auth-denied
+        probe: ["absolute", "--url", "{{deniedURL}}", "--header", "Proxy-Authorization: Basic d2FyZGVuLWVncmVzcy10ZXN0", "--timeout", "8s"]
+    expect: observe
+    checks: ["step_allow:auth-allowed", "step_denied:auth-denied", "no_proxy_auth_upstream"]
+    requires: [netns]
+    notes: "A forwarded Proxy-Authorization header is reported as WARN, not treated as a policy bypass."
+
+  - id: D12
+    group: D
+    title: A second proxy process launched as a child has no usable upstream
+    policy: allow-host
+    probe: ["child-proxy", "--deny-url", "{{deniedURL}}", "--timeout", "15s"]
+    expect: observe
+    checks: ["second_proxy_denied", "no_forbidden"]
+    requires: [netns]
+
+  - id: D13
+    kind: multi
+    group: D
+    title: Metadata-style and host-gateway addresses are denied
+    policy: allow-host
+    steps:
+      - name: metadata-raw
+        probe: ["raw", "--network", "tcp", "--addr", "{{metaIP}}:{{metadataTCP}}", "--timeout", "5s"]
+      - name: metadata-proxy
+        probe: ["http", "--url", "http://{{metaIP}}:{{metadataTCP}}/{{token}}", "--timeout", "8s"]
+    expect: observe
+    checks: ["step_denied:metadata-raw", "step_denied:metadata-proxy", "no_forbidden"]
+    requires: [netns]
+
+  - id: D14
+    kind: multi
+    group: D
+    title: Unix-domain access to the proxy control channel is policy-checked
+    policy: allow-host
+    extra: {unix_echo: "true"}
+    steps:
+      - name: proxy-control-socket
+        probe: ["unix", "--path", "/.warden/host-proxy/egress.sock", "--http-host", "{{deniedHost}}:{{deniedHTTP}}", "--timeout", "8s"]
+      - name: granted-path-socket
+        probe: ["unix", "--path", "{{controlSock}}", "--http-host", "{{deniedHost}}:{{deniedHTTP}}", "--timeout", "8s"]
+    expect: observe
+    checks: ["unix_proxy_denied", "unix_connected"]
+    requires: [proxy-unix]
+    notes: "AF_UNIX sockets are not namespaced; the grant boundary is the filesystem. A reachable granted-path socket is a documented WARN, not a PASS."
+
+  # ---------------------------------------------------------------------------
+  # E. Protocol and application tests
+  # ---------------------------------------------------------------------------
+  - id: E1
+    group: E
+    title: HTTP POST with a body is proxied and allowlist-checked
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--method", "POST", "--body", "payload-{{token}}", "--header", "Content-Type: text/plain", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-http", "audit_allow"]
+    allow_collector: allowed-http
+
+  - id: E2
+    group: E
+    title: HTTPS POST with a body is proxied and allowlist-checked
+    policy: allow-host
+    probe: ["https", "--url", "{{allowedHTTPSURL}}", "--method", "POST", "--body", "payload-{{token}}", "--ca", "{{caFile}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-https", "audit_allow"]
+
+  - id: E3
+    group: E
+    title: WebSocket upgrade through the proxy succeeds for an allowed host
+    policy: allow-host
+    probe: ["ws", "--url", "ws://{{allowedHost}}:{{allowedHTTP}}/ws?token={{token}}", "--timeout", "10s"]
+    expect: allow
+    checks: ["ws_ok", "collector_hit:allowed-http"]
+    requires: [netns]
+    notes: "The probe CONNECTs through the proxy for both ws:// and wss://."
+
+  - id: E4
+    group: E
+    title: Server-Sent Events stream through the proxy for an allowed host
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/sse?token={{token}}", "--stream", "--timeout", "15s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "stream_ok", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: E5
+    group: E
+    title: MCP stdio transport can initiate allowed traffic but not denied traffic
+    kind: mcp_stdio
+    policy: allow-host
+    expect: observe
+    checks: ["mcp_initialize", "mcp_allowed_call", "mcp_denied_call"]
+    notes: "The MCP server process performs HTTP tool calls from inside the sandbox."
+
+  - id: E6
+    kind: multi
+    group: E
+    title: MCP HTTP transport is subject to the network policy
+    policy: allow-host
+    steps:
+      - name: mcp-http-allowed
+        probe: ["http", "--url", "{{allowedURL}}", "--method", "POST", "--header", "Content-Type: application/json", "--body", '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"egress","arguments":{"url":"{{allowedURL}}"}}}', "--timeout", "10s", "--proxy-from-all"]
+      - name: mcp-http-denied
+        probe: ["http", "--url", "{{deniedURL}}", "--method", "POST", "--header", "Content-Type: application/json", "--body", '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"egress","arguments":{"url":"{{deniedURL}}"}}}', "--timeout", "10s"]
+    expect: observe
+    checks: ["step_allow:mcp-http-allowed", "step_denied:mcp-http-denied", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: E7
+    kind: multi
+    group: E
+    title: MCP SSE transport is subject to the network policy
+    policy: allow-host
+    steps:
+      - name: sse-allowed
+        probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/sse?token={{token}}", "--header", "Accept: text/event-stream", "--stream", "--timeout", "15s", "--proxy-from-all"]
+      - name: sse-denied
+        probe: ["http", "--url", "{{deniedURL}}", "--header", "Accept: text/event-stream", "--stream", "--timeout", "10s"]
+    expect: observe
+    checks: ["stream_ok", "step_denied:sse-denied", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: E8
+    group: E
+    title: TLS versions below the documented minimum
+    policy: allow-host
+    probe: ["https", "--url", "{{allowedHTTPSURL}}", "--ca", "{{caFile}}", "--tls-min", "1.0", "--tls-max", "1.1", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["tls_below12_observed"]
+    requires: [netns]
+    notes: "The proxy is a blind CONNECT tunnel and cannot enforce a TLS minimum; a negotiated sub-1.2 session is reported as WARN, not as an egress bypass."
+
+  - id: E9
+    group: E
+    title: Certificate validation matches documented expectations
+    policy: allow-host
+    probe: ["https", "--url", "{{allowedHTTPSURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["tls_verify_failed"]
+    notes: "The test CA is not in the system trust store, so the client must refuse the certificate."
+
+  - id: E10
+    kind: multi
+    group: E
+    title: SNI and Host header mismatches do not bypass policy
+    policy: allow-host
+    steps:
+      - name: allowed-host-mismatch
+        probe: ["absolute", "--url", "{{allowedURL}}", "--host-header", "{{deniedHost}}", "--timeout", "8s"]
+      - name: denied-host-mismatch
+        probe: ["absolute", "--url", "{{deniedURL}}", "--host-header", "{{allowedHost}}", "--timeout", "8s"]
+    expect: observe
+    checks: ["step_allow:allowed-host-mismatch", "step_denied:denied-host-mismatch", "host_mismatch_observed"]
+    requires: [netns]
+    notes: "Authorization follows the request-target; a forwarded mismatched Host header is a documented WARN."
+
+  - id: E11
+    group: E
+    title: HTTP/2 through the proxy (or UNSUPPORTED if not negotiated)
+    policy: allow-host
+    probe: ["https", "--url", "{{allowedHTTPSURL}}", "--ca", "{{caFile}}", "--http2", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "h2_negotiated", "collector_hit:allowed-https"]
+    requires: [netns]
+    notes: "If ALPN does not negotiate h2, the case is UNSUPPORTED rather than PASS."
+
+  - id: E12
+    kind: multi
+    group: E
+    title: Chunked requests and streamed responses do not bypass policy
+    policy: allow-host
+    steps:
+      - name: chunked-allowed
+        probe: ["http", "--url", "{{allowedURL}}", "--method", "POST", "--chunked", "--body", "chunk-{{token}}", "--timeout", "10s", "--proxy-from-all"]
+      - name: chunked-denied
+        probe: ["http", "--url", "{{deniedURL}}", "--method", "POST", "--chunked", "--body", "chunk-{{token}}", "--timeout", "10s"]
+    expect: observe
+    checks: ["step_allow:chunked-allowed", "step_denied:chunked-denied", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  # ---------------------------------------------------------------------------
+  # F. Enforcement-integrity tests
+  # ---------------------------------------------------------------------------
+  - id: F1
+    group: F
+    title: Reading the active policy file from inside the sandbox fails
+    policy: allow-host
+    probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}"]
+    expect: observe
+    checks: ["control_write", "policy_read_closed"]
+    extra: {blocked_reason: "the Docker backend runs the container as uid 0 inside the test user namespace; the granted write path is owned by the mapped host user, so the control write fails by uid rather than policy and the tamper-denial result cannot be distinguished from a permission failure"}
+
+  - id: F2
+    group: F
+    title: Modifying the active policy or audit file from inside fails
+    policy: allow-host
+    probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}"]
+    expect: observe
+    checks: ["writes_denied"]
+
+  - id: F3
+    group: F
+    title: Replacing the policy file with a permissive policy fails
+    policy: allow-host
+    probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}"]
+    expect: observe
+    checks: ["policy_replace_denied"]
+
+  - id: F4
+    group: F
+    title: Changing proxy configuration at runtime does not open access
+    policy: allow-host
+    probe: ["env-tamper", "--deny-addr", "{{deniedIP}}:{{deniedTCP}}", "--deny-url", "{{deniedURL}}", "--proxy", "127.0.0.1:1", "--timeout", "8s"]
+    expect: observe
+    checks: ["env_tamper_denied", "no_fake_proxy_reach"]
+
+  - id: F5
+    group: F
+    title: Stopping or killing the in-sandbox proxy endpoint
+    policy: allow-host
+    probe: ["kill-parent", "--delay", "100ms", "--probe-addr", "{{deniedIP}}:{{deniedTCP}}", "--probe-url", "{{allowedURL}}", "--timeout", "5s"]
+    expect: observe
+    checks: ["kill_fail_closed"]
+    notes: "On Linux the in-sandbox bridge is PID 1 of the sandbox PID namespace and ignores untrappable signals; a surviving parent is reported as WARN, while supervisor-kill fail-closed behavior is covered by F15/G9."
+
+  - id: F6
+    group: F
+    title: Sending signals to the enforcement process
+    policy: allow-host
+    probe: ["signal-parent", "--delay", "100ms", "--probe-addr", "{{deniedIP}}:{{deniedTCP}}", "--probe-url", "{{allowedURL}}", "--timeout", "5s"]
+    expect: observe
+    checks: ["kill_fail_closed"]
+    notes: "Same PID-namespace caveat as F5."
+
+  - id: F7
+    group: F
+    title: Redirecting proxy environment variables to an attacker-controlled proxy
+    policy: allow-host
+    probe: ["env-tamper", "--deny-addr", "{{deniedIP}}:{{deniedTCP}}", "--deny-url", "{{deniedURL}}", "--proxy", "{{fakeProxyAddr}}", "--timeout", "8s"]
+    expect: observe
+    checks: ["env_tamper_denied", "no_fake_proxy_reach"]
+    notes: "The fake proxy is the runner's permissive collector; any hit on it is a FAIL."
+
+  - id: F8
+    group: F
+    title: Replacing resolver configuration from inside the sandbox fails
+    policy: allow-host
+    probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}", "--extra-write", "/etc/resolv.conf"]
+    expect: observe
+    checks: ["extra_write_denied:/etc/resolv.conf"]
+
+  - id: F9
+    group: F
+    title: Modifying hosts-file behavior from inside the sandbox fails
+    policy: allow-host
+    probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}", "--extra-write", "/etc/hosts"]
+    expect: observe
+    checks: ["extra_write_denied:/etc/hosts"]
+
+  - id: F10
+    group: F
+    title: A second process attempting direct networking is blocked
+    policy: allow-host
+    probe: ["exec-self", "--timeout", "15s", "--", "raw", "--network", "tcp", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+    expect: observe
+    checks: ["exec_self_denied", "no_forbidden"]
+
+  - id: F11
+    kind: multi
+    group: F
+    title: Unsharing namespaces cannot create an unrestricted network path
+    policy: allow-host
+    steps:
+      - name: unshare
+        probe: ["unshare", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+      - name: recovery
+        probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["unshare_denied", "post_unshare_denied", "step_allow:recovery", "no_forbidden"]
+    requires: [linux]
+
+  - id: F12
+    group: F
+    title: A freshly executed helper binary is subject to the same policy
+    policy: allow-host
+    probe: ["exec-self", "--timeout", "15s", "--", "raw", "--network", "tcp", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
+    expect: observe
+    checks: ["exec_self_denied", "no_forbidden"]
+    notes: "exec-self re-executes the probe binary from the read-only harness mount."
+
+  - id: F13
+    group: F
+    title: A Python interpreter cannot open a denied socket
+    backends: [linux, seatbelt, windows]
+    policy: allow-host
+    requires: [python]
+    probe:
+      - exec
+      - --timeout
+      - 30s
+      - --
+      - python3
+      - -c
+      - |
+        import sys, urllib.request, socket
+        allowed, denied, addr = sys.argv[1], sys.argv[2], sys.argv[3]
+        try:
+            r = urllib.request.urlopen(allowed, timeout=8)
+            print("ALLOWED-OK", r.status)
+            r.close()
+        except Exception as e:
+            print("ALLOWED-ERR", type(e).__name__, e)
+        try:
+            urllib.request.urlopen(denied, timeout=8).close()
+            print("DENIED-OK")
+        except Exception as e:
+            print("DENIED-ERR", type(e).__name__, e)
+        host, port = addr.rsplit(":", 1)
+        try:
+            s = socket.create_connection((host, int(port)), timeout=5)
+            s.close()
+            print("RAW-OK")
+        except Exception as e:
+            print("RAW-ERR", type(e).__name__, e)
+      - "{{allowedURL}}"
+      - "{{deniedURL}}"
+      - "{{deniedIP}}:{{deniedTCP}}"
+    expect: observe
+    checks: ["interpreter_allowed", "interpreter_denied"]
+    notes: "Docker/OCI images without python3 are NOT_RUN; use a python-capable image and remove the backends restriction to cover them."
+
+  - id: F14
+    kind: multi
+    group: F
+    title: Exhausting proxy buffers and many simultaneous connections does not open access
+    policy: allow-host
+    steps:
+      - name: flood
+        probe: ["flood", "--url", "{{allowedURL}}", "--n", "64", "--concurrency", "32", "--timeout", "10s", "--proxy-from-all"]
+      - name: after-flood
+        probe: ["http", "--url", "{{deniedURL}}", "--timeout", "10s"]
+    expect: observe
+    checks: ["flood_allowed", "step_denied:after-flood", "no_forbidden"]
+
+  - id: F15
+    group: F
+    title: Closing the supervisor unexpectedly drops the in-flight request
+    kind: kill_warden
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/slow?delay=5&token={{token}}", "--timeout", "20s", "--proxy-from-all"]
+    expect: observe
+    checks: ["inflight_lost", "no_forbidden"]
+    notes: "The runner kills the Warden process group; the sandboxed request must lose access rather than continue or fall back."
+
+  # ---------------------------------------------------------------------------
+  # G. Resource and abuse tests
+  # ---------------------------------------------------------------------------
+  - id: G1
+    group: G
+    title: High-rate DNS requests from the proxy remain policy-conforming
+    policy: allow-host
+    probe: ["flood", "--url", "{{allowedURL}}", "--n", "60", "--concurrency", "60", "--timeout", "10s"]
+    expect: allow
+    checks: ["flood_allowed", "dns_at_least:10", "no_forbidden"]
+    requires: [netns]
+
+  - id: G2
+    group: G
+    title: Many short TCP connections through the proxy succeed
+    policy: allow-host
+    probe: ["flood", "--url", "{{allowedURL}}", "--n", "50", "--concurrency", "10", "--close", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["flood_allowed", "collector_hit:allowed-http"]
+
+  - id: G3
+    group: G
+    title: A long-lived streamed response stays subject to policy
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/hold?seconds=4&token={{token}}", "--stream", "--timeout", "20s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "stream_ok", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: G4
+    group: G
+    title: A slow HTTP response does not bypass policy or auditing
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/slow?delay=2&token={{token}}", "--timeout", "15s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: G5
+    group: G
+    title: A large response body does not bypass policy
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/large?bytes=2000000&token={{token}}", "--timeout", "30s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "large_body", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: G6
+    group: G
+    title: A large request body does not bypass policy
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--method", "POST", "--body-bytes", "262144", "--timeout", "20s", "--proxy-from-all"]
+    expect: allow
+    checks: ["probe_status_2xx", "collector_hit:allowed-http"]
+    notes: "The collector records the received payload prefix; a truncated/misforwarded body breaks the request."
+
+  - id: G7
+    group: G
+    title: Many concurrent proxy connections succeed and stay authorized
+    policy: allow-host
+    probe: ["flood", "--url", "{{allowedURL}}", "--n", "40", "--concurrency", "40", "--timeout", "10s", "--proxy-from-all"]
+    expect: allow
+    checks: ["flood_allowed", "collector_hit:allowed-http"]
+
+  - id: G8
+    group: G
+    title: Connection exhaustion does not open an unauthorized path
+    policy: allow-host
+    probe: ["flood", "--url", "{{allowedURL}}", "--n", "128", "--concurrency", "128", "--timeout", "3s"]
+    expect: observe
+    checks: ["flood_ran", "no_forbidden"]
+    notes: "Individual requests may fail under exhaustion; the assertion is that no forbidden destination is reached."
+
+  - id: G9
+    group: G
+    title: Proxy restart during an active request fails closed
+    kind: kill_warden
+    policy: allow-host
+    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/hold?seconds=30&token={{token}}", "--stream", "--timeout", "25s", "--proxy-from-all"]
+    expect: observe
+    checks: ["inflight_lost", "no_forbidden"]
+
+  - id: G10
+    group: G
+    title: Resolver failure fails closed and recovers when DNS returns
+    kind: stop_dns
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    steps:
+      - name: recovery
+        probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["resolver_fail_closed", "collector_hit:allowed-http"]
+    requires: [netns]
+
+  - id: G11
+    group: G
+    title: Collector failure fails closed and recovers when the collector returns
+    kind: stop_collector
+    policy: allow-host
+    probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    steps:
+      - name: recovery
+        probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+    expect: observe
+    checks: ["collector_fail_closed", "collector_hit:allowed-http"]
+
+  - id: G12
+    kind: multi
+    group: G
+    title: Network timeouts stay fail-closed
+    policy: allow-host
+    steps:
+      - name: timeout
+        probe: ["http", "--url", "http://{{allowedHost}}:{{allowedHTTP}}/slow?delay=8&token={{token}}", "--timeout", "1s", "--proxy-from-all"]
+      - name: after-timeout
+        probe: ["http", "--url", "{{deniedURL}}", "--timeout", "10s"]
+    expect: observe
+    checks: ["step_timeout:timeout", "step_denied:after-timeout", "no_forbidden"]
+    requires: [netns]

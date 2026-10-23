@@ -1,0 +1,17 @@
+# Fixture intent: a host that is NOT in network.allow.
+# The allowed list is still populated with a different hostname.
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

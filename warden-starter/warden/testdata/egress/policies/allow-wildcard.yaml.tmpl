@@ -1,0 +1,16 @@
+# Fixture intent: wildcard hostname grant (*.zone).
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

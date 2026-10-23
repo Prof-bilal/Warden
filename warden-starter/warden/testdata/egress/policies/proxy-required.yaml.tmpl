@@ -1,0 +1,16 @@
+# Fixture intent: the only egress path is the Warden proxy; direct bypass must fail.
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

@@ -1,0 +1,17 @@
+# Egress matrix fixture: exactly one allowed hostname.
+# Everything else is denied by construction (bind-mount sandbox + proxy allowlist).
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

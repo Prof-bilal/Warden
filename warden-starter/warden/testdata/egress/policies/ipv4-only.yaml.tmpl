@@ -1,0 +1,16 @@
+# Fixture intent: allowed hostname resolving only to IPv4 (A record).
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

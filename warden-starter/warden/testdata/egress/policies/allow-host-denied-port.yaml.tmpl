@@ -1,0 +1,18 @@
+# Fixture intent: allowed hostname, denied port.
+# Warden network.allow grants hosts, not ports (docs/schema.md), so this
+# fixture is identical to allow-host; the matrix records the schema limit.
+filesystem:
+  read:
+    - "{{ .ProbeDir }}"
+  write:
+    - "{{ .OutDir }}"
+network:
+  allow:
+{{- range .Allow }}
+    - "{{ . }}"
+{{- end }}
+env:
+  allow:
+    - "PATH"
+limits:
+  timeout_s: {{ .Timeout }}

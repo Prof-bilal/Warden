@@ -1,0 +1,400 @@
+name: Egress Integrity
+
+# Cross-platform proof suite for Warden's network policy. The suite is
+# evidence-first: every backend uploads run.json / results.jsonl / report.md,
+# and WARN, UNSUPPORTED, BLOCKED and NOT_RUN are never converted into PASS.
+#
+# Linux and Docker run the full matrix inside an unprivileged user+net+mount
+# namespace with local TEST-NET collectors and a local DNS server. macOS and
+# Windows run in host mode (IP-literal allow + LAN-IP deny); hostname/DNS/IPv6
+# cases are reported UNSUPPORTED there, never PASS. Windows WFP enforcement
+# requires self-hosted hardware; the hosted job records BLOCKED/NOT_RUN.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so drift in hosted runners or upstream kernels is visible.
+    - cron: "17 4 * * 1"
+  pull_request:
+    paths:
+      - "warden-starter/warden/internal/policy/**"
+      - "warden-starter/warden/internal/proxy/**"
+      - "warden-starter/warden/internal/sandbox/**"
+      - "warden-starter/warden/testdata/egress/**"
+      - ".github/workflows/egress-integrity.yml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: warden-starter/warden
+
+concurrency:
+  group: egress-integrity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-bwrap:
+    name: Linux bubblewrap (full netns matrix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: warden-starter/warden/go.sum
+
+      - name: Install sandbox prerequisites
+        # Ubuntu 24.04 restricts unprivileged user namespaces through
+        # AppArmor. The egress runner needs both `unshare` (test network) and
+        # `bwrap` (Warden's Linux backend). Use scoped profiles instead of
+        # disabling the restriction host-wide. Fail loudly if either cannot
+        # be exercised; a silent host-mode fallback would hide most cases.
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap strace iproute2 util-linux apparmor-profiles
+          command -v bwrap
+          command -v unshare
+          command -v strace
+
+          if [[ -f /usr/share/apparmor/extra-profiles/bwrap-userns-restrict ]]; then
+            sudo cp /usr/share/apparmor/extra-profiles/bwrap-userns-restrict /etc/apparmor.d/bwrap-userns-restrict
+            sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+
+          PROFILE_TMP="$(mktemp)"
+          cat > "$PROFILE_TMP" <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+            include if exists <local/bwrap>
+          }
+          profile warden-egress-unshare /usr/bin/unshare flags=(unconfined) {
+            userns,
+            include if exists <local/warden-egress-unshare>
+          }
+          EOF
+          sed -i 's/^          //' "$PROFILE_TMP"
+          sudo cp "$PROFILE_TMP" /etc/apparmor.d/warden-egress
+          if ! sudo apparmor_parser -r /etc/apparmor.d/warden-egress; then
+            grep -v '^abi ' "$PROFILE_TMP" > "${PROFILE_TMP}.nobi"
+            sudo cp "${PROFILE_TMP}.nobi" /etc/apparmor.d/warden-egress
+            sudo apparmor_parser -r /etc/apparmor.d/warden-egress
+          fi
+          rm -f "$PROFILE_TMP" "${PROFILE_TMP}.nobi"
+
+          if ! unshare --user --map-root-user --net --mount --propagation private -- true; then
+            echo "::error::unprivileged user+net+mount namespaces are unavailable; the egress netns matrix cannot run"
+            sudo aa-status 2>/dev/null | head -60 || true
+            exit 1
+          fi
+          if ! bwrap --unshare-user --unshare-net --uid 0 --gid 0 \
+              --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 \
+              --ro-bind /bin /bin /bin/true; then
+            echo "::error::bubblewrap user namespaces are unavailable; the Linux backend cannot run"
+            exit 1
+          fi
+
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -count=1 ./internal/policy/... ./internal/proxy/...
+
+      - name: Build egress runner
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/egress-runner" ./testdata/egress/runner
+
+      - name: Run full Linux bubblewrap matrix
+        # -require-complete rejects BLOCKED/NOT_RUN. WARN and UNSUPPORTED are
+        # reported in the summary and are never counted as PASS.
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/egress-runner" \
+            -backend linux -mode netns -build -require-complete \
+            -out "$RUNNER_TEMP/egress-linux"
+
+      - name: Upload Linux evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: egress-linux-bwrap
+          path: ${{ runner.temp }}/egress-linux
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish Linux summary
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/egress-linux/report.md" ]]; then
+            cat "$RUNNER_TEMP/egress-linux/report.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No Linux egress report was generated; see job logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  docker:
+    name: Docker (full netns matrix, known userns limitation)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: warden-starter/warden/go.sum
+
+      - name: Install namespace prerequisites
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y iproute2 util-linux apparmor-profiles
+          command -v unshare
+          command -v ip
+
+          PROFILE_TMP="$(mktemp)"
+          cat > "$PROFILE_TMP" <<'EOF'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile warden-egress-unshare /usr/bin/unshare flags=(unconfined) {
+            userns,
+            include if exists <local/warden-egress-unshare>
+          }
+          EOF
+          sed -i 's/^          //' "$PROFILE_TMP"
+          sudo cp "$PROFILE_TMP" /etc/apparmor.d/warden-egress-unshare
+          if ! sudo apparmor_parser -r /etc/apparmor.d/warden-egress-unshare; then
+            grep -v '^abi ' "$PROFILE_TMP" > "${PROFILE_TMP}.nobi"
+            sudo cp "${PROFILE_TMP}.nobi" /etc/apparmor.d/warden-egress-unshare
+            sudo apparmor_parser -r /etc/apparmor.d/warden-egress-unshare
+          fi
+          rm -f "$PROFILE_TMP" "${PROFILE_TMP}.nobi"
+
+          if ! unshare --user --map-root-user --net --mount --propagation private -- true; then
+            echo "::error::unprivileged user+net+mount namespaces are unavailable; the Docker netns matrix cannot run"
+            exit 1
+          fi
+
+      - name: Verify Docker daemon and image
+        # Warden refuses to pull images implicitly. Pull explicitly so a
+        # missing image is a clear CI setup failure, not a blocked suite.
+        run: |
+          set -euo pipefail
+          docker info --format '{{.ServerVersion}} {{.Server.Os}}/{{.Server.Arch}}'
+          docker image inspect alpine:3.20 >/dev/null 2>&1 || docker pull alpine:3.20
+          docker image inspect alpine:3.20 --format '{{.Id}}'
+
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -count=1 ./internal/policy/... ./internal/proxy/...
+
+      - name: Build egress runner
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/egress-runner" ./testdata/egress/runner
+
+      - name: Run full Docker matrix
+        # `newgrp docker` makes the docker group the primary gid before the
+        # unprivileged userns is created, so the mapped gid can open the
+        # Docker socket. This mirrors running the suite as a normal user.
+        #
+        # Known product defect: Warden sees uid 0 inside the userns and passes
+        # --user 0:0 to Docker. The harness opens the 0700 proxy socket to
+        # 0777 so the root container can reach the bridge; F1 (write-grant
+        # control) is BLOCKED because a root container without
+        # CAP_DAC_OVERRIDE cannot write the user-owned grant. This is not a
+        # network-policy bypass, but it is why the Docker verdict is
+        # INCONCLUSIVE rather than YES.
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/run-egress-docker.sh" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec "$RUNNER_TEMP/egress-runner" \
+            -backend docker -image alpine:3.20 -mode netns -build \
+            -out "$RUNNER_TEMP/egress-docker"
+          EOF
+          sed -i 's/^          //' "$RUNNER_TEMP/run-egress-docker.sh"
+          chmod +x "$RUNNER_TEMP/run-egress-docker.sh"
+          newgrp docker -c "$RUNNER_TEMP/run-egress-docker.sh"
+
+      - name: Note Docker userns limitation
+        if: always()
+        run: |
+          echo "::warning::Docker netns runs under an unprivileged user namespace. Warden passes --user 0:0, the harness opens the test proxy socket, and F1 is expected to be BLOCKED. See run.json limitations; this is not a policy bypass."
+
+      - name: Upload Docker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: egress-docker
+          path: ${{ runner.temp }}/egress-docker
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish Docker summary
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/egress-docker/report.md" ]]; then
+            cat "$RUNNER_TEMP/egress-docker/report.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No Docker egress report was generated; see job logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  macos-seatbelt:
+    name: macOS Seatbelt (host mode)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: warden-starter/warden/go.sum
+
+      - name: Verify Seatbelt prerequisite
+        run: |
+          if ! command -v sandbox-exec >/dev/null; then
+            echo "::warning::sandbox-exec is missing; the Seatbelt backend will refuse to run and cases will be BLOCKED, not PASS"
+          fi
+          python3 --version || echo "::warning::python3 is missing; F13 will be UNSUPPORTED"
+
+      - run: go build ./...
+      - run: go vet ./...
+
+      - name: Build egress runner
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/egress-runner" ./testdata/egress/runner
+
+      - name: Run macOS Seatbelt host-mode matrix
+        # There is no controllable test DNS/netns on a hosted macOS runner.
+        # The allowed destination is the IP literal 127.0.0.1; hostname, DNS
+        # and IPv6 cases are reported UNSUPPORTED. This job must never be
+        # interpreted as a PASS for those paths.
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/egress-runner" \
+            -backend seatbelt -mode host -build \
+            -out "$RUNNER_TEMP/egress-macos"
+
+      - name: Upload macOS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: egress-macos-seatbelt
+          path: ${{ runner.temp }}/egress-macos
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish macOS summary
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/egress-macos/report.md" ]]; then
+            cat "$RUNNER_TEMP/egress-macos/report.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No macOS egress report was generated; see job logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  windows-appcontainer:
+    name: Windows AppContainer/WFP (hosted, capability only)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: warden-starter/warden/go.sum
+
+      - run: go build ./...
+      - run: go vet ./...
+
+      - name: Build egress runner
+        shell: pwsh
+        run: |
+          go build -o "$env:RUNNER_TEMP\egress-runner.exe" ./testdata/egress/runner
+
+      - name: Run Windows host-mode matrix
+        shell: pwsh
+        # Hosted windows-latest ships fwpuclnt.dll but refuses WFP engine
+        # sessions (see .github/workflows/ci.yml). Warden therefore refuses
+        # to run the Windows backend and the runner records BLOCKED/NOT_RUN.
+        # This job is a capability report, never a PASS claim.
+        run: |
+          & "$env:RUNNER_TEMP\egress-runner.exe" `
+            -backend windows -mode host -build `
+            -out "$env:RUNNER_TEMP\egress-windows"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: egress-windows-appcontainer
+          path: ${{ runner.temp }}/egress-windows
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish Windows summary
+        if: always()
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP "egress-windows\report.md"
+          if (Test-Path $report) {
+            Get-Content $report | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "No Windows egress report was generated; see job logs." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          if (-not (Test-Path $report)) {
+            Write-Host "::warning::Windows egress report missing; hosted runners cannot open WFP engine sessions. Use the self-hosted WFP job for real enforcement."
+          }
+
+  # Real Windows WFP enforcement cannot run on GitHub-hosted runners. Enable
+  # this job by setting the repository variable WARDEN_WFP_SELF_HOSTED=true
+  # and registering a runner with the labels below on hardware that permits
+  # WFP engine sessions. -require-complete rejects BLOCKED/NOT_RUN, so a real
+  # run cannot silently degrade into a capability report.
+  windows-wfp-self-hosted:
+    name: Windows AppContainer/WFP (self-hosted, real enforcement)
+    if: ${{ vars.WARDEN_WFP_SELF_HOSTED == 'true' }}
+    runs-on: [self-hosted, windows, x64, wfp]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: warden-starter/warden/go.sum
+
+      - run: go build ./...
+      - run: go vet ./...
+
+      - name: Build egress runner
+        shell: pwsh
+        run: |
+          go build -o "$env:RUNNER_TEMP\egress-runner.exe" ./testdata/egress/runner
+
+      - name: Run Windows host-mode matrix (require complete)
+        shell: pwsh
+        run: |
+          & "$env:RUNNER_TEMP\egress-runner.exe" `
+            -backend windows -mode host -build -require-complete `
+            -out "$env:RUNNER_TEMP\egress-windows-wfp"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows WFP evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: egress-windows-wfp
+          path: ${{ runner.temp }}/egress-windows-wfp
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish Windows WFP summary
+        if: always()
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP "egress-windows-wfp\report.md"
+          if (Test-Path $report) {
+            Get-Content $report | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "No Windows WFP report was generated; see job logs." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
