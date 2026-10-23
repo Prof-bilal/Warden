@@ -1,6 +1,5 @@
-# Fixture intent: allowed hostname, denied port.
-# Warden network.allow grants hosts, not ports (docs/schema.md), so this
-# fixture is identical to allow-host; the matrix records the schema limit.
+# Fixture intent: the allowlist grants one host:port pair, not the whole host.
+# A request to the same hostname on another port must be denied.
 filesystem:
   read:
     - "{{ .ProbeDir }}"

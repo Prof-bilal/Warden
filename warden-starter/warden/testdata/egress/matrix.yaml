@@ -45,19 +45,20 @@ cases:
     notes: "Denied before DNS resolution: no query for the denied name may reach the test resolver."
 
   - id: A4
+    kind: multi
     group: A
-    title: Allowed hostname on a denied port (schema observation)
-    kind: schema_observe
+    title: Port-qualified grant allows the granted port and denies another port
     policy: allow-host-denied-port
-    probe: ["http", "--url", "http://{{allowedHost}}:{{allowedAltHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
+    extra: {allow_port: allowedHTTP}
+    steps:
+      - name: allowed-port
+        probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
+      - name: denied-port
+        probe: ["http", "--url", "http://{{allowedHost}}:{{allowedAltHTTP}}/{{token}}", "--timeout", "10s", "--proxy-from-all"]
     expect: observe
-    checks: ["collector_hit:allowed-alt-http"]
+    checks: ["step_allow:allowed-port", "step_denied:denied-port", "collector_absent:allowed-alt-http", "no_forbidden"]
     requires: [netns]
-    reason: >-
-      The policy schema grants hostnames, not ports, so "allowed hostname on a denied port"
-      cannot be expressed or enforced. This case records what actually happens instead of
-      claiming a PASS: the request to a second service on the same allowlisted host is expected
-      to succeed, proving port-agnostic host grants.
+    notes: "network.allow accepts host:port. A bare host grants every port; a port-qualified grant applies only to that port."
 
   - id: A5
     group: A
@@ -326,8 +327,8 @@ cases:
     probe: ["unshare", "--addr", "{{deniedIP}}:{{deniedTCP}}", "--timeout", "5s"]
     expect: observe
     checks: ["unshare_denied", "post_unshare_denied"]
-    requires: [linux]
-    notes: "The linux backend sets --disable-userns; unshare(CLONE_NEWNET) must be refused."
+    requires: [netns]
+    notes: "The linux backend sets --disable-userns; Docker drops CAP_SYS_ADMIN. In both cases unshare(CLONE_NEWNET) must be refused or produce a namespace with no route."
 
   # ---------------------------------------------------------------------------
   # D. Proxy-bypass tests
@@ -466,7 +467,7 @@ cases:
   - id: D14
     kind: multi
     group: D
-    title: Unix-domain access to the proxy control channel is policy-checked
+    title: Unix control socket is policy-checked; granted local IPC stays filesystem-scoped
     policy: allow-host
     extra: {unix_echo: "true"}
     steps:
@@ -475,9 +476,9 @@ cases:
       - name: granted-path-socket
         probe: ["unix", "--path", "{{controlSock}}", "--http-host", "{{deniedHost}}:{{deniedHTTP}}", "--timeout", "8s"]
     expect: observe
-    checks: ["unix_proxy_denied", "unix_connected"]
+    checks: ["unix_proxy_denied", "unix_granted_path_reachable"]
     requires: [proxy-unix]
-    notes: "AF_UNIX sockets are not namespaced; the grant boundary is the filesystem. A reachable granted-path socket is a documented WARN, not a PASS."
+    notes: "AF_UNIX sockets are not namespaced and are not an egress path. The host proxy control socket still enforces network.allow (403); a socket inside a granted path is reachable by design, and the filesystem grant is its boundary."
 
   # ---------------------------------------------------------------------------
   # E. Protocol and application tests
@@ -561,9 +562,9 @@ cases:
     policy: allow-host
     probe: ["https", "--url", "{{allowedHTTPSURL}}", "--ca", "{{caFile}}", "--tls-min", "1.0", "--tls-max", "1.1", "--timeout", "10s", "--proxy-from-all"]
     expect: observe
-    checks: ["tls_below12_observed"]
+    checks: ["tls_floor_denied", "collector_absent:allowed-https", "no_forbidden"]
     requires: [netns]
-    notes: "The proxy is a blind CONNECT tunnel and cannot enforce a TLS minimum; a negotiated sub-1.2 session is reported as WARN, not as an egress bypass."
+    notes: "The proxy inspects the first ClientHello in a CONNECT tunnel and rejects a client whose highest offered version is below 1.2. It does not decrypt or otherwise inspect the tunnel."
 
   - id: E9
     group: E
@@ -711,7 +712,7 @@ cases:
         probe: ["http", "--url", "{{allowedURL}}", "--timeout", "10s", "--proxy-from-all"]
     expect: observe
     checks: ["unshare_denied", "post_unshare_denied", "step_allow:recovery", "no_forbidden"]
-    requires: [linux]
+    requires: [netns]
 
   - id: F12
     group: F

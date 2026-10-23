@@ -132,13 +132,18 @@ filesystem: {}
 func TestValidateRejectsBadHosts(t *testing.T) {
 	for _, host := range []string{
 		"",
-		"api.github.com:443", // ports not allowed in schema
+		"api.github.com:",
+		"api.github.com:0",
+		"api.github.com:65536",
+		"api.github.com:0443",
+		"api.github.com:https",
 		"https://api.github.com",
 		"api/github.com",
 		"bad_host", // underscore not allowed in DNS hostnames
 		"foo..com",
 		"-leading.example",
 		"trailing-.example",
+		"[::1]",
 	} {
 		p := Policy{Command: []string{"true"}, Network: Network{Allow: []string{host}}}
 		if err := p.Validate(); err == nil {
@@ -150,15 +155,40 @@ func TestValidateRejectsBadHosts(t *testing.T) {
 func TestValidateAcceptsHostsAndIPs(t *testing.T) {
 	for _, host := range []string{
 		"api.github.com",
+		"api.github.com:443",
+		"*.example.com:8443",
 		"a-b.c-d.e",
 		"localhost",
 		"127.0.0.1",
+		"127.0.0.1:80",
 		"192.168.1.1",
 		"::1",
+		"[::1]:443",
 	} {
 		p := Policy{Command: []string{"true"}, Network: Network{Allow: []string{host}}}
 		if err := p.Validate(); err != nil {
 			t.Errorf("Validate: unexpected error for host %q: %v", host, err)
+		}
+	}
+}
+
+func TestSplitHostPortRule(t *testing.T) {
+	cases := []struct {
+		rule, host, port string
+		hasPort          bool
+	}{
+		{"api.github.com", "api.github.com", "", false},
+		{"api.github.com:443", "api.github.com", "443", true},
+		{"*.example.com:8443", "*.example.com", "8443", true},
+		{"127.0.0.1:80", "127.0.0.1", "80", true},
+		{"::1", "::1", "", false},
+		{"[::1]:443", "::1", "443", true},
+	}
+	for _, tc := range cases {
+		host, port, hasPort, err := splitHostPortRule(tc.rule)
+		if err != nil || host != tc.host || port != tc.port || hasPort != tc.hasPort {
+			t.Errorf("splitHostPortRule(%q) = (%q, %q, %v, %v), want (%q, %q, %v, nil)",
+				tc.rule, host, port, hasPort, err, tc.host, tc.port, tc.hasPort)
 		}
 	}
 }

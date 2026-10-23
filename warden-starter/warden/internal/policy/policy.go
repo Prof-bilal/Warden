@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -268,9 +269,59 @@ func checkGrantPath(path, kind string) error {
 	return nil
 }
 
-// validateHost accepts a bare hostname or an IP literal. Ports and URLs are
-// not accepted: the policy grants hosts, and the egress layer handles ports.
+// splitHostPortRule splits one network.allow entry into a host pattern and
+// an optional numeric port. A bare hostname, IPv4 literal, or IPv6 literal
+// means every port. A port must be written as host:port, with IPv6 literals
+// bracketed ([2001:db8::1]:443); this avoids guessing whether the last
+// hextet of an unbracketed IPv6 address is a port.
+func splitHostPortRule(rule string) (host, port string, hasPort bool, err error) {
+	if rule == "" {
+		return "", "", false, fmt.Errorf("host must not be empty")
+	}
+	if strings.HasPrefix(rule, "[") {
+		host, port, err = net.SplitHostPort(rule)
+		if err != nil || host == "" || port == "" {
+			return "", "", false, fmt.Errorf("%q is not a valid [IPv6]:port", rule)
+		}
+		return host, port, true, nil
+	}
+	// Exactly one colon is the only unambiguous hostname:port form. Bare
+	// IPv6 literals have at least two colons and are handled below.
+	if strings.Count(rule, ":") == 1 {
+		host, port, err = net.SplitHostPort(rule)
+		if err != nil || host == "" || port == "" {
+			return "", "", false, fmt.Errorf("%q is not a bare hostname, IP, or host:port", rule)
+		}
+		return host, port, true, nil
+	}
+	return rule, "", false, nil
+}
+
+func validatePort(port string) error {
+	n, err := strconv.Atoi(port)
+	if err != nil || n < 1 || n > 65535 {
+		return fmt.Errorf("%q is not a TCP port (want 1-65535)", port)
+	}
+	if strconv.Itoa(n) != port {
+		return fmt.Errorf("%q must be a canonical decimal port", port)
+	}
+	return nil
+}
+
+// validateHost accepts a bare hostname or IP literal, optionally followed by
+// a port (host:port). A bare entry grants every port; a port-qualified entry
+// grants only that port. URLs, paths, and service names are rejected.
 func validateHost(host string) error {
+	hostPart, port, hasPort, err := splitHostPortRule(host)
+	if err != nil {
+		return err
+	}
+	if hasPort {
+		if err := validatePort(port); err != nil {
+			return fmt.Errorf("%q: %w", host, err)
+		}
+	}
+	host = hostPart
 	if host == "" {
 		return fmt.Errorf("host must not be empty")
 	}
@@ -281,8 +332,8 @@ func validateHost(host string) error {
 	if strings.ContainsAny(host, "/?#") {
 		return fmt.Errorf("%q is not a bare hostname or IP", host)
 	}
-	// A colon now means either a port or a malformed v6-ish literal; both
-	// are rejected (IPv6 literals were accepted by net.ParseIP above).
+	// A colon now means a malformed v6-ish literal or extra port separator;
+	// reject it (IPv6 literals were accepted by net.ParseIP above).
 	if strings.Contains(host, ":") {
 		return fmt.Errorf("%q is not a bare hostname or IP", host)
 	}

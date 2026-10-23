@@ -137,7 +137,9 @@ One implementation per platform, behind a common interface
   - other: Docker → fail closed
   Heavier than native primitives, but works anywhere a Docker daemon is
   usable. Containers run `--network none` with the same loopback proxy-bridge
-  pattern as Linux; host paths are bind-mounted deny-by-default. The image
+  pattern as Linux; host paths are bind-mounted deny-by-default. `--init`
+  keeps the in-container bridge off PID 1 so killing it terminates the
+  workload instead of leaving a signal-immune parent. The image
   defaults to `alpine:3.20` (override with `WARDEN_DOCKER_IMAGE`). The
   in-container proxy bridge must be a Linux ELF `warden` binary: on Linux
   hosts the current executable is used; on macOS/Windows set
@@ -157,8 +159,13 @@ fresh network namespace with no external route. A loopback bridge is its only
 network listener; it forwards HTTP proxy traffic over a private Unix socket to
 the host-side proxy. `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` point to that
 bridge. Direct connects and direct DNS have no route; the host-side proxy
-checks `network.allow` before it performs any DNS lookup or opens an upstream
-connection. It logs every allow/deny decision.
+checks the destination hostname and port against `network.allow` before it
+performs any DNS lookup or opens an upstream connection. A bare host grants
+every port; `host:port` grants only that port. For CONNECT tunnels, the proxy
+inspects the first TLS ClientHello and rejects a client whose highest offered
+version is below TLS 1.2; it does not decrypt the tunnel or bind SNI to
+policy, and non-TLS/server-first traffic is forwarded without inspection. It
+logs every allow/deny decision.
 
 With `--approve`, the proxy consults an approver callback before denying:
 the user may allow the host once, for the session (in-memory allowlist), or
@@ -206,7 +213,8 @@ filesystem:
   # everything else is invisible inside the sandbox, not just unreadable
 
 network:
-  allow: ["api.github.com"]      # hostnames the server may connect to
+  allow: ["api.github.com", "api.example.com:443"]
+  # bare host = every port; host:port = that port only
   # DNS resolution for non-allowlisted hosts fails; no leakage via DNS
 
 env:

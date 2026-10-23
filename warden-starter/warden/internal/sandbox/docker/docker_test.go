@@ -33,6 +33,7 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	}
 	joined := strings.Join(args, " ")
 	for _, want := range []string{
+		"--init",
 		"--network none",
 		"--read-only",
 		"--cap-drop ALL",

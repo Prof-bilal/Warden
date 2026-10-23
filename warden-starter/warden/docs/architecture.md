@@ -154,11 +154,17 @@ The egress proxy is the *only* network出口 from the sandbox:
    to `127.0.0.1:18080` (the bridge inside the namespace).
 2. The bridge accepts loopback TCP connections and forwards them over a
    bind-mounted Unix socket to the host-side proxy.
-3. The host-side proxy checks the hostname against `network.allow` *before*
-   performing any DNS lookup or TCP connection. Blocked requests return 403.
+3. The host-side proxy checks the hostname and port against `network.allow`
+   *before* performing any DNS lookup or TCP connection. Blocked requests
+   return 403. A bare host grants every port; `host:port` grants only that
+   port.
 4. Allowed connections are forwarded to the upstream host. For HTTP CONNECT
    (HTTPS/TLS), the proxy hijacks the connection and bidirectionally pumps
-   data.
+   data after inspecting the first TLS ClientHello. A client whose highest
+   offered version is below TLS 1.2 receives a fatal `protocol_version` alert
+   and never reaches the upstream. The proxy does not decrypt the tunnel or
+   bind SNI to policy; non-TLS and server-first CONNECT traffic is forwarded
+   without inspection.
 5. Every allow/deny decision is logged as a structured audit event.
 
 DNS leakage is prevented because DNS resolution only happens inside the

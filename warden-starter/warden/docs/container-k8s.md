@@ -79,6 +79,11 @@ warden k8s render --policy container-policy.yaml --image myapp:latest
 
 *Note: Docker and K8s have FQDN filtering limitations - see [Network Limitations](#network-limitations) below.
 
+Port-qualified `network.allow` entries (`host:port`) are enforced by Warden's
+own egress proxy. The generic Docker/Kubernetes manifest translation path does
+not preserve the host-to-port pairing; use the Warden proxy path when port
+granularity is required.
+
 ### Environment → Container Configuration
 
 | Warden Policy | Docker | Kubernetes |

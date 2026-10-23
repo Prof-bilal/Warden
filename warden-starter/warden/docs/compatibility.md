@@ -82,6 +82,14 @@ Every non-pass row gets a class, per the M8 triage rule:
    `warden gateway run` now resolve bare names via `LookPath` (the same
    behavior `gateway init` already had) and still fail closed off-PATH.
    Regression test: `TestResolveExecutable`.
+3. **Port-granular egress could not be expressed.** A bare
+   `network.allow` host granted every port. The schema now accepts
+   `host:port` (and `[IPv6]:port`) to grant one TCP port; a bare host still
+   grants every port. The proxy checks the port before DNS and does not offer
+   interactive approval for a port mismatch, so a port-restricted host cannot
+   be widened by approving a different port. Regression tests:
+   `TestSplitHostPortRule`, `TestAllowedHonorsPortSpecificGrants`, and
+   `TestProxyPortSpecificGrantDeniesOtherPort`.
 
 ### Schema gaps (access the schema cannot express yet)
 

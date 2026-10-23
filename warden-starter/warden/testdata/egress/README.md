@@ -2,9 +2,11 @@
 
 External, evidence-first test harness for Warden's network policy. It is not
 part of the Warden binary. The full evidence report is at
-[`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md). The branch
-also includes a separate Docker backend fix (mapped host uid/gid; see report
-§4.1); the harness itself does not change product code.
+[`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md). The
+release-readiness branch also includes the product fixes exercised by the
+suite: port-qualified `network.allow` entries, a CONNECT TLS 1.2 ClientHello
+floor, proxy hop-by-hop header stripping, and Docker `--init` so the bridge is
+not PID 1.
 
 The suite answers one question: **can a sandboxed process reach a destination
 that the policy did not authorize, through any path the harness can exercise?**
@@ -181,15 +183,28 @@ never converted to PASS.
 See [`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md) for
 the current evidence and boundaries. In short:
 
+- Linux bubblewrap and Docker both pass all 83 cases with no WARN,
+  UNSUPPORTED, BLOCKED, or NOT_RUN results on this host. The Docker run uses
+  `--init`; F5 verifies that killing the bridge terminates the workload and
+  does not leave a signal-immune PID 1.
 - Docker resolves `/proc/self/{uid,gid}_map` and runs the container as the
   mapped host user, not namespace root. F1 (write-grant control) and F13
   (Python interpreter) pass; the previous userns defect is fixed.
-- A4 (port-granular policy), C10 (new netns inside Docker), and F11 (unshare
-  escape on Docker) are UNSUPPORTED by design; D11/D14/E8/F5 are WARN and are
-  excluded from the Docker YES claim.
+- A4 now tests real port-granular grants (`host:port`). A bare host grants
+  every port; a port-qualified entry grants only that port. C10 and F11 run on
+  Docker and pass: the container drops `CAP_SYS_ADMIN`, so `unshare` is
+  refused or produces a namespace with no route.
+- D14 distinguishes the two boundaries: the host proxy control socket is
+  reachable but still enforces `network.allow` (403 for a denied host), while
+  an AF_UNIX socket inside a granted filesystem path is reachable by design.
+  AF_UNIX is not namespaced and is outside the network-policy boundary; the
+  filesystem grant is its boundary.
+- E8 is enforced for CONNECT: the proxy inspects the first TLS ClientHello and
+  rejects a client whose highest offered version is below TLS 1.2. It does not
+  decrypt the tunnel or bind SNI to policy; non-TLS and server-first CONNECT
+  traffic is forwarded without inspection.
 - Host mode (macOS/Windows) cannot exercise hostname/DNS/IPv6 netns cases.
 - Windows WFP enforcement requires self-hosted hardware.
-- The proxy is a blind CONNECT tunnel; TLS-floor and SNI binding for CONNECT
-  are not claimed.
-- AF_UNIX and port-granular policy are outside the current network-policy
-  boundary; see the report.
+- Port-qualified grants apply to Warden's own egress proxy. The Docker/Kubernetes
+  manifest translation path does not preserve a host:port distinction; use the
+  Warden proxy path when port granularity matters.

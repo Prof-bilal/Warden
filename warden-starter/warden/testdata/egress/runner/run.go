@@ -387,6 +387,9 @@ func (r *Runner) policyAllow(c *Case, vars map[string]string) []string {
 	if c.Policy == "no-network" {
 		return nil
 	}
+	if portVar := c.Extra["allow_port"]; portVar != "" {
+		return []string{net_JoinHostPort(vars["allowedHost"], vars[portVar])}
+	}
 	switch c.Extra["allow_var"] {
 	case "none":
 		return nil

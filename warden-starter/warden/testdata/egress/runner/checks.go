@@ -138,17 +138,16 @@ func (r *Runner) evalCheck(name string, ev *caseEvidence) CheckResult {
 			res.Unsupported = true
 			res.Detail = "HTTP/2 was not negotiated (collector is HTTP/1.1); HTTP/2 behavior not covered"
 		}
-	case name == "unix_connected":
-		res.WarnOnly = true
+	case name == "unix_granted_path_reachable":
 		connected := anyEvent(ev, func(e map[string]any) bool {
 			ok, has := e["connected"].(bool)
 			return has && ok
 		})
-		res.OK = !connected
+		res.OK = connected
 		if connected {
-			res.Detail = "AF_UNIX socket in a granted path is reachable; sockets are not namespaced and the filesystem grant is the boundary"
+			res.Detail = "AF_UNIX socket in a granted path is reachable, as intended: the filesystem grant is the local-IPC boundary, not the network policy"
 		} else {
-			res.Detail = "AF_UNIX connect failed"
+			res.Detail = "AF_UNIX socket in a granted path was not reachable; the filesystem grant did not provide the expected local IPC"
 		}
 	case name == "unix_proxy_denied":
 		res.OK, res.Detail = unixProxyDenied(ev)
@@ -207,9 +206,8 @@ func (r *Runner) evalCheck(name string, ev *caseEvidence) CheckResult {
 		res.OK, res.Detail = floodRan(ev)
 	case name == "inflight_lost":
 		res.OK, res.Detail = inflightLost(ev)
-	case name == "tls_below12_observed":
-		res.WarnOnly = true
-		res.OK, res.Detail = tlsBelow12(ev)
+	case name == "tls_floor_denied":
+		res.OK, res.Detail = tlsFloorDenied(ev)
 	case name == "tls_verify_failed":
 		res.OK = anyEvent(ev, func(e map[string]any) bool {
 			ec, _ := e["error_class"].(string)
@@ -879,17 +877,17 @@ func mcpCall(ev *caseEvidence, action string) (bool, string) {
 	return false, "missing " + action + " event"
 }
 
-func tlsBelow12(ev *caseEvidence) (bool, string) {
+func tlsFloorDenied(ev *caseEvidence) (bool, string) {
 	for _, e := range ev.allEvents() {
-		v, has := e["tls_version"].(float64)
-		if !has {
-			continue
+		if v, has := e["tls_version"].(float64); has {
+			return false, fmt.Sprintf("TLS handshake completed at version 0x%04x; the proxy did not enforce the 1.2 floor", int(v))
 		}
-		if int(v) < 0x0303 {
-			return false, fmt.Sprintf("TLS version 0x%04x negotiated below the documented 1.2 minimum (proxy is a blind CONNECT tunnel)", int(v))
+		ec, _ := e["error_class"].(string)
+		if ec == "tls_error" {
+			return true, "a ClientHello offering only TLS below 1.2 was rejected with a TLS error"
 		}
 	}
-	return true, "no sub-1.2 handshake negotiated"
+	return false, "the probe did not report a TLS-floor rejection"
 }
 
 // stepOutcome inspects one named step's events.

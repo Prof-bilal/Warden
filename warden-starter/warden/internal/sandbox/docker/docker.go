@@ -92,6 +92,11 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 	args = append(args,
 		"--rm",
 		"-i",
+		// Docker would otherwise make the in-container proxy bridge PID 1,
+		// where the kernel ignores SIGKILL. A tiny init keeps the bridge an
+		// ordinary child so killing it terminates the enforcement process
+		// instead of leaving a signal-immune parent behind.
+		"--init",
 		"--network", "none",
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges=true",

@@ -19,6 +19,12 @@ You are asked **once per resource per run**: session/session-save/deny answers
 are remembered, so a chatty server cannot prompt-loop you. "Allow once"
 (network only) deliberately prompts again next time.
 
+Interactive network approval grants the host for every port (the saved
+`network.allow` entry is a bare hostname). A host that is already in
+`network.allow` with a `host:port` restriction is **not** offered interactive
+approval for a different port; the request is denied. This prevents an
+approval from silently widening a deliberate port restriction.
+
 ## Rules that keep it safe
 
 - **Prompts use the controlling terminal (`/dev/tty`), never stdio.**

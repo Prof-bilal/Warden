@@ -69,29 +69,41 @@ Each entry is a path (relative to the policy file, resolved by
 ```yaml
 network:
   allow:
-    - "api.github.com"
+    - "api.github.com"          # every port
+    - "api.example.com:443"     # only TCP 443
+    - "*.example.com:8443"      # subdomains only, only TCP 8443
     - "10.0.0.5"
+    - "[2001:db8::1]:443"       # IPv6 with a port uses brackets
 ```
 
-A list of hostnames or IP literals the sandboxed process may reach. Ports
-are **not** part of the grantthe egress proxy forwards all ports for an
-allowlisted host.
+A list of host patterns or IP literals the sandboxed process may reach. A
+bare hostname or IP grants every port. `host:port` grants only that TCP port;
+the egress proxy checks both the host and the destination port before DNS
+resolution. This lets a policy allow, for example, `api.example.com:443`
+without also allowing the same host on an unlisted port.
 
 **Validation rules:**
 
 - Entries must not be empty.
-- Must be a bare hostname or IP literalpaths (`/foo`), query strings
-  (`?q=1`), fragments (`#anchor`), and colons (interpreted as ports) are
+- A bare entry is a hostname or IP literal. A port-qualified entry is
+  `host:port`; IPv6 with a port must be written `[addr]:port` (an unbracketed
+  IPv6 address is a bare address, not a port).
+- Ports are decimal integers from 1 to 65535, without leading zeros.
+- Paths (`/foo`), query strings (`?q=1`), fragments (`#anchor`), and URLs are
   rejected.
 - Hostnames must not exceed 253 characters; each label must be 1–63 chars,
   alphanumeric or hyphen, and must not start or end with a hyphen.
+- A single leading wildcard label (`*.example.com`) grants subdomains but not
+  the apex. A bare `*` is rejected.
 - IPv6 literals are accepted via `net.ParseIP`.
 
-> **Enforced**Linux only. The sandbox gets a private network namespace
-> with no default route; all external traffic goes through the egress proxy
-> which checks this allowlist. On macOS the Seatbelt backend denies all
-> network except loopback to the proxy bridge; the proxy enforces the list.
-> Docker runs with `--network none` and similarly uses the proxy bridge.
+> **Enforced**on Linux, macOS, Docker, and Windows through the egress proxy.
+> The Linux sandbox gets a private network namespace with no default route;
+> Docker runs with `--network none`. All external traffic goes through the
+> host-side proxy, which checks this allowlist. On macOS Seatbelt denies all
+> network except loopback to the proxy bridge. The proxy's CONNECT path also
+> rejects a TLS ClientHello whose highest offered version is below 1.2; it
+> does not decrypt or SNI-bind the tunnel.
 
 See [Architecture – Egress Proxy](architecture.md#egress-proxy-architecture) for the
 proxy design.

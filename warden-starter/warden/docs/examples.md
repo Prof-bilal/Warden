@@ -177,10 +177,11 @@ filesystem:
 
 network:
   # Allow connections to the database host(s) only. Replace with your
-  # actual hostnames; wildcard hosts are not supportedlist each one.
+  # actual hostnames. A bare host grants every port; use host:port to pin
+  # a database to its listening port (for example "db.internal.example.com:5432").
   allow:
     - "localhost"
-    - "db.internal.example.com"
+    - "db.internal.example.com:5432"
 
 env:
   # Standard PostgreSQL connection variables. Values are set in your shell,
@@ -294,16 +295,19 @@ filesystem:
 # `network.allow` before performing any DNS lookup or connection. DNS lookups
 # for disallowed hosts are blocked at the sandbox boundary.
 #
-# Only bare hostnames or IP literals are acceptedports, paths, and URLs are
-# rejected (the egress layer handles port selection). Wildcards are not
-# supported; list each host your server needs to reach.
+# Entries are bare hostnames/IPs (all ports) or host:port (one port).
+# IPv6 with a port uses [addr]:port. A single leading wildcard label
+# (`*.example.com`) grants subdomains, never the apex. Paths and URLs are
+# rejected.
 network:
   allow:
-    - "api.github.com"   # Example: REST and GraphQL both live under this hostname
-    - "slack.com"        # Example: web UI
-    - "api.slack.com"    # Example: API
-    - "localhost"        # Example: local database
-    - "db.internal.example.com"  # Example: internal service
+    - "api.github.com"          # Example: REST and GraphQL, all ports
+    - "api.example.com:443"     # Example: HTTPS only
+    - "*.example.com:8443"      # Example: any subdomain, port 8443 only
+    - "slack.com"               # Example: web UI
+    - "api.slack.com"           # Example: API
+    - "localhost"               # Example: local database
+    - "db.internal.example.com" # Example: internal service
 
 # ── Environment ──────────────────────────────────────────────────────────────
 #
