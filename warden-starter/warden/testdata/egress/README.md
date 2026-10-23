@@ -1,8 +1,10 @@
 # Egress and Enforcement Integrity Suite
 
 External, evidence-first test harness for Warden's network policy. It is not
-part of the Warden binary and does not change product code. The full evidence
-report is at [`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md).
+part of the Warden binary. The full evidence report is at
+[`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md). The branch
+also includes a separate Docker backend fix (mapped host uid/gid; see report
+§4.1); the harness itself does not change product code.
 
 The suite answers one question: **can a sandboxed process reach a destination
 that the policy did not authorize, through any path the harness can exercise?**
