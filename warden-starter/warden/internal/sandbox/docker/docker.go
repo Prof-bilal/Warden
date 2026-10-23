@@ -100,10 +100,16 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 	// owned by that user stay writable despite --cap-drop ALL (no
 	// CAP_DAC_OVERRIDE). Inside an unprivileged user namespace
 	// os.Getuid/os.Getgid return the namespace IDs (often 0), so resolve
-	// /proc/self/{uid,gid}_map first. Windows has no uid/gid concept
-	// (os.Getuid/os.Getgid return -1), so there the flag is omitted and the
-	// container keeps its image-default user.
-	if uid, gid, ok := hostUIDGID(); ok {
+	// /proc/self/{uid,gid}_map first. If the mapping cannot be resolved,
+	// fail closed rather than silently running the container as root.
+	// Windows has no uid/gid concept (os.Getuid/os.Getgid return -1), so
+	// there the flag is omitted and the container keeps its image-default
+	// user.
+	uid, gid, haveIDs, err := hostUIDGID()
+	if err != nil {
+		return nil, fmt.Errorf("docker args: %w", err)
+	}
+	if haveIDs {
 		args = append(args, "--user", fmt.Sprintf("%d:%d", uid, gid))
 	}
 	args = append(args,

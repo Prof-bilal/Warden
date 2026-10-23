@@ -53,7 +53,10 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 	// --user maps the host user the test process maps to (identity outside a
 	// user namespace); on Windows there is no uid/gid and the flag is
 	// omitted. hostUIDGID is the same helper the backend uses.
-	uid, gid, haveIDs := hostUIDGID()
+	uid, gid, haveIDs, err := hostUIDGID()
+	if err != nil {
+		t.Fatalf("hostUIDGID: %v", err)
+	}
 	t.Logf("host uid/gid mapping: %d:%d (present=%v)", uid, gid, haveIDs)
 	if !haveIDs {
 		if strings.Contains(joined, "--user ") {
