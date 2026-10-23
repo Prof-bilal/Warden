@@ -129,28 +129,6 @@ func (ev *caseEvidence) forbiddenHits(names []string) []Hit {
 	return out
 }
 
-// fixDockerSocketPerms makes the per-run Warden proxy socket reachable by the
-// Docker container when Warden runs as uid 0 inside an unprivileged user
-// namespace. Warden creates the socket directory 0700; the mapped host user
-// owns it, but the container runs as host root (--user 0:0) and cannot open it
-// after --cap-drop ALL. This helper only relaxes the test socket's permissions;
-// the bridge and proxy still enforce the policy.
-func fixDockerSocketPerms(root string, stop <-chan struct{}) {
-	for {
-		select {
-		case <-stop:
-			return
-		default:
-		}
-		matches, _ := filepath.Glob(filepath.Join(root, "warden-proxy-*"))
-		for _, d := range matches {
-			_ = os.Chmod(d, 0o777)
-			_ = os.Chmod(filepath.Join(d, "egress.sock"), 0o777)
-		}
-		time.Sleep(2 * time.Millisecond)
-	}
-}
-
 // fileDigest returns a stable digest of the active policy file. A missing or
 // unreadable file yields an error string, which never matches a real digest.
 func fileDigest(path string) string {
@@ -238,15 +216,6 @@ func (r *Runner) runCase(c Case) CaseResult {
 
 	ev := &caseEvidence{c: &c, vars: vars, token: token, caseID: strings.ToLower(c.ID), dir: dir, collectors: r.collectors,
 		policyDigest: policyDigest}
-
-	if r.backend == "docker" && r.mode == "netns" {
-		// Test-only accommodation for the userns/Docker uid mismatch described
-		// in run.json limitations. It does not alter policy enforcement: the
-		// container still reaches the network only through this bridge.
-		stop := make(chan struct{})
-		go fixDockerSocketPerms(filepath.Join(dir, "tmp"), stop)
-		defer close(stop)
-	}
 
 	if c.Extra["unix_echo"] == "true" {
 		if err := r.collectors.StartUnixEcho(filepath.Join(dir, "sandbox-out", "control.sock")); err != nil {

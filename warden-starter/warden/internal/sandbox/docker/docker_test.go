@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -51,15 +50,18 @@ func TestBuildDockerArgsDenyByDefaultMounts(t *testing.T) {
 			t.Fatalf("docker args missing %q\nargs: %v", want, args)
 		}
 	}
-	// --user maps the invoking user where the OS has uid/gid (Linux/macOS);
-	// on Windows os.Getuid/os.Getgid return -1 and the flag is omitted.
-	if runtime.GOOS == "windows" {
+	// --user maps the host user the test process maps to (identity outside a
+	// user namespace); on Windows there is no uid/gid and the flag is
+	// omitted. hostUIDGID is the same helper the backend uses.
+	uid, gid, haveIDs := hostUIDGID()
+	t.Logf("host uid/gid mapping: %d:%d (present=%v)", uid, gid, haveIDs)
+	if !haveIDs {
 		if strings.Contains(joined, "--user ") {
 			t.Fatalf("windows docker args must not include --user; args: %v", args)
 		}
-	} else if !strings.Contains(joined, fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid())) {
-		t.Fatalf("docker args missing invoking-user mapping %q\nargs: %v",
-			fmt.Sprintf("--user %d:%d", os.Getuid(), os.Getgid()), args)
+	} else if !strings.Contains(joined, fmt.Sprintf("--user %d:%d", uid, gid)) {
+		t.Fatalf("docker args missing mapped-user %q\nargs: %v",
+			fmt.Sprintf("--user %d:%d", uid, gid), args)
 	}
 }
 

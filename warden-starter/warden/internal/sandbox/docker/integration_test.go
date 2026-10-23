@@ -58,12 +58,13 @@ func requireDocker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create temp dir outside /tmp: %v", err)
 	}
-	// The container runs as the invoking user (BuildDockerArgs passes
-	// "--user uid:gid" from os.Getuid/os.Getgid), so it shares this test
-	// process's UID and can write into the default-mode (0700) directory.
-	// Deliberately NOT chmod'ed world-writable: if the --user flag ever
-	// regresses, the container's root (running without CAP_DAC_OVERRIDE)
-	// cannot write here and this test fails instead of masking it.
+	// The container runs as the host user that this test process maps to
+	// (BuildDockerArgs resolves /proc/self/{uid,gid}_map), so it shares this
+	// test process's host UID and can write into the default-mode (0700)
+	// directory. Deliberately NOT chmod'ed world-writable: if the --user
+	// mapping ever regresses, the container's root (running without
+	// CAP_DAC_OVERRIDE) cannot write here and this test fails instead of
+	// masking it.
 	t.Cleanup(func() { os.RemoveAll(writeDir) })
 	marker := filepath.Join(writeDir, "started.marker")
 	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{writeDir}}}

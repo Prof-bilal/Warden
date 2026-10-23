@@ -218,10 +218,6 @@ func runSuite(cfg *runConfig) error {
 			meta.Limitations = append(meta.Limitations, ns.Notes...)
 		}
 	}
-	if backend == "docker" && mode == "netns" {
-		meta.Limitations = append(meta.Limitations,
-			"Docker under an unprivileged user namespace: Warden sees uid 0 and passes --user 0:0 to Docker, while the 0700 host proxy socket and granted write paths are owned by the mapped user. The harness opens the test proxy socket to 0777 so the root container can reach the bridge; the write-grant control case (F1) is BLOCKED because a root container without CAP_DAC_OVERRIDE cannot write the user-owned grant. This is a recorded product defect (container runs as root), not a policy bypass; network policy enforcement is unaffected.")
-	}
 	if err := w.writeRunMeta(meta); err != nil {
 		return err
 	}

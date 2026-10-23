@@ -96,11 +96,14 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		"--cap-drop", "ALL",
 		"--security-opt", "no-new-privileges=true",
 	)
-	// Run as the invoking user so bind mounts owned by that user stay
-	// writable despite --cap-drop ALL (no CAP_DAC_OVERRIDE). Windows has
-	// no uid/gid concept (os.Getuid/os.Getgid return -1), so there the
-	// flag is omitted and the container keeps its image-default user.
-	if uid, gid := os.Getuid(), os.Getgid(); uid >= 0 && gid >= 0 {
+	// Run as the host user that the invoking process maps to so bind mounts
+	// owned by that user stay writable despite --cap-drop ALL (no
+	// CAP_DAC_OVERRIDE). Inside an unprivileged user namespace
+	// os.Getuid/os.Getgid return the namespace IDs (often 0), so resolve
+	// /proc/self/{uid,gid}_map first. Windows has no uid/gid concept
+	// (os.Getuid/os.Getgid return -1), so there the flag is omitted and the
+	// container keeps its image-default user.
+	if uid, gid, ok := hostUIDGID(); ok {
 		args = append(args, "--user", fmt.Sprintf("%d:%d", uid, gid))
 	}
 	args = append(args,

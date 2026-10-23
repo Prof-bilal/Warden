@@ -38,6 +38,8 @@ cases require an explicit denial class and no forbidden collector hit.
 - A working Docker daemon and an image that already exists locally. Warden does
   not pull images implicitly; pull explicitly:
   `docker image inspect alpine:3.20 >/dev/null 2>&1 || docker pull alpine:3.20`
+- `python3` on the host for F13. The Docker backend mounts the host `/usr`
+  runtime base, so the host interpreter is available inside the container.
 - If the shell predates docker-group membership, wrap the run in
   `newgrp docker -c '...'`.
 
@@ -60,11 +62,10 @@ CGO_ENABLED=0 go build -o /tmp/opencode/egress-runner ./testdata/egress/runner
 /tmp/opencode/egress-runner -backend linux -mode netns -build \
   -require-complete -out /tmp/opencode/egress-linux
 
-# Full Docker matrix. F1 is BLOCKED and F13 NOT_RUN under the current
-# userns/alpine setup, so do not use -require-complete here.
+# Full Docker matrix (F1 and F13 pass; -require-complete rejects BLOCKED/NOT_RUN).
 newgrp docker -c 'cd "$PWD" && /tmp/opencode/egress-runner \
   -backend docker -image alpine:3.20 -mode netns -build \
-  -out /tmp/opencode/egress-docker'
+  -require-complete -out /tmp/opencode/egress-docker'
 
 # macOS host mode (netns/DNS/IPv6 cases are UNSUPPORTED).
 "$RUNNER_TEMP/egress-runner" -backend seatbelt -mode host -build \
@@ -162,7 +163,8 @@ Special case kinds: `mcp_stdio`, `kill_warden`, `stop_dns`, `stop_collector`,
 `.github/workflows/egress-integrity.yml` runs:
 
 - Linux bubblewrap: full netns matrix with `-require-complete`
-- Docker: full netns matrix, with the known userns/F1 limitation disclosed
+- Docker: full netns matrix with `-require-complete`; F1/F13 pass, and the
+  container runs as the mapped host user
 - macOS Seatbelt: host-mode matrix; netns cases are UNSUPPORTED
 - Windows hosted: capability report only; BLOCKED/NOT_RUN, never PASS
 - Windows self-hosted WFP: gated on `vars.WARDEN_WFP_SELF_HOSTED == 'true'`,
@@ -175,12 +177,14 @@ never converted to PASS.
 ## Known limitations
 
 See [`../../../../EGRESS-INTEGRITY.md`](../../../../EGRESS-INTEGRITY.md) for
-the current evidence and remediation plan. In short:
+the current evidence and boundaries. In short:
 
-- Docker under an unprivileged user namespace passes `--user 0:0`; the
-  container runs as host root and F1 is BLOCKED. This is a product defect, not
-  a policy bypass.
-- F13 does not run on `alpine:3.20` because the image has no Python.
+- Docker resolves `/proc/self/{uid,gid}_map` and runs the container as the
+  mapped host user, not namespace root. F1 (write-grant control) and F13
+  (Python interpreter) pass; the previous userns defect is fixed.
+- A4 (port-granular policy), C10 (new netns inside Docker), and F11 (unshare
+  escape on Docker) are UNSUPPORTED by design; D11/D14/E8/F5 are WARN and are
+  excluded from the Docker YES claim.
 - Host mode (macOS/Windows) cannot exercise hostname/DNS/IPv6 netns cases.
 - Windows WFP enforcement requires self-hosted hardware.
 - The proxy is a blind CONNECT tunnel; TLS-floor and SNI binding for CONNECT

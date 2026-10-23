@@ -623,7 +623,6 @@ cases:
     probe: ["tamper", "--policy", "{{policyPath}}", "--audit", "{{auditPath}}", "--out", "{{outDir}}"]
     expect: observe
     checks: ["control_write", "policy_read_closed"]
-    extra: {blocked_reason: "the Docker backend runs the container as uid 0 inside the test user namespace; the granted write path is owned by the mapped host user, so the control write fails by uid rather than policy and the tamper-denial result cannot be distinguished from a permission failure"}
 
   - id: F2
     group: F
@@ -726,7 +725,7 @@ cases:
   - id: F13
     group: F
     title: A Python interpreter cannot open a denied socket
-    backends: [linux, seatbelt, windows]
+    backends: [linux, docker, seatbelt, windows]
     policy: allow-host
     requires: [python]
     probe:
@@ -762,7 +761,7 @@ cases:
       - "{{deniedIP}}:{{deniedTCP}}"
     expect: observe
     checks: ["interpreter_allowed", "interpreter_denied"]
-    notes: "Docker/OCI images without python3 are NOT_RUN; use a python-capable image and remove the backends restriction to cover them."
+    notes: "Docker mounts the host /usr runtime base, so python3 is available when installed on the host."
 
   - id: F14
     kind: multi

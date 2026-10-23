@@ -134,7 +134,7 @@ jobs:
           fi
 
   docker:
-    name: Docker (full netns matrix, known userns limitation)
+    name: Docker (full netns matrix)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -186,7 +186,7 @@ jobs:
 
       - run: go build ./...
       - run: go vet ./...
-      - run: go test -count=1 ./internal/policy/... ./internal/proxy/...
+      - run: go test -count=1 ./internal/policy/... ./internal/proxy/... ./internal/sandbox/docker/...
 
       - name: Build egress runner
         run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/egress-runner" ./testdata/egress/runner
@@ -194,15 +194,9 @@ jobs:
       - name: Run full Docker matrix
         # `newgrp docker` makes the docker group the primary gid before the
         # unprivileged userns is created, so the mapped gid can open the
-        # Docker socket. This mirrors running the suite as a normal user.
-        #
-        # Known product defect: Warden sees uid 0 inside the userns and passes
-        # --user 0:0 to Docker. The harness opens the 0700 proxy socket to
-        # 0777 so the root container can reach the bridge; F1 (write-grant
-        # control) is BLOCKED because a root container without
-        # CAP_DAC_OVERRIDE cannot write the user-owned grant. This is not a
-        # network-policy bypass, but it is why the Docker verdict is
-        # INCONCLUSIVE rather than YES.
+        # Docker socket. Warden resolves /proc/self/{uid,gid}_map and runs the
+        # container as the mapped host user, not namespace root. -require-complete
+        # rejects BLOCKED/NOT_RUN; WARN and UNSUPPORTED are never counted as PASS.
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/run-egress-docker.sh" <<EOF
@@ -210,16 +204,11 @@ jobs:
           set -euo pipefail
           exec "$RUNNER_TEMP/egress-runner" \
             -backend docker -image alpine:3.20 -mode netns -build \
-            -out "$RUNNER_TEMP/egress-docker"
+            -require-complete -out "$RUNNER_TEMP/egress-docker"
           EOF
           sed -i 's/^          //' "$RUNNER_TEMP/run-egress-docker.sh"
           chmod +x "$RUNNER_TEMP/run-egress-docker.sh"
           newgrp docker -c "$RUNNER_TEMP/run-egress-docker.sh"
-
-      - name: Note Docker userns limitation
-        if: always()
-        run: |
-          echo "::warning::Docker netns runs under an unprivileged user namespace. Warden passes --user 0:0, the harness opens the test proxy socket, and F1 is expected to be BLOCKED. See run.json limitations; this is not a policy bypass."
 
       - name: Upload Docker evidence
         if: always()
