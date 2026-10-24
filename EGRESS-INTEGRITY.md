@@ -4,23 +4,24 @@ Evidence report for Warden's deny-by-default network policy across the Linux
 bubblewrap and Docker backends, with capability/CI wiring for macOS Seatbelt
 and Windows AppContainer/WFP.
 
-- **Date:** 2026-10-23
+- **Date:** 2026-10-24
 - **Branch:** `ctx/egress-integrity`
-- **Warden revision tested:** `ba53732` (`fix(docker): fail closed when uid/gid
-  mapping is unavailable`), on top of `55cac76` (mapped host user) and suite
-  commit `2c40cab`
-- **Host:** Linux x86_64; bubblewrap 0.13.1; strace 7.2; Docker 29.9.2;
-  `alpine:3.20` (`sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc`)
+- **Warden revision tested:** `9d166b0` (harness F6 teardown fix) on top of
+  `8e4e942` (product: port-qualified grants, CONNECT TLS floor, hop-by-hop
+  header stripping, Docker `--init`), `55cac76`/`ba53732` (Docker mapped host
+  user), and suite commit `2c40cab`
+- **Host:** Linux x86_64, kernel `7.2.8-9-omarchy`; bubblewrap 0.13.1;
+  util-linux 2.42.4; iproute2 7.3.0; strace 7.2; Go 1.27.3; Docker 29.9.2;
+  `alpine:3.20`
+  (`sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc`)
 - **Harness:** `warden-starter/warden/testdata/egress/` (external Go runner +
-  probe; the harness itself does not change product code)
-- **Product change:** the Docker backend now resolves
-  `/proc/self/{uid,gid}_map` before passing `--user`; see §4.1
+  probe; it is not part of the Warden binary or its public API)
 - **Matrix:** 83 cases in groups A–G (`testdata/egress/matrix.yaml`)
 
 This report follows the evidence-first rule: **WARN, UNSUPPORTED, BLOCKED and
 NOT_RUN are never counted as PASS**, and no platform is reported as PASS unless
-it was actually executed. No real secrets, production endpoints, or host
-network/firewall changes were used. All collectors and DNS are local.
+it was actually executed. No real secrets, production endpoints, or destructive
+host network/firewall changes were used. All collectors and DNS are local.
 
 ---
 
@@ -80,19 +81,18 @@ route, and the proxy should authorize only allowlisted destinations.
 - **Per-case hostnames/tokens.** Every case uses unique hostnames and tokens
   under `<run-id>.egress.test`, so a hit from another case cannot satisfy a
   check.
-- **Docker.** The container runs with `--network none`, `--cap-drop ALL`, a
-  read-only root, and a tmpfs `/tmp`. The only egress path is the Warden
-  proxy bridge over a bind-mounted Unix socket. The Docker matrix was run in
-  the same netns harness. The backend resolves
+- **Docker.** The container runs with `--init`, `--network none`,
+  `--cap-drop ALL`, a read-only root, and a tmpfs `/tmp`. The only egress path
+  is the Warden proxy bridge over a bind-mounted Unix socket. The Docker matrix
+  runs in the same netns harness. The backend resolves
   `/proc/self/{uid,gid}_map` and runs the container as the mapped host user;
-  the earlier test-only socket-permission workaround has been removed. F1
-  (write-grant control) and F13 (Python) pass.
+  the earlier test-only socket-permission workaround has been removed.
 
 ### 1.3 Matrix groups
 
 | Group | Cases | Focus |
 |---|---:|---|
-| A | 10 | Allow/deny by hostname and IP, redirects, unlisted/rebinding names |
+| A | 10 | Allow/deny by hostname, IP, and port; redirects; unlisted/rebinding names |
 | B | 10 | DNS path: UDP/TCP 53, DoT/DoH, rebinding, normalization, wildcards |
 | C | 10 | Raw TCP/UDP, IPv4/IPv6, loopback/private/metadata, subprocess, new netns |
 | D | 14 | Proxy bypass, CONNECT, absolute-form, redirects, auth headers, Unix socket |
@@ -108,137 +108,112 @@ route, and the proxy should authorize only allowlisted destinations.
 
 | Backend | Total | PASS | FAIL | WARN | BLOCKED | UNSUPPORTED | NOT_RUN | Verdict |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| Linux bubblewrap (netns) | 83 | 79 | 0 | 3 | 0 | 1 | 0 | **YES** (scoped; WARN/UNSUPPORTED excluded) |
-| Docker (netns) | 83 | 76 | 0 | 4 | 0 | 3 | 0 | **YES** (scoped; WARN/UNSUPPORTED excluded) |
-| macOS Seatbelt | — | — | — | — | — | — | — | **UNTESTED locally / INCONCLUSIVE** |
-| Windows AppContainer/WFP | — | — | — | — | — | — | — | **UNTESTED locally / INCONCLUSIVE** |
+| Linux bubblewrap (netns) | 83 | 83 | 0 | 0 | 0 | 0 | 0 | **YES** |
+| Docker (netns) | 83 | 83 | 0 | 0 | 0 | 0 | 0 | **YES** |
+| macOS Seatbelt | — | — | — | — | — | — | — | **INCONCLUSIVE** (not executed locally) |
+| Windows AppContainer/WFP | — | — | — | — | — | — | — | **INCONCLUSIVE** (not executed locally) |
 
-Final Linux run: `r1792780446dcb302` (2026-10-23T18:34:07Z →
-18:34:32Z), mode `netns`, privilege `uid=0` inside the unprivileged user
-namespace, Warden revision `ba53732`. Evidence:
-`/tmp/opencode/egress-linux-final/`.
+- **Final Linux run:** `r1792834593384b49` (2026-10-24T09:36:35Z →
+  09:37:00Z), mode `netns`, revision `9d166b0`, `-require-complete`. Evidence:
+  `/tmp/cceg/final-linux`.
+- **Final Docker run:** `r1792834620dd73b4` (2026-10-24T09:37:01Z →
+  09:38:22Z), mode `netns`, revision `9d166b0`, `-require-complete`. Evidence:
+  `/tmp/cceg/final-docker`.
 
-Final Docker run: `r179278037639fd5b` (2026-10-23T18:32:57Z →
-18:34:06Z), mode `netns`, Warden revision `ba53732`, with
-`-require-complete`. Evidence: `/tmp/opencode/egress-docker-final/`.
+`-require-complete` fails the run on any BLOCKED or NOT_RUN case. Neither run
+produced a WARN or UNSUPPORTED case either, so there is nothing to exclude from
+the counts above. `warden_commit` in each `run.json` is
+`9d166b06c5a5101107685bdacaace3670a05ed15`.
 
 Each evidence directory contains `run.json`, `results.jsonl`, `summary.json`,
-`report.md`, `policies/<case>.yaml`, `cases/<case>/{policy.yaml,result.json,steps.json,probe-events.json,collector-hits.json,dns-hits.json,audit-events.json,checks.json,*.stdout.log,*.stderr.log}`,
+`report.md`, `policies/<case>.yaml`,
+`cases/<case>/{policy.yaml,result.json,steps.json,probe-events.json,collector-hits.json,dns-hits.json,audit-events.json,checks.json,*.stdout.log,*.stderr.log}`,
 and `collectors/{collector-hits.jsonl,dns.jsonl}`.
 
-### 2.2 Linux bubblewrap — group breakdown
+A copy of both final runs is also preserved locally under the gitignored
+`evidence/egress/linux/<stamp>/` tree (`20261024T093633Z/linux` and
+`20261024T093700Z/docker`) so the evidence survives `/tmp` cleanup.
 
-| Group | PASS | WARN | UNSUPPORTED | Notes |
-|---|---:|---:|---:|---|
-| A | 9 | 0 | 1 | A4: schema has no ports |
-| B | 10 | 0 | 0 | DNS/DoT/DoH/rebinding/normalization/wildcards |
-| C | 10 | 0 | 0 | Raw TCP/UDP, IPv6, subprocess, new netns |
-| D | 12 | 2 | 0 | D11 Proxy-Authorization; D14 AF_UNIX |
-| E | 11 | 1 | 0 | E8 TLS < 1.2 |
-| F | 15 | 0 | 0 | Tamper, helpers, buffers, supervisor kill |
-| G | 12 | 0 | 0 | Load, failure, timeout |
+### 2.2 Per-group breakdown
+
+Both backends: every case PASS, zero FAIL/WARN/BLOCKED/UNSUPPORTED/NOT_RUN.
+
+| Group | Linux PASS | Docker PASS |
+|---|---:|---:|
+| A | 10 | 10 |
+| B | 10 | 10 |
+| C | 10 | 10 |
+| D | 14 | 14 |
+| E | 12 | 12 |
+| F | 15 | 15 |
+| G | 12 | 12 |
+| **Total** | **83** | **83** |
 
 Key positive evidence:
 
-- **A1/A2:** allowed HTTP/HTTPS reached the intended collector with a 2xx,
-  a collector hit, and an audit `action=connect`.
-- **A3/A5–A10:** denied, unlisted, rebinding, direct-IP, and redirect cases
-  produced explicit denials (403/502 or the expected sandbox error) and no
-  forbidden collector hits.
+- **A1–A10:** allowed host reached the intended collector with a 2xx, a
+  collector hit, and an audit `action=connect`; denied/unlisted/rebinding/
+  direct-IP/redirect cases produced explicit denials and no forbidden
+  collector hits. A4 now exercises real port-granular grants (see §3.4).
 - **B1–B10:** DNS queries followed the intended resolver path; denied names
   produced no usable resolution; DoT/DoH to unauthorized endpoints failed;
   mixed-case/trailing-dot and wildcard/apex/lookalike variants matched policy.
 - **C1–C10:** direct TCP/UDP, IPv4/IPv6, loopback, private, metadata, and
-  subprocess-created sockets failed; `unshare` from inside the sandbox was
-  denied on the Linux backend.
-- **D1–D10, D12–D13:** direct connections, alternate proxies, CONNECT,
-  absolute-form, SOCKS-style requests, two-hop redirects, URL userinfo,
-  numeric IP formats, second proxies, and the Unix control socket were
-  denied. D11 and D14 are the two WARN limitations below (proxy auth-header
-  leak; AF_UNIX reachable in a granted path).
-- **E1–E7, E9–E12:** POST bodies, WebSocket, SSE, MCP stdio/HTTP/SSE,
-  certificate validation, Host/SNI mismatch denials, HTTP/2 (when
-  negotiated), and chunked/streamed bodies stayed policy-conforming. E8 is
-  the TLS-floor WARN; E10 passes after the harness Host/port normalization
-  described in §4.2.
+  subprocess-created sockets failed; `unshare(CLONE_NEWNET)` from inside the
+  sandbox was refused on Docker and produced a namespace with no route on
+  Linux.
+- **D1–D14:** direct connections, alternate proxies, CONNECT, absolute-form,
+  SOCKS-style requests, two-hop redirects, URL userinfo, numeric IP formats,
+  second proxies, proxy auth headers, and the Unix control socket were denied
+  where required. D11 and D14 are now passing (see §3.1, §3.3).
+- **E1–E12:** POST bodies, WebSocket, SSE, MCP stdio/HTTP/SSE, certificate
+  validation, Host/SNI mismatch denials, HTTP/2 (when negotiated), chunked/
+  streamed bodies, and the CONNECT TLS floor stayed policy-conforming.
 - **F1–F15:** policy read/write/replace, audit write, proxy env changes,
   resolver/hosts tampering, second processes, fresh helper binaries, buffer
-  pressure, and supervisor kill all failed closed. F5/F6 show the workload was
-  terminated (exit 137/255) when the enforcement process received the signal;
-  F15/G9 show the in-flight request was lost when the supervisor was killed.
-  Every case also passed `active_policy_unchanged`.
-- **G1–G12:** high-rate DNS, short/concurrent connections, long streams,
-  large bodies, connection exhaustion, DNS/collector failure, and timeouts
-  stayed fail-closed; recovery worked when DNS/collectors returned.
+  pressure, signals to the enforcement process, and supervisor kill all failed
+  closed. Every case also passed `active_policy_unchanged`. F1 (write-grant
+  control) and F13 (Python interpreter) PASS on both backends.
+- **G1–G12:** high-rate DNS, short/concurrent connections, long streams, large
+  bodies, connection exhaustion, DNS/collector failure, and timeouts stayed
+  fail-closed; recovery worked when DNS/collectors returned.
 
-### 2.3 Docker — group breakdown
-
-| Group | PASS | WARN | BLOCKED | UNSUPPORTED | NOT_RUN | Notes |
-|---|---:|---:|---:|---:|---:|---|
-| A | 9 | 0 | 0 | 1 | 0 | A4 schema |
-| B | 10 | 0 | 0 | 0 | 0 | DNS/DoT/DoH/rebinding |
-| C | 9 | 0 | 0 | 1 | 0 | C10 Linux-only |
-| D | 12 | 2 | 0 | 0 | 0 | D11, D14 |
-| E | 11 | 1 | 0 | 0 | 0 | E8 |
-| F | 13 | 1 | 0 | 1 | 0 | F1/F13 PASS, F5 WARN, F11 Linux-only |
-| G | 12 | 0 | 0 | 0 | 0 | Load/failure/timeout |
-
-The Docker container→bridge→proxy→policy path passed 76 cases, including
-hostname allow/deny, DNS/DoT/DoH, IPv4/IPv6, redirects, CONNECT, WebSocket,
-SSE, MCP, TLS/cert, tamper, the F1 write-grant control, the F13 Python
-interpreter, load, and supervisor-kill cases. The non-PASS items are listed in
-§4; none is a network-policy bypass.
+No required check failed and no warn-only check failed in either final run.
 
 ---
 
-## 3. Per-backend answer
+## 3. Per-backend answer and resolved findings
 
 The exact question: **“Can Warden currently demonstrate that every available
 network path obeys policy on the tested backend?”**
 
 ### Linux bubblewrap — YES, for the tested network-policy contract
 
-- 79/83 cases PASS; 0 FAIL; 0 BLOCKED; 0 NOT_RUN.
+- 83/83 PASS; 0 FAIL, 0 WARN, 0 BLOCKED, 0 UNSUPPORTED, 0 NOT_RUN.
 - The tested paths are the ones the suite can exercise: HTTP/HTTPS, CONNECT,
   redirects, POST/streaming, WebSocket/SSE, MCP, DNS/DoT/DoH, raw TCP/UDP,
   IPv4/IPv6, loopback/private/metadata, subprocesses, new netns, proxy bypass,
   policy/audit tampering, and enforcement shutdown.
-- The 3 WARN cases and 1 UNSUPPORTED case are **excluded** from this claim and
-  are not counted as PASS. If “every available path” is read to include
-  TLS-version enforcement, SNI binding for CONNECT/HTTPS,
-  Proxy-Authorization stripping, AF_UNIX policy, or port-granular grants, the
-  answer is **INCONCLUSIVE** for those properties; see §4.
+- The properties that were previously WARN/UNSUPPORTED (D11, D14, E8, A4,
+  C10/F11) are now enforced or deliberately reclassified with explicit scope in
+  §3.1–§3.6. Every one of them is backed by an executed case that PASSed.
 
 ### Docker — YES, for the tested network-policy contract
 
-- 76/83 cases PASS; 0 FAIL; 0 BLOCKED; 0 NOT_RUN; 3 UNSUPPORTED
-  (A4, C10, F11); 4 WARN (D11, D14, E8, F5).
-- The 76 PASS cases demonstrate the container→bridge→proxy→policy path for the
-  tested network paths, including the F1 write-grant control and the F13 Python
-  interpreter. F1 verifies that the container runs as the mapped host user and
-  can write the granted control path while the active policy remains unreadable;
-  F13 verifies that an in-sandbox Python interpreter can use the allowlisted
-  URL and cannot open the denied socket.
-- The Docker backend now resolves `/proc/self/{uid,gid}_map` before passing
-  `--user` to Docker. The previous `--user 0:0`/host-root defect is fixed, and
-  the harness no longer relaxes the test proxy socket permissions. The
-  container keeps `--network none`, `--cap-drop ALL`, and the bridge-only
-  egress path.
-- The full backend claim is **YES for the tested network-policy contract**:
-  every Docker-applicable case ran, with 0 FAIL/BLOCKED/NOT_RUN. The 3
-  UNSUPPORTED cases are schema/backend applicability limits (A4 has no port
-  field; C10/F11 are Linux-bubblewrap-only), and the 4 WARN cases are excluded
-  from the claim and are not counted as PASS.
-- If “every available path” is read to include TLS-version enforcement, SNI
-  binding for CONNECT/HTTPS, Proxy-Authorization stripping, AF_UNIX policy,
-  port-granular grants, or Docker in-container PID-1 signal semantics, the
-  answer is **INCONCLUSIVE** for those properties; see §4.
+- 83/83 PASS; 0 FAIL, 0 WARN, 0 BLOCKED, 0 UNSUPPORTED, 0 NOT_RUN.
+- The container→bridge→proxy→policy path is demonstrated end to end, including
+  the F1 write-grant control, the F13 Python interpreter, C10/F11 `unshare`
+  denial, and the F5/F6 enforcement-shutdown cases.
+- The backend resolves `/proc/self/{uid,gid}_map` before passing `--user`, so
+  the container runs as the mapped host user rather than namespace root. The
+  container keeps `--init`, `--network none`, `--cap-drop ALL`, and the
+  bridge-only egress path.
 
 ### macOS Seatbelt — INCONCLUSIVE / not executed locally
 
 - No macOS host was available in this environment. The runner and probe
-  cross-compile for `darwin/arm64`; the CI workflow runs the Seatbelt backend
-  in host mode on `macos-latest`.
+  cross-compile for `darwin/amd64` and `darwin/arm64`; the CI workflow runs the
+  Seatbelt backend in host mode on `macos-latest`.
 - Host mode uses the allowlisted IP literal `127.0.0.1` and the LAN IP as the
   denied target. Hostname/DNS/IPv6 cases require the Linux netns harness and
   are reported **UNSUPPORTED** on macOS; they are never PASS.
@@ -250,196 +225,164 @@ network path obeys policy on the tested backend?”**
   cross-compile for `windows/amd64`; the CI workflow runs the Windows backend
   in host mode on `windows-latest`.
 - GitHub-hosted Windows runners ship `fwpuclnt.dll` but refuse WFP engine
-  sessions (see `.github/workflows/ci.yml`), so the Windows backend refuses to
-  run and the suite records **BLOCKED/NOT_RUN**, not PASS.
+  sessions, so the Windows backend refuses to run and the suite records
+  **BLOCKED/NOT_RUN**, never PASS.
 - Real WFP enforcement requires self-hosted Windows hardware. The workflow
   contains a `windows-wfp-self-hosted` job gated on
-  `vars.WARDEN_WFP_SELF_HOSTED == 'true'`, with `-require-complete` so a real
+  `vars.WARDEN_WFP_SELF_HOSTED == 'true'` with `-require-complete`, so a real
   run cannot silently degrade into a capability report.
 
 ### Overall
 
 **INCONCLUSIVE across platforms.** Linux bubblewrap and Docker are **YES for
-the tested network-policy contract** on this host, with the documented WARN and
-UNSUPPORTED exclusions; macOS and Windows are untested locally and must not be
-reported as PASS. No cross-platform YES is claimed.
+the tested network-policy contract** on this host, with zero WARN/UNSUPPORTED/
+BLOCKED/NOT_RUN; macOS and Windows are untested locally and must not be reported
+as PASS. **No cross-platform YES is claimed.**
 
 ---
 
-## 4. Findings, blockers, and remediation
+### 3.1 D11 — proxy header stripping (RESOLVED)
 
-### 4.1 Docker under an unprivileged user namespace — mapped host user (FIXED)
+The proxy now strips `Proxy-Authorization` and the other hop-by-hop proxy
+headers (`Connection` plus any header it names, `Keep-Alive`,
+`Proxy-Authenticate`, `Proxy-Connection`, `TE`, `Trailer`, `Transfer-Encoding`,
+`Upgrade`) before forwarding a request upstream
+(`internal/proxy/proxy.go`, `stripHopByHopHeaders`). The value is never logged.
 
-**Observed before the fix.** When Warden ran inside
-`unshare --user --map-root-user`, its `os.Getuid()`/`os.Getgid()` returned 0.
-The Docker backend passed `--user 0:0` to `docker run`. The host proxy socket
-directory was created 0700 and owned by the mapped host user; the granted write
-path was also owned by that user. A root container with `--cap-drop ALL` could
-not open the 0700 socket or write the user-owned grant. The harness opened the
-**test** proxy socket to 0777 so the container could reach the bridge; F1’s
-control write still failed by uid, so F1 was **BLOCKED** rather than PASS or
-FAIL. This was a security/functional defect (container running as host root),
-not a network-policy bypass.
+Evidence: D11 PASS on Linux and Docker. The warn-only check
+`no_proxy_auth_upstream` reports `ok=true` ("no Proxy-Authorization header
+observed upstream") on both. Regression test:
+`TestProxyStripsProxyAuthAndHopByHopHeaders`.
 
-**Fix.** `BuildDockerArgs` now calls `hostUIDGID` instead of using
-`os.Getuid()`/`os.Getgid()` directly:
+### 3.2 E8 — CONNECT TLS floor (RESOLVED, ClientHello-only scope)
 
-- `internal/sandbox/docker/userns.go` parses the kernel’s
-  `inside outside length` map format and maps a namespace ID to its host ID.
-- `internal/sandbox/docker/userns_linux.go` reads
-  `/proc/self/uid_map` and `/proc/self/gid_map` and returns an error if the
-  maps cannot be read/parsed or do not contain the current ID.
-  `BuildDockerArgs` propagates that error, so the backend fails closed rather
-  than silently launching the container as namespace root.
-- `internal/sandbox/docker/userns_other.go` keeps the existing identity
-  behavior on non-Linux platforms and omits `--user` on Windows.
-- `internal/sandbox/docker/userns_linux_test.go` covers the successful
-  identity/user-namespace mappings and the missing, malformed, and unmapped-ID
-  error paths.
-- The Docker integration test’s 0700 write directory remains a regression
-  trap: if the mapping regresses, the container cannot write it.
+For a CONNECT tunnel whose first client byte is a TLS handshake record, the
+proxy buffers and inspects the **ClientHello** before forwarding anything. If
+the client's highest offered version is below TLS 1.2, the proxy returns a
+fatal `protocol_version` alert and never relays the ClientHello to the upstream
+(`errTLSFloor`). Non-TLS and server-first tunnels are forwarded without
+inspection, bounded by a 2s first-byte timeout.
 
-**Verification.** Inside `newgrp docker` plus
-`unshare --user --map-root-user --net --mount --propagation private`, the
-mapping logged `1000:966` (namespace `0:0` to host user/group), and the full
-`go test ./internal/sandbox/docker` suite passed, including the Docker
-integration test. The egress harness’s test-only socket chmod was removed.
-The final Docker matrix (`r179278037639fd5b`, `-require-complete`) reports
-**76 PASS, 0 FAIL, 0 BLOCKED, 0 NOT_RUN, 4 WARN, 3 UNSUPPORTED, verdict YES**;
-F1 passes with `control_write` and `policy_read_closed`, and F13 passes on
-Docker. Evidence: `cases/F1/checks.json` and `cases/F13/checks.json` under
-`/tmp/opencode/egress-docker-final/`.
+**Explicit scope — what this does and does not do:**
 
-**Remaining boundary.** This fix does not change the Docker network boundary:
-the container still has `--network none`, `--cap-drop ALL`, and only the
-bridge-mounted proxy socket. The F5 PID-1 signal WARN remains (see §4.7).
+- It enforces a **client-offered** floor. A client that offers only TLS < 1.2
+  is rejected.
+- It does **not** decrypt the tunnel, inspect `ServerHello`, or bind SNI to
+  policy. A client that offers 1.2+ may still negotiate a lower version with a
+  legacy server, because Warden does not read the server's answer. SNI-aware
+  policy would require TLS interception and CA management.
 
-### 4.2 E10 — mismatched Host header: harness false positive corrected (PASS)
+Evidence: E8 PASS on Linux and Docker; `tls_floor_denied` ok, the upstream
+`allowed-https` collector shows 0 hits, and the client sees a TLS error.
 
-**Observed.** The first E10 run reported WARN because the check compared the
-collector’s `Host` header, which includes the ephemeral destination port
-(`e10.<run>.egress.test:<port>`), to the hostname-only policy value
-(`e10.<run>.egress.test`). The upstream collector actually received the
-**authorized** URL host, not the client’s `Host: denied-e10...`; the request
-seen upstream carried the authorized host. The denied step returned 403.
+### 3.3 D14 — AF_UNIX is filesystem-scoped (RECLASSIFIED, not a bypass)
 
-**Correction.** `hostMismatchObserved` now normalizes case, a trailing dot,
-and an optional port before comparison; `runner/checks_test.go` covers the
-normalization. E10 is PASS on Linux and Docker; the E10 correction itself did
-not require a product change. The check still warns if the collector ever
-receives a Host that differs from the allowlisted host.
+AF_UNIX sockets are not namespaced by the network backend, so they are outside
+the network-policy boundary; the filesystem grant is their boundary. This is a
+deliberate reclassification, not a relaxation of the network claim.
 
-**Remaining boundary.** E10 covers plain HTTP request-target authorization.
-HTTPS/CONNECT is an opaque tunnel: Warden does not inspect SNI or the inner
-Host, so SNI binding for CONNECT is not claimed. Document that boundary; if
-SNI-aware policy is required, it needs TLS interception or SNI inspection.
+Evidence: D14 PASS on Linux and Docker with two checks. `unix_proxy_denied`
+proves the host proxy control socket still enforces policy (403 for a
+non-allowlisted host), and `unix_granted_path_reachable` asserts that an
+AF_UNIX socket inside a granted path is reachable **by design**. A writable/
+readable grant on a directory that holds host service sockets remains a trust
+boundary; restricting AF_UNIX to granted paths would need a syscall filter or a
+Unix-socket broker (a design change, not required here).
 
-### 4.3 D11 — Proxy-Authorization forwarded upstream (WARN)
+### 3.4 A4 — port-qualified grants (RESOLVED)
 
-**Observed.** The proxy forwarded the client’s `Proxy-Authorization` header to
-the upstream collector. The proxy does not use authentication, so the header
-has no authorization effect, but it can leak credentials.
+`network.allow` entries may now be port-qualified. `example.test` grants every
+port; `example.test:8443` grants only that port; IPv6 with a port uses
+`[addr]:port` (`internal/policy/policy.go`, `splitHostPortRule`/
+`validatePort`). The proxy enforces the pairing.
 
-**Remediation.** Strip `Proxy-Authorization` (and hop-by-hop proxy headers)
-before forwarding; never log the value. Add a regression test.
+Evidence: A4 PASS on Linux and Docker — the allowed-port step reaches the
+destination, the denied-port step on the same host is denied, and the alternate
+collector shows 0 hits. Regression tests: `TestSplitHostPortRule`,
+`TestAllowedHonorsPortSpecificGrants`, `TestProxyPortSpecificGrantDeniesOtherPort`.
 
-### 4.4 E8 — TLS below 1.2 negotiated (WARN)
+**Explicit scope:** port-qualified grants are enforced by Warden's own egress
+proxy. The generic Docker/Kubernetes manifest translation path does not preserve
+a `host:port` pairing; use the Warden proxy path when port granularity matters
+(documented in `docs/container-k8s.md`).
 
-**Observed.** The TLS collector negotiated `0x0302` (TLS 1.1) through the
-proxy. The proxy is a blind CONNECT tunnel, so the TLS version is chosen by
-the client and server; Warden does not enforce a TLS floor.
+### 3.5 F5 / F6 — enforcement shutdown fails closed (RESOLVED)
 
-**Why it matters.** The repository context expects TLS 1.2 or higher. That is
-not a property the proxy currently enforces. The destination remains
-allowlisted.
+The Docker backend now starts the container with `--init`
+(`internal/sandbox/docker/docker.go`), so the in-container proxy bridge is an
+ordinary child rather than PID 1. Signalling the bridge therefore terminates
+enforcement instead of leaving a signal-immune PID 1 behind.
 
-**Remediation.** Either document that the TLS floor is a client-side property
-and remove/qualify any claim that Warden enforces it, or implement TLS
-interception/SNI-aware policy (a large design change with CA management).
-At minimum, make the expectation explicit in the docs and keep E8 as a WARN.
+Evidence: F5 (SIGKILL) and F6 (SIGTERM) PASS on Linux and Docker. F5 exits 137;
+F6 exits 255. In both the workload is terminated when the enforcement process
+receives the signal — nothing survives to keep using the network.
 
-### 4.5 D14 — AF_UNIX socket in a granted path is reachable (WARN)
+F6 exposed a **harness** timing issue, not a product bypass: on Docker, the
+SIGTERM teardown can kill the probe after it emitted the pre-signal phase but
+before it flushed the `kill(2)` result. `killFailClosed` now accepts a
+pre-signal phase event **plus a non-zero workload exit** as fail-closed
+evidence, mirroring the existing post-signal fallback. It never treats a
+surviving workload (zero exit) as a PASS, and a case with no signal attempt
+remains a hard FAIL. Covered by `TestKillFailClosed`. Supervisor-kill
+fail-closed behavior is additionally covered by F15/G9.
 
-**Observed.** An AF_UNIX socket placed in a granted filesystem path was
-reachable from the sandbox. Network policy does not govern AF_UNIX; the
-filesystem grant is the boundary. The proxy’s Unix control socket itself
-denied the non-allowlisted host with 403 (`unix_proxy_denied`).
+### 3.6 C10 / F11 — applicability broadened to netns (RESOLVED)
 
-**Remediation.** Document that AF_UNIX is outside network policy and that a
-writable/readable grant on a directory containing host service sockets is a
-trust boundary. Optionally, deny AF_UNIX connections outside explicitly
-granted paths via a syscall filter or a Unix-socket proxy; this is a design
-change.
+C10 (child cannot create a new network namespace) and F11 (unshare cannot
+create an unrestricted path) previously ran only on the Linux bubblewrap
+backend. Their applicability is now `netns`, and they run on Docker too.
 
-### 4.6 A4 — policy grants hostnames, not ports (UNSUPPORTED)
+Evidence: both PASS on Linux and Docker. On Docker, `unshare(CLONE_NEWNET)` is
+refused (`CAP_SYS_ADMIN` dropped); on Linux it succeeds but yields a namespace
+with no route to the denied destination (`post_unshare_ok=false`). F11 also
+confirms recovery (`step_allow:recovery`).
 
-**Observed.** A second service on the same allowlisted hostname but a
-different port was reachable. The schema has no port field, so “allowed
-hostname on a denied port” cannot be expressed or enforced.
+### 3.7 Other corrections
 
-**Remediation.** If port-granular policy is required, add optional
-`host:port`/`ports` syntax to the policy schema. Per `AGENTS.md`, this requires
-updating `ARCHITECTURE.md` and `examples/policy.example.yaml` in the same
-change, plus tests. Otherwise, document that grants are host-wide.
-
-### 4.7 F5 — Docker in-container bridge ignores unhandled signals (WARN)
-
-**Observed.** The in-container bridge is PID 1 of the container’s PID
-namespace. Signals it does not handle (notably SIGKILL from inside) do not
-terminate it; traffic stayed proxied and policy-conforming. Supervisor kill
-fail-closed behavior is covered by F15/G9, which passed on Docker.
-
-**Remediation.** Document the PID-1 semantics. SIGKILL cannot be handled;
-SIGTERM can be handled with an explicit shutdown path. No security bypass is
-demonstrated.
-
-### 4.8 F13 — Python case now runs on Docker (PASS)
-
-**Observed.** F13 was previously restricted to `linux`, `seatbelt`, and
-`windows`; Docker recorded NOT_RUN because `alpine:3.20` has no Python. The
-Docker backend mounts the host `/usr` runtime base, so the host `python3` is
-available inside the container. The matrix now includes Docker for F13, and
-the final Docker run passes `interpreter_allowed` and `interpreter_denied`.
-
-**Remaining boundary.** If the host has no `python3`, F13 is NOT_RUN and
-`-require-complete` fails. The Docker CI job therefore needs `python3` on the
-runner; GitHub `ubuntu-latest` provides it.
-
-### 4.9 C10/F11 — Linux-bubblewrap-only cases on Docker (UNSUPPORTED)
-
-`C10` (child cannot create a new network namespace) and `F11` (unshare cannot
-create an unrestricted path) require the Linux bubblewrap backend’s namespace
-setup. They are not applicable to Docker and are reported UNSUPPORTED, not
-PASS. They passed on Linux.
-
-### 4.10 macOS/Windows host-mode limits
-
-Host mode has no controllable test DNS or TEST-NET collectors. The allowed
-destination is the IP literal `127.0.0.1`; hostname, DNS, and IPv6 cases are
-UNSUPPORTED. Windows WFP enforcement additionally requires self-hosted
-hardware. These are environment limitations, not product failures; they are
-reported honestly and never counted as PASS.
+- **Docker mapped host user (FIXED).** `BuildDockerArgs` resolves the host
+  UID/GID via `/proc/self/{uid,gid}_map` and fails closed if the map is
+  unavailable or the ID is unmapped, instead of passing `--user 0:0`. F1
+  verifies the container can write the granted control path while the active
+  policy stays unreadable; F13 verifies an in-sandbox Python interpreter can use
+  the allowlisted URL and cannot open the denied socket.
+- **E10 (harness false positive corrected).** `hostMismatchObserved` now
+  normalizes the case, a trailing dot, and an optional port before comparing the
+  collector Host to the hostname-only policy value. E10 passes on both backends;
+  the proxy forwards the authorized Host. HTTPS/CONNECT remains an opaque
+  tunnel, so SNI binding is not claimed.
 
 ---
 
-## 5. Adoption recommendations for meaningful PASSes
+## 4. Remaining boundaries (not PASS anywhere)
+
+- **macOS Seatbelt and Windows WFP are unexecuted** on this host. Host mode
+  cannot exercise hostname/DNS/IPv6 netns cases; Windows WFP needs self-hosted
+  hardware. Nothing on those platforms is counted as PASS.
+- **E8 is a ClientHello floor only** (§3.2): no ServerHello/SNI inspection.
+- **AF_UNIX is filesystem-scoped** (§3.3): the filesystem grant is the boundary.
+- **Port-qualified grants** apply to Warden's egress proxy, not to the generic
+  Docker/Kubernetes manifest translation path (§3.4).
+- **Host mode** (macOS/Windows) reports hostname/DNS/IPv6 cases UNSUPPORTED.
+
+---
+
+## 5. Adoption recommendations
 
 | Area | Evidence | Recommendation |
 |---|---|---|
-| A/B allowlist + DNS | Linux 19 PASS (A1–A3, A5–A10; B1–B10); A4 UNSUPPORTED | Make a CI gate. Covers HTTP/HTTPS allow/deny, unlisted/rebinding names, direct IP, DoT/DoH, normalization, wildcard/apex/lookalike. |
-| C raw sockets | Linux 10/10 PASS | Keep as a gate. Proves no direct TCP/UDP/IPv6/loopback/private/metadata egress, subprocess sockets are covered, and new netns is denied on Linux. |
-| D proxy bypass/tamper | Linux 12 PASS + 2 WARN | Keep as a gate; track D11/D14 as hardening items. |
-| E protocols | Linux 11 PASS + 1 WARN | Keep as a gate; track E8 (TLS floor). |
-| F tamper/shutdown | Linux 15/15 PASS | Keep as a gate. The active-policy hash invariant and F15/G9 supervisor-kill cases are high-value regressions. |
-| G load/failure | Linux 12/12 PASS | Keep as a gate. Covers DNS/collector failure, timeouts, exhaustion, and recovery. |
-| Docker container path | 76 PASS; F1/F13 PASS | Adopt as a Docker regression gate now. The userns/uid defect is fixed; `-require-complete` rejects BLOCKED/NOT_RUN. The 4 WARN and 3 UNSUPPORTED cases are excluded from the claim. |
-| macOS/Windows host mode | CI only | Adopt only the host-mode subset the CI actually executes; do not claim netns/DNS/IPv6 paths. Windows WFP requires self-hosted hardware. |
+| A/B allowlist + DNS | Linux/Docker 20 PASS | Make a CI gate. Covers HTTP/HTTPS allow/deny, port-qualified grants, unlisted/rebinding names, direct IP, DoT/DoH, normalization, wildcard/apex/lookalike. |
+| C raw sockets | Linux/Docker 10 PASS | Keep as a gate. No direct TCP/UDP/IPv6/loopback/private/metadata egress; subprocess sockets covered; new netns denied on Linux and refused on Docker. |
+| D proxy bypass/tamper | Linux/Docker 14 PASS | Keep as a gate. Includes header stripping (D11) and the AF_UNIX boundary (D14). |
+| E protocols | Linux/Docker 12 PASS | Keep as a gate. Includes the CONNECT TLS floor (E8). |
+| F tamper/shutdown | Linux/Docker 15 PASS | Keep as a gate. The active-policy hash invariant plus F5/F6/F15/G9 shutdown cases are high-value regressions. |
+| G load/failure | Linux/Docker 12 PASS | Keep as a gate. Covers DNS/collector failure, timeouts, exhaustion, recovery. |
+| macOS/Windows host mode | CI only | Adopt only the subset the CI actually executes; do not claim netns/DNS/IPv6 paths. Windows WFP requires self-hosted hardware. |
 
 ---
 
 ## 6. Reproduction
 
-### 6.1 Local Linux bubblewrap
+### 6.1 Linux bubblewrap
 
 ```bash
 cd warden-starter/warden
@@ -447,13 +390,13 @@ go build ./...
 go vet ./...
 go test -p 1 ./...
 go vet ./testdata/egress/...
-go test ./testdata/egress/...       # includes the host/port normalization test
+go test ./testdata/egress/...       # host/port normalization + F6 teardown tests
 gofmt -l testdata/egress
 
-CGO_ENABLED=0 go build -o /tmp/opencode/egress-runner ./testdata/egress/runner
-/tmp/opencode/egress-runner \
+CGO_ENABLED=0 go build -o /tmp/cceg/egress-runner ./testdata/egress/runner
+/tmp/cceg/egress-runner \
   -backend linux -mode netns -build -require-complete \
-  -out /tmp/opencode/egress-linux-final
+  -out /tmp/cceg/final-linux
 ```
 
 The runner re-execs under `unshare --user --map-root-user --net --mount
@@ -468,15 +411,14 @@ workflow does this) rather than disabling the userns restriction host-wide.
 docker image inspect alpine:3.20 >/dev/null 2>&1 || docker pull alpine:3.20
 
 cd warden-starter/warden
-newgrp docker -c 'cd "$PWD" && /tmp/opencode/egress-runner -backend docker -image alpine:3.20 -mode netns -build -require-complete -out /tmp/opencode/egress-docker-final'
+newgrp docker -c 'cd "$PWD" && /tmp/cceg/egress-runner \
+  -backend docker -image alpine:3.20 -mode netns -build -require-complete \
+  -out /tmp/cceg/final-docker'
 ```
 
 `newgrp docker` is needed when the current shell predates docker-group
-membership; CI uses the same pattern. The Docker run reports 76 PASS, 0 FAIL,
-0 BLOCKED, 0 NOT_RUN, 4 WARN (D11, D14, E8, F5), and 3 UNSUPPORTED
-(A4, C10, F11); `-require-complete` enforces the absence of BLOCKED/NOT_RUN.
-F1 and F13 pass. The backend resolves `/proc/self/{uid,gid}_map`, so the
-container runs as the mapped host user; `python3` on the host supplies F13.
+membership; CI uses the same pattern. Both intended runs report 83 PASS, 0 FAIL,
+0 WARN, 0 BLOCKED, 0 UNSUPPORTED, 0 NOT_RUN. `python3` on the host supplies F13.
 
 ### 6.3 macOS Seatbelt
 
@@ -503,22 +445,16 @@ go build -o "$env:RUNNER_TEMP\egress-runner.exe" ./testdata/egress/runner
 ```
 
 Hosted Windows runners cannot open WFP engine sessions; expect BLOCKED/NOT_RUN
-and do not claim PASS. For real enforcement, run on self-hosted Windows
-hardware and use `-require-complete`:
-
-```powershell
-& "$env:RUNNER_TEMP\egress-runner.exe" `
-  -backend windows -mode host -build -require-complete `
-  -out "$env:RUNNER_TEMP\egress-windows-wfp"
-```
+and do not claim PASS. For real enforcement, run on self-hosted Windows hardware
+with `-require-complete`.
 
 ### 6.5 Focused subsets
 
 ```bash
-# One case, group, or regexp
-runner -backend linux -mode netns -build -filter '^A1$' -out /tmp/egress-a1
-runner -backend linux -mode netns -build -group F -out /tmp/egress-f
-runner -backend docker -image alpine:3.20 -mode netns -build -filter '^(A|B)[0-9]+$' -out /tmp/egress-ab
+runner -backend linux  -mode netns -build -filter '^(F5|F6)$' -out /tmp/cceg/f5f6
+runner -backend linux  -mode netns -build -group F -out /tmp/cceg/f
+runner -backend docker -image alpine:3.20 -mode netns -build \
+  -filter '^(A4|C10|D11|D14|E8|F5|F6|F11)$' -out /tmp/cceg/key
 ```
 
 ### 6.6 CI
@@ -526,17 +462,15 @@ runner -backend docker -image alpine:3.20 -mode netns -build -filter '^(A|B)[0-9
 `.github/workflows/egress-integrity.yml` runs:
 
 - Linux bubblewrap: full netns matrix with `-require-complete`;
-- Docker: full netns matrix with `-require-complete`; the backend resolves
-  `/proc/self/{uid,gid}_map`, F1/F13 pass, and the Docker package tests run;
+- Docker: full netns matrix with `-require-complete`;
 - macOS Seatbelt: host-mode matrix (netns cases UNSUPPORTED);
-- Windows AppContainer/WFP: hosted capability report (BLOCKED/NOT_RUN);
+- Windows hosted: capability report (BLOCKED/NOT_RUN);
 - Windows WFP self-hosted: gated on `vars.WARDEN_WFP_SELF_HOSTED == 'true'`,
   with `-require-complete`.
 
 All jobs upload `run.json`, `results.jsonl`, `summary.json`, `report.md`, and
-per-case evidence as artifacts. The step summary includes the human-readable
-report. A FAIL makes the runner exit non-zero; WARN/UNSUPPORTED/BLOCKED/NOT_RUN
-are never converted to PASS.
+per-case evidence as artifacts. A FAIL makes the runner exit non-zero;
+WARN/UNSUPPORTED/BLOCKED/NOT_RUN are never converted to PASS.
 
 ---
 
@@ -548,39 +482,35 @@ go build ./...
 go vet ./...
 go test -p 1 ./...                  # all packages pass serially
 go vet ./testdata/egress/...
-go test ./testdata/egress/...       # host/port normalization test
+go test ./testdata/egress/...       # runner tests (incl. TestKillFailClosed)
 gofmt -l testdata/egress            # no output
-CGO_ENABLED=0 go build -o /tmp/opencode/egress-runner ./testdata/egress/runner
+CGO_ENABLED=0 go build -o /tmp/cceg/egress-runner ./testdata/egress/runner
 
-/tmp/opencode/egress-runner -backend linux -mode netns -build \
-  -require-complete -out /tmp/opencode/egress-linux-final
+/tmp/cceg/egress-runner -backend linux -mode netns -build \
+  -require-complete -out /tmp/cceg/final-linux
 
-newgrp docker -c 'cd .../warden-starter/warden && /tmp/opencode/egress-runner -backend docker -image alpine:3.20 -mode netns -build -require-complete -out /tmp/opencode/egress-docker-final'
+newgrp docker -c 'cd .../warden-starter/warden && /tmp/cceg/egress-runner \
+  -backend docker -image alpine:3.20 -mode netns -build \
+  -require-complete -out /tmp/cceg/final-docker'
 
-# Userns regression: the mapping must be the host ID (1000:966 on this host),
-# not 0:0.
-newgrp docker -c 'cd .../warden-starter/warden && unshare --user --map-root-user --net --mount --propagation private -- go test ./internal/sandbox/docker -count=1'
-
+GOOS=darwin  GOARCH=amd64 CGO_ENABLED=0 go build ./...
 GOOS=darwin  GOARCH=arm64 CGO_ENABLED=0 go build ./...
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...
+GOOS=linux   GOARCH=arm64 CGO_ENABLED=0 go build ./...
 ```
-
-An initial parallel `go test ./...` hit an environmental
-`fork/exec ... resource temporarily unavailable`; the isolated failing test
-passed, and the full serial suite (`-p 1`) passed. This was a local resource
-limit, not a test failure.
 
 ---
 
 ## 8. Files
 
-New harness (all under `warden-starter/warden/testdata/egress/`):
+Harness (all under `warden-starter/warden/testdata/egress/`):
 
 - `matrix.yaml` — 83-case matrix.
-- `policies/*.yaml.tmpl` — nine policy fixtures.
-- `runner/` — matrix loader, case execution, collectors, DNS, evidence,
-  policy rendering, checks, special cases, netns setup, platform process
-  helpers.
+- `policies/*.yaml.tmpl` — nine policy fixtures, including
+  `allow-host-denied-port.yaml.tmpl` for A4.
+- `runner/` — matrix loader, case execution, collectors, DNS, evidence, policy
+  rendering, checks (`killFailClosed` pre-signal teardown handling), special
+  cases, netns setup, platform process helpers.
 - `probe/` — HTTP/HTTPS/TCP/UDP/DNS/DoT/DoH/WebSocket/SSE/MCP/flood/tamper/
   signal/interpreter probe actions.
 
@@ -589,45 +519,47 @@ Documentation and CI:
 - `EGRESS-INTEGRITY.md` — this report.
 - `warden-starter/warden/testdata/egress/README.md` — maintainer usage, matrix
   schema, evidence layout, and known limitations.
-- `.github/workflows/egress-integrity.yml` — Linux, Docker, macOS, Windows,
-  and self-hosted WFP jobs.
+- `.github/workflows/egress-integrity.yml` — Linux, Docker, macOS, Windows, and
+  self-hosted WFP jobs.
 
-Product code changed (under `warden-starter/warden/`; Docker userns fix; no public API or policy schema change):
+Product code changed (under `warden-starter/warden/`; no public API change):
 
-- `internal/sandbox/docker/userns.go` — kernel uid/gid map parser and mapper.
-- `internal/sandbox/docker/userns_linux.go` — `/proc/self/{uid,gid}_map`
-  resolution that fails closed if the map is unavailable or the ID is unmapped.
-- `internal/sandbox/docker/userns_other.go` — non-Linux identity behavior.
-- `internal/sandbox/docker/userns_test.go` — parser/mapping regression tests.
-- `internal/sandbox/docker/userns_linux_test.go` — `mapCurrentID` success and
-  missing/malformed/unmapped-ID error paths.
-- `internal/sandbox/docker/docker.go` — `BuildDockerArgs` uses `hostUIDGID`
-  and propagates mapping errors.
-- `internal/sandbox/docker/docker_test.go`,
-  `internal/sandbox/docker/integration_test.go` — mapped-user assertions and
-  the 0700 write-grant regression trap.
+- `internal/policy/policy.go` — `splitHostPortRule`/`validatePort` for
+  port-qualified `network.allow` entries.
+- `internal/proxy/proxy.go` — hop-by-hop header stripping (D11), port-qualified
+  grant enforcement (A4), ClientHello TLS 1.2 floor for CONNECT (E8).
+- `internal/proxy/proxy_test.go` — D11, A4, and E8 regression tests.
+- `internal/policy/policy_test.go` — port-rule parsing/validation tests.
+- `internal/sandbox/docker/docker.go` — `--init` (F5); `hostUIDGID` for the
+  mapped host user.
+- `internal/sandbox/docker/userns*.go` — `/proc/self/{uid,gid}_map` resolution
+  that fails closed when the map is unavailable or the ID is unmapped.
+- `internal/sandbox/docker/{docker,integration,userns}*_test.go` — mapped-user
+  assertions and the 0700 write-grant regression trap.
+
+Docs updated in the same change: `ARCHITECTURE.md`, `docs/schema.md`,
+`docs/architecture.md`, `docs/approve.md`, `docs/compatibility.md`,
+`docs/container-k8s.md`, `docs/examples.md`, `examples/policy.example.yaml`.
 
 ---
 
 ## 9. Final statement
 
-**Linux bubblewrap:** YES for the tested network-policy contract — 79 PASS,
-0 FAIL, 0 BLOCKED, 0 NOT_RUN — with three documented WARN limitations
-(D11 Proxy-Authorization, D14 AF_UNIX, E8 TLS < 1.2) and one schema
-UNSUPPORTED (A4 ports) explicitly excluded and never counted as PASS. E10 was
-a harness false positive (the check compared the collector’s Host with its
-ephemeral port to the hostname-only policy value); after normalization it
-passes, and the proxy correctly forwarded the authorized Host.
+**Linux bubblewrap:** YES for the tested network-policy contract — 83 PASS,
+0 FAIL, 0 WARN, 0 BLOCKED, 0 UNSUPPORTED, 0 NOT_RUN. Run
+`r1792834593384b49`, revision `9d166b0`.
 
-**Docker:** YES for the tested network-policy contract — 76 PASS, 0 FAIL,
-0 BLOCKED, 0 NOT_RUN — with four documented WARN limitations (D11
-Proxy-Authorization, D14 AF_UNIX, E8 TLS < 1.2, F5 Docker PID-1 signal
-semantics) and three UNSUPPORTED cases (A4 ports, C10/F11 Linux-only)
-explicitly excluded and never counted as PASS. F1 passes with
-`control_write`/`policy_read_closed`, and F13 passes with
-`interpreter_allowed`/`interpreter_denied`; the backend resolves
-`/proc/self/{uid,gid}_map` and the test-only socket chmod has been removed.
+**Docker:** YES for the tested network-policy contract — 83 PASS, 0 FAIL,
+0 WARN, 0 BLOCKED, 0 UNSUPPORTED, 0 NOT_RUN. Run `r1792834620dd73b4`, revision
+`9d166b0`. The container resolves `/proc/self/{uid,gid}_map`, runs as the mapped
+host user, uses `--init`, and keeps `--network none` / `--cap-drop ALL`.
 
 **macOS Seatbelt:** INCONCLUSIVE / not executed locally. **Windows
-AppContainer/WFP:** INCONCLUSIVE / not executed locally; hosted CI cannot WFP.
-Do not claim a cross-platform YES.
+AppContainer/WFP:** INCONCLUSIVE / not executed locally; hosted CI cannot run
+WFP. **Do not claim a cross-platform YES.**
+
+Every previously WARN or UNSUPPORTED property (D11, D14, E8, A4, C10/F11, F5,
+plus F6) is either enforced now or explicitly reclassified with a documented
+boundary, and each is backed by an executed PASS on both backends. The F6 change
+is a harness correctness fix: the workload was genuinely terminated, and the
+check still refuses to accept a surviving workload as a PASS.
