@@ -6,10 +6,10 @@ and Windows AppContainer/WFP.
 
 - **Date:** 2026-10-24
 - **Branch:** `ctx/egress-integrity`
-- **Warden revision tested:** `9d166b0` (harness F6 teardown fix) on top of
-  `8e4e942` (product: port-qualified grants, CONNECT TLS floor, hop-by-hop
-  header stripping, Docker `--init`), `55cac76`/`ba53732` (Docker mapped host
-  user), and suite commit `2c40cab`
+- **Warden revision tested:** `e0a4c61` (Windows WFP mirror fix) on top of
+  `9d166b0` (harness F6 teardown fix), `8e4e942` (product: port-qualified
+  grants, CONNECT TLS floor, hop-by-hop header stripping, Docker `--init`),
+  `55cac76`/`ba53732` (Docker mapped host user), and suite commit `2c40cab`
 - **Host:** Linux x86_64, kernel `7.2.8-9-omarchy`; bubblewrap 0.13.1;
   util-linux 2.42.4; iproute2 7.3.0; strace 7.2; Go 1.27.3; Docker 29.9.2;
   `alpine:3.20`
@@ -113,12 +113,13 @@ route, and the proxy should authorize only allowlisted destinations.
 | macOS Seatbelt | — | — | — | — | — | — | — | **INCONCLUSIVE** (not executed locally) |
 | Windows AppContainer/WFP | — | — | — | — | — | — | — | **INCONCLUSIVE** (not executed locally) |
 
-- **Final Linux run:** `r1792834593384b49` (2026-10-24T09:36:35Z →
-  09:37:00Z), mode `netns`, revision `9d166b0`, `-require-complete`. Evidence:
-  `/tmp/cceg/final-linux`.
+- **Final Linux run:** `r17928508892c76f8` (2026-10-24T14:08:11Z →
+  14:08:35Z), mode `netns`, revision `e0a4c61`, `-require-complete`. Evidence:
+  `/tmp/cceg/linux-final`.
 - **Final Docker run:** `r1792834620dd73b4` (2026-10-24T09:37:01Z →
   09:38:22Z), mode `netns`, revision `9d166b0`, `-require-complete`. Evidence:
-  `/tmp/cceg/final-docker`.
+  `/tmp/cceg/final-docker`. Docker is unaffected by `e0a4c61`, which changes
+  only `internal/sandbox/windows`.
 
 `-require-complete` fails the run on any BLOCKED or NOT_RUN case. Neither run
 produced a WARN or UNSUPPORTED case either, so there is nothing to exclude from
@@ -219,18 +220,52 @@ network path obeys policy on the tested backend?”**
   are reported **UNSUPPORTED** on macOS; they are never PASS.
 - Do not claim macOS Seatbelt success until the CI evidence is reviewed.
 
-### Windows AppContainer/WFP — INCONCLUSIVE / not executed locally
+### Windows AppContainer/WFP — INCONCLUSIVE, first real run found a product bug
 
-- No Windows host was available in this environment. The runner and probe
-  cross-compile for `windows/amd64`; the CI workflow runs the Windows backend
-  in host mode on `windows-latest`.
-- GitHub-hosted Windows runners ship `fwpuclnt.dll` but refuse WFP engine
-  sessions, so the Windows backend refuses to run and the suite records
-  **BLOCKED/NOT_RUN**, never PASS.
-- Real WFP enforcement requires self-hosted Windows hardware. The workflow
-  contains a `windows-wfp-self-hosted` job gated on
-  `vars.WARDEN_WFP_SELF_HOSTED == 'true'` with `-require-complete`, so a real
-  run cannot silently degrade into a capability report.
+- A first real-Windows run was completed on **Windows Server 2025 Standard
+  Evaluation (build 26100), Desktop Experience, in QEMU/KVM**. Build, vet, and
+  the unit tests ran, but **every** AppContainer/WFP/ETW boundary test skipped:
+
+  ```
+  --- SKIP: TestEscapeUngrantedReadDenied    (AppContainer sandbox not usable on this host)
+  --- SKIP: TestEscapeNetworkBlockedAudited  (AppContainer sandbox not usable on this host)
+  --- SKIP: TestEtwSessionLifecycle          (AppContainer sandbox not usable on this host)
+  ... (7 skips in total)
+  ```
+
+  `Supported()` returned false, so the boundary was never exercised. **A skip is
+  not a pass**, and this run is not counted as anything.
+
+- `wfpSupported()` reported the cause:
+
+  ```
+  WFP FwpmFilterAdd(deny-all): code 0x6f7      (RPC_X_BAD_STUB_DATA)
+  ```
+
+- **Root cause: a product bug, not a host limitation.** The Go mirror of the WFP
+  structs disagreed with the Windows SDK — the `FWPM_FILTER0` field layout and
+  size, the `FWP_ACTION_*` values, the `FWP_DATA_TYPE` values, and every
+  identifier GUID (the ALE connect layer keys even held the `ALE_APP_ID`
+  condition GUID). BFE marshals `FWPM_FILTER0` with its own definition, so a
+  divergent layout is rejected before any filter is installed. The earlier
+  assumption that hosted runners simply refuse WFP was wrong.
+
+- **Fixed** in `e0a4c61`. The struct offsets are pinned by
+  `internal/sandbox/windows/wfp_layout_test.go` (`FWPM_FILTER0` = 200 bytes) and
+  the constants/GUIDs by `wfp_spec_test.go`, which runs on every platform and
+  so is now CI-detectable.
+
+- **Still INCONCLUSIVE.** The fix is verified **statically only**: the offsets
+  were computed independently and match the SDK's x64 layout, both packages
+  build and vet for linux and windows, the Windows test binary compiles, and the
+  full suite passes. It has **not** been executed on real Windows. Re-run using
+  `WINDOWS-AI-TEST-GUIDE.md`; that guide's §4 either confirms the fix or returns
+  a more specific error.
+
+- GitHub-hosted `windows-latest` runners still cannot open WFP engine sessions,
+  so CI continues to record BLOCKED/NOT_RUN there. The workflow's
+  `windows-wfp-self-hosted` job (gated on `vars.WARDEN_WFP_SELF_HOSTED`, with
+  `-require-complete`) is the durable path once a real machine is available.
 
 ### Overall
 
@@ -555,8 +590,11 @@ Docs updated in the same change: `ARCHITECTURE.md`, `docs/schema.md`,
 host user, uses `--init`, and keeps `--network none` / `--cap-drop ALL`.
 
 **macOS Seatbelt:** INCONCLUSIVE / not executed locally. **Windows
-AppContainer/WFP:** INCONCLUSIVE / not executed locally; hosted CI cannot run
-WFP. **Do not claim a cross-platform YES.**
+AppContainer/WFP:** INCONCLUSIVE — a first real-Windows run showed the backend
+could never install a filter (`0x6f7`, caused by a wrong `FWPM_FILTER0` mirror),
+so the boundary tests skipped; the mirror is now fixed and pinned by tests, but
+the fix is verified statically only and still needs a real-Windows re-run. **Do
+not claim a cross-platform YES.**
 
 Every previously WARN or UNSUPPORTED property (D11, D14, E8, A4, C10/F11, F5,
 plus F6) is either enforced now or explicitly reclassified with a documented

@@ -204,7 +204,13 @@ the current evidence and boundaries. In short:
   decrypt the tunnel or bind SNI to policy; non-TLS and server-first CONNECT
   traffic is forwarded without inspection.
 - Host mode (macOS/Windows) cannot exercise hostname/DNS/IPv6 netns cases.
-- Windows WFP enforcement requires self-hosted hardware.
+- Windows WFP enforcement requires self-hosted hardware (or a VM with a real
+  Windows guest). The first real-Windows run showed the WFP filter install
+  failing with `RPC_X_BAD_STUB_DATA (0x6f7)` because the Go mirror of
+  `FWPM_FILTER0` disagreed with the SDK; that mirror is fixed and pinned by
+  `internal/sandbox/windows/wfp_spec_test.go` and `wfp_layout_test.go`. A
+  real-Windows re-run is still required — see
+  [`../../../../WINDOWS-AI-TEST-GUIDE.md`](../../../../WINDOWS-AI-TEST-GUIDE.md).
 - Port-qualified grants apply to Warden's own egress proxy. The Docker/Kubernetes
   manifest translation path does not preserve a host:port distinction; use the
   Warden proxy path when port granularity matters.
