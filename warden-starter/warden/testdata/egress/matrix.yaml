@@ -656,7 +656,7 @@ cases:
     probe: ["kill-parent", "--delay", "100ms", "--probe-addr", "{{deniedIP}}:{{deniedTCP}}", "--probe-url", "{{allowedURL}}", "--timeout", "5s"]
     expect: observe
     checks: ["kill_fail_closed"]
-    notes: "On Linux the in-sandbox bridge is PID 1 of the sandbox PID namespace and ignores untrappable signals; a surviving parent is reported as WARN, while supervisor-kill fail-closed behavior is covered by F15/G9."
+    notes: "On Linux the in-sandbox bridge is PID 1 of the sandbox PID namespace and ignores signals it cannot handle; a surviving parent is reported as WARN. On Docker the bridge is not PID 1 (--init), so the signal stops the container and the workload exits non-zero; supervisor-kill fail-closed behavior is also covered by F15/G9."
 
   - id: F6
     group: F
@@ -665,7 +665,7 @@ cases:
     probe: ["signal-parent", "--delay", "100ms", "--probe-addr", "{{deniedIP}}:{{deniedTCP}}", "--probe-url", "{{allowedURL}}", "--timeout", "5s"]
     expect: observe
     checks: ["kill_fail_closed"]
-    notes: "Same PID-namespace caveat as F5."
+    notes: "Same signal-timing caveat as F5. On Docker a SIGTERM to the bridge can tear the container down after the probe emitted the pre-signal phase but before it flushed the kill result; kill_fail_closed accepts that signature only together with a non-zero workload exit, and never when the workload survived."
 
   - id: F7
     group: F

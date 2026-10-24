@@ -572,23 +572,39 @@ func findEvent(ev *caseEvidence, action string) map[string]any {
 }
 
 func killFailClosed(ev *caseEvidence) (bool, bool, string) {
-	signalled := anyEvent(ev, func(e map[string]any) bool {
+	signalPhase := func(e map[string]any) string {
 		a, _ := e["action"].(string)
+		if a != "kill-parent" && a != "signal-parent" {
+			return ""
+		}
 		p, _ := e["phase"].(string)
-		return (a == "kill-parent" || a == "signal-parent") && p == "signal"
-	})
-	if !signalled {
+		return p
+	}
+	signalled := anyEvent(ev, func(e map[string]any) bool { return signalPhase(e) == "signal" })
+	attempted := signalled || anyEvent(ev, func(e map[string]any) bool { return signalPhase(e) == "before" })
+	if !attempted {
 		return false, false, "the probe never signalled the enforcement process"
 	}
 	parent := findPhase(ev, "after-parent")
 	if parent == nil {
-		// On Linux the in-sandbox bridge is PID 1 of the sandbox PID
-		// namespace. When it dies the kernel terminates every process in the
-		// namespace, including the probe, before it can emit after-parent.
-		// A non-zero workload exit after the signal is therefore direct
-		// fail-closed evidence: nothing survived to keep using the network.
+		// Two fail-closed teardown signatures are accepted, both requiring a
+		// non-zero workload exit so a surviving workload is never a PASS:
+		//
+		//  1. The probe recorded the kill(2) result and then died. On Linux the
+		//     in-sandbox bridge is PID 1 of the sandbox PID namespace; when it
+		//     dies the kernel terminates every process in the namespace before
+		//     the probe can emit after-parent.
+		//  2. The probe emitted the pre-signal phase but was torn down before
+		//     it could record the kill(2) result. On Docker the in-container
+		//     bridge is the probe's parent; when the bridge dies the container
+		//     stops and every process in it, including the probe, is killed
+		//     first. The pre-signal event plus a non-zero workload exit is the
+		//     same evidence, observed slightly earlier in the sequence.
 		if step := signalStep(ev); step != nil && step.ExitCode != 0 {
 			return true, false, fmt.Sprintf("the workload was terminated (exit %d) when the enforcement process received the signal; no traffic survived (fail closed)", step.ExitCode)
+		}
+		if step := preSignalStep(ev); step != nil && step.ExitCode != 0 {
+			return true, false, fmt.Sprintf("the workload was terminated (exit %d) when the enforcement process was signalled, before the kill result could be recorded; no traffic survived (fail closed)", step.ExitCode)
 		}
 		return false, true, "the signal was sent but the workload's fate could not be determined; fail-closed behavior is not proven"
 	}
@@ -627,6 +643,23 @@ func signalStep(ev *caseEvidence) *stepEvidence {
 			a, _ := e["action"].(string)
 			p, _ := e["phase"].(string)
 			if (a == "kill-parent" || a == "signal-parent") && p == "signal" {
+				return &ev.steps[i]
+			}
+		}
+	}
+	return nil
+}
+
+// preSignalStep returns the step that emitted the probe's pre-signal phase.
+// It is used when the probe was torn down before it could record the kill(2)
+// result, which happens when the signalled process is the probe's container
+// parent and its death stops the whole container.
+func preSignalStep(ev *caseEvidence) *stepEvidence {
+	for i := range ev.steps {
+		for _, e := range ev.steps[i].Events {
+			a, _ := e["action"].(string)
+			p, _ := e["phase"].(string)
+			if (a == "kill-parent" || a == "signal-parent") && p == "before" {
 				return &ev.steps[i]
 			}
 		}
