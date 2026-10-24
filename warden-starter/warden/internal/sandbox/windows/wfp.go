@@ -19,48 +19,23 @@ import (
 // loopback path the egress proxy needs.
 //
 // All GUIDs and struct mirrors below come from fwpmu.h / fwptypes.h / winnt.h.
-// They are constants that a WFP implementation cannot invent; the escape tests
-// on a Windows runner pin them in place.
+// They are constants a WFP implementation cannot invent; wfp_spec_test.go and
+// wfp_layout_test.go pin them against the published SDK values.
 
-// FWPM_ACTION_* (fwpmu.h).
-const (
-	fwpmActionBlock  = 0x00000000
-	fwpmActionPermit = 0x00000001
-	fwpmActionNone   = 0x00000002
-)
+// The WFP action types, data types, condition flags and identifier strings
+// live in wfp_spec.go, which has no build tag so tests on every platform can
+// pin their values. The struct mirrors stay here because they embed
+// windows.GUID.
 
-// FWP_MATCH_TYPE (fwptypes.h).
-const fwpmMatchEqual = 0
-
-// FWP_DATA_TYPE (fwptypes.h).
-const (
-	fwpUint8        = 0x01
-	fwpUint16       = 0x02
-	fwpUint32       = 0x03
-	fwpByteArray16  = 0x09
-	fwpByteBlobType = 0x0A
-	fwpSid          = 0x0B
-)
-
-// FWPM Condition field GUIDs (fwpmu.h). FWP_CONDITION_FLAG_IS_LOOPBACK marks
-// traffic that stays on a loopback interface.
-const fwpConditionFlagIsLoopback = 0x00000001
-
+// The built-in WFP identifiers the egress filters attach to.
 var (
-	// FWPM_CONDITION_ALE_APP_ID identifies the executable by its NT image path.
-	guidConditionALEAppID = guidOf("b0e247ec-84be-4d1a-982c-deb94538337c")
-	// FWPM_CONDITION_FLAGS carries filter flags such as IS_LOOPBACK.
-	guidConditionFlags = guidOf("632ce23b-5167-435c-86cf-242bbbb70cb1")
-	// FWPM_CONDITION_IP_REMOTE_PORT is the destination port condition.
-	guidConditionIPRemotePort = guidOf("6fb1c71d-8ae9-4b97-b873-a462be2c14db")
-)
+	guidConditionALEAppID     = guidOf(guidStringConditionALEAppID)
+	guidConditionFlags        = guidOf(guidStringConditionFlags)
+	guidConditionIPRemotePort = guidOf(guidStringConditionIPRemotePort)
+	guidWardenActionType      = guidOf(guidStringWardenActionType)
 
-// Well-known WFP layers we attach to (fwpmu.h).
-var (
-	// FWPM_LAYER_ALE_AUTH_CONNECT_V4
-	guidLayerALEAuthConnectV4 = guidOf("d78e1e87-8644-4ea5-9437-d809ecefc971")
-	// FWPM_LAYER_ALE_AUTH_CONNECT_V6
-	guidLayerALEAuthConnectV6 = guidOf("4a6f2e6c-9a3d-4f1d-a43f-9bcb355219b5")
+	guidLayerALEAuthConnectV4 = guidOf(guidStringLayerALEAuthConnectV4)
+	guidLayerALEAuthConnectV6 = guidOf(guidStringLayerALEAuthConnectV6)
 )
 
 // fwpByteBlob mirrors FWP_BYTE_BLOB (fwptypes.h).
@@ -75,12 +50,16 @@ type fwpmDisplayData struct {
 	description *uint16
 }
 
-// fwpConditionValue mirrors FWP_CONDITION_VALUE (fwptypes.h): a data-type
-// discriminator plus a 16-byte value union.
+// fwpConditionValue mirrors FWP_CONDITION_VALUE0 (fwptypes.h): a data-type
+// discriminator, four bytes of padding, then the tagged union. The union holds
+// an FWP_BYTE_ARRAY16 (16 bytes) and members needing 8-byte alignment, so it
+// must be 8-byte aligned here too. A [16]byte union aligns to 1, which shrinks
+// the enclosing FWPM_FILTER_CONDITION0 from 48 to 44 bytes and shifts every
+// later filter field onto the wrong offset.
 type fwpConditionValue struct {
 	valueType uint32
 	_         uint32
-	value     [16]byte // union
+	value     [2]uint64 // union
 }
 
 func (v *fwpConditionValue) setUint32(x uint32) {
@@ -98,54 +77,75 @@ func (v *fwpConditionValue) setByteBlob(b *fwpByteBlob) {
 	*(*uintptr)(unsafe.Pointer(&v.value[0])) = uintptr(unsafe.Pointer(b))
 }
 
-// FWP_VALUE mirrors FWP_VALUE (fwptypes.h): a data-type discriminator plus a
-// 16-byte value union. filters use it for weight (FWP_EMPTY when unused).
+// fwpValue mirrors FWP_VALUE0 (fwptypes.h): a data-type discriminator, four
+// bytes of padding, then an 8-byte union (its largest member is a pointer).
+// FWP_VALUE0 is 16 bytes, not 24only FWP_CONDITION_VALUE0 carries the 16-byte
+// FWP_BYTE_ARRAY16 member.
 type fwpValue struct {
 	valueType uint32
 	_         uint32
-	value     [16]byte // union, unused for the empty weight
+	value     uint64 // union; unused for the empty weight
 }
 
 // fwpEmpty is FWP_DATA_TYPE::FWP_EMPTY.
 const fwpEmpty = 0
 
-// fwpmFilterCondition mirrors FWPM_FILTER_CONDITION (fwpmu.h).
+// fwpmAction mirrors FWPM_ACTION0 (fwpmtypes.h): the action type plus a 16-byte
+// GUID union. Non-callout actions (block/permit) require filterType; callout
+// actions put the callout key in the same bytes. 24 bytes.
+type fwpmAction struct {
+	actionType uint32
+	_          uint32
+	filterType windows.GUID
+}
+
+// fwpmFilterCondition mirrors FWPM_FILTER_CONDITION0 (fwpmtypes.h). 48 bytes:
+// the field GUID, the match type, four bytes of padding, then the 8-byte
+// aligned condition value.
 type fwpmFilterCondition struct {
 	fieldKey       windows.GUID
 	matchType      uint32
+	_              uint32
 	conditionValue fwpConditionValue
 }
 
-// fwpmFilter mirrors FWPM_FILTER (fwpmu.h). Field order matches the SDK so the
-// compiler reproduces the MSVC x64 offsets for the pointer/uint32 transitions;
-// layerKey and weight.valueType are set for every filter added. The exact
-// layout is cross-checked by the Windows integration tests; a wrong offset
-// makes FwpmFilterAdd fail, which fails the run closed.
+// fwpmFilter mirrors FWPM_FILTER0 (fwpmtypes.h). The field order and explicit
+// padding reproduce the SDK's x64 layout (200 bytes); fwpm_layout_test.go
+// asserts every offset. A mismatch makes FwpmFilterAdd0 fail with
+// RPC_X_BAD_STUB_DATA (0x6f7), because BFE marshals the struct with its own
+// definition and reads garbage wherever the two layouts diverge.
 type fwpmFilter struct {
 	filterKey           windows.GUID
+	displayData         fwpmDisplayData
 	flags               uint32
+	_                   uint32
 	providerKey         *windows.GUID
 	providerData        fwpByteBlob
-	displayData         fwpmDisplayData
 	layerKey            windows.GUID
-	weight              fwpValue
 	subLayerKey         windows.GUID
-	rawContext          windows.GUID
-	providerContextKey  windows.GUID
-	conditions          *fwpmFilterCondition
+	weight              fwpValue
 	numFilterConditions uint32
-	action              uint32
-	u                   uintptr // union member, unused (zero)
+	_                   uint32
+	filterCondition     *fwpmFilterCondition
+	action              fwpmAction
+	providerContext     [2]uint64 // union { UINT64 rawContext; GUID providerContextKey }
+	reserved            *windows.GUID
+	filterId            uint64
+	effectiveWeight     fwpValue
 }
 
-// fwpmSublayer mirrors FWPM_SUBLAYER (fwpmu.h).
+// fwpmSublayer mirrors FWPM_SUBLAYER0 (fwpmtypes.h). 72 bytes: the sublayer
+// GUID, display data, flags, a provider key pointer, a byte blob and a 16-bit
+// weight, padded to the struct's 8-byte alignment.
 type fwpmSublayer struct {
 	subLayerKey  windows.GUID
 	displayData  fwpmDisplayData
-	providerKey  windows.GUID
-	providerData windows.GUID
 	flags        uint32
-	weight       uint32
+	_            uint32
+	providerKey  *windows.GUID
+	providerData fwpByteBlob
+	weight       uint16
+	_            [6]byte
 }
 
 // guidOf parses a registry-style GUID string into a windows.GUID. These are
@@ -201,10 +201,16 @@ func wfpSupported() error {
 	// and the same refusal hits netsh/Get-NetFirewallProfile (diagnosed in
 	// the ci.yml wfp-engine-probe rounds). Deeper hosted images still accept
 	// the engine open but fail the first filter write with RPC_X_BAD_STUB_DATA
-	// (0x6f7) on FwpmFilterAdd. Run the install path's exact sequence against
-	// a throwaway sublayer and abort the transaction so nothing persists:
-	// Supported() then reports the host's true ability to enforce egress
-	// rules, and callers skip instead of failing on a refuse-to-run sandbox.
+	// (0x6f7) on FwpmFilterAdd. That 0x6f7 was later reproduced on a real
+	// Windows Server 2025 host and traced to a wrong FWPM_FILTER0 layout in
+	// this file, not to the host; the structs and constants are now pinned by
+	// wfp_layout_test.go and wfp_spec_test.go. The probe stays because
+	// installing and rolling back a real filter is the only thing that proves
+	// the host can enforce egress at all. Run the install path's exact sequence
+	// against a throwaway sublayer and abort the transaction so nothing
+	// persists: Supported() then reports the host's true ability to enforce
+	// egress rules, and callers skip instead of failing on a refuse-to-run
+	// sandbox.
 	engine, err := fwpmOpen()
 	if err != nil {
 		return err
@@ -244,8 +250,8 @@ func fwpmOpen() (windows.Handle, error) {
 	r, _, _ := procFwpmEngineOpen.Call(
 		0,             // serverName: NULL, local engine
 		rpcAuthnWinNT, // authnService: RPC_C_AUTHN_WINNT (allowed values are WINNT and DEFAULT)
-		0, // authIdentity: NULL, use the calling thread's credentials
-		0, // session: NULL, default session flags
+		0,             // authIdentity: NULL, use the calling thread's credentials
+		0,             // session: NULL, default session flags
 		uintptr(unsafe.Pointer(&engine)),
 	)
 	if err := fwpmResultError("FwpmEngineOpen", r); err != nil {
@@ -380,9 +386,9 @@ func addPermitLoopback(engine windows.Handle, subLayer windows.GUID, layer windo
 		layerKey:            layer,
 		weight:              fwpValue{valueType: fwpEmpty},
 		subLayerKey:         subLayer,
-		conditions:          &conds[0],
+		filterCondition:     &conds[0],
 		numFilterConditions: uint32(len(conds)),
-		action:              fwpmActionPermit,
+		action:              fwpmAction{actionType: fwpmActionPermit, filterType: guidWardenActionType},
 	}
 	return fwpmAdd(engine, &f, ids, "allow-loopback")
 }
@@ -394,7 +400,7 @@ func addBlockAll(engine windows.Handle, subLayer windows.GUID, layer windows.GUI
 		layerKey:    layer,
 		weight:      fwpValue{valueType: fwpEmpty},
 		subLayerKey: subLayer,
-		action:      fwpmActionBlock,
+		action:      fwpmAction{actionType: fwpmActionBlock, filterType: guidWardenActionType},
 	}
 	return fwpmAdd(engine, &f, ids, "deny-all")
 }
