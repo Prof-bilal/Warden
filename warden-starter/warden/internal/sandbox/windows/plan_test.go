@@ -113,10 +113,10 @@ func TestBuildPlanSessionBoundIdentities(t *testing.T) {
 	if a.CapabilitySIDs[0] == b.CapabilitySIDs[0] {
 		t.Fatal("capability SIDs must differ per run")
 	}
-	if !strings.HasPrefix(a.PackageSID, "S-1-15-3-") {
+	if !strings.HasPrefix(a.PackageSID, "S-1-15-2-") {
 		t.Fatalf("package SID %q is not an AppContainer SID", a.PackageSID)
 	}
-	if !strings.HasPrefix(a.CapabilitySIDs[0], "S-1-15-7-") {
+	if !strings.HasPrefix(a.CapabilitySIDs[0], "S-1-15-3-1024-") {
 		t.Fatalf("capability SID %q is not a capability SID", a.CapabilitySIDs[0])
 	}
 }
@@ -208,12 +208,12 @@ func TestIsRuntimeWriteDenied(t *testing.T) {
 
 func TestAppContainerSIDShape(t *testing.T) {
 	sid := appContainerSID("warden.test")
-	if !strings.HasPrefix(sid, "S-1-15-3-") {
+	if !strings.HasPrefix(sid, "S-1-15-2-") {
 		t.Fatalf("sid %q not AppContainer-shaped", sid)
 	}
 	parts := strings.Split(sid, "-")
-	if len(parts) != 8 {
-		t.Fatalf("sid %q should have 8 components", sid)
+	if len(parts) != 11 {
+		t.Fatalf("sid %q should have 11 components", sid)
 	}
 	// Deterministic.
 	if sid != appContainerSID("warden.test") {
@@ -222,5 +222,39 @@ func TestAppContainerSIDShape(t *testing.T) {
 	// Distinct monikers derive distinct SIDs.
 	if sid == appContainerSID("warden.other") {
 		t.Fatal("distinct monikers derived the same SID")
+	}
+}
+
+// TestAppContainerSIDMatchesWindows pins the derivation to vectors produced
+// by DeriveAppContainerSidFromAppContainerName on Windows 11.
+func TestAppContainerSIDMatchesWindows(t *testing.T) {
+	for name, want := range map[string]string{
+		"warden.Test123": "S-1-15-2-1828720983-4201658250-2162089242-396516100-2185497558-2698892817-3456147126",
+		"warden.abc":     "S-1-15-2-1902657972-890255010-1254458774-3399025136-16578562-3838974668-1097058824",
+	} {
+		if got := appContainerSID(name); got != want {
+			t.Errorf("appContainerSID(%q) = %s, want %s", name, got, want)
+		}
+	}
+}
+
+func TestChooseWorkDir(t *testing.T) {
+	p := policy.Policy{Filesystem: policy.Filesystem{
+		Read:  []string{`C:\srv`},
+		Write: []string{`C:\out`},
+	}}
+	exe := `C:\tools\node.exe`
+	for _, c := range []struct{ cwd, want string }{
+		{`C:\srv\sub`, `C:\srv\sub`},      // inside a grant: kept
+		{`C:\out`, `C:\out`},              // equal to a grant: kept
+		{`C:\Users\me\Desktop`, `C:\out`}, // outside: first write grant
+		{``, `C:\out`},                    // unknown: first write grant
+	} {
+		if got := chooseWorkDir(c.cwd, exe, p); got != c.want {
+			t.Errorf("chooseWorkDir(%q) = %q, want %q", c.cwd, got, c.want)
+		}
+	}
+	if got := chooseWorkDir(`C:\elsewhere`, exe, policy.Policy{}); got != `C:\tools` {
+		t.Errorf("no grants: got %q, want exe dir", got)
 	}
 }

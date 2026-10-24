@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"time"
 	"unicode/utf16"
 	"unsafe"
 
@@ -55,6 +56,19 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approval *approve.Config) (int, error) {
 	// Host-side egress proxy on a loopback TCP address; its exact endpoint is
 	// the only destination WFP permits.
+	// Without WFP (no elevation) only the explicit unprivileged mode may run,
+	// and only for policies it can fully enforce.
+	unprivileged := false
+	if werr := wfpSupported(); werr != nil {
+		if !unprivilegedOptIn() {
+			return 0, werr
+		}
+		if err := checkUnprivilegedPolicy(p); err != nil {
+			return 0, err
+		}
+		unprivileged = true
+	}
+
 	eg, err := proxy.StartTCP(p.Network.Allow, logger)
 	if err != nil {
 		return 0, err
@@ -70,28 +84,46 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 		return 0, err
 	}
 
-	// 1. AppContainer token.
-	token, err := makeLowBoxToken(plan)
+	// 1. AppContainer identity: the kernel builds the LowBox token from the
+	// plan's package SID and capabilities at CreateProcess (step 6).
+
+	// The AppContainer profile must stay registered for the whole lifetime of
+	// the target.
+	cleanupProfile, err := registerAppContainerProfile(plan)
 	if err != nil {
 		return 0, err
 	}
-	defer windows.CloseHandle(token)
+	defer cleanupProfile()
 
 	// 2. Filesystem capabilities (DACL grants on the policy paths).
-	if err := grantFilesystemAccess(plan); err != nil {
+	restoreACLs, err := grantFilesystemAccess(plan)
+	defer restoreACLs()
+	if err != nil {
 		return 0, err
 	}
+	// Read-attributes on the grants' ancestors so runtimes can resolve real
+	// paths (see ancestors.go).
+	defer grantAncestorAttributes(plan)()
 
-	// 3. WFP egress filters: permit loopback-to-proxy, block the rest.
-	image, err := imageNTPath(plan.Command[0])
-	if err != nil {
-		return 0, failClose("resolve image path for WFP", err)
+	// 3. WFP egress filters: permit loopback-to-proxy, block the rest. In
+	// unprivileged mode the token has no network capability, so AppContainer
+	// isolation itself blocks all egress (see unprivileged.go).
+	if !unprivileged {
+		wfp, err := installWFPEgress(plan.PackageSID, plan.AllowPorts[0], plan.AppContainerName)
+		if err != nil {
+			return 0, err
+		}
+		defer wfp.close()
+
+		// AppContainers cannot reach loopback at all unless exempted; the
+		// exemption is scoped to this run's package SID and WFP still permits
+		// only the proxy port.
+		restoreLoopback, err := exemptLoopback(plan.PackageSID)
+		if err != nil {
+			return 0, err
+		}
+		defer restoreLoopback()
 	}
-	wfp, err := installWFPEgress(image, plan.AllowPorts[0], plan.AppContainerName)
-	if err != nil {
-		return 0, err
-	}
-	defer wfp.close()
 
 	// 4. Job Object limits (wall-clock + memory + kill-on-close).
 	job, err := configureJobObject(p.Limits, logger)
@@ -103,32 +135,56 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 	// 5. Start ETW auditing before the target begins. Fail closed: an audit
 	// session that cannot start refuses the whole run (the security gate), so
 	// the trace's error is returned as-is.
-	trace, err := startTrace("warden-"+plan.AppContainerName, logger)
-	if err != nil {
-		return 0, err
+	var trace *traceSession
+	if unprivileged {
+		_ = logger.Log(audit.Event{
+			Timestamp: time.Now(),
+			Type:      "sandbox",
+			Action:    "unprivileged",
+			Resource:  plan.AppContainerName,
+			Allowed:   true,
+			Reason:    "Windows unprivileged mode: ETW file audit and WFP disabled; all network blocked by AppContainer",
+		})
+	} else {
+		trace, err = startTrace("warden-"+plan.AppContainerName, logger)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	// 6. Spawn the target under the LowBox token.
-	pi, err := createProcess(plan, token)
+	// Both modes launch through CreateProcess + SECURITY_CAPABILITIES with a
+	// registered profile: a raw NtCreateLowBoxToken token has no AppContainer
+	// named-object directory, so the target dies in loader init (0xC0000142).
+	pi, err := createProcessAppContainer(plan)
 	if err != nil {
-		_ = trace.closeSession()
+		trace.closeIfOpen()
 		return 0, err
 	}
 	defer windows.CloseHandle(pi.hThread)
 	defer windows.CloseHandle(pi.hProcess)
 
-	// Pin the whole process tree to the Job Object so limits and kill-on-close
-	// reach every descendant, and scope ETW records to the tree.
+	// The target was created suspended: pin it to the Job Object and start
+	// the ETW consumer before its first instruction, so no descendant can
+	// escape the limits and no early file activity is missed.
 	if err := windows.AssignProcessToJobObject(job.handle, pi.hProcess); err != nil {
-		_ = trace.closeSession()
+		_ = windows.TerminateProcess(pi.hProcess, 1)
+		trace.closeIfOpen()
 		return 0, failClose("assign process tree to Job Object", err)
 	}
-	tree, _ := processTreePIDs(pi.dwProcessId)
-	trace.tree = tree
-	go trace.run()
+	if trace != nil {
+		tree, _ := processTreePIDs(pi.dwProcessId)
+		trace.tree = tree
+		go trace.run()
+	}
+	if _, err := windows.ResumeThread(pi.hThread); err != nil {
+		_ = windows.TerminateProcess(pi.hProcess, 1)
+		trace.closeIfOpen()
+		return 0, failClose("resume sandboxed process", err)
+	}
 
 	code, limitErr := job.wait(pi.hProcess, p.Limits, logger)
-	_ = trace.closeSession()
+	trace.closeIfOpen()
 	if limitErr != nil {
 		return 0, limitErr
 	}
@@ -216,4 +272,12 @@ func envBlockPtr(block string) *uint16 {
 	u := utf16.Encode([]rune(block))
 	u = append(u, 0, 0)
 	return &u[0]
+}
+
+// closeIfOpen stops the ETW session when one was started (nil in
+// unprivileged mode).
+func (t *traceSession) closeIfOpen() {
+	if t != nil {
+		_ = t.closeSession()
+	}
 }

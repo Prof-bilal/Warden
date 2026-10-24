@@ -30,6 +30,35 @@ whoami
 Record Windows edition/build, administrator status, architecture, and missing
 prerequisites. A skipped WFP/AppContainer/ETW test is not a pass.
 
+## Administrator permission
+
+WFP egress filtering, ETW auditing, loopback exemption for the proxy, and ACL
+changes on folders you do not own need administrator rights. When
+`warden run` fails for one of these reasons from a non-elevated terminal, it
+asks `Warden needs administrator permission for this run. Request it now?
+[y/N]` and, on yes, reruns the same command through UAC and prints its output
+and exit code. `WARDEN_ELEVATE=1` skips the question (UAC still asks). The
+elevated run gets its own console: its output is shown when it finishes and
+stdin is not forwarded, so use an elevated terminal for stdio MCP clients.
+
+`WARDEN_WINDOWS_UNPRIVILEGED=1` opts in to a non-administrator mode for
+testing: AppContainer filesystem isolation, environment filtering, and Job
+Object limits stay enforced, all network access is blocked by AppContainer
+itself, policies with `network.allow` are refused, and ETW file auditing is
+off (an audit record says so). Blocked network attempts are not audited in
+this mode.
+
+Known limits inside the AppContainer:
+
+- Without elevation Warden cannot grant read-attributes on `C:\`, so runtimes
+  that resolve real paths from the root (node's module loader) fail with
+  `EPERM, lstat 'C:\'`; run node with `--preserve-symlinks-main` or elevate.
+- node `child_process` with `stdio: 'pipe'` hangs: libuv cannot create its
+  named pipes in an AppContainer and retries forever. `'inherit'` and
+  `'ignore'` work.
+- The target starts in the host working directory only when it is inside a
+  policy grant; otherwise in the first write grant, then the first read grant.
+
 ## 1. Published installation
 
 Open the Warden landing page and copy its install command. The expected npm

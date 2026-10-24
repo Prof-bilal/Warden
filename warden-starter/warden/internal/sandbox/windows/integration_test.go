@@ -27,7 +27,7 @@ const startupMarkerWindows = "WARDEN_WINDOWS_UP"
 func requireAppContainer(t *testing.T) {
 	t.Helper()
 	if !Supported() {
-		t.Skip("AppContainer sandbox not usable on this hostskipping Windows escape test")
+		t.Skip("AppContainer sandbox not usable on this host; skipping Windows escape test")
 	}
 
 	comspec := os.Getenv("COMSPEC")
@@ -51,7 +51,7 @@ func requireAppContainer(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := policy.Policy{Filesystem: policy.Filesystem{Write: []string{fullPath}}}
-	code, err := Run([]string{comspec, "/c", probe}, p)
+	code, err := Run([]string{comspec, "/c", "call", probe}, p)
 	if err != nil {
 		t.Fatalf("positive control: AppContainer sandbox cannot start a target: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestEscapeUngrantedReadDenied(t *testing.T) {
 	}
 
 	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{grantedDir}}}
-	code, err := runEscape(t, p, []string{comspec(t), "/c", probe, secret})
+	code, err := runEscape(t, p, []string{comspec(t), "/c", "call", probe, secret})
 	if err != nil {
 		// A fail-closed startup error is acceptable; an escape is not.
 		t.Skipf("sandbox could not start here: %v", err)
@@ -136,7 +136,7 @@ func TestGrantedPathReadable(t *testing.T) {
 	}
 
 	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{grantedDir}}}
-	code, err := runEscape(t, p, []string{comspec(t), "/c", probe, want})
+	code, err := runEscape(t, p, []string{comspec(t), "/c", "call", probe, want})
 	if err != nil {
 		t.Skipf("sandbox could not start here: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestEscapeNetworkBlockedAudited(t *testing.T) {
 	// connection to the proxy while the token denies everything else. The
 	// proxy allows only "allowed.example"; the request to blockedHost must be
 	// denied with HTTP 403, which curl reports as exit code 22.
-	code, err := runEscape(t, p, []string{curl, "-s", "http://" + blockedHost + "/"})
+	code, err := runEscape(t, p, []string{curl, "-sf", "http://" + blockedHost + "/"})
 	if err != nil {
 		t.Skipf("sandbox could not start here: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{grantedDir}}, Limits: policy.Limits{TimeoutS: 1}}
-	code, err := runEscape(t, p, []string{comspec(t), "/c", probe})
+	code, err := runEscape(t, p, []string{comspec(t), "/c", "call", probe})
 	if err != nil {
 		if _, ok := err.(*LimitExceededError); ok {
 			return // correct: the policy terminated the tree

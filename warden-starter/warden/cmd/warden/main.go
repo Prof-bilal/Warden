@@ -111,6 +111,8 @@ func main() {
 		}
 	case "__proxy-bridge":
 		cmdProxyBridge(os.Args[2:])
+	case elevatedCmd:
+		cmdElevated(os.Args[2:])
 	case "run":
 		if hasHelpFlag(os.Args[2:]) {
 			printRunHelp()
@@ -816,6 +818,9 @@ func cmdRun(args []string) {
 
 	exitCode, err := sandbox.Run(cmd, p, backend)
 	if err != nil {
+		if handled, code := offerElevation(err); handled {
+			os.Exit(code)
+		}
 		var ref sandboxerr.RefuseToRun
 		if errors.As(err, &ref) {
 			fmt.Fprintln(os.Stderr, err)
