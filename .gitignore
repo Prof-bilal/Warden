@@ -4,6 +4,7 @@
 .agents/
 .freebuff/
 .commandcode/
+.mcp.json
 # Marketing folder (local only, not pushed to GitHub)
 marketing/
 
