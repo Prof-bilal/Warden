@@ -147,8 +147,8 @@ export default function Docs() {
               Warden documentation
             </h1>
             <p className="mt-5 max-w-[34rem] font-hero text-[1.0625rem] leading-[1.65] text-muted">
-              Install it, run your first sandboxed server, then go deep on the
-              policy schema. Start with Install and Quickstart, in that order.
+              Install Warden, run a local tool through a policy, then explore
+              the controls and platform limitations. Start with Install and Quickstart.
             </p>
 
             <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">

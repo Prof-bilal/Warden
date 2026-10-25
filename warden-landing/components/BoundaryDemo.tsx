@@ -180,21 +180,21 @@ export default function BoundaryDemo() {
         {/* header */}
         <div className="mx-auto max-w-[640px] text-center">
           <p className="mb-4 font-hero text-[12px] font-bold uppercase tracking-[0.12em] text-grant">
-            Live boundary demo
+            Interactive illustration
           </p>
           <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
-            MCP has no concept of a boundary.
+            Same tool. Smaller boundary.
           </h2>
           <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
-            An agent asks for a file, a host, a secretand the protocol happily complies. Pick a
-            request, flip the switch, and watch Warden verdict every call at the boundary.
+            Local tools normally run with your user permissions. Choose a request and toggle
+            Warden to explore an explicit allowlist. This illustration is not a live security test.
           </p>
         </div>
 
         {/* console */}
-        <div className="mx-auto mt-10 max-w-4xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
+        <div className="mx-auto mt-10 max-w-5xl overflow-hidden rounded-2xl border border-ink-700 bg-[#11161e] shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
           {/* control bar */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 bg-ink-950/60 px-4 py-3 md:px-5">
+          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 bg-ink-950/80 px-4 py-3.5 md:px-6">
             <span
               className={
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1 font-hero text-[11px] font-bold tracking-[0.08em] " +
@@ -266,7 +266,7 @@ export default function BoundaryDemo() {
           </div>
 
           {/* scenario picker */}
-          <div className="flex gap-2 overflow-x-auto border-b border-ink-700 px-4 py-3 md:px-5">
+          <div className="grid grid-cols-2 gap-2 border-b border-ink-700 bg-ink-950/30 px-4 py-3 md:grid-cols-5 md:px-6">
             {SCENES.map((s, i) => {
               const active = i === idx % SCENES.length;
               return (
@@ -274,7 +274,7 @@ export default function BoundaryDemo() {
                   key={s.short}
                   onClick={() => pick(i)}
                   className={
-                    "flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 font-hero text-[12px] transition-colors " +
+                    "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left font-hero text-[11px] transition-colors " +
                     (active
                       ? "border-blueprint/60 bg-blueprint/10 text-paper"
                       : "border-ink-700 bg-ink-950 text-muted hover:border-ink-500 hover:text-paper")
@@ -284,18 +284,18 @@ export default function BoundaryDemo() {
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: s.allow ? "#3FB27E" : "#E2604F" }}
                   />
-                  <span className="text-muted">{s.op}</span>
-                  <span>{s.short}</span>
+                  <span className="min-w-0 truncate text-muted">{s.op}</span>
+                  <span className="min-w-0 truncate text-paper">{s.short}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="px-4 py-6 md:px-8 md:py-8">
+          <div className="px-4 py-6 md:px-8 md:py-9">
             {/* pipeline: agent → gate → resource */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 md:gap-4">
               {/* agent */}
-              <div className="min-w-0 rounded-xl border border-blueprint/40 bg-ink-950 p-3 text-center md:p-4">
+              <div className="min-w-0 rounded-xl border border-blueprint/40 bg-ink-950/70 p-4 text-center md:p-5">
                 <Bot size={18} className="mx-auto text-blueprint" />
                 <p className="mt-2 truncate font-hero text-[13px] font-bold text-paper md:text-[14px]">
                   AI agent
@@ -345,7 +345,7 @@ export default function BoundaryDemo() {
               {/* resource */}
               <div
                 className={
-                  "min-w-0 rounded-xl border bg-ink-950 p-3 text-center md:p-4 " +
+                  "min-w-0 rounded-xl border bg-ink-950/70 p-4 text-center md:p-5 " +
                   (scene.sensitive ? "border-deny/40" : "border-grant/40")
                 }
               >
@@ -423,7 +423,7 @@ export default function BoundaryDemo() {
                     )}
                     {exposed && (
                       <>
-                        no sandboxsensitive {scene.op} passed ·{" "}
+                        no sandbox · sensitive {scene.op} passed ·{" "}
                         <span className="text-progress">would be denied by Warden</span>
                       </>
                     )}
@@ -445,8 +445,8 @@ export default function BoundaryDemo() {
             </div>
 
             {/* bottom split: audit log + counters */}
-            <div className="mt-4 grid gap-4 md:grid-cols-[1fr_12rem]">
-              <div className="min-h-[9.5rem] rounded-xl border border-ink-700 bg-ink-950 px-4 py-3 font-hero text-[12px] leading-[1.9]">
+            <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr]">
+              <div className="min-h-[8rem] rounded-xl border border-ink-700 bg-ink-950/70 px-4 py-3.5 font-hero text-[12px] leading-[1.9]">
                 <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
                   Audit log
                 </p>
@@ -467,7 +467,7 @@ export default function BoundaryDemo() {
                   </p>
                 ))}
               </div>
-              <div className="flex flex-row gap-3 md:flex-col">
+              <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: "allowed", value: stats.allow, cls: "text-grant" },
                   { label: "denied", value: stats.deny, cls: "text-deny" },
@@ -475,7 +475,7 @@ export default function BoundaryDemo() {
                 ].map((s) => (
                   <div
                     key={s.label}
-                    className="flex-1 rounded-xl border border-ink-700 bg-ink-950 px-4 py-3 text-center"
+                    className="rounded-xl border border-ink-700 bg-ink-950/70 px-3 py-3 text-center"
                   >
                     <p className={"font-hero text-2xl font-bold " + s.cls}>{s.value}</p>
                     <p className="font-hero text-[10px] uppercase tracking-[0.14em] text-muted">

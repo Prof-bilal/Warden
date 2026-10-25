@@ -5,10 +5,10 @@ export default function Cta() {
     <section className="border-t border-ink-800">
       <div className="mx-auto max-w-content px-6 py-20 text-center">
         <h2 className="mx-auto max-w-[26rem] font-hero text-[1.75rem] font-bold leading-[1.2] tracking-[-0.02em] text-paper md:text-[2rem]">
-          Try it against a server you didn&apos;t write.
+          Start with one local tool.
         </h2>
         <p className="mx-auto mt-3 max-w-[26rem] font-hero text-[1rem] leading-[1.6] text-muted">
-          That&apos;s the real testnot the one that already trusts you.
+          Install Warden, define what the tool needs, and keep unlisted access outside the boundary.
         </p>
         <a
           href="https://github.com/Prof-bilal/Warden"

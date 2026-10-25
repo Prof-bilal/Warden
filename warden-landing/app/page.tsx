@@ -18,31 +18,31 @@ import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 
 export const metadata: Metadata = {
-  title: { absolute: "Give MCP servers a sandbox, not your filesystem." },
+  title: { absolute: "Warden — Permissions for Local AI Tools" },
   description:
-    "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
+    "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "Give MCP servers a sandbox, not your filesystem.",
+    title: "Warden — Permissions for Local AI Tools",
     description:
-      "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
+      "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
     url: SITE_URL,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Give MCP servers a sandbox, not your filesystem.",
+        alt: "Warden — Permissions for Local AI Tools",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Give MCP servers a sandbox, not your filesystem.",
+    title: "Warden — Permissions for Local AI Tools",
     description:
-      "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
+      "Give local AI tools and MCP servers only the access they need, with explicit permissions.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
@@ -59,13 +59,12 @@ export default function Home() {
     applicationCategory: "DeveloperApplication",
     operatingSystem: ["Linux", "macOS", "Windows"],
     description:
-      "A sandbox runtime for MCP servers. Runs third-party code in OS-native sandboxes with deny-by-default filesystem, network, and environment controls.",
+      "An open-source permission layer for local AI tools, MCP servers, and other local processes, using OS-native sandboxing with explicit permissions.",
     "@id": `${SITE_URL}/#software`,
     url: SITE_URL,
     isAccessibleForFree: true,
     downloadUrl: "https://github.com/Prof-bilal/Warden/releases",
     installUrl: "https://www.npmjs.com/package/warden-sandbox-cli",
-    softwareVersion: "0.1.17",
     license: "https://opensource.org/licenses/MIT",
     offers: {
       "@type": "Offer",
@@ -94,9 +93,9 @@ export default function Home() {
           "@type": "WebPage",
           "@id": `${SITE_URL}/#webpage`,
           url: SITE_URL,
-          name: "Give MCP servers a sandbox, not your filesystem.",
+          name: "Warden — Permissions for Local AI Tools",
           description:
-            "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
+            "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
           isPartOf: { "@type": "WebSite", name: "Warden", url: SITE_URL },
           mainEntity: { "@id": `${SITE_URL}/#software` },
         }}
@@ -105,7 +104,7 @@ export default function Home() {
       <Hero />
       <section className="border-y border-ink-700 bg-ink-900/60">
         <div className="mx-auto grid max-w-content gap-8 px-6 py-12 md:grid-cols-[1fr_auto] md:items-center">
-          <div><p className="text-xs uppercase tracking-widest text-blueprint">MCP setup workspace</p><h2 className="mt-3 text-2xl font-semibold">Choose your client. Review your server’s access.</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Explore six candidate policy profiles and reversible setup for Claude, Cursor, Codex, VS Code, Gemini, and other local MCP hosts.</p></div>
+          <div><p className="text-xs uppercase tracking-widest text-blueprint">Local tool setup</p><h2 className="mt-3 text-2xl font-semibold">Choose your client. Review your tool’s access.</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Review candidate policies and reversible MCP setup for Claude, Cursor, Codex, VS Code, Gemini, and other hosts. Use the CLI directly for other local processes.</p></div>
           <div className="flex flex-wrap gap-3"><Link href="/setup" className="rounded-lg bg-blueprint px-5 py-3 text-sm font-semibold text-ink-950">Start setup →</Link><Link href="/policies" className="rounded-lg border border-ink-600 px-5 py-3 text-sm text-paper">Browse profiles</Link></div>
         </div>
       </section>

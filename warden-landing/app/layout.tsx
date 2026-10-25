@@ -28,11 +28,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Warden: Sandbox Runtime for MCP Servers",
+    default: "Warden — Permissions for Local AI Tools",
     template: "%s | Warden",
   },
   description:
-    "Warden runs MCP servers in a restricted sandbox. Servers only get the files, hosts, and env vars you explicitly grant. Open-source, fail-closed, audited.",
+    "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions using Warden's open-source sandbox.",
   authors: [{ name: "Prof-bilal", url: "https://github.com/Prof-bilal" }],
   creator: "Prof-bilal",
   publisher: "Prof-bilal",
@@ -55,24 +55,24 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Warden",
-    title: "Warden: Sandbox Runtime for MCP Servers",
+    title: "Warden — Permissions for Local AI Tools",
     description:
-      "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible. Open-source, fail-closed, audited.",
+      "Give local AI tools and MCP servers only the access they need. Open source, local, and fail-closed.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Warden: Sandbox Runtime for MCP Servers",
+        alt: "Warden",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden: Sandbox Runtime for MCP Servers",
+    title: "Warden — Permissions for Local AI Tools",
     description:
-      "Run MCP servers in a restricted sandbox. Only the files, hosts, and env vars you explicitly grant are accessible.",
+      "Give local AI tools and MCP servers only the access they need.",
     images: ["/og-image.png"],
     creator: "@Prof-bilal",
   },

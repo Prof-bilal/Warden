@@ -3,18 +3,21 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Download, Github, Menu, Star, X } from "lucide-react";
+import { ChevronDown, Download, Github, Menu, Star, X } from "lucide-react";
 import { formatCount } from "@/lib/stats";
 
 const links = [
-  { href: "/setup", label: "Setup" },
   { href: "/policies", label: "Policy packs" },
   { href: "/integrations", label: "Connections" },
   { href: "/creators", label: "Creators" },
-  { href: "/compatibility", label: "Compatibility" },
   { href: "/testing", label: "Testing" },
   { href: "/blog", label: "Blog" },
   { href: "/guides", label: "Guides" },
+];
+
+const primaryLinks = [
+  { href: "/setup", label: "Setup" },
+  { href: "/compatibility", label: "Compatibility" },
   { href: "/docs", label: "Docs" },
 ];
 
@@ -25,6 +28,7 @@ type Stats = { stars: number | null; downloads: number | null };
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [productOpen, setProductOpen] = useState(false);
   const [pillOpen, setPillOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [phOpen, setPhOpen] = useState(true);
@@ -127,8 +131,8 @@ export default function Nav() {
             <span className="font-hero text-[1.0625rem] font-bold text-paper">warden</span>
           </Link>
 
-          <nav className="hidden items-center gap-3 xl:flex">
-            {links.map((l) => (
+          <nav className="hidden items-center gap-4 xl:flex">
+            {primaryLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -137,6 +141,33 @@ export default function Nav() {
                 {l.label}
               </Link>
             ))}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProductOpen(!productOpen)}
+                aria-expanded={productOpen}
+                aria-haspopup="menu"
+                className="flex items-center gap-1 whitespace-nowrap font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
+              >
+                Product
+                <ChevronDown size={14} className={productOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+              </button>
+              {productOpen && (
+                <div className="absolute left-1/2 top-[calc(100%+14px)] z-50 w-52 -translate-x-1/2 rounded-xl border border-ink-700 bg-ink-950 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.45)]">
+                  <p className="px-3 pb-1 pt-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-muted/70">Explore Warden</p>
+                  {links.map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => setProductOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-[0.875rem] text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </nav>
 
           <div className="flex items-center gap-2.5">
@@ -171,7 +202,7 @@ export default function Nav() {
               href="https://discord.gg/Mx5BhwNP4"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-ink-700 bg-ink-900 px-3 py-1.5 text-[0.75rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800 sm:inline-flex"
+              className="hidden"
               aria-label="Warden on Discord"
             >
               <svg
@@ -203,6 +234,12 @@ export default function Nav() {
                 </span>
               )}
             </a>
+            <Link
+              href="/docs/install"
+              className="hidden rounded-lg bg-blueprint px-3.5 py-2 text-[0.75rem] font-semibold text-ink-950 transition-colors hover:bg-blueprint/90 md:block"
+            >
+              Install
+            </Link>
             <button
               onClick={() => setOpen(!open)}
               className="flex items-center justify-center rounded-sm border border-ink-600 p-1.5 text-muted transition-colors hover:text-paper xl:hidden"
@@ -216,7 +253,7 @@ export default function Nav() {
         {open && (
           <nav className="border-t border-ink-700 px-6 py-4 xl:hidden">
             <div className="flex flex-col gap-3">
-              {links.map((l) => (
+              {primaryLinks.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -226,6 +263,29 @@ export default function Nav() {
                   {l.label}
                 </Link>
               ))}
+              <button
+                type="button"
+                onClick={() => setProductOpen(!productOpen)}
+                aria-expanded={productOpen}
+                className="flex items-center gap-1 self-start font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
+              >
+                Product
+                <ChevronDown size={14} className={productOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+              </button>
+              {productOpen && (
+                <div className="ml-3 flex flex-col gap-3 border-l border-ink-700 pl-4">
+                  {links.map((l) => (
+                    <Link
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => { setProductOpen(false); setOpen(false); }}
+                      className="font-hero text-[0.875rem] text-muted transition-colors hover:text-paper"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </nav>
         )}

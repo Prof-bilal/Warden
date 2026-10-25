@@ -65,35 +65,35 @@ const LINES: Line[] = [
 const FIELDS: { id: FieldId; note: string; icon: React.ReactNode }[] = [
   {
     id: "command",
-    note: "How Warden starts the servernothing else runs.",
+    note: "The command Warden starts inside the selected sandbox.",
     icon: <Terminal size={15} />,
   },
   {
     id: "filesystem",
-    note: "Read and write are separate grants; anything not listed is invisible, not just unreadable.",
+    note: "Read and write are separate grants. Runtime support and denial behavior depend on the backend.",
     icon: <FolderLock size={15} />,
   },
   {
     id: "network",
-    note: "Only these hostnames resolve. DNS for anything else fails before a connection is even attempted.",
+    note: "Choose allowed hosts. The proxy checks the allowlist before resolving an upstream destination.",
     icon: <Globe size={15} />,
   },
   {
     id: "env",
-    note: "Only these variables are passed throughno inherited shell environment.",
+    note: "Only named variables are inherited. Warden also supplies the runtime settings its backend needs.",
     icon: <KeyRound size={15} />,
   },
   {
     id: "limits",
-    note: "The process is killed if either bound is crossed.",
+    note: "Set supported memory and runtime limits. CPU throttling is not provided.",
     icon: <Gauge size={15} />,
   },
 ];
 
 const STEPS = [
-  { n: "01", title: "Write a policy", desc: "warden.yaml lists every grant" },
+  { n: "01", title: "Define access", desc: "warden.yaml lists your explicit grants" },
   { n: "02", title: "Run Warden", desc: "warden run --policy warden.yaml" },
-  { n: "03", title: "Stay sandboxed", desc: "denied calls fail · all logged" },
+  { n: "03", title: "Inspect the run", desc: "review audit events and denied decisions" },
 ];
 
 export default function HowItWorks() {
@@ -103,9 +103,9 @@ export default function HowItWorks() {
   const howToSchema = {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    name: "How to sandbox an MCP server with Warden",
+    name: "How to run a local tool through Warden",
     description:
-      "Write a policy file, run Warden, and your MCP server is sandboxed with deny-by-default controls.",
+      "Define permissions, run your local process through Warden, and inspect the audit events.",
     step: [
       {
         "@type": "HowToStep",
@@ -122,7 +122,7 @@ export default function HowItWorks() {
       {
         "@type": "HowToStep",
         name: "Server runs sandboxed",
-        text: "The server can only access what the policy grants. Everything else fails, and Warden logs every blocked attempt.",
+        text: "The process runs inside the selected backend. Review audit events; file-denial visibility varies by platform.",
         position: 3,
       },
     ],
@@ -147,7 +147,7 @@ export default function HowItWorks() {
             How it works
           </p>
           <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
-            One file describes exactly what a server can touch.
+            Choose the access. Keep the same tool.
           </h2>
           <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
             No code changes, no SDK. Write the grants, run Warden, everything else disappears.

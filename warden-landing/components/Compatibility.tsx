@@ -21,7 +21,7 @@ const GROUPS = [
   },
   {
     verdict: "2 conditional",
-    detail: "Fetch and Kubernetesneed per-deployment hosts",
+    detail: "Fetch and Kubernetes need deployment-specific hosts",
     tone: "progress" as const,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -33,9 +33,9 @@ const GROUPS = [
     iconClass: "text-progress border-progress/30 bg-progress-subtle",
   },
   {
-    verdict: "2 faildocumented",
+    verdict: "2 known failures",
     detail:
-      "Docker socket and Playwright wildcards can't be sandboxed honestly",
+      "Docker daemon access and Playwright require permissions outside the fixture model",
     tone: "deny" as const,
     icon: (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -60,12 +60,11 @@ export default function Compatibility() {
               Compatibility
             </span>
             <h2 className="mt-5 font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper">
-              Tested against 18 real servers, not just our own fixtures.
+              18 MCP policy fixtures. Documented outcomes.
             </h2>
             <p className="mt-4 font-hero text-[1rem] leading-[1.65] text-muted">
-              Every server ships with the exact policy it needed, pinned as a
-              regression fixtureso an update can&apos;t silently break what
-              used to work.
+              The matrix contains 14 pass, 2 conditional, and 2 failure classifications.
+              Policy-fixture checks and live upstream verification are separate evidence levels.
             </p>
             <a
               href={MATRIX_URL}
@@ -121,7 +120,7 @@ export default function Compatibility() {
                 <p className="font-hero text-[0.75rem] leading-[1.5] text-muted">
                   <span className="text-paper/85">One policy, every layer.</span>{" "}
                   Filesystem, network, environment, and audit are enforced
-                  togetherthe same policy shape protects all 18 servers.
+                  together. The matrix documents both compatible cases and known gaps.
                 </p>
               </div>
             </div>

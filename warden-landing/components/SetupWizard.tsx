@@ -188,8 +188,8 @@ export default function SetupWizard({
                 ))}
               </div>
               <p className="mt-6 text-xs leading-relaxed text-muted">
-                Hosted agents and remote-only connections need the standard HTTP
-                gateway planned in batch 4.{" "}
+                Hosted agents and remote connections use a separate HTTP gateway
+                workflow. Warden cannot sandbox a remote provider&apos;s machine.{" "}
                 <Link
                   href="/compatibility"
                   className="text-blueprint underline underline-offset-4"

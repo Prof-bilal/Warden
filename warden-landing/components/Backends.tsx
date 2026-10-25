@@ -19,7 +19,7 @@ const BACKENDS = [
     mechanism: "bubblewrap",
     detail: "unprivileged user namespaces",
     status: "verified" as const,
-    statusLabel: "Verified on real hardware",
+    statusLabel: "Native Linux proof recorded",
     image: "/diagrams/linux-backend.jpeg",
     imageAlt: "Linux backend architecture with bubblewrap sandboxing",
   },
@@ -29,7 +29,7 @@ const BACKENDS = [
     mechanism: "sandbox-exec",
     detail: "with Docker fallback",
     status: "pending" as const,
-    statusLabel: "CI-verified · hardware run pending",
+    statusLabel: "Real-machine proof pending",
     image: "/diagrams/macos-backend.jpeg",
     imageAlt: "macOS security architecture with Seatbelt sandboxing",
   },
@@ -38,8 +38,8 @@ const BACKENDS = [
     icon: LayoutGrid,
     mechanism: "AppContainer + WFP",
     detail: "Job Objects · ETW audit",
-    status: "verified" as const,
-    statusLabel: "CI-verified escape tests",
+    status: "pending" as const,
+    statusLabel: "Native evidence · verify full coverage on Windows",
     image: "/diagrams/windows-backend.jpeg",
     imageAlt: "Windows backend architecture with AppContainer, WFP and ETW",
   },
@@ -57,11 +57,11 @@ export default function Backends() {
             Sandbox backends
           </p>
           <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
-            One policy, three sandboxing backends.
+            One policy. Native OS boundaries.
           </h2>
           <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
-            Warden picks the strongest backend your OS supports automaticallythe same policy
-            file works everywhere.
+            Warden selects an available native backend, with Docker as a fallback.
+            Path formats, required primitives, and verification maturity differ by platform.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export default function Backends() {
                     }
                   >
                     {verified ? <CheckCircle2 size={11} /> : <Clock3 size={11} />}
-                    {verified ? "Verified" : "In progress"}
+                    {verified ? "Proof recorded" : "See notes"}
                   </span>
                 </div>
 
@@ -141,8 +141,8 @@ export default function Backends() {
             aria-expanded={showFootnote}
           >
             <span className="font-hero text-[13px] text-muted">
-              <span className="font-bold text-paper">Verification is machine-checked, not claimed.</span>{" "}
-              What CI proves, per platform.
+              <span className="font-bold text-paper">Check the evidence for your platform.</span>{" "}
+              Compilation and enforcement are separate checks.
             </span>
             <ChevronDown
               size={16}
@@ -166,25 +166,24 @@ export default function Backends() {
                 <li className="flex gap-2.5">
                   <Clock3 size={14} className="mt-0.5 shrink-0 text-progress" />
                   <span>
-                    <span className="text-paper/90">macOS —</span> green in CI (GitHub runners
-                    provide sandbox-exec); a real end-user machine run of the proof harness is
-                    still pending.
+                    <span className="text-paper/90">macOS —</span> the Seatbelt backend is implemented;
+                    a real end-user machine proof run remains pending in the recorded evidence.
                   </span>
                 </li>
                 <li className="flex gap-2.5">
                   <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-grant" />
                   <span>
-                    <span className="text-paper/90">Windows —</span> escape tests run on GitHub
-                    Windows runners; using WFP + ETW locally requires an elevated
-                    (Administrator) shell.
+                    <span className="text-paper/90">Windows —</span> a supplied native capture reports file and network
+                    denials. Full WFP, ETW, and cleanup checks require a real Windows host
+                    and an elevated shell.
                   </span>
                 </li>
                 <li className="flex gap-2.5">
                   <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-grant" />
                   <span>
-                    <span className="text-paper/90">CI hard-fails</span> if escape tests skip or
-                    never prove the sandboxed target actually started. Warden fails closed with a
-                    clear message rather than running unaudited.
+                    <span className="text-paper/90">Verify on your host.</span> A hosted-runner build does not prove native
+                    enforcement. A skipped check is not a pass; record the result with the
+                    platform checklist.
                   </span>
                 </li>
               </ul>

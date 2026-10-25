@@ -47,20 +47,20 @@ export default function Hero() {
           {/* eyebrow */}
           <p className="mb-6 inline-flex items-center gap-2 font-hero text-[12px] font-bold uppercase leading-none tracking-[0.12em] text-grant">
             <span className="rounded-full border border-grant/30 bg-grant-subtle px-2 py-[3px] text-[10px] leading-none">
-              v0.1.17
+              Pre-1.0
             </span>
-            Sandbox runtime for MCP servers
+            Permissions for local AI tools
           </p>
 
           {/* headlineJetBrains Mono bold, gradient white, like reference */}
           <h1 className="mx-auto mb-7 bg-gradient-to-b from-white to-white/70 bg-clip-text font-hero text-[2.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-transparent sm:text-6xl md:text-7xl xl:text-[84px]">
-            Give MCP servers a sandbox, not your filesystem.
+            Your AI tools don&apos;t need your whole machine.
           </h1>
 
           {/* sub */}
           <p className="mx-auto mb-10 max-w-[640px] font-hero text-[17px] leading-[1.7] text-muted md:text-[20px]">
-            Warden runs MCP servers in a restricted sandbox. Only the files, hosts, and env vars
-            you explicitly grant are visible. Everything else is denied by default.
+            Warden gives local AI tools and MCP servers only the access they need:
+            files, network, environment variables, and supported resource limits.
           </p>
 
           {/* actions */}
@@ -69,7 +69,7 @@ export default function Hero() {
               href="/docs/install"
               className="inline-flex items-center gap-2 rounded-[10px] bg-gradient-to-r from-grant to-blueprint px-4 py-[9px] font-hero text-[14px] font-semibold text-white transition hover:brightness-110"
             >
-              Get Started
+              Set up Warden
               <ArrowRight size={15} />
             </a>
             <a
@@ -121,7 +121,7 @@ export default function Hero() {
               )}
             </button>
             <p className="mt-3 text-center font-hero text-[11px] uppercase leading-[1.7] tracking-[0.06em] text-muted/80">
-              No daemon · Linux · macOS · Windows
+              Linux · macOS · Windows · Docker fallback · MIT
             </p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function Hero() {
               </video>
             </div>
             <p className="mt-3 text-center font-hero text-[11px] uppercase tracking-[0.08em] text-muted">
-              Watch the sandbox enforce a policy in real time
+              Recorded terminal session · verify the boundary on your own host
             </p>
           </div>
         </div>

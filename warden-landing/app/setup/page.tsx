@@ -16,9 +16,9 @@ export default async function Page({
   return (
     <EcosystemShell
       active="/setup"
-      eyebrow="Local MCP setup"
+      eyebrow="MCP client setup"
       title="Your agent. Your tools. Your boundaries."
-      description="Choose a client and a server profile. Get the local commands to preview, apply, and undo a Warden wrapper."
+      description="Choose a client, review a server policy, and generate commands to preview, apply, or undo a local MCP wrapper. Other local processes can use warden run directly."
     >
       <SetupWizard initialClient={client} initialPack={pack} />
     </EcosystemShell>

@@ -4,15 +4,15 @@ import Diagram from "@/components/Diagram";
 
 const GROUPS: StepperItem[] = [
   {
-    title: "Filesystem",
+    title: "Files",
     summary: "Deny-by-default read/write.",
-    body: "Deny-by-default read/write grants. Anything unlisted is invisiblenot merely unreadable.",
+    body: "Grant read or write access to selected paths. Keep credential folders and unrelated projects outside those grants. Runtime support varies by backend.",
     image: <Diagram src="/diagrams/filesystem-capabilities.jpeg" alt="Filesystem capabilities architecture with deny-by-default grants" />,
   },
   {
     title: "Network",
     summary: "Hostname allowlist.",
-    body: "Egress hostname allowlist with DNS blocked before resolution. No grant, no connection.",
+    body: "Choose which hosts and APIs a tool may contact. The enforced proxy path checks the allowlist before upstream DNS resolution.",
     image: <Diagram src="/diagrams/network-access.jpeg" alt="Network access security architecture with hostname allowlist" />,
   },
   {
@@ -24,19 +24,19 @@ const GROUPS: StepperItem[] = [
   {
     title: "Limits",
     summary: "Timeout + memory caps.",
-    body: "Wall-clock timeout and memory caps enforced by the kernel, with process-tree termination.",
+    body: "Set supported wall-clock and memory limits. Enforcement varies by backend; sampled memory can briefly overshoot. Warden does not throttle CPU usage.",
     image: <Diagram src="/diagrams/process-termination-limits.jpeg" alt="Process termination on resource limit breach" />,
   },
   {
     title: "Audit",
     summary: "JSONL decision log.",
-    body: "Every allow/deny decision lands in a JSONL log you can tail with `warden logs`.",
+    body: "Inspect JSONL audit events with `warden logs`. Proxy decisions are recorded; file-denial coverage differs by platform.",
     image: <Diagram src="/diagrams/audit-trail.jpeg" alt="Security audit trail architecture logging every allow and deny decision" />,
   },
   {
     title: "Policy tooling",
     summary: "init → trace → doctor.",
-    body: "`warden trace` records real access, `warden init` drafts the policy, `warden doctor` verifies readiness.",
+    body: "`warden trace` runs trusted code unsandboxed to observe accesses. `warden init` drafts a policy for review, and `warden doctor` checks readiness.",
     image: <Diagram src="/diagrams/policy-flow.jpeg" alt="Security policy architecture flow from creation to enforcement" />,
   },
   {
@@ -61,9 +61,9 @@ export default function Capabilities() {
           What&apos;s supported.
         </h2>
         <p className="mt-3 max-w-[34rem] font-hero text-[1rem] leading-[1.65] text-muted">
-          Every item below ships in the CLI today and is covered by the test
-          suite. Nothing on this page is a roadmap promisethat list lives
-          separately, labeled as roadmap.
+          Explore the controls and workflows implemented in the CLI.
+          Support and verification differ across backends; check the platform
+          notes before relying on a feature.
         </p>
 
         <div className="mt-10">
