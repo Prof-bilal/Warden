@@ -3,6 +3,10 @@
 package windows
 
 import (
+	"os"
+	"os/signal"
+	"sync/atomic"
+	"syscall"
 	"time"
 	"unicode/utf16"
 	"unsafe"
@@ -54,6 +58,14 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 }
 
 func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approval *approve.Config) (int, error) {
+	// Ctrl-C / console close would otherwise kill warden before its deferred
+	// cleanups run, leaving ACL grants (with inheritance cut off), the
+	// loopback exemption, the AppContainer profile and the ETW session behind.
+	// Catch them and stop the target instead, so cleanup always runs.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigs)
+
 	// Host-side egress proxy on a loopback TCP address; its exact endpoint is
 	// the only destination WFP permits.
 	// Without WFP (no elevation) only the explicit unprivileged mode may run,
@@ -132,6 +144,23 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 	}
 	defer job.Close()
 
+	var interrupted atomic.Bool
+	stopSignals := make(chan struct{})
+	signalsDone := make(chan struct{})
+	go func() {
+		defer close(signalsDone)
+		select {
+		case <-sigs:
+			interrupted.Store(true)
+			job.terminate()
+		case <-stopSignals:
+		}
+	}()
+	defer func() {
+		close(stopSignals)
+		<-signalsDone
+	}()
+
 	// 5. Start ETW auditing before the target begins. Fail closed: an audit
 	// session that cannot start refuses the whole run (the security gate), so
 	// the trace's error is returned as-is.
@@ -172,6 +201,11 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 		trace.closeIfOpen()
 		return 0, failClose("assign process tree to Job Object", err)
 	}
+	if interrupted.Load() {
+		_ = windows.TerminateProcess(pi.hProcess, 1)
+		trace.closeIfOpen()
+		return 130, nil
+	}
 	if trace != nil {
 		tree, _ := processTreePIDs(pi.dwProcessId)
 		trace.tree = tree
@@ -185,6 +219,9 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 
 	code, limitErr := job.wait(pi.hProcess, p.Limits, logger)
 	trace.closeIfOpen()
+	if interrupted.Load() {
+		return 130, nil
+	}
 	if limitErr != nil {
 		return 0, limitErr
 	}

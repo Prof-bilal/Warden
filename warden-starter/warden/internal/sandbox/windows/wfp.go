@@ -5,6 +5,7 @@ package windows
 import (
 	"crypto/sha256"
 	"fmt"
+	"runtime"
 	"unicode/utf16"
 	"unsafe"
 
@@ -253,16 +254,38 @@ func wfpSupported() error {
 // WFP" and fail-closes a perfectly healthy engine.
 const rpcAuthnWinNT = 10
 
-// fwpmOpen opens a handle to the filter engine.
+// fwpmSessionFlagDynamic is FWPM_SESSION_FLAG_DYNAMIC (fwpmtypes.h): every
+// object added through the session is deleted when the session ends.
+const fwpmSessionFlagDynamic = 0x00000001
+
+// fwpmSession mirrors FWPM_SESSION0 (fwpmtypes.h), 72 bytes on x64.
+type fwpmSession struct {
+	sessionKey           windows.GUID
+	displayData          fwpmDisplayData
+	flags                uint32
+	txnWaitTimeoutInMSec uint32
+	processID            uint32
+	sid                  *windows.SID
+	username             *uint16
+	kernelMode           int32
+}
+
+// fwpmOpen opens a handle to the filter engine in a dynamic session, so the
+// run's sublayer and filters are removed by Windows when the handle closes
+// or the process dies. A non-dynamic session left them installed until the
+// Base Filtering Engine restarted (the sublayer on every run, the filters
+// too whenever warden crashed or was killed).
 func fwpmOpen() (windows.Handle, error) {
 	var engine windows.Handle
+	session := fwpmSession{flags: fwpmSessionFlagDynamic, displayData: fwpmDisplayData{name: utf16Ptr("warden")}}
 	r, _, _ := procFwpmEngineOpen.Call(
 		0,             // serverName: NULL, local engine
 		rpcAuthnWinNT, // authnService: RPC_C_AUTHN_WINNT (allowed values are WINNT and DEFAULT)
-		0, // authIdentity: NULL, use the calling thread's credentials
-		0, // session: NULL, default session flags
+		0,             // authIdentity: NULL, use the calling thread's credentials
+		uintptr(unsafe.Pointer(&session)),
 		uintptr(unsafe.Pointer(&engine)),
 	)
+	runtime.KeepAlive(&session)
 	if err := fwpmResultError("FwpmEngineOpen", r); err != nil {
 		return 0, failClose("open WFP engine", err)
 	}

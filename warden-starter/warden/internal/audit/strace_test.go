@@ -64,3 +64,14 @@ func TestParseStraceLineUsesOnlyTheSyscallResult(t *testing.T) {
 		t.Fatal("unfinished syscall must not produce an event")
 	}
 }
+
+func TestParseStraceLinePaddedPID(t *testing.T) {
+	// strace -f pads PIDs below 100000 to a fixed width.
+	ev, ok := ParseStraceLine(`402   openat(AT_FDCWD, "/etc/shadow", O_RDONLY) = -1 ENOENT (No such file or directory)`)
+	if !ok {
+		t.Fatal("padded-PID strace line was dropped")
+	}
+	if ev.Action != "openat" || ev.Resource != "/etc/shadow" || ev.Allowed {
+		t.Errorf("unexpected event: %+v", ev)
+	}
+}

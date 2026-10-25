@@ -200,18 +200,21 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 		}
 	}
 	for _, g := range plan.Grants {
+		// Snapshot before granting: a grant that cannot be restored would
+		// leave a permanent ACE (and a protected DACL) behind.
 		snap, serr := snapshotDACL(longPath(g.Path))
-		if serr == nil {
-			snaps = append(snaps, snap)
+		if serr != nil {
+			if IsRuntimeReadPath(g.Path) {
+				continue
+			}
+			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
+		snaps = append(snaps, snap)
 		if err := grantPathACE(g.Path, g.AccessMask, caps); err != nil {
 			if IsRuntimeReadPath(g.Path) {
 				continue
 			}
 			return restore, fmt.Errorf("grant filesystem access to %q: %w", g.Path, err)
-		}
-		if serr != nil {
-			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
 	}
 	return restore, nil

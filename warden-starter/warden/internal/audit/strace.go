@@ -65,7 +65,9 @@ func ParseStraceLine(line string) (Event, bool) {
 		action = action[end+2:]
 	} else if pid, call, hasPrefix := strings.Cut(action, " "); hasPrefix {
 		if _, err := strconv.Atoi(pid); err == nil {
-			action = call // strace -f prints a bare numeric PID prefix
+			// strace -f prints a bare numeric PID prefix, padded to a
+			// fixed width ("402   openat("), so trim the padding too.
+			action = strings.TrimLeft(call, " ")
 		}
 	}
 	if !isAuditedCall(action) {
