@@ -42,6 +42,18 @@ var runtimeBase = []string{"/usr", "/lib", "/lib64"}
 // The returned slice includes everything up to the command: the caller must
 // append the command and its arguments after it.
 func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
+	return buildBwrapArgs(cmd, p, nil)
+}
+
+// BuildBwrapArgsWithDenied extends the normal mount plan with masks for paths
+// expanded by policy.DeniedPaths. Directory masks are empty tmpfs mounts;
+// file masks bind the sandbox's /dev/null over the target. The caller must
+// expand and validate denied paths before invoking this function.
+func BuildBwrapArgsWithDenied(cmd []string, p policy.Policy, denied []string) ([]string, error) {
+	return buildBwrapArgs(cmd, p, denied)
+}
+
+func buildBwrapArgs(cmd []string, p policy.Policy, denied []string) ([]string, error) {
 	if len(cmd) == 0 {
 		return nil, fmt.Errorf("bwrap args: no command")
 	}
@@ -54,9 +66,10 @@ func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
 	seen := make(map[string]bool)
 	var args []string
 	add := func(flag, src string) {
-		// Under /tmp the fresh tmpfs is already mounted: give the bind an
-		// explicit mountpoint first, or the tmpfs swallows it.
-		if strings.HasPrefix(src, "/tmp/") {
+		// Under /tmp the fresh tmpfs is already mounted. Directory sources
+		// need an explicit mountpoint first, or the tmpfs swallows them.
+		// Files can be mounted directly because their parent (/tmp) exists.
+		if strings.HasPrefix(src, "/tmp/") && isDirectory(src) {
 			args = append(args, "--dir", src)
 		}
 		args = append(args, flag, src, src)
@@ -116,14 +129,31 @@ func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
 	// its parent directory would silently expose every sibling file (for a
 	// binary in $HOME, the whole home directory) beyond the policy grants.
 	if !mountedUnder(exe, seen) {
-		if strings.HasPrefix(exe, "/tmp/") {
+		if strings.HasPrefix(exe, "/tmp/") && filepath.Dir(exe) != "/tmp" {
 			args = append(args, "--dir", filepath.Dir(exe))
 		}
 		args = append(args, "--ro-bind", exe, exe)
 		seen[exe] = true
 	}
 
+	for _, path := range denied {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return nil, fmt.Errorf("bwrap args: inspect denied path %q: %w", path, err)
+		}
+		if info.IsDir() {
+			args = append(args, "--tmpfs", path)
+		} else {
+			args = append(args, "--ro-bind", "/dev/null", path)
+		}
+	}
+
 	return args, nil
+}
+
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // mountedUnder reports whether path is a mount source or lies inside one.
@@ -202,7 +232,11 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, sandboxerr.RefuseToRun{Reason: "setpriv is not installed; it is required to enforce no_new_privs"}
 	}
 
-	args, err := BuildBwrapArgs(cmd, p)
+	denied, err := p.DeniedPaths()
+	if err != nil {
+		return 0, fmt.Errorf("expand filesystem denies: %w", err)
+	}
+	args, err := BuildBwrapArgsWithDenied(cmd, p, denied)
 	if err != nil {
 		return 0, fmt.Errorf("build bwrap args: %w", err)
 	}
@@ -270,7 +304,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	sub.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	// Deny by default for the environment: only policy-allowlisted names
 	// are forwarded from the parent.
-	sub.Env = append(envfilter.Filter(parentEnv, p.EnvAllowlist()),
+	sub.Env = append(envfilter.FilterDenied(parentEnv, p.EnvAllowlist(), p.EnvDenylist()),
 		"HTTP_PROXY=http://127.0.0.1:18080",
 		"HTTPS_PROXY=http://127.0.0.1:18080",
 		"ALL_PROXY=http://127.0.0.1:18080",

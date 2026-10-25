@@ -15,8 +15,8 @@ import (
 
 // Unprivileged mode lets a non-administrator run the Windows backend without
 // the two layers that need elevation: WFP egress filters and the kernel ETW
-// audit session. It is strictly opt-in (WARDEN_WINDOWS_UNPRIVILEGED=1) and
-// never widens the boundary:
+// audit session. It is automatic for offline policies (and can be explicitly
+// selected with WARDEN_WINDOWS_UNPRIVILEGED=1) and never widens the boundary:
 //   - Filesystem isolation is unchanged: the AppContainer token plus DACL
 //     grants on the policy paths, which a normal user can set on paths they
 //     own.

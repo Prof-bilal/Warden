@@ -203,6 +203,8 @@ command: ["/usr/bin/node", "server.js"] # required: absolute path, or a bare nam
 filesystem:
   read: ["./data"]               # read-only bind mounts
   write: ["./output"]            # read-write bind mounts (subsumes reads underneath; a path in both is coalesced to write)
+  deny: ["./.env", "./**/*.pem"] # masks matching paths inside visible grants
+  protect_secrets: true            # deterministic filename protection; no content classifier
   # everything else is invisible inside the sandbox, not just unreadable
 
 network:
@@ -212,6 +214,7 @@ network:
 env:
   allow: ["GITHUB_TOKEN"]        # only these vars are passed through
   # (values come from the parent environment, not stored in the policy file)
+  deny: ["*_TOKEN", "*_SECRET", "*_KEY"] # deny wins over allow
 
 limits:
   memory_mb: 512

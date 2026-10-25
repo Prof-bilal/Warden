@@ -5,6 +5,7 @@
 package envfilter
 
 import (
+	"path/filepath"
 	"strings"
 )
 
@@ -13,6 +14,12 @@ import (
 // their last valuematching how a POSIX shell presents the environment to
 // a child.
 func Filter(parent []string, allow []string) []string {
+	return FilterDenied(parent, allow, nil)
+}
+
+// FilterDenied applies an allowlist followed by deny-pattern overrides.
+// Patterns match variable names only; values are never inspected.
+func FilterDenied(parent []string, allow, deny []string) []string {
 	allowed := make(map[string]bool, len(allow))
 	for _, name := range allow {
 		allowed[name] = true
@@ -21,7 +28,7 @@ func Filter(parent []string, allow []string) []string {
 	lastIdx := make(map[string]int)
 	for i, kv := range parent {
 		name, _, ok := strings.Cut(kv, "=")
-		if ok && allowed[name] {
+		if ok && allowed[name] && !isDenied(name, deny) {
 			lastIdx[name] = i
 		}
 	}
@@ -37,4 +44,14 @@ func Filter(parent []string, allow []string) []string {
 		}
 	}
 	return result
+}
+
+func isDenied(name string, patterns []string) bool {
+	for _, pattern := range patterns {
+		matched, err := filepath.Match(pattern, name)
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }

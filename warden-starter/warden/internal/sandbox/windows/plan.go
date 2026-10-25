@@ -36,6 +36,7 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"github.com/warden-sandbox/warden/internal/envfilter"
 	"github.com/warden-sandbox/warden/internal/policy"
 )
 
@@ -181,6 +182,9 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 	if len(cmd) == 0 {
 		return nil, fmt.Errorf("windows plan: no command")
 	}
+	if len(p.Filesystem.Deny) != 0 || p.Filesystem.ProtectSecrets {
+		return nil, fmt.Errorf("windows plan: filesystem deny/protected-secret rules require a projected workspace; native ACL masking is not available yet")
+	}
 	exe := cmd[0]
 	if !isAbsWin(exe) {
 		return nil, fmt.Errorf("windows plan: command %q must be an absolute path", exe)
@@ -215,7 +219,7 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 		ProxyAddress:     proxyAddr,
 		AllowIPs:         []string{bridgeHost},
 		AllowPorts:       []uint16{port},
-		EnvBlock:         buildEnvBlock(os.Environ(), p.EnvAllowlist(), append(systemEnvPairs(os.Environ()), proxyEnvPairs(proxyAddr)...)),
+		EnvBlock:         buildEnvBlock(envfilter.FilterDenied(os.Environ(), p.EnvAllowlist(), p.EnvDenylist()), p.EnvAllowlist(), append(systemEnvPairs(os.Environ()), proxyEnvPairs(proxyAddr)...)),
 		Limits:           p.Limits,
 	}, nil
 }

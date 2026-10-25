@@ -96,7 +96,7 @@ func detect() (string, error) {
 		if dockerAvailable() {
 			return BackendDocker, nil
 		}
-		return "", sandboxerr.RefuseToRun{Reason: "Warden isn't running with administrator privileges"}
+		return "", sandboxerr.RefuseToRun{Reason: "Warden's Windows AppContainer backend is unavailable on this host"}
 	default:
 		if dockerAvailable() {
 			return BackendDocker, nil

@@ -49,7 +49,7 @@ type MCPMessage struct {
 
 // MCPPolicy extends the standard policy with MCP-specific configuration
 type MCPPolicy struct {
-	Upstream      string       `yaml:"upstream"`       // "stdio:<command>", "https://host", or "http://loopback:P"
+	Upstream      string       `yaml:"upstream"` // "stdio:<command>", "https://host", or "http://loopback:P"
 	Transport     MCPTransport // "http", "sse", or "" (auto-detect from URL)
 	AllowTools    []string     `yaml:"allow_tools"`    // Allowed MCP tool names
 	DenyPatterns  []string     `yaml:"deny_patterns"`  // Regex patterns to block in payloads
@@ -555,7 +555,7 @@ func (s *ProxyServer) handleStdioTransport(conn net.Conn) {
 	cmd.Stdout = childOutW
 	cmd.Stderr = os.Stderr
 	// The subprocess inherits only env.allow names (deny-by-default).
-	cmd.Env = envfilter.Filter(os.Environ(), s.policy.EnvAllow)
+	cmd.Env = envfilter.FilterDenied(os.Environ(), s.policy.EnvAllow, nil)
 
 	if err := cmd.Start(); err != nil {
 		s.logEvent("mcp_block", argv[0], false, fmt.Sprintf("start stdio upstream: %v", err))

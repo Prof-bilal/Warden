@@ -28,6 +28,7 @@ network:
   allow: ["api.github.com"]
 env:
   allow: ["GITHUB_TOKEN"]
+  deny: ["*_SECRET", "*_TOKEN"]
 limits:
   memory_mb: 512
   timeout_s: 300
@@ -52,8 +53,38 @@ limits:
 	if len(p.Env.Allow) != 1 || p.Env.Allow[0] != "GITHUB_TOKEN" {
 		t.Errorf("Env.Allow = %v", p.Env.Allow)
 	}
+	if len(p.Env.Deny) != 2 || p.Env.Deny[0] != "*_SECRET" {
+		t.Errorf("Env.Deny = %v", p.Env.Deny)
+	}
 	if p.Limits.MemoryMB != 512 || p.Limits.TimeoutS != 300 {
 		t.Errorf("Limits = %+v", p.Limits)
+	}
+}
+
+func TestValidateRejectsInvalidEnvDenyPattern(t *testing.T) {
+	for _, pattern := range []string{"", "A/B", "A=B"} {
+		p := Policy{Env: Env{Deny: []string{pattern}}}
+		if err := p.Validate(); err == nil {
+			t.Errorf("Validate accepted invalid env.deny pattern %q", pattern)
+		}
+	}
+}
+
+func TestDeniedPathsProtectSecretsInsideGrant(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "allowed.txt"), []byte("ok"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("fake"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p := Policy{Filesystem: Filesystem{Read: []string{dir}, ProtectSecrets: true}}
+	got, err := p.DeniedPaths()
+	if err != nil {
+		t.Fatalf("DeniedPaths: %v", err)
+	}
+	if len(got) != 1 || got[0] != filepath.Join(dir, ".env") {
+		t.Fatalf("DeniedPaths = %v, want .env only", got)
 	}
 }
 

@@ -35,3 +35,11 @@ func TestFilterDropsMisshapenEntries(t *testing.T) {
 		t.Errorf("Filter = %v, want %v", got, want)
 	}
 }
+
+func TestFilterDeniedOverridesAllow(t *testing.T) {
+	parent := []string{"PATH=/bin", "OPENAI_API_KEY=secret", "SAFE=ok", "AWS_SESSION_TOKEN=secret"}
+	got := FilterDenied(parent, []string{"PATH", "OPENAI_API_KEY", "SAFE", "AWS_SESSION_TOKEN"}, []string{"*_KEY", "*_TOKEN"})
+	if len(got) != 2 || got[0] != "PATH=/bin" || got[1] != "SAFE=ok" {
+		t.Fatalf("FilterDenied = %v, want only non-secret names", got)
+	}
+}
