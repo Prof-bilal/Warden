@@ -1,10 +1,10 @@
-command: ["/bin/ls", "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"]
+command: ["/bin/ls", "./test-app"]
 
 filesystem:
   read:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+    - "./test-app"
   write:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+    - "./test-app"
 
 network:
   allow: []

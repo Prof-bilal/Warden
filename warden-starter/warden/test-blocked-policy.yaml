@@ -2,7 +2,7 @@ command: ["/bin/cat", "/etc/hostname"]
 
 filesystem:
   read:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+    - "./test-app"
   write: []
 
 network:

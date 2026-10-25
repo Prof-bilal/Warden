@@ -15,6 +15,16 @@ node_modules/
 .next/
 dist/
 build/
+coverage/
+*.log
+*.out
+*.prof
+*.trace
+test-results/
+reports/
+.nyc_output/
+.npm-cache/
+*.tsbuildinfo
 # Exception: the npm publish wrapper is source (not a build artifact).
 !warden-starter/warden/build/
 !warden-starter/warden/build/npm-wrapper/
@@ -34,6 +44,8 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
 
 # Python virtual environments
 .venv/
@@ -52,6 +64,9 @@ warden-starter/warden/dist/
 # Proof-harness output (generated artifacts, plan §6)
 evidence/
 warden-starter/warden/site/
+warden-starter/warden/evidence/
+warden-starter/warden/.warden-action-policy.yaml
+warden-starter/warden/.warden-action-cmd.sh
 # Social/marketing drafts (never publish to git)
 # NOTE: scoped to root only — warden-landing/content/articles/ holds
 # published blog posts and MUST stay tracked.
@@ -72,3 +87,6 @@ docs/
 
 # Marketing / social image assets (local only, not pushed to GitHub)
 assets/
+local-reports/
+benchmarks/
+screenshots/

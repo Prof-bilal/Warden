@@ -3,7 +3,7 @@
 ## 🚀 Quick Test (Right Now!)
 
 ```bash
-cd /home/abdullah/Downloads/warden/warden-starter/warden
+cd /path/to/Warden/warden-starter/warden
 
 # Test with Docker backend (works immediately)
 ./warden run --backend docker --policy test-docker-policy.yaml
