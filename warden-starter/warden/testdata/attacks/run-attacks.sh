@@ -226,20 +226,27 @@ run_bomb_phase() {
 
     local t0 t1
     if [ "$phase" = "ctrl" ]; then
-        echo "▶ [cpu-bomb control] unsandboxed for ${BOMB_CTRL_SECS}s, then SIGKILL"
-        # A starved runner can checkpoint zero iterations (killed between
-        # writes, or the loop never got scheduled). The control must land for
-        # the scenario to count, so retry instead of voiding on one flake.
-        local attempt iters
+        echo "▶ [cpu-bomb control] unsandboxed for ${BOMB_CTRL_SECS}s, then stopped"
+        # The control is stopped through its STOP file so it publishes its
+        # final count itself; SIGKILL is only the fallback. Killing it mid-write
+        # used to leave an empty count file, voiding the scenario on CI. Retry
+        # anyway so one starved attempt cannot void the run.
+        local attempt iters waited
         for attempt in 1 2 3; do
-            rm -f "$work/bomb-count.txt"
+            rm -f "$work/bomb-count.txt" "$work/bomb-count.txt.tmp" "$work/bomb-stop.txt" "$work/bomb-done.txt"
             t0=$(date +%s)
-            /bin/sh "$work/cpu-bomb.sh" &
+            /bin/sh "$work/cpu-bomb.sh" 2> "$R/bomb-ctrl-stderr.txt" &
             BOMB_PID=$!
             sleep "$BOMB_CTRL_SECS"
+            : > "$work/bomb-stop.txt"
+            waited=0
+            while [ ! -f "$work/bomb-done.txt" ] && [ "$waited" -lt 20 ]; do
+                sleep 0.1; waited=$((waited + 1))
+            done
             kill -9 "$BOMB_PID" 2>/dev/null
             wait "$BOMB_PID" 2>/dev/null
             BOMB_PID=""
+            rm -f "$work/bomb-stop.txt"
             t1=$(date +%s)
             echo "$((t1 - t0))" > "$R/bomb-ctrl-wall.txt"
             iters=$(tail -1 "$work/bomb-count.txt" 2>/dev/null | tr -d ' '); [ -z "$iters" ] && iters=0
@@ -247,6 +254,10 @@ run_bomb_phase() {
                 break
             fi
             echo "  ⚠ [cpu-bomb control] attempt $attempt checkpointed only $iters iterations; retrying"
+            if [ -s "$R/bomb-ctrl-stderr.txt" ]; then
+                echo "  ⚠ [cpu-bomb control] bomb stderr:"; sed 's/^/      /' "$R/bomb-ctrl-stderr.txt"
+            fi
+            ls -la "$work" | sed 's/^/      /'
             sleep 1
         done
     else

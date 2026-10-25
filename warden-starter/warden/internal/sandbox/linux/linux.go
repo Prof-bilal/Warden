@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/audit"
@@ -109,15 +111,29 @@ func BuildBwrapArgs(cmd []string, p policy.Policy) ([]string, error) {
 		add("--bind", path)
 	}
 
-	// If the command's directory is not already mounted (e.g. a binary
-	// outside /usr, like a mise-installed node), bind its parent dir so the
-	// executable stays visible.
-	parent := filepath.Dir(exe)
-	if !seen[parent] {
-		add("--ro-bind", parent)
+	// If the executable is not already visible (e.g. a binary outside /usr,
+	// like a mise-installed node), bind the executable file itself. Binding
+	// its parent directory would silently expose every sibling file (for a
+	// binary in $HOME, the whole home directory) beyond the policy grants.
+	if !mountedUnder(exe, seen) {
+		if strings.HasPrefix(exe, "/tmp/") {
+			args = append(args, "--dir", filepath.Dir(exe))
+		}
+		args = append(args, "--ro-bind", exe, exe)
+		seen[exe] = true
 	}
 
 	return args, nil
+}
+
+// mountedUnder reports whether path is a mount source or lies inside one.
+func mountedUnder(path string, mounts map[string]bool) bool {
+	for m := range mounts {
+		if path == m || isUnder(path, m) {
+			return true
+		}
+	}
+	return false
 }
 
 // isUnder reports whether path is inside dir (strictly under it). Both must
@@ -261,9 +277,37 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		"NO_PROXY=",
 	)
 
+	// The child runs in its own process group, so a terminal Ctrl-C or an
+	// MCP client's SIGTERM reaches only Warden. Without this, Warden would
+	// exit and orphan strace, bwrap and the server, and the audit trace would
+	// never be imported. Stop the whole group instead and finish normally.
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigs)
+
 	if err := sub.Start(); err != nil {
 		return 0, fmt.Errorf("start sandboxed process: %w", err)
 	}
+
+	exited := make(chan struct{})
+	defer close(exited)
+	var gotSignal os.Signal
+	var sigMu sync.Mutex
+	go func() {
+		select {
+		case sig := <-sigs:
+			sigMu.Lock()
+			gotSignal = sig
+			sigMu.Unlock()
+			_ = syscall.Kill(-sub.Process.Pid, syscall.SIGTERM)
+			select {
+			case <-exited:
+			case <-time.After(2 * time.Second):
+				_ = syscall.Kill(-sub.Process.Pid, syscall.SIGKILL)
+			}
+		case <-exited:
+		}
+	}()
 
 	// Filesystem approval watches the live strace stream for denials worth
 	// prompting about. Bind mounts are fixed at spawn, so an approved grant
@@ -298,6 +342,15 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		if err := importTraceFile(tracePath, logger); err != nil {
 			return 0, err
 		}
+	}
+	sigMu.Lock()
+	sig := gotSignal
+	sigMu.Unlock()
+	if sig != nil {
+		if s, ok := sig.(syscall.Signal); ok {
+			return 128 + int(s), nil
+		}
+		return 130, nil
 	}
 	if limitErr != nil {
 		_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: limitErr.Limit, Allowed: false, Reason: limitErr.Error()})

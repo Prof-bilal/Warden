@@ -46,11 +46,11 @@ import (
 // ETW logging-mode / process-mode constants (evntrace.h).
 const (
 	eventTraceRealTimeMode         = 0x00000100 // EVENT_TRACE_REAL_TIME_MODE
-	eventTraceControlStop          = 0          // EVENT_TRACE_CONTROL_STOP
+	eventTraceControlStop          = 1          // EVENT_TRACE_CONTROL_STOP (0 is QUERY)
 	eventControlCodeEnableProvider = 1          // EVENT_CONTROL_CODE_ENABLE_PROVIDER
 	traceLevelVerbose              = 5          // TRACE_LEVEL_VERBOSE
 	processTraceModeRealTime       = 0x00000100 // PROCESS_TRACE_MODE_REAL_TIME
-	processTraceModeEventRecord    = 0x01000000 // PROCESS_TRACE_MODE_EVENT_RECORD
+	processTraceModeEventRecord    = 0x10000000 // PROCESS_TRACE_MODE_EVENT_RECORD (without it ETW delivers classic EVENT_TRACE records)
 
 	errorAlreadyExists    = syscall.Errno(183)  // ERROR_ALREADY_EXISTS
 	errorWMIInstanceFound = syscall.Errno(4201) // ERROR_WMI_INSTANCE_NOT_FOUND
@@ -100,18 +100,27 @@ type eventTraceProperties struct {
 	loggerNameOffset    uint32
 }
 
-// eventTraceLogfile mirrors the fields of EVENT_TRACE_LOGFILE (evntrace.h),
-// x64 layout, that OpenTraceW reads for a real-time EVENT_RECORD consumer.
+// eventTraceLogfile mirrors EVENT_TRACE_LOGFILEW (evntrace.h), x64 layout:
+// 448 bytes, pinned by TestETWLogfileLayout. Only the fields a real-time
+// EVENT_RECORD consumer sets are named; the rest (CurrentEvent,
+// LogfileHeader, buffer counters) are filled in by ETW.
 type eventTraceLogfile struct {
-	loggerName          *uint16
-	logFileName         *uint16
-	eventCallback       uintptr
-	logFileMode         uint32
-	maximumFileSize     uint32
-	bufferSize          uint32
-	fatalError          uint32
-	eventRecordCallback uintptr
-	context             uintptr
+	logFileName         *uint16   // 0
+	loggerName          *uint16   // 8
+	currentTime         int64     // 16
+	buffersRead         uint32    // 24
+	processTraceMode    uint32    // 28 (union with LogFileMode)
+	currentEvent        [88]byte  // 32 EVENT_TRACE
+	logfileHeader       [280]byte // 120 TRACE_LOGFILE_HEADER
+	bufferCallback      uintptr   // 400
+	bufferSize          uint32    // 408
+	filled              uint32    // 412
+	eventsLost          uint32    // 416
+	_                   uint32
+	eventRecordCallback uintptr // 424 (union with EventCallback)
+	isKernelTrace       uint32  // 432
+	_                   uint32
+	context             uintptr // 440
 }
 
 // eventDescriptor mirrors EVENT_DESCRIPTOR (evntrace.h).
@@ -149,9 +158,9 @@ type eventRecord struct {
 	bufferContext     [4]byte
 	extendedDataCount uint16
 	userDataLength    uint16
-	_                 uint32 // alignment to the pointers below
-	extendedData      uintptr
-	userData          uintptr
+	extendedData      uintptr // offset 88: already 8-aligned, no padding
+	userData          uintptr // offset 96
+	userContext       uintptr
 }
 
 // maxEventPayload bounds how much UserData the callback will touch. ETW does
@@ -206,13 +215,9 @@ func startTrace(name string, logger *audit.Logger) (*traceSession, error) {
 	// The properties block reserves room for the session name right after
 	// the struct; StartTraceW copies the name into that offset itself. The
 	// buffer must stay alive until ControlTrace stop (t.props holds it).
-	name16, _ := windows.UTF16FromString(name) // NUL-terminated copy for sizing
-	propsSize := int(unsafe.Sizeof(eventTraceProperties{})) + len(name16)*2
-	t.props = make([]byte, propsSize)
+	t.props = newTraceProps()
 	p := (*eventTraceProperties)(unsafe.Pointer(&t.props[0]))
-	p.wnode.bufferSize = uint32(propsSize)
 	p.logFileMode = eventTraceRealTimeMode
-	p.loggerNameOffset = uint32(unsafe.Sizeof(eventTraceProperties{}))
 
 	// Clean up an orphaned session of the same name from a run that did not
 	// close cleanly (e.g. warden was killed). Best effort: the name may
@@ -267,14 +272,36 @@ func stopTraceByName(name string) {
 	// ControlTrace wants a properties buffer; a zeroed header-sized one is
 	// enough for a by-name stop. Best effort: if the name is already free
 	// the call reports not-found and is ignored.
-	var p eventTraceProperties
-	p.wnode.bufferSize = uint32(unsafe.Sizeof(p))
+	props := newTraceProps()
 	procControlTraceW.Call(
 		0, // session handle: stop by name
 		uintptr(unsafe.Pointer(nameW)),
-		uintptr(unsafe.Pointer(&p)),
+		uintptr(unsafe.Pointer(&props[0])),
 		eventTraceControlStop,
 	)
+}
+
+// maxTraceNameChars is the room reserved for each of the logger and log-file
+// names. ControlTrace(STOP) writes both back into the buffer and fails with
+// ERROR_MORE_DATA when they do not fit, which used to leave sessions running.
+const maxTraceNameChars = 1024
+
+// wnodeFlagTracedGUID is WNODE_FLAG_TRACED_GUID (wmistr.h), required on
+// EVENT_TRACE_PROPERTIES.
+const wnodeFlagTracedGUID = 0x00020000
+
+// newTraceProps allocates an EVENT_TRACE_PROPERTIES block with room for both
+// names, for StartTrace and ControlTrace alike.
+func newTraceProps() []byte {
+	base := unsafe.Sizeof(eventTraceProperties{})
+	buf := make([]byte, base+2*maxTraceNameChars*2)
+	p := (*eventTraceProperties)(unsafe.Pointer(&buf[0]))
+	p.wnode.bufferSize = uint32(len(buf))
+	p.wnode.flags = wnodeFlagTracedGUID
+	p.wnode.clientContext = 1 // QPC timestamps
+	p.loggerNameOffset = uint32(base)
+	p.logFileNameOffset = uint32(base + maxTraceNameChars*2)
+	return buf
 }
 
 // enableProviders turns on the Kernel-File and Kernel-Network providers for
@@ -282,13 +309,24 @@ func stopTraceByName(name string) {
 // controller already holds one, EnableTraceEx2 fails and the run fails closed
 //auditing is never best-effort.
 func (t *traceSession) enableProviders() error {
-	for _, guid := range []windows.GUID{kernelFileGUID, kernelNetworkGUID} {
+	for _, pr := range []struct {
+		guid     windows.GUID
+		keywords uint64
+	}{
+		// KERNEL_FILE_KEYWORD_FILENAME | CREATE | DELETE_PATH |
+		// RENAME_SETLINK_PATH | CREATE_NEW_FILE. Manifest kernel providers
+		// emit next to nothing with MatchAnyKeyword 0.
+		{kernelFileGUID, 0x10 | 0x80 | 0x400 | 0x800 | 0x1000},
+		// KERNEL_NETWORK_KEYWORD_IPV4 | IPV6.
+		{kernelNetworkGUID, 0x10 | 0x20},
+	} {
+		guid := pr.guid
 		r, _, _ := procEnableTraceEx2.Call(
 			uintptr(t.session),
 			uintptr(unsafe.Pointer(&guid)),
 			eventControlCodeEnableProvider,
 			traceLevelVerbose,
-			0, // MatchAnyKeyword: 0 matches every keyword
+			uintptr(pr.keywords), // MatchAnyKeyword
 			0, // MatchAllKeyword
 			0, // Timeout
 			0, // EnableParameters (nil)
@@ -304,16 +342,12 @@ func (t *traceSession) enableProviders() error {
 func (t *traceSession) openTrace() error {
 	var lf eventTraceLogfile
 	lf.loggerName = t.nameW
-	lf.logFileMode = processTraceModeRealTime | processTraceModeEventRecord
+	lf.processTraceMode = processTraceModeRealTime | processTraceModeEventRecord
 	lf.eventRecordCallback = syscall.NewCallback(eventRecordCallback)
 
-	r, _, _ := procOpenTraceW.Call(uintptr(unsafe.Pointer(&lf)))
-	if r == ^uintptr(0) { // INVALID_HANDLE_VALUE
-		code := lf.fatalError
-		if code == 0 {
-			code = uint32(windows.ERROR_INVALID_HANDLE)
-		}
-		return failClose("open ETW trace consumer", windows.Errno(code))
+	r, _, e := procOpenTraceW.Call(uintptr(unsafe.Pointer(&lf)))
+	if r == ^uintptr(0) { // INVALID_PROCESSTRACE_HANDLE
+		return failClose("open ETW trace consumer", e)
 	}
 	t.trace = uint64(r)
 	return nil
@@ -402,14 +436,14 @@ func (t *traceSession) handleKernelFile(r *eventRecord) {
 	const eventRecordUserDataOffset = 96
 	payloadPtr := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(r), eventRecordUserDataOffset))
 	payload := unsafe.Slice((*byte)(payloadPtr), int(r.userDataLength))
-	name, ok := decodeKernelFileEvent(payload)
+	name, ok := decodeKernelFileEvent(r.header.descriptor.id, payload)
 	if !ok {
 		// Read/write/flush events and other records that do not end in a
 		// verifiable name carry no resource; writing them would pollute the
 		// audit log with pathless noise, so they are dropped.
 		return
 	}
-	action := kernelFileAction(r.header.descriptor.opcode)
+	action := kernelFileAction(r.header.descriptor.id)
 	// The audit logger stamps the timestamp; failures to encode are dropped
 	// (a callback must never take the run down with it).
 	_ = t.logger.Log(audit.Event{Type: "file", Action: action, Resource: name, Allowed: true, Reason: "observed via ETW kernel trace"})

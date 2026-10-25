@@ -183,20 +183,84 @@ func freeACL(p unsafe.Pointer) {
 // grants the AppContainer read access (the standard ALL APPLICATION PACKAGES
 // ACE), a failed grant there is tolerated; any failure on a policy path fails
 // the run closed rather than weakening the sandbox.
-func grantFilesystemAccess(plan *Plan) error {
+//
+// The returned restore func puts every touched path's original DACL (and its
+// protected/inheriting state) back, so per-run capability ACEs never pile up
+// on user folders and inheritance from the parent is not cut off for good.
+// Callers must run it after the target exits, including on error paths.
+func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 	caps, err := planCapabilitySIDs(plan)
 	if err != nil {
-		return err
+		return func() {}, err
+	}
+	var snaps []daclSnapshot
+	restore = func() {
+		for i := len(snaps) - 1; i >= 0; i-- {
+			snaps[i].restore()
+		}
 	}
 	for _, g := range plan.Grants {
+		// Snapshot before granting: a grant that cannot be restored would
+		// leave a permanent ACE (and a protected DACL) behind.
+		snap, serr := snapshotDACL(longPath(g.Path))
+		if serr != nil {
+			if IsRuntimeReadPath(g.Path) {
+				continue
+			}
+			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
+		}
+		snaps = append(snaps, snap)
 		if err := grantPathACE(g.Path, g.AccessMask, caps); err != nil {
 			if IsRuntimeReadPath(g.Path) {
 				continue
 			}
-			return fmt.Errorf("grant filesystem access to %q: %w", g.Path, err)
+			return restore, fmt.Errorf("grant filesystem access to %q: %w", g.Path, err)
 		}
 	}
-	return nil
+	return restore, nil
+}
+
+// daclSnapshot is a path's DACL and protection state before Warden's grant.
+type daclSnapshot struct {
+	path      string
+	sd        *windows.SECURITY_DESCRIPTOR
+	dacl      *windows.ACL
+	protected bool
+}
+
+func snapshotDACL(path string) (daclSnapshot, error) {
+	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return daclSnapshot{}, err
+	}
+	dacl, _, err := sd.DACL()
+	if err != nil {
+		return daclSnapshot{}, err
+	}
+	control, _, err := sd.Control()
+	if err != nil {
+		return daclSnapshot{}, err
+	}
+	return daclSnapshot{path: path, sd: sd, dacl: dacl, protected: control&windows.SE_DACL_PROTECTED != 0}, nil
+}
+
+// restore writes the snapshot back; UNPROTECTED re-enables inheritance from
+// the parent, which also recomputes the inherited ACEs of every child.
+func (s daclSnapshot) restore() {
+	info := windows.SECURITY_INFORMATION(windows.DACL_SECURITY_INFORMATION)
+	if s.protected {
+		info |= windows.PROTECTED_DACL_SECURITY_INFORMATION
+	} else {
+		info |= windows.UNPROTECTED_DACL_SECURITY_INFORMATION
+	}
+	_ = windows.SetNamedSecurityInfo(s.path, windows.SE_FILE_OBJECT, info, nil, nil, s.dacl, nil)
+	// SetNamedSecurityInfo recomputes inheritance, which can merge explicit
+	// ACEs that duplicate inherited ones and set SE_DACL_AUTO_INHERITED. Write
+	// the original descriptor back verbatim on the object itself (no
+	// propagation) so the path ends up byte-identical.
+	if control, _, err := s.sd.Control(); err == nil && preserveDACLControl(s.sd, control) == nil {
+		_ = setFileSecurity(s.path, s.sd)
+	}
 }
 
 // grantPathACE appends one GRANT_ACCESS ACE per capability SID to path's DACL

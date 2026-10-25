@@ -57,7 +57,8 @@ func TestBuildBwrapArgsGrants(t *testing.T) {
 }
 
 func TestBuildBwrapArgsCommandParentBound(t *testing.T) {
-	// A binary outside /usr gets its parent dir bound so it stays visible.
+	// A binary outside /usr gets only the executable itself bound: binding
+	// its parent dir would expose every sibling file beyond the policy.
 	cmd := []string{"/home/user/mise/node/bin/node", "server.js"}
 	p := policy.Policy{}
 	args, err := BuildBwrapArgs(cmd, p)
@@ -65,8 +66,24 @@ func TestBuildBwrapArgsCommandParentBound(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := strings.Join(args, " ")
-	if !strings.Contains(text, "--ro-bind /home/user/mise/node/bin /home/user/mise/node/bin") {
-		t.Errorf("command parent dir not bound: %q", text)
+	if !strings.Contains(text, "--ro-bind /home/user/mise/node/bin/node /home/user/mise/node/bin/node") {
+		t.Errorf("command executable not bound: %q", text)
+	}
+	if strings.Contains(text, "/home/user/mise/node/bin /home/user/mise/node/bin ") {
+		t.Errorf("command parent dir bound (exposes siblings): %q", text)
+	}
+}
+
+func TestBuildBwrapArgsCommandUnderGrantNotRebound(t *testing.T) {
+	// An executable already inside a granted path needs no extra bind.
+	cmd := []string{"/srv/app/bin/server"}
+	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{"/srv/app"}}}
+	args, err := BuildBwrapArgs(cmd, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if text := strings.Join(args, " "); strings.Contains(text, "/srv/app/bin") {
+		t.Errorf("executable inside a grant was bound again: %q", text)
 	}
 }
 

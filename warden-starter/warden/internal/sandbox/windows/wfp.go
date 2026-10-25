@@ -5,6 +5,7 @@ package windows
 import (
 	"crypto/sha256"
 	"fmt"
+	"runtime"
 	"unicode/utf16"
 	"unsafe"
 
@@ -24,22 +25,29 @@ import (
 
 // FWPM_ACTION_* (fwpmu.h).
 const (
-	fwpmActionBlock  = 0x00000000
-	fwpmActionPermit = 0x00000001
-	fwpmActionNone   = 0x00000002
+	fwpmActionBlock  = 0x00001001 // FWP_ACTION_BLOCK (0x1 | FWP_ACTION_FLAG_TERMINATING)
+	fwpmActionPermit = 0x00001002 // FWP_ACTION_PERMIT (0x2 | FWP_ACTION_FLAG_TERMINATING)
+	fwpmActionNone   = 0x00000007 // FWP_ACTION_NONE
 )
 
 // FWP_MATCH_TYPE (fwptypes.h).
-const fwpmMatchEqual = 0
+const (
+	fwpmMatchEqual       = 0
+	fwpmMatchFlagsAllSet = 6
+)
+
+// fwpmFilterFlagClearActionRight lets the hard permit win arbitration
+// against lower-weight sublayers.
+const fwpmFilterFlagClearActionRight = 0x00000008
 
 // FWP_DATA_TYPE (fwptypes.h).
 const (
 	fwpUint8        = 0x01
 	fwpUint16       = 0x02
 	fwpUint32       = 0x03
-	fwpByteArray16  = 0x09
-	fwpByteBlobType = 0x0A
-	fwpSid          = 0x0B
+	fwpByteArray16  = 0x0B
+	fwpByteBlobType = 0x0C
+	fwpSid          = 0x0D
 )
 
 // FWPM Condition field GUIDs (fwpmu.h). FWP_CONDITION_FLAG_IS_LOOPBACK marks
@@ -47,20 +55,21 @@ const (
 const fwpConditionFlagIsLoopback = 0x00000001
 
 var (
-	// FWPM_CONDITION_ALE_APP_ID identifies the executable by its NT image path.
-	guidConditionALEAppID = guidOf("b0e247ec-84be-4d1a-982c-deb94538337c")
+	// FWPM_CONDITION_ALE_PACKAGE_ID: the AppContainer package SID, so the
+	// filters match only this run's container, never other host processes.
+	guidConditionALEPackageID = guidOf("71bc78fa-f17c-4997-a602-6abb261f351c")
 	// FWPM_CONDITION_FLAGS carries filter flags such as IS_LOOPBACK.
-	guidConditionFlags = guidOf("632ce23b-5167-435c-86cf-242bbbb70cb1")
+	guidConditionFlags = guidOf("632ce23b-5167-435c-86d7-e903684aa80c")
 	// FWPM_CONDITION_IP_REMOTE_PORT is the destination port condition.
-	guidConditionIPRemotePort = guidOf("6fb1c71d-8ae9-4b97-b873-a462be2c14db")
+	guidConditionIPRemotePort = guidOf("c35a604d-d22b-4e1a-91b4-68f674ee674b")
 )
 
 // Well-known WFP layers we attach to (fwpmu.h).
 var (
 	// FWPM_LAYER_ALE_AUTH_CONNECT_V4
-	guidLayerALEAuthConnectV4 = guidOf("d78e1e87-8644-4ea5-9437-d809ecefc971")
+	guidLayerALEAuthConnectV4 = guidOf("c38d57d1-05a7-4c33-904f-7fbceee60e82")
 	// FWPM_LAYER_ALE_AUTH_CONNECT_V6
-	guidLayerALEAuthConnectV6 = guidOf("4a6f2e6c-9a3d-4f1d-a43f-9bcb355219b5")
+	guidLayerALEAuthConnectV6 = guidOf("4a72393b-319f-44bc-84c3-ba54dcb3b6b4")
 )
 
 // fwpByteBlob mirrors FWP_BYTE_BLOB (fwptypes.h).
@@ -75,86 +84,92 @@ type fwpmDisplayData struct {
 	description *uint16
 }
 
-// fwpConditionValue mirrors FWP_CONDITION_VALUE (fwptypes.h): a data-type
-// discriminator plus a 16-byte value union.
+// The mirrors below follow fwptypes.h / fwpmtypes.h for amd64 exactly; their
+// offsets are pinned by TestWFPStructLayout. A wrong layout makes
+// FwpmFilterAdd0 fail with RPC_X_BAD_STUB_DATA (0x6f7).
+
+// fwpConditionValue mirrors FWP_CONDITION_VALUE0: type + pointer-sized union.
 type fwpConditionValue struct {
 	valueType uint32
 	_         uint32
-	value     [16]byte // union
+	value     uint64 // union
 }
 
 func (v *fwpConditionValue) setUint32(x uint32) {
 	v.valueType = fwpUint32
-	*(*uint32)(unsafe.Pointer(&v.value[0])) = x
+	*(*uint32)(unsafe.Pointer(&v.value)) = x
 }
 
 func (v *fwpConditionValue) setUint16(x uint16) {
 	v.valueType = fwpUint16
-	*(*uint16)(unsafe.Pointer(&v.value[0])) = x
+	*(*uint16)(unsafe.Pointer(&v.value)) = x
 }
 
-func (v *fwpConditionValue) setByteBlob(b *fwpByteBlob) {
-	v.valueType = fwpByteBlobType
-	*(*uintptr)(unsafe.Pointer(&v.value[0])) = uintptr(unsafe.Pointer(b))
+func (v *fwpConditionValue) setSID(sid *windows.SID) {
+	v.valueType = fwpSid
+	*(*uintptr)(unsafe.Pointer(&v.value)) = uintptr(unsafe.Pointer(sid))
 }
 
-// FWP_VALUE mirrors FWP_VALUE (fwptypes.h): a data-type discriminator plus a
-// 16-byte value union. filters use it for weight (FWP_EMPTY when unused).
+// fwpValue mirrors FWP_VALUE0 (same shape as the condition value).
 type fwpValue struct {
 	valueType uint32
 	_         uint32
-	value     [16]byte // union, unused for the empty weight
+	value     uint64 // union
 }
 
-// fwpEmpty is FWP_DATA_TYPE::FWP_EMPTY.
 const fwpEmpty = 0
 
-// fwpmFilterCondition mirrors FWPM_FILTER_CONDITION (fwpmu.h).
+// fwpmFilterCondition mirrors FWPM_FILTER_CONDITION0.
 type fwpmFilterCondition struct {
 	fieldKey       windows.GUID
 	matchType      uint32
 	conditionValue fwpConditionValue
 }
 
-// fwpmFilter mirrors FWPM_FILTER (fwpmu.h). Field order matches the SDK so the
-// compiler reproduces the MSVC x64 offsets for the pointer/uint32 transitions;
-// layerKey and weight.valueType are set for every filter added. The exact
-// layout is cross-checked by the Windows integration tests; a wrong offset
-// makes FwpmFilterAdd fail, which fails the run closed.
+// fwpmAction mirrors FWPM_ACTION0: type + GUID union (filterType/calloutKey).
+type fwpmAction struct {
+	actionType uint32
+	filterType windows.GUID
+}
+
+// fwpmFilter mirrors FWPM_FILTER0.
 type fwpmFilter struct {
 	filterKey           windows.GUID
+	displayData         fwpmDisplayData
 	flags               uint32
 	providerKey         *windows.GUID
 	providerData        fwpByteBlob
-	displayData         fwpmDisplayData
 	layerKey            windows.GUID
-	weight              fwpValue
 	subLayerKey         windows.GUID
-	rawContext          windows.GUID
-	providerContextKey  windows.GUID
-	conditions          *fwpmFilterCondition
+	weight              fwpValue
 	numFilterConditions uint32
-	action              uint32
-	u                   uintptr // union member, unused (zero)
+	filterCondition     *fwpmFilterCondition
+	action              fwpmAction
+	providerContext     struct{ lo, hi uint64 } // union rawContext/providerContextKey
+	reserved            *windows.GUID
+	filterID            uint64
+	effectiveWeight     fwpValue
 }
 
-// fwpmSublayer mirrors FWPM_SUBLAYER (fwpmu.h).
+// fwpmSublayer mirrors FWPM_SUBLAYER0.
 type fwpmSublayer struct {
 	subLayerKey  windows.GUID
 	displayData  fwpmDisplayData
-	providerKey  windows.GUID
-	providerData windows.GUID
 	flags        uint32
-	weight       uint32
+	providerKey  *windows.GUID
+	providerData fwpByteBlob
+	weight       uint16
 }
 
 // guidOf parses a registry-style GUID string into a windows.GUID. These are
 // compile-time constants; a failure indicates an SDL regression, returned as
 // nil GUID and caught by the layer checks in installWFPEgress.
 func guidOf(s string) windows.GUID {
-	g, err := windows.GUIDFromString(s)
+	// GUIDFromString only accepts the braced form; a parse failure here is a
+	// typo in a constant, never something to paper over with a zero GUID.
+	g, err := windows.GUIDFromString("{" + s + "}")
 	if err != nil {
-		return windows.GUID{}
+		panic(fmt.Sprintf("windows: bad GUID constant %q: %v", s, err))
 	}
 	return g
 }
@@ -220,7 +235,8 @@ func wfpSupported() error {
 		return failClose("WFP engine", fwpmResultError("FwpmSublayerAdd", r))
 	}
 	var probeIDs []uint64
-	if err := addBlockAll(engine, subLayer, guidLayerALEAuthConnectV4, &probeIDs); err != nil {
+	probeSID, _ := windows.StringToSid(appContainerSID("warden-capability-probe"))
+	if err := addBlockAll(engine, subLayer, guidLayerALEAuthConnectV4, probeSID, &probeIDs); err != nil {
 		_ = fwpmAbort(engine)
 		return err
 	}
@@ -238,16 +254,38 @@ func wfpSupported() error {
 // WFP" and fail-closes a perfectly healthy engine.
 const rpcAuthnWinNT = 10
 
-// fwpmOpen opens a handle to the filter engine.
+// fwpmSessionFlagDynamic is FWPM_SESSION_FLAG_DYNAMIC (fwpmtypes.h): every
+// object added through the session is deleted when the session ends.
+const fwpmSessionFlagDynamic = 0x00000001
+
+// fwpmSession mirrors FWPM_SESSION0 (fwpmtypes.h), 72 bytes on x64.
+type fwpmSession struct {
+	sessionKey           windows.GUID
+	displayData          fwpmDisplayData
+	flags                uint32
+	txnWaitTimeoutInMSec uint32
+	processID            uint32
+	sid                  *windows.SID
+	username             *uint16
+	kernelMode           int32
+}
+
+// fwpmOpen opens a handle to the filter engine in a dynamic session, so the
+// run's sublayer and filters are removed by Windows when the handle closes
+// or the process dies. A non-dynamic session left them installed until the
+// Base Filtering Engine restarted (the sublayer on every run, the filters
+// too whenever warden crashed or was killed).
 func fwpmOpen() (windows.Handle, error) {
 	var engine windows.Handle
+	session := fwpmSession{flags: fwpmSessionFlagDynamic, displayData: fwpmDisplayData{name: utf16Ptr("warden")}}
 	r, _, _ := procFwpmEngineOpen.Call(
 		0,             // serverName: NULL, local engine
 		rpcAuthnWinNT, // authnService: RPC_C_AUTHN_WINNT (allowed values are WINNT and DEFAULT)
-		0, // authIdentity: NULL, use the calling thread's credentials
-		0, // session: NULL, default session flags
+		0,             // authIdentity: NULL, use the calling thread's credentials
+		uintptr(unsafe.Pointer(&session)),
 		uintptr(unsafe.Pointer(&engine)),
 	)
+	runtime.KeepAlive(&session)
 	if err := fwpmResultError("FwpmEngineOpen", r); err != nil {
 		return 0, failClose("open WFP engine", err)
 	}
@@ -270,14 +308,13 @@ type wfpSession struct {
 	engine     windows.Handle
 	subLayer   windows.GUID
 	filterIDs  []uint64
-	appBlobBuf []byte
-	appBlob    fwpByteBlob
+	pkg        *windows.SID // keeps the condition SID alive for the session
 }
 
 // installWFPEgress installs the WFP filters for one run. It fails closed: any
 // error aborts the transaction and closes the engine so a partially configured
 // policy can never leave a default-permit path.
-func installWFPEgress(imageNTPath string, allowPort uint16, seedGUID string) (sess *wfpSession, err error) {
+func installWFPEgress(packageSID string, allowPort uint16, seedGUID string) (sess *wfpSession, err error) {
 	if err := wfpSupported(); err != nil {
 		return nil, err
 	}
@@ -294,17 +331,21 @@ func installWFPEgress(imageNTPath string, allowPort uint16, seedGUID string) (se
 		}
 	}()
 
-	sess.appBlobBuf = utf16LEBytes(imageNTPath)
-	if len(sess.appBlobBuf) == 0 {
-		return nil, failClose("WFP image path", fmt.Errorf("empty image path"))
+	pkg, perr := windows.StringToSid(packageSID)
+	if perr != nil {
+		return nil, failClose("WFP package SID", perr)
 	}
-	sess.appBlob = fwpByteBlob{size: uint32(len(sess.appBlobBuf)), data: &sess.appBlobBuf[0]}
+	sess.pkg = pkg
 
 	if r, _, _ := procFwpmTransactionBegin.Call(uintptr(engine), 0); r != 0 {
 		return nil, fwpmResultError("FwpmTransactionBegin", r)
 	}
 
-	sub := fwpmSublayer{subLayerKey: sess.subLayer, displayData: fwpmDisplayData{name: utf16Ptr("warden sublayer")}}
+	// Top sublayer weight: sublayers are arbitrated high to low, so the hard
+	// permit for the proxy port is decided before the built-in AppContainer
+	// loopback isolation, and the deny-all is decided before anything that
+	// might permit the container elsewhere.
+	sub := fwpmSublayer{subLayerKey: sess.subLayer, displayData: fwpmDisplayData{name: utf16Ptr("warden sublayer")}, weight: 0xFFFF}
 	if r, _, _ := procFwpmSublayerAdd.Call(uintptr(engine), uintptr(unsafe.Pointer(&sub)), 0); r != 0 {
 		_ = fwpmAbort(engine)
 		return nil, fwpmResultError("FwpmSublayerAdd", r)
@@ -312,13 +353,13 @@ func installWFPEgress(imageNTPath string, allowPort uint16, seedGUID string) (se
 
 	for _, layer := range [2]windows.GUID{guidLayerALEAuthConnectV4, guidLayerALEAuthConnectV6} {
 		// Hard-permit: the loopback proxy bridge from this image.
-		if err := addPermitLoopback(engine, sess.subLayer, layer, allowPort, &sess.appBlob, &sess.filterIDs); err != nil {
+		if err := addPermitLoopback(engine, sess.subLayer, layer, allowPort, sess.pkg, &sess.filterIDs); err != nil {
 			_ = fwpmAbort(engine)
 			return nil, err
 		}
 		// Hard-block every other outbound connection for the image. UDP/DNS is
 		// denied by the AppContainer token; this closes the TCP path.
-		if err := addBlockAll(engine, sess.subLayer, layer, &sess.filterIDs); err != nil {
+		if err := addBlockAll(engine, sess.subLayer, layer, sess.pkg, &sess.filterIDs); err != nil {
 			_ = fwpmAbort(engine)
 			return nil, err
 		}
@@ -359,42 +400,46 @@ func binaryLE32(b []byte) uint32 {
 	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 }
 
-// addPermitLoopback installs a permit filter allowing loopback connections from
-// the sandbox image to the proxy port.
-func addPermitLoopback(engine windows.Handle, subLayer windows.GUID, layer windows.GUID, port uint16, app *fwpByteBlob, ids *[]uint64) error {
-	conds := make([]fwpmFilterCondition, 0, 3)
-	var isLoopback fwpConditionValue
+// addPermitLoopback installs a hard permit for this container's connections
+// to the loopback proxy port.
+func addPermitLoopback(engine windows.Handle, subLayer windows.GUID, layer windows.GUID, port uint16, pkg *windows.SID, ids *[]uint64) error {
+	var pkgVal, isLoopback, portVal fwpConditionValue
+	pkgVal.setSID(pkg)
 	isLoopback.setUint32(fwpConditionFlagIsLoopback)
-	conds = append(conds, fwpmFilterCondition{fieldKey: guidConditionFlags, matchType: fwpmMatchEqual, conditionValue: isLoopback})
-
-	var portVal fwpConditionValue
 	portVal.setUint16(port)
-	conds = append(conds, fwpmFilterCondition{fieldKey: guidConditionIPRemotePort, matchType: fwpmMatchEqual, conditionValue: portVal})
-
-	var appVal fwpConditionValue
-	appVal.setByteBlob(app)
-	conds = append(conds, fwpmFilterCondition{fieldKey: guidConditionALEAppID, matchType: fwpmMatchEqual, conditionValue: appVal})
-
+	conds := []fwpmFilterCondition{
+		{fieldKey: guidConditionALEPackageID, matchType: fwpmMatchEqual, conditionValue: pkgVal},
+		{fieldKey: guidConditionFlags, matchType: fwpmMatchFlagsAllSet, conditionValue: isLoopback},
+		{fieldKey: guidConditionIPRemotePort, matchType: fwpmMatchEqual, conditionValue: portVal},
+	}
 	f := fwpmFilter{
 		displayData:         fwpmDisplayData{name: utf16Ptr("warden egress allow")},
+		flags:               fwpmFilterFlagClearActionRight,
 		layerKey:            layer,
-		weight:              fwpValue{valueType: fwpEmpty},
 		subLayerKey:         subLayer,
-		conditions:          &conds[0],
+		weight:              fwpValue{valueType: fwpUint8, value: 15},
 		numFilterConditions: uint32(len(conds)),
-		action:              fwpmActionPermit,
+		filterCondition:     &conds[0],
+		action:              fwpmAction{actionType: fwpmActionPermit},
 	}
 	return fwpmAdd(engine, &f, ids, "allow-loopback")
 }
 
-// addBlockAll installs a deny-all outbound filter on a layer.
-func addBlockAll(engine windows.Handle, subLayer windows.GUID, layer windows.GUID, ids *[]uint64) error {
+// addBlockAll blocks every other outbound connection from this container.
+// The package-SID condition is essential: without it the filter would block
+// outbound traffic for the whole host.
+func addBlockAll(engine windows.Handle, subLayer windows.GUID, layer windows.GUID, pkg *windows.SID, ids *[]uint64) error {
+	var pkgVal fwpConditionValue
+	pkgVal.setSID(pkg)
+	conds := []fwpmFilterCondition{{fieldKey: guidConditionALEPackageID, matchType: fwpmMatchEqual, conditionValue: pkgVal}}
 	f := fwpmFilter{
-		displayData: fwpmDisplayData{name: utf16Ptr("warden egress deny-all")},
-		layerKey:    layer,
-		weight:      fwpValue{valueType: fwpEmpty},
-		subLayerKey: subLayer,
-		action:      fwpmActionBlock,
+		displayData:         fwpmDisplayData{name: utf16Ptr("warden egress deny-all")},
+		layerKey:            layer,
+		subLayerKey:         subLayer,
+		weight:              fwpValue{valueType: fwpUint8, value: 0},
+		numFilterConditions: uint32(len(conds)),
+		filterCondition:     &conds[0],
+		action:              fwpmAction{actionType: fwpmActionBlock},
 	}
 	return fwpmAdd(engine, &f, ids, "deny-all")
 }

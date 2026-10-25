@@ -17,5 +17,5 @@ func Supported() bool {
 		return false
 	}
 	token.Close()
-	return wfpSupported() == nil
+	return wfpSupported() == nil || unprivilegedOptIn()
 }

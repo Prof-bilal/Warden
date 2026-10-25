@@ -16,44 +16,57 @@ import (
 // is not a name we can trust to be a path.
 const maxDecodedName = 260
 
-// classic kernel FileIo payloads lay the file name out as
+// Microsoft-Windows-Kernel-File is a manifest provider: events are told apart
+// by event ID (the opcode is 0) and names are NUL-terminated UTF-16 strings at
+// a fixed offset per event. x64 layouts (pointers are 8 bytes):
 //
-//	FileObject(pointer) FileKey(pointer) [optional fields] FileNameLength(USHORT) FileName(UTF-16)
+//	10 NameCreate, 11 NameDelete:     FileKey, FileName                       -> 8
+//	12 Create, 30 CreateNewFile:      Irp, FileObject, IssuingThreadId,
+//	                                  CreateOptions, CreateAttributes,
+//	                                  ShareAccess, FileName                   -> 32
+//	26 DeletePath, 27 RenamePath:     Irp, FileObject, FileKey,
+//	                                  ExtraInformation, IssuingThreadId,
+//	                                  InfoClass, FilePath                     -> 40
 //
-// on x64 the two pointers occupy offsets 0 and 8, so the name length lives at
-// offset 16 for events without extra fields. Some operations (create, rename)
-// prefix additional fields, so a small set of candidate offsets is tried and
-// the first that yields a plausible path wins. These offsets are x64 mirrors
-// of the FileIo event layouts (evntrace.h / TraceEvent kernel parser) and are
-// pinned by the Windows escape test TestEtwFileActivityAudited.
-var kernelFileNameOffsets = [...]int{16, 20, 24, 28}
+// Pinned on a real host by TestEtwFileActivityAudited.
+const (
+	kfNameCreate    = 10
+	kfNameDelete    = 11
+	kfCreate        = 12
+	kfDeletePath    = 26
+	kfRenamePath    = 27
+	kfCreateNewFile = 30
+)
 
-// decodeKernelFileEvent extracts the file path from a Microsoft-Windows-
-// Kernel-File event payload. It reports false when the payload does not carry
-// a name Warden can verify, so undecodable events are dropped rather than
-// written to the audit log with a guessed resource.
-func decodeKernelFileEvent(payload []byte) (string, bool) {
-	for _, off := range kernelFileNameOffsets {
-		if name, ok := kernelFileNameAt(payload, off); ok {
-			return name, true
-		}
-	}
-	return "", false
+var kernelFileNameOffset = map[uint16]int{
+	kfNameCreate:    8,
+	kfNameDelete:    8,
+	kfCreate:        32,
+	kfCreateNewFile: 32,
+	kfDeletePath:    40,
+	kfRenamePath:    40,
 }
 
-func kernelFileNameAt(payload []byte, lengthOff int) (string, bool) {
-	if lengthOff < 0 || lengthOff+2 > len(payload) {
+// decodeKernelFileEvent extracts the file path from a Kernel-File event
+// payload. It reports false for events without a name or a name Warden cannot
+// verify, so undecodable events are dropped rather than logged with a guess.
+func decodeKernelFileEvent(id uint16, payload []byte) (string, bool) {
+	off, ok := kernelFileNameOffset[id]
+	if !ok || off >= len(payload) {
 		return "", false
 	}
-	n := int(binary.LittleEndian.Uint16(payload[lengthOff : lengthOff+2]))
-	if n < 1 || n > maxDecodedName {
+	b := payload[off:]
+	end := -1
+	for k := 0; k+1 < len(b) && k/2 <= maxDecodedName; k += 2 {
+		if b[k] == 0 && b[k+1] == 0 {
+			end = k
+			break
+		}
+	}
+	if end <= 0 {
 		return "", false
 	}
-	start := lengthOff + 2
-	if start+2*n > len(payload) {
-		return "", false
-	}
-	name, ok := decodeUTF16LE(payload[start : start+2*n])
+	name, ok := decodeUTF16LE(b[:end])
 	if !ok || !plausibleFileName(name) {
 		return "", false
 	}
@@ -103,37 +116,18 @@ func plausibleFileName(s string) bool {
 	return true
 }
 
-// classic file-operation opcodes carried by Kernel-File events (evntrace.h
-// EVENT_TRACE_TYPE_IO_*). They are best-effort: when an opcode is not one of
-// the classic set (e.g. provider-routed differently on a given Windows
-// build), the record is logged with a generic action rather than a guessed
-// verb. Pinned by the Windows escape tests.
-const (
-	fileOpCreate = 32 // EVENT_TRACE_TYPE_IO_CREATE
-	fileOpRead   = 33
-	fileOpWrite  = 34
-	fileOpClose  = 35
-	fileOpDelete = 36
-	fileOpRename = 37
-	fileOpName   = 43 // EVENT_TRACE_TYPE_IO_NAME
-)
-
-// kernelFileAction maps a Kernel-File opcode to the audit event action.
-func kernelFileAction(opcode uint8) string {
-	switch opcode {
-	case fileOpCreate:
+// kernelFileAction maps a Kernel-File event ID to the audit event action.
+func kernelFileAction(id uint16) string {
+	switch id {
+	case kfCreate:
+		return "open"
+	case kfCreateNewFile:
 		return "create"
-	case fileOpRead:
-		return "read"
-	case fileOpWrite:
-		return "write"
-	case fileOpClose:
-		return "close"
-	case fileOpDelete:
+	case kfDeletePath, kfNameDelete:
 		return "delete"
-	case fileOpRename:
+	case kfRenamePath:
 		return "rename"
-	case fileOpName:
+	case kfNameCreate:
 		return "name"
 	default:
 		return "file-op"

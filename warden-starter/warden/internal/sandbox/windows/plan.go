@@ -100,6 +100,25 @@ const grantAccess uint32 = 1
 // assigned by proxy.StartTCP at run time and threaded through BuildPlan.
 const bridgeHost = "127.0.0.1"
 
+// systemEnvVars are fixed OS locations every Windows process needs: without
+// SystemRoot, Winsock and the crypto RNG fail to initialize, so a sandboxed
+// target cannot even open a socket to the proxy. They carry no user data.
+var systemEnvVars = []string{"SystemRoot", "windir"}
+
+// systemEnvPairs returns systemEnvVars from parent as NAME=value pairs.
+func systemEnvPairs(parent []string) []string {
+	var out []string
+	for _, want := range systemEnvVars {
+		for _, kv := range parent {
+			if name, value, ok := strings.Cut(kv, "="); ok && strings.EqualFold(name, want) {
+				out = append(out, strings.ToUpper(want)+"="+value)
+				break
+			}
+		}
+	}
+	return out
+}
+
 // proxyEnvPairs returns the proxy environment variables injected into the
 // sandboxed process, pointing at the loopback bridge.
 func proxyEnvPairs(addr string) []string {
@@ -125,7 +144,7 @@ type Plan struct {
 	// AppContainerName is the per-run package moniker for the LowBox token.
 	AppContainerName string
 	// PackageSID is the SDDL form of the AppContainer (package) SID,
-	// derived from the moniker (S-1-15-3-...).
+	// derived from the moniker (S-1-15-2-...).
 	PackageSID string
 	// CapabilitySIDs are the SDDL capability SIDs granted to the token.
 	// Access is granted by the DACLs on granted paths, not by well-known
@@ -134,6 +153,9 @@ type Plan struct {
 	// Grants are the filesystem capabilities to install, in deterministic
 	// (case-insensitive path) order.
 	Grants []pathGrant
+	// WorkDir is the target's current directory: the host's cwd when it is
+	// inside a policy grant, otherwise a granted directory (see chooseWorkDir).
+	WorkDir string
 	// Command is the resolved command with an absolute executable path.
 	Command []string
 	// CommandLine is the fully quoted command line for CreateProcessW.
@@ -187,12 +209,13 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 		PackageSID:       appContainerSID(name),
 		CapabilitySIDs:   []string{capabilitySID(sessionID)},
 		Grants:           grants,
+		WorkDir:          chooseWorkDir(hostWorkDir(), exe, p),
 		Command:          append([]string{}, cmd...),
 		CommandLine:      buildCommandLine(cmd),
 		ProxyAddress:     proxyAddr,
 		AllowIPs:         []string{bridgeHost},
 		AllowPorts:       []uint16{port},
-		EnvBlock:         buildEnvBlock(os.Environ(), p.EnvAllowlist(), proxyEnvPairs(proxyAddr)),
+		EnvBlock:         buildEnvBlock(os.Environ(), p.EnvAllowlist(), append(systemEnvPairs(os.Environ()), proxyEnvPairs(proxyAddr)...)),
 		Limits:           p.Limits,
 	}, nil
 }
@@ -284,30 +307,30 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 }
 
 // appContainerSID derives the AppContainer package SID for a moniker in
-// SDDL form: S-1-15-3-<w0>-<w1>-<w2>-<w3>, where w0..w3 are the first four
-// little-endian 32-bit words of the SHA-256 of the UTF-16LE moniker, each
-// masked to 30 bits to fit a subauthority. This matches
-// DeriveAppContainerSidFromAppContainerName and keeps plan construction
-// pure and testable on every OS.
+// SDDL form: S-1-15-2-<w0>-...-<w6>, where w0..w6 are the first seven
+// little-endian 32-bit words of the SHA-256 of the lowercased UTF-16LE
+// moniker. This matches DeriveAppContainerSidFromAppContainerName (pinned by
+// TestAppContainerSIDMatchesWindows) and keeps plan construction pure and
+// testable on every OS.
 func appContainerSID(moniker string) string {
-	sum := sha256.Sum256(utf16LE(moniker))
-	parts := make([]string, 4)
-	for i := range parts {
-		parts[i] = fmt.Sprintf("%d", binary.LittleEndian.Uint32(sum[i*4:])&0x3FFFFFFF)
-	}
-	return "S-1-15-3-" + strings.Join(parts, "-")
+	return sidFromHash("S-1-15-2-", sha256.Sum256(utf16LE(strings.ToLower(moniker))), 7)
 }
 
-// capabilitySID derives a unique capability SID (S-1-15-7-<w0>..<w3>) for a
-// run, bound to the session id so ACLs minted for one run never match
-// another run's token.
+// capabilitySID derives a unique capability SID (S-1-15-3-1024-<w0>..<w7>,
+// the shape Windows uses for named capabilities) for a run, bound to the
+// session id so ACLs minted for one run never match another run's token.
 func capabilitySID(sessionID string) string {
-	sum := sha256.Sum256(utf16LE("warden.cap." + sessionID))
-	parts := make([]string, 4)
+	return sidFromHash("S-1-15-3-1024-", sha256.Sum256(utf16LE("warden.cap."+sessionID)), 8)
+}
+
+// sidFromHash renders the first n little-endian 32-bit words of sum as SID
+// subauthorities after prefix.
+func sidFromHash(prefix string, sum [32]byte, n int) string {
+	parts := make([]string, n)
 	for i := range parts {
-		parts[i] = fmt.Sprintf("%d", binary.LittleEndian.Uint32(sum[i*4:])&0x3FFFFFFF)
+		parts[i] = fmt.Sprintf("%d", binary.LittleEndian.Uint32(sum[i*4:]))
 	}
-	return "S-1-15-7-" + strings.Join(parts, "-")
+	return prefix + strings.Join(parts, "-")
 }
 
 // utf16LE returns the little-endian UTF-16 encoding of s without a
@@ -512,4 +535,35 @@ func NewSessionID() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	return fmt.Sprintf("%d.%s", time.Now().UnixNano(), fmt.Sprintf("%016x", binary.BigEndian.Uint64(rnd[:])))
+}
+
+func hostWorkDir() string {
+	wd, _ := os.Getwd()
+	return wd
+}
+
+// chooseWorkDir picks a current directory the AppContainer can actually use.
+// Inheriting a cwd outside the grants breaks the target in confusing ways
+// (node's child_process.spawn reports ENOENT, relative paths fail), so the
+// host cwd is kept only when it lies inside a policy grant; otherwise the
+// first write grant, then the first read grant, then the executable's
+// directory is used.
+func chooseWorkDir(cwd, exe string, p policy.Policy) string {
+	grants := append(append([]string{}, p.Filesystem.Write...), p.Filesystem.Read...)
+	if cwd != "" && isAbsWin(cwd) {
+		c := cleanWinPath(cwd)
+		for _, g := range grants {
+			if isAbsWin(g) {
+				if gc := cleanWinPath(g); strings.EqualFold(c, gc) || isUnder(c, gc) {
+					return c
+				}
+			}
+		}
+	}
+	for _, g := range grants {
+		if isAbsWin(g) && !isDriveRootWin(cleanWinPath(g)) {
+			return cleanWinPath(g)
+		}
+	}
+	return parentDirWin(exe)
 }
