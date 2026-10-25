@@ -96,7 +96,7 @@ func TestGrantsRestoredAfterRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.String() != after.String() {
+	if daclSDDL(before) != daclSDDL(after) {
 		t.Fatalf("DACL not restored:\nbefore %s\nafter  %s", before, after)
 	}
 	if strings.Contains(after.String(), "S-1-15-3-1024-") {
@@ -108,7 +108,19 @@ func TestGrantsRestoredAfterRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parentBefore.String() != parentAfter.String() {
+	if daclSDDL(parentBefore) != daclSDDL(parentAfter) {
 		t.Fatalf("ancestor DACL not restored:\nbefore %s\nafter  %s", parentBefore, parentAfter)
 	}
+}
+
+// daclSDDL returns only the DACL part ("D:...") of sd's SDDL. Warden changes
+// nothing but the DACL, and GetNamedSecurityInfo may include the owner and
+// group in one query but not another (seen on GitHub Windows runners), so
+// comparing the whole string fails on identical DACLs.
+func daclSDDL(sd *windows.SECURITY_DESCRIPTOR) string {
+	s := sd.String()
+	if i := strings.Index(s, "D:"); i >= 0 {
+		return s[i:]
+	}
+	return s
 }
