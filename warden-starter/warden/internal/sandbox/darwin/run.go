@@ -131,7 +131,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	// parent's cwd is the checkout under /Users which is deny-default.
 	sub.Dir = os.TempDir()
 	sub.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	sub.Env = append(envfilter.Filter(parentEnv, p.EnvAllowlist()),
+	sub.Env = append(envfilter.FilterDenied(parentEnv, p.EnvAllowlist(), p.EnvDenylist()),
 		"HTTP_PROXY=http://127.0.0.1:18080",
 		"HTTPS_PROXY=http://127.0.0.1:18080",
 		"ALL_PROXY=http://127.0.0.1:18080",

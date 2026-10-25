@@ -3,6 +3,8 @@
 package linux
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -152,6 +154,30 @@ func TestBuildBwrapArgsRejectsMissingHostPath(t *testing.T) {
 	// Run. This test documents that expectation.
 	if _, err := BuildBwrapArgs([]string{"/usr/bin/true"}, p); err != nil {
 		t.Fatalf("builder should not stat paths: %v", err)
+	}
+}
+
+func TestBuildBwrapArgsWithDeniedMasksFileAndDirectory(t *testing.T) {
+	dir := t.TempDir()
+	secret := filepath.Join(dir, ".env")
+	private := filepath.Join(dir, "private")
+	if err := os.WriteFile(secret, []byte("fake"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(private, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{dir}}}
+	args, err := BuildBwrapArgsWithDenied([]string{"/usr/bin/true"}, p, []string{secret, private})
+	if err != nil {
+		t.Fatalf("BuildBwrapArgsWithDenied: %v", err)
+	}
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--ro-bind /dev/null "+secret) {
+		t.Fatalf("file deny mask missing from args: %v", args)
+	}
+	if !strings.Contains(joined, "--tmpfs "+private) {
+		t.Fatalf("directory deny mask missing from args: %v", args)
 	}
 }
 

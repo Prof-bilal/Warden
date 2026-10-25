@@ -68,17 +68,21 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 
 	// Host-side egress proxy on a loopback TCP address; its exact endpoint is
 	// the only destination WFP permits.
-	// Without WFP (no elevation) only the explicit unprivileged mode may run,
-	// and only for policies it can fully enforce.
+	// Without WFP (normally because this is a standard-user process), the
+	// AppContainer still provides a complete offline boundary. Network
+	// allowlists are rejected below because permitting them requires a
+	// privileged WFP rule; no UAC prompt is needed for offline policies.
 	unprivileged := false
 	if werr := wfpSupported(); werr != nil {
-		if !unprivilegedOptIn() {
-			return 0, werr
-		}
 		if err := checkUnprivilegedPolicy(p); err != nil {
 			return 0, err
 		}
 		unprivileged = true
+		if unprivilegedOptIn() {
+			_ = logger.Log(audit.Event{Type: "sandbox", Action: "windows.unprivileged", Resource: "network", Allowed: false, Reason: "explicit opt-in"})
+		} else {
+			_ = logger.Log(audit.Event{Type: "sandbox", Action: "windows.unprivileged", Resource: "network", Allowed: false, Reason: "WFP unavailable; offline policy"})
+		}
 	}
 
 	eg, err := proxy.StartTCP(p.Network.Allow, logger)

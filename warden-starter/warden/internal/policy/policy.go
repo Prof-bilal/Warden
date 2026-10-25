@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -55,6 +56,12 @@ type Filesystem struct {
 	Read []string `yaml:"read,omitempty"`
 	// Write lists paths mounted read-write inside the sandbox.
 	Write []string `yaml:"write,omitempty"`
+	// Deny lists absolute paths or shell-style path patterns that are masked
+	// inside otherwise-visible grants. Deny always wins over read and write.
+	Deny []string `yaml:"deny,omitempty"`
+	// ProtectSecrets enables deterministic high-confidence secret filename
+	// protection within granted trees. It never scans file contents.
+	ProtectSecrets bool `yaml:"protect_secrets,omitempty"`
 }
 
 // Network is the network section of a policy.
@@ -67,6 +74,8 @@ type Network struct {
 type Env struct {
 	// Allow lists environment variable names to pass through.
 	Allow []string `yaml:"allow,omitempty"`
+	// Deny lists shell-style patterns that override Allow.
+	Deny []string `yaml:"deny,omitempty"`
 }
 
 // Limits is the resource-limits section of a policy. Parsed for schema
@@ -181,6 +190,13 @@ func (p *Policy) ResolvePaths(dir string) error {
 		}
 		p.Filesystem.Write[i] = r
 	}
+	for i, pattern := range p.Filesystem.Deny {
+		r, err := resolve(absDir, pattern)
+		if err != nil {
+			return fmt.Errorf("filesystem.deny[%d]: %w", i, err)
+		}
+		p.Filesystem.Deny[i] = r
+	}
 	return nil
 }
 
@@ -216,6 +232,11 @@ func (p *Policy) Validate() error {
 			return err
 		}
 	}
+	for _, deny := range p.Filesystem.Deny {
+		if err := checkGrantPath(deny, "deny"); err != nil {
+			return err
+		}
+	}
 	for i, host := range p.Network.Allow {
 		if err := validateHost(host); err != nil {
 			return fmt.Errorf("network.allow[%d]: %w", i, err)
@@ -224,6 +245,11 @@ func (p *Policy) Validate() error {
 	for _, name := range p.Env.Allow {
 		if name == "" || strings.ContainsAny(name, " \t\n=") {
 			return fmt.Errorf("env.allow: %q is not a valid environment variable name", name)
+		}
+	}
+	for _, pattern := range p.Env.Deny {
+		if pattern == "" || strings.ContainsAny(pattern, "=\n\r") || strings.Contains(pattern, "/") {
+			return fmt.Errorf("env.deny: %q is not a valid environment name pattern", pattern)
 		}
 	}
 	if p.Limits.MemoryMB < 0 {
@@ -256,6 +282,86 @@ func (p *Policy) Validate() error {
 		}
 	}
 	return nil
+}
+
+// DeniedPaths expands explicit deny patterns and built-in secret protection
+// against the currently granted trees. It follows no symlinks while walking;
+// symlink entries are returned as mask targets when they match. A walk error
+// is returned rather than silently weakening the sandbox.
+func (p Policy) DeniedPaths() ([]string, error) {
+	patterns := append([]string(nil), p.Filesystem.Deny...)
+	if p.Filesystem.ProtectSecrets {
+		patterns = append(patterns,
+			".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "credentials*",
+			"secrets", ".ssh", ".aws", ".azure", ".kube", ".docker", ".npmrc", ".pypirc")
+	}
+	if len(patterns) == 0 {
+		return nil, nil
+	}
+	var denied []string
+	seen := make(map[string]bool)
+	for _, root := range append(append([]string{}, p.Filesystem.Read...), p.Filesystem.Write...) {
+		info, err := os.Lstat(root)
+		if err != nil {
+			return nil, fmt.Errorf("inspect filesystem grant %q: %w", root, err)
+		}
+		if matchesAnyDeny(root, root, patterns) && !seen[root] {
+			denied = append(denied, root)
+			seen[root] = true
+		}
+		if !info.IsDir() {
+			continue
+		}
+		err = filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if path == root {
+				return nil
+			}
+			if matchesAnyDeny(path, root, patterns) && !seen[path] {
+				denied = append(denied, path)
+				seen[path] = true
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("walk filesystem grant %q: %w", root, err)
+		}
+	}
+	sort.Strings(denied)
+	return denied, nil
+}
+
+func matchesAnyDeny(path, root string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if filepath.IsAbs(pattern) && (path == pattern || Within(path, pattern) || Within(pattern, path)) {
+			if path == pattern {
+				return true
+			}
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			continue
+		}
+		if ok, _ := filepath.Match(pattern, path); ok {
+			return true
+		}
+		if ok, _ := filepath.Match(pattern, rel); ok {
+			return true
+		}
+		// A ** pattern is intentionally treated as a component wildcard for
+		// deterministic matching; check each suffix so nested secrets match.
+		for _, suffix := range strings.Split(rel, string(filepath.Separator)) {
+			if ok, _ := filepath.Match(pattern, suffix); ok {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func checkGrantPath(path, kind string) error {
@@ -375,6 +481,11 @@ func (p *Policy) EnvAllowlist() []string {
 		out = append(out, name)
 	}
 	return out
+}
+
+// EnvDenylist returns patterns that override the environment allowlist.
+func (p *Policy) EnvDenylist() []string {
+	return append([]string(nil), p.Env.Deny...)
 }
 
 // UnimplementedAdvisories returns human-readable warnings for policy

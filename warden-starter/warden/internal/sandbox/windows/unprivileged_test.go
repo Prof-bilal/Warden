@@ -32,8 +32,8 @@ func TestUnprivilegedRefusesNetworkAllowlist(t *testing.T) {
 // has no network capability, so direct egress, including to a loopback
 // listener on the host, must fail.
 func TestEscapeUnprivilegedNetworkBlocked(t *testing.T) {
-	if wfpSupported() == nil || !unprivilegedOptIn() {
-		t.Skip("only meaningful in unprivileged mode (" + unprivilegedEnv + "=1, no WFP)")
+	if wfpSupported() == nil {
+		t.Skip("WFP is available; privileged network tests cover this host")
 	}
 	curl := filepath.Join(os.Getenv("SystemRoot"), "System32", "curl.exe")
 	if _, err := os.Stat(curl); err != nil {

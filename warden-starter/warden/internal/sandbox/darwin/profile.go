@@ -93,6 +93,10 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 		}
 		mode[path] = "write"
 	}
+	denied, err := p.DeniedPaths()
+	if err != nil {
+		return "", fmt.Errorf("expand filesystem denies: %w", err)
+	}
 
 	var b strings.Builder
 	// macOS puts per-user temporary files under /var/folders. Grant only the
@@ -170,6 +174,21 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 			// The target's own image may live inside a write grant (e.g. a
 			// built binary in the project dir): mapping it is required to exec.
 			writeSubpathAllow(&b, "file-map-executable", variant)
+		}
+	}
+	for _, path := range denied {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", fmt.Errorf("inspect denied path %q: %w", path, err)
+		}
+		if info.IsDir() {
+			for _, variant := range symlinkVariants(path) {
+				fmt.Fprintf(&b, "(deny file-read* file-write* (subpath %q))\n", variant)
+			}
+		} else {
+			for _, variant := range symlinkVariants(path) {
+				fmt.Fprintf(&b, "(deny file-read* file-write* (literal %q))\n", variant)
+			}
 		}
 	}
 

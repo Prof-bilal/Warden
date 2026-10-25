@@ -116,7 +116,7 @@ func connectionFactory(ctx context.Context, o connectionOptions) (mcpbridge.Fact
 		// Only reviewed upstream env names plus Warden's runtime/state setup
 		// reach the subprocess; gateway authentication values are excluded.
 		allow := append(append([]string{}, p.Env.Allow...), "PATH", "HOME", "XDG_STATE_HOME")
-		env = envfilter.Filter(os.Environ(), allow)
+		env = envfilter.FilterDenied(os.Environ(), allow, p.EnvDenylist())
 	} else {
 		if o.policyPath != "" || len(o.command) > 0 {
 			return nil, r, fmt.Errorf("remote mode cannot mix with local command/policy")

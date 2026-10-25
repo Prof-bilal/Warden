@@ -180,6 +180,21 @@ func BuildDockerArgs(cmd []string, p policy.Policy, bridgeHostPath, socketHostDi
 		mode[path] = "write"
 		addBind(path, path, "rw")
 	}
+	denied, err := p.DeniedPaths()
+	if err != nil {
+		return nil, fmt.Errorf("docker args: expand filesystem denies: %w", err)
+	}
+	for _, path := range denied {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return nil, fmt.Errorf("docker args: inspect denied path %q: %w", path, err)
+		}
+		if info.IsDir() {
+			args = append(args, "--tmpfs", path+":rw,nosuid,nodev,noexec")
+		} else {
+			args = append(args, "--mount", "type=bind,src=/dev/null,dst="+path+",readonly")
+		}
+	}
 
 	parent := filepath.Dir(exe)
 	if !seen[parent] {
@@ -280,7 +295,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		return 0, fmt.Errorf("build docker args: %w", err)
 	}
 
-	env := envfilter.Filter(parentEnv, p.EnvAllowlist())
+	env := envfilter.FilterDenied(parentEnv, p.EnvAllowlist(), p.EnvDenylist())
 	runArgs := injectEnvFlags(append([]string{"run"}, args...), env, []string{
 		"HTTP_PROXY=http://127.0.0.1:18080",
 		"HTTPS_PROXY=http://127.0.0.1:18080",
