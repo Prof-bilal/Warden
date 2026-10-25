@@ -156,7 +156,14 @@ jobs:
             echo "Positive control did not pass: sandboxed target startup was never proven on Linux"
             exit 1
           fi
-      - run: go test -count=1 ./...
+      # The hosted Linux runner has a finite process/thread cgroup. Some CLI
+      # tests intentionally invoke a nested `go build`; running all packages
+      # at the default parallelism can exhaust that limit and make the nested
+      # build fail with EAGAIN ("failed to create new OS thread"). Keep the
+      # full suite deterministic while preserving the real integration checks
+      # above.
+      - name: Full Go test suite (bounded parallelism)
+        run: GOMAXPROCS=2 go test -p 1 -count=1 ./...
 
   # DIAGNOSIS COMPLETE (removed): six probe rounds across windows-2022 and
   # windows-latest showed the hosted images ship fwpuclnt.dll but refuse
