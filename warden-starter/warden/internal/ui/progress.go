@@ -21,7 +21,7 @@ type Progress struct {
 	current int
 	mu      sync.Mutex
 
-	spinMu sync.Mutex
+	spinMu   sync.Mutex
 	spinning bool
 	stopCh   chan struct{}
 	doneCh   chan struct{}

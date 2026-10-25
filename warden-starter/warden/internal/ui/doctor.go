@@ -8,10 +8,10 @@ import (
 
 // Check describes one doctor diagnostic line.
 type Check struct {
-	Name    string
-	Status  string // "ok", "warn", "fail", "info"
-	Detail  string
-	Hint    string
+	Name   string
+	Status string // "ok", "warn", "fail", "info"
+	Detail string
+	Hint   string
 }
 
 // DoctorReport is the structured result of a warden doctor run.

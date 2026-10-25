@@ -305,10 +305,10 @@ func makeSubLayerGUID(seed string) windows.GUID {
 // buffers (image path byte blob) the installed filters reference so Go never
 // moves memory under the engine.
 type wfpSession struct {
-	engine     windows.Handle
-	subLayer   windows.GUID
-	filterIDs  []uint64
-	pkg        *windows.SID // keeps the condition SID alive for the session
+	engine    windows.Handle
+	subLayer  windows.GUID
+	filterIDs []uint64
+	pkg       *windows.SID // keeps the condition SID alive for the session
 }
 
 // installWFPEgress installs the WFP filters for one run. It fails closed: any

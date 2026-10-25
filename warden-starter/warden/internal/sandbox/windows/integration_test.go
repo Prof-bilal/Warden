@@ -43,7 +43,7 @@ func requireAppContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to resolve temp directory path: %v", err)
 	}
-	
+
 	probe := filepath.Join(fullPath, "startup-probe.cmd")
 	marker := filepath.Join(fullPath, "started.marker")
 	body := "@echo off\r\necho " + startupMarkerWindows + "> \"" + marker + "\"\r\n"
@@ -91,13 +91,13 @@ func TestEscapeUngrantedReadDenied(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to resolve granted directory path: %v", err)
 	}
-	
+
 	secretDir := t.TempDir()
 	secretDir, err = filepath.Abs(secretDir)
 	if err != nil {
 		t.Fatalf("failed to resolve secret directory path: %v", err)
 	}
-	
+
 	secret := filepath.Join(secretDir, "secret.txt")
 	if err := os.WriteFile(secret, []byte("classified"), 0o600); err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestGrantedPathReadable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to resolve granted directory path: %v", err)
 	}
-	
+
 	want := filepath.Join(grantedDir, "in.txt")
 	if err := os.WriteFile(want, []byte("allowed"), 0o600); err != nil {
 		t.Fatal(err)
@@ -227,7 +227,7 @@ func TestEscapeExceedsTimeoutTerminatesTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to resolve granted directory path: %v", err)
 	}
-	
+
 	probe := filepath.Join(grantedDir, "sleep.cmd")
 	if err := os.WriteFile(probe, []byte("@echo off\r\nping -n 200 127.0.0.1 >nul\r\n"), 0o700); err != nil {
 		t.Fatal(err)

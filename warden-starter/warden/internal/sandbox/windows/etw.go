@@ -307,7 +307,7 @@ func newTraceProps() []byte {
 // enableProviders turns on the Kernel-File and Kernel-Network providers for
 // this session. Kernel providers are single-session (WPP-style): when another
 // controller already holds one, EnableTraceEx2 fails and the run fails closed
-//auditing is never best-effort.
+// auditing is never best-effort.
 func (t *traceSession) enableProviders() error {
 	for _, pr := range []struct {
 		guid     windows.GUID
@@ -327,9 +327,9 @@ func (t *traceSession) enableProviders() error {
 			eventControlCodeEnableProvider,
 			traceLevelVerbose,
 			uintptr(pr.keywords), // MatchAnyKeyword
-			0, // MatchAllKeyword
-			0, // Timeout
-			0, // EnableParameters (nil)
+			0,                    // MatchAllKeyword
+			0,                    // Timeout
+			0,                    // EnableParameters (nil)
 		)
 		if r != 0 {
 			return failClose(fmt.Sprintf("enable ETW provider %s", guid.String()), windows.Errno(r))

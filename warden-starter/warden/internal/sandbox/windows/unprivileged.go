@@ -162,7 +162,6 @@ func registerAppContainerProfile(plan *Plan) (func(), error) {
 	return func() { _, _, _ = procDeleteAppContainerProfile.Call(uintptr(unsafe.Pointer(name))) }, nil
 }
 
-
 // containerEnvVars are the per-user folder variables CreateProcess rewrites to
 // the AppContainer's private folders; it fails with ERROR_ENVVAR_NOT_FOUND
 // when the (deny-by-default) environment block lacks them. Their values are
