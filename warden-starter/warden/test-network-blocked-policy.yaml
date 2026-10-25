@@ -1,10 +1,10 @@
-command: ["/home/abdullah/Downloads/warden/warden-starter/warden/test-app/test-network.sh"]
+command: ["./test-app/test-network.sh"]
 
 filesystem:
   read:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+    - "./test-app"
   write:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-app"
+    - "./test-app"
 
 network:
   allow:

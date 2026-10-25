@@ -2,10 +2,10 @@ command: ["/usr/local/bin/node", "/app/mcp-test/test-server.js", "/app/test-data
 
 filesystem:
   read:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/mcp-test"
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+    - "./mcp-test"
+    - "./test-data"
   write:
-    - "/home/abdullah/Downloads/warden/warden-starter/warden/test-data"
+    - "./test-data"
 
 network:
   allow:

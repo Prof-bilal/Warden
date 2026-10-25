@@ -17,7 +17,7 @@
 
 ### 3. Test Data
 - ✅ Created: `test-data/test.txt`
-- ✅ Location: `/home/abdullah/Downloads/warden/warden-starter/warden/test-data/`
+- ✅ Location: `warden-starter/warden/test-data/` from the repository root
 
 ### 4. Policies
 - ✅ `test-policy.yaml` - For local development
@@ -57,7 +57,7 @@
 ### Option 1: Test on Current Linux System (Docker Backend)
 
 ```bash
-cd /home/abdullah/Downloads/warden/warden-starter/warden
+cd /path/to/Warden/warden-starter/warden
 
 # Run MCP server in Docker sandbox
 ./warden run --backend docker --policy test-docker-policy.yaml
@@ -190,7 +190,7 @@ limits:
 ## Files Created
 
 ```
-/home/abdullah/Downloads/warden/warden-starter/warden/
+warden-starter/warden/
 ├── warden                           # Local build (6.2MB)
 ├── dist/
 │   ├── warden-linux-amd64          # Linux binary (5.8MB)

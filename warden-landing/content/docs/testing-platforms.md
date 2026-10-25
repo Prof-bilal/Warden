@@ -169,7 +169,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
 
 # Test 4: Read allowed file
 echo "=== Test 4: Read allowed file ==="
-echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"/home/abdullah/Downloads/warden/warden-starter/warden/test-app/file1.txt"}}}' | \
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"/path/to/Warden/warden-starter/warden/test-app/file1.txt"}}}' | \
   ./warden run --backend docker --policy test-shell-mcp-policy.yaml
 
 # Test 5: Network blocking
