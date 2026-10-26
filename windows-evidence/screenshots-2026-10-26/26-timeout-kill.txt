@@ -1,0 +1,30 @@
+=== Warden Windows E2E | 26-timeout-kill | limits: timeout_s 6 kills a forever-looping target and its process tree (ELEVATED) ===
+date: 2026-10-26 11:20:15 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> Select-String -Path C:\warden-test\policy-timeout.yaml -Pattern 'timeout_s'
+PS> $t0 = Get-Date
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy-timeout.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js timeout'
+PS> 'elapsed seconds: ' + [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
+PS> Start-Sleep 1
+PS> '--- host check: recorded PIDs must be gone ---'
+PS> Get-Content C:\warden-test\output\pids-timeout.txt | ForEach-Object { $n, $id = $_ -split ' '; $p = Get-Process -Id $id -ErrorAction SilentlyContinue; "$n pid $id alive=" + [bool]$p + $(if ($p) { ' name=' + $p.ProcessName } else { '' }) }
+
+
+C:\warden-test\policy-timeout.yaml:11:  timeout_s: 6
+probe mode=timeout pid=19080 node=v24.12.0
+spawned child pid 19128; parent pid 19080; pid file C:\warden-test\output\pids-timeout.txt
+parent now loops forever (expects warden timeout to kill the tree)
+still alive 1s
+still alive 2s
+still alive 3s
+still alive 4s
+still alive 5s
+warden run: resource limit exceeded: wall-clock timeout (6s)
+[exit code: 1]
+elapsed seconds: 6.6
+--- host check: recorded PIDs must be gone ---
+parent pid 19080 alive=False
+child pid 19128 alive=False
+grandchild pid 9996 alive=False
+
+

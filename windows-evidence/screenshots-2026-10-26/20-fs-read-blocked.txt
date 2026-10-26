@@ -1,0 +1,15 @@
+=== Warden Windows E2E | 20-fs-read-blocked | filesystem: read inside grant OK, outside grant blocked (ELEVATED) ===
+date: 2026-10-26 11:19:22 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> 'host control (outside the sandbox): ' + (Get-Content C:\warden-outside\secret.txt)
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js fs-read'
+
+host control (outside the sandbox): outside-secret-FAKE
+probe mode=fs-read pid=17536 node=v24.12.0
+RESULT read granted C:\warden-test\data   OK      "hello-from-granted-dir"
+RESULT read outside C:\warden-outside     DENIED  EPERM
+RESULT list user profile C:\Users\husna   DENIED  EPERM
+RESULT list C:\Users\husna\Desktop        DENIED  EPERM
+RESULT read repo file (outside grant)     DENIED  EPERM
+DONE
+[exit code: 0]

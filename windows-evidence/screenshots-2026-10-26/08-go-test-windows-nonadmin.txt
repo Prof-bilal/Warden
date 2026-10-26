@@ -1,0 +1,91 @@
+=== Warden Windows E2E | 08-go-test-windows-nonadmin | go test -v ./internal/sandbox/windows/... (NON-elevated) ===
+date: 2026-10-26 10:59:45 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go test -v -count=1 .\internal/sandbox/windows/...'
+
+=== RUN   TestTrusteeIsSidConstant
+--- PASS: TestTrusteeIsSidConstant (0.00s)
+=== RUN   TestLongPathNoTildeUnchanged
+--- PASS: TestLongPathNoTildeUnchanged (0.00s)
+=== RUN   TestAncestorDirs
+--- PASS: TestAncestorDirs (0.00s)
+=== RUN   TestEtwSessionLifecycle
+    etw_test.go:48: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEtwSessionLifecycle (0.00s)
+=== RUN   TestEtwSessionNameReclaim
+    etw_test.go:77: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEtwSessionNameReclaim (0.00s)
+=== RUN   TestEtwFileActivityAudited
+    etw_test.go:106: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEtwFileActivityAudited (0.00s)
+=== RUN   TestDecodeKernelFileEvent
+--- PASS: TestDecodeKernelFileEvent (0.00s)
+=== RUN   TestDecodeKernelFileEventRejectsControlChars
+--- PASS: TestDecodeKernelFileEventRejectsControlChars (0.00s)
+=== RUN   TestKernelFileAction
+--- PASS: TestKernelFileAction (0.00s)
+=== RUN   TestEscapeUngrantedReadDenied
+    integration_test.go:111: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEscapeUngrantedReadDenied (0.04s)
+=== RUN   TestGrantedPathReadable
+    integration_test.go:139: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestGrantedPathReadable (0.00s)
+=== RUN   TestEscapeNetworkBlockedAudited
+    integration_test.go:210: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEscapeNetworkBlockedAudited (0.00s)
+=== RUN   TestEscapeExceedsTimeoutTerminatesTree
+    integration_test.go:236: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestEscapeExceedsTimeoutTerminatesTree (0.00s)
+=== RUN   TestWFPDLLProbeResilient
+--- PASS: TestWFPDLLProbeResilient (0.00s)
+=== RUN   TestWFPDLLNameNonEmpty
+--- PASS: TestWFPDLLNameNonEmpty (0.00s)
+=== RUN   TestDeriveFilesystemGrantsDenyByDefault
+--- PASS: TestDeriveFilesystemGrantsDenyByDefault (0.00s)
+=== RUN   TestDeriveFilesystemGrantsPolicyPaths
+--- PASS: TestDeriveFilesystemGrantsPolicyPaths (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsReadWriteConflict
+--- PASS: TestDeriveFilesystemGrantsRejectsReadWriteConflict (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsWriteUnderRuntimeBase
+--- PASS: TestDeriveFilesystemGrantsRejectsWriteUnderRuntimeBase (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsDriveRoot
+--- PASS: TestDeriveFilesystemGrantsRejectsDriveRoot (0.00s)
+=== RUN   TestBuildPlanRequiresAbsoluteCommand
+--- PASS: TestBuildPlanRequiresAbsoluteCommand (0.00s)
+=== RUN   TestBuildPlanSessionBoundIdentities
+--- PASS: TestBuildPlanSessionBoundIdentities (0.00s)
+=== RUN   TestBuildPlanWFPAllowlist
+--- PASS: TestBuildPlanWFPAllowlist (0.00s)
+=== RUN   TestQuoteArg
+--- PASS: TestQuoteArg (0.00s)
+=== RUN   TestBuildCommandLine
+--- PASS: TestBuildCommandLine (0.00s)
+=== RUN   TestBuildEnvBlockDenyByDefault
+--- PASS: TestBuildEnvBlockDenyByDefault (0.00s)
+=== RUN   TestIsRuntimeWriteDenied
+--- PASS: TestIsRuntimeWriteDenied (0.00s)
+=== RUN   TestAppContainerSIDShape
+--- PASS: TestAppContainerSIDShape (0.00s)
+=== RUN   TestAppContainerSIDMatchesWindows
+--- PASS: TestAppContainerSIDMatchesWindows (0.00s)
+=== RUN   TestChooseWorkDir
+--- PASS: TestChooseWorkDir (0.00s)
+=== RUN   TestUnprivilegedRefusesNetworkAllowlist
+--- PASS: TestUnprivilegedRefusesNetworkAllowlist (0.00s)
+=== RUN   TestEscapeUnprivilegedNetworkBlocked
+    unprivileged_test.go:36: only meaningful in unprivileged mode (WARDEN_WINDOWS_UNPRIVILEGED=1, no WFP)
+--- SKIP: TestEscapeUnprivilegedNetworkBlocked (0.00s)
+=== RUN   TestGrantsRestoredAfterRun
+    unprivileged_test.go:92: AppContainer sandbox not usable on this host; skipping Windows escape test
+--- SKIP: TestGrantsRestoredAfterRun (0.00s)
+=== RUN   TestWFPStructLayout
+--- PASS: TestWFPStructLayout (0.00s)
+=== RUN   TestWFPGUIDsParsed
+--- PASS: TestWFPGUIDsParsed (0.00s)
+=== RUN   TestETWLogfileLayout
+--- PASS: TestETWLogfileLayout (0.00s)
+=== RUN   TestETWEventRecordLayout
+--- PASS: TestETWEventRecordLayout (0.00s)
+PASS
+ok  	github.com/warden-sandbox/warden/internal/sandbox/windows	1.485s
+[exit code: 0]

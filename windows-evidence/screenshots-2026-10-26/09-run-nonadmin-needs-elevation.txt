@@ -1,0 +1,9 @@
+=== Warden Windows E2E | 09-run-nonadmin-needs-elevation | native run, non-elevated, no opt-in: refuses and asks for admin ===
+date: 2026-10-26 10:59:53 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:XDG_STATE_HOME = 'C:\warden-test\state-nonadmin'
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js all'
+
+warden: this run needs administrator permission; set WARDEN_ELEVATE=1 to request it via UAC
+warden run: backend "windows" requested but AppContainer sandbox support is not available on this host
+[exit code: 1]

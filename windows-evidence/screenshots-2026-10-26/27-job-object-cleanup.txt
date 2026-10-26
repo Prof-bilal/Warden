@@ -1,0 +1,20 @@
+=== Warden Windows E2E | 27-job-object-cleanup | Job Object: child + grandchild left behind by target die with the run (ELEVATED) ===
+date: 2026-10-26 11:20:26 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js children'
+PS> Start-Sleep 1
+PS> '--- host check: recorded PIDs must be gone (kill-on-job-close) ---'
+PS> Get-Content C:\warden-test\output\pids-children.txt | ForEach-Object { $n, $id = $_ -split ' '; $p = Get-Process -Id $id -ErrorAction SilentlyContinue; "$n pid $id alive=" + [bool]$p + $(if ($p) { ' name=' + $p.ProcessName } else { '' }) }
+PS> '--- any node.exe still running from C:\warden-test? ---'
+PS> @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*warden-test*' -or $_.CommandLine -like '*setInterval*' }).Count
+
+probe mode=children pid=15740 node=v24.12.0
+spawned child pid 7776; parent pid 15740; pid file C:\warden-test\output\pids-children.txt
+parent exiting now, leaving child+grandchild behind on purpose
+[exit code: 0]
+--- host check: recorded PIDs must be gone (kill-on-job-close) ---
+parent pid 15740 alive=False
+child pid 7776 alive=False
+grandchild pid 14840 alive=False
+--- any node.exe still running from C:\warden-test? ---
+0

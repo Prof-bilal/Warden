@@ -1,0 +1,27 @@
+=== Warden Windows E2E | 15-doctor-admin | source build: warden doctor (ELEVATED) ===
+date: 2026-10-26 11:17:33 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe doctor'
+
+WARDEN DOCTOR
+
+Environment
+────────────────────────────────
+• Operating system        windows/amd64
+• Warden version          dev
+✓ Sandbox backend         AppContainer
+• Namespace support       AppContainer isolation
+✓ Network proxy           available (egress allowlist)
+✓ Policy engine           ready (YAML + validation)
+✓ Fail-closed             enabled (never runs unsandboxed)
+
+Security posture
+────────────────────────────────
+✓ Filesystem isolation    explicit paths only
+✓ Environment filtering   explicit vars only
+✓ Network policy          explicit hosts only
+✓ Fail-closed behavior    enforced
+
+Status: READY
+Sandbox enforcement is available. Warden will refuse to run without it.
+[exit code: 0]

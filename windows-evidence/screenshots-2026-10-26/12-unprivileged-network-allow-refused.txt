@@ -1,0 +1,27 @@
+=== Warden Windows E2E | 12-unprivileged-network-allow-refused | fail-closed: unprivileged mode refuses a policy with network.allow ===
+date: 2026-10-26 11:14:32 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:XDG_STATE_HOME = 'C:\warden-test\state-nonadmin'
+PS> $env:WARDEN_WINDOWS_UNPRIVILEGED = '1'
+PS> Select-String -Path C:\warden-test\policy.yaml -Pattern 'network|allow: \["api'
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- C:\warden-test\bin\node.exe --preserve-symlinks-main C:\warden-test\probe.js all'
+
+
+C:\warden-test\policy.yaml:5:network:
+C:\warden-test\policy.yaml:6:  allow: ["api.github.com"]
+warden: this run needs administrator permission; set WARDEN_ELEVATE=1 to request it via UAC
+✗ Warden refused to start: sandbox backend unavailable
+
+The sandbox backend couldn't initialize because the unprivileged Windows sandbox component failed (network.allow needs WFP egress filtering, which requires an administrator terminal; remove network.allow to run with all network blocked).
+
+This is not a bug. Warden fails closed by design. It will never run
+your MCP server without a working sandbox, since that would mean
+running it completely unprotected.
+
+To fix this:
+  → Re-run this command from an elevated (Administrator) terminal
+
+Warden never falls back to running unsandboxed, under any circumstances.
+[exit code: 1]
+
+

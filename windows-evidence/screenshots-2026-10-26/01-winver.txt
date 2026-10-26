@@ -1,0 +1,32 @@
+=== Warden Windows E2E | 01-winver | Windows edition / build / architecture ===
+date: 2026-10-26 10:57:22 +05:00   host: HUSNAIN   user: husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> cmd /c ver
+PS> Get-ComputerInfo -Property OsName,OsVersion,OsBuildNumber,OsArchitecture,WindowsEditionId,OsDisplayVersion,CsSystemType | Format-List
+PS> Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' | Select-Object EditionID,DisplayVersion,CurrentBuild,UBR | Format-List
+PS> "PROCESSOR_ARCHITECTURE=$env:PROCESSOR_ARCHITECTURE"
+
+
+Microsoft Windows [Version 10.0.26300.9711]
+
+
+OsName           : Microsoft Windows 11 Home
+OsVersion        : 10.0.26300
+OsBuildNumber    : 26300
+OsArchitecture   : 64-bit
+WindowsEditionId : Core
+OSDisplayVersion : 26H2
+CsSystemType     : x64-based PC
+
+
+
+
+
+EditionID      : Core
+DisplayVersion : 26H2
+CurrentBuild   : 26300
+UBR            : 9711
+
+
+
+PROCESSOR_ARCHITECTURE=AMD64

@@ -1,0 +1,31 @@
+=== Warden Windows E2E | 30-cleanup-after-runs | cleanup: no leftover ETW sessions, WFP filters, processes, ACL grants (ELEVATED) ===
+date: 2026-10-26 11:23:59 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> '--- ETW sessions named warden-* ---'
+PS> @(logman query -ets | Select-String 'warden') ; 'count=' + @(logman query -ets | Select-String 'warden').Count
+PS> '--- WFP filters/providers/sublayers mentioning warden ---'
+PS> netsh wfp show filters file=$env:TEMP\warden-shot\wfp-filters.xml | Out-Null
+PS> 'filters mentioning warden: ' + @(Select-String -Path $env:TEMP\warden-shot\wfp-filters.xml -Pattern 'warden' -SimpleMatch).Count
+PS> '--- leftover sandbox processes (node from warden-test / setInterval) ---'
+PS> 'count=' + @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -like '*warden-test*' -or $_.CommandLine -like '*setInterval*' }).Count
+PS> '--- ACLs before vs after (SDDL identical?) ---'
+PS> 'C:\                   ' + ((Get-Acl 'C:\').Sddl -eq (Get-Content $env:TEMP\warden-shot\acl-croot-before.txt))
+PS> 'C:\warden-test        ' + ((Get-Acl 'C:\warden-test').Sddl -eq (Get-Content $env:TEMP\warden-shot\acl-test-before.txt))
+PS> 'C:\warden-test\output ' + ((Get-Acl 'C:\warden-test\output').Sddl -eq (Get-Content $env:TEMP\warden-shot\acl-out-before.txt))
+PS> 'C:\Program Files\nodejs ' + ((Get-Acl 'C:\Program Files\nodejs').Sddl -eq (Get-Content $env:TEMP\warden-shot\acl-node-before.txt))
+PS> '--- AppContainer SIDs (S-1-15-2-*) left in C:\warden-test ACL ---'
+PS> @((Get-Acl 'C:\warden-test').Access | Where-Object { $_.IdentityReference -like '*S-1-15-2-*' }).Count
+
+--- ETW sessions named warden-* ---
+count=0
+--- WFP filters/providers/sublayers mentioning warden ---
+filters mentioning warden: 0
+--- leftover sandbox processes (node from warden-test / setInterval) ---
+count=0
+--- ACLs before vs after (SDDL identical?) ---
+C:\                   True
+C:\warden-test        True
+C:\warden-test\output True
+C:\Program Files\nodejs True
+--- AppContainer SIDs (S-1-15-2-*) left in C:\warden-test ACL ---
+0

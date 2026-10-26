@@ -1,0 +1,40 @@
+=== Warden Windows E2E | 28-audit-log | audit: Warden audit log incl. ETW file activity and network decisions (ELEVATED) ===
+date: 2026-10-26 11:20:34 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> 'audit log: C:\warden-test\state\warden\audit.jsonl  lines=' + (Get-Content C:\warden-test\state\warden\audit.jsonl).Count
+PS> '--- event type counts ---'
+PS> Get-Content C:\warden-test\state\warden\audit.jsonl | ForEach-Object { try { ($_ | ConvertFrom-Json) } catch {} } | Group-Object { "type=$($_.type) action=$($_.action) allowed=$($_.allowed)" } | Sort-Object Count -Descending | Format-Table Count, Name -AutoSize
+PS> '--- sample ETW / network / secret records (secrets redaction check) ---'
+PS> Select-String -Path C:\warden-test\state\warden\audit.jsonl -Pattern 'etw|file|evil.example|api.github|deny|denied|block' | Select-Object -Last 14 | ForEach-Object { $_.Line.Substring(0, [math]::Min(210, $_.Line.Length)) }
+PS> 'grep for fake secret values in audit log (must be 0): ' + @(Select-String -Path C:\warden-test\state\warden\audit.jsonl -Pattern 'fake-token-not-real|ghp_FAKE|FAKE/AWS').Count
+
+audit log: C:\warden-test\state\warden\audit.jsonl  lines=1869
+--- event type counts ---
+
+Count Name                                     
+----- ----                                     
+ 1792 type=file action=open allowed=True       
+   34 type=file action=name allowed=True       
+   34 type=file action=create allowed=True     
+    3 type=network action=GET allowed=False    
+    2 type=limit action=terminate allowed=False
+    2 type=network action=connect allowed=True 
+    2 type=network action=CONNECT allowed=False
+
+
+--- sample ETW / network / secret records (secrets redaction check) ---
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\WINDOWS\\System32\\winrnr.dll","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\WINDOWS\\system32\\nlansp_c.dll","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\WINDOWS\\system32\\nlansp_c.dll","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\WINDOWS\\system32\\wshbth.dll","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\WINDOWS\\system32\\wshbth.dll","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\Program Files\\nodejs\\node.exe","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\warden-test\\output","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\Program Files\\nodejs\\node.exe","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\Program Files\\","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\Program Files\\nodejs\\","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\Program Files\\nodejs\\node.exe","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"open","resource":"\\Device\\HarddiskVolume3\\warden-test\\output\\pids-children.txt","allowed":true,"reason":"observed via ETW kernel trace"}
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"create","resource":"\\Device\\HarddiskVolume3\\warden-test\\output\\pids-children.txt","allowed":true,"reason":"observed via ETW kernel trace"
+{"timestamp":"2026-10-26T06:20:28.0265785Z","type":"file","action":"name","resource":"\\Device\\HarddiskVolume3\\warden-test\\output\\pids-children.txt","allowed":true,"reason":"observed via ETW kernel trace"}
+grep for fake secret values in audit log (must be 0): 0

@@ -1,0 +1,10 @@
+=== Warden Windows E2E | 06-version | source build: --version ===
+date: 2026-10-26 10:58:13 +05:00   host: HUSNAIN   user: husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N '.\warden-windows-amd64.exe --version'
+PS> N 'git log -1 --format="built from commit %%H (%%cd)"'
+
+warden version dev
+[exit code: 0]
+built from commit 6bdf8a5a6e4d67a7c8bf8ddb1d9eaea49568e801 (Sun Oct 25 16:12:07 2026 +0500)
+[exit code: 0]

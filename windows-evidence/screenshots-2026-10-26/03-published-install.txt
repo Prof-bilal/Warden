@@ -1,0 +1,23 @@
+=== Warden Windows E2E | 03-published-install | published install: npm install -g warden-sandbox-cli ===
+date: 2026-10-26 10:59:19 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'npm view warden-sandbox-cli version'
+PS> N 'npm install -g warden-sandbox-cli'
+PS> N 'npm ls -g warden-sandbox-cli'
+PS> N 'where warden'
+PS> N 'warden --version'
+
+0.1.16
+[exit code: 0]
+
+changed 1 package in 797ms
+[exit code: 0]
+C:\Users\husna\AppData\Roaming\npm
+`-- warden-sandbox-cli@0.1.16
+
+[exit code: 0]
+C:\Users\husna\AppData\Roaming\npm\warden
+C:\Users\husna\AppData\Roaming\npm\warden.cmd
+[exit code: 0]
+warden version v0.1.16
+[exit code: 0]

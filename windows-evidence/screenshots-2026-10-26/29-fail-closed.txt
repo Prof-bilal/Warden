@@ -1,0 +1,19 @@
+=== Warden Windows E2E | 29-fail-closed | fail-closed: unsafe/invalid policies are refused before the target starts (ELEVATED) ===
+date: 2026-10-26 11:23:37 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> warden run --backend windows --policy <policy-root.yaml | policy-runtime-write.yaml | policy-invalid.yaml> -- node probe.js all
+
+### A) policy grants the filesystem root:  filesystem.read: ["C:/"]
+warden run: filesystem: refusing to grant "C:\\" (filesystem root)
+[exit code: 1]
+
+### B) policy grants WRITE on the runtime dir:  filesystem.write: ["C:/Program Files/nodejs"]
+warden run: filesystem: "C:\\Program Files\\nodejs" is inside the read-only runtime base and cannot be granted write
+[exit code: 1]
+
+### C) invalid policy:  limits.memory_mb: -5
+warden run: policy "C:\\warden-test\\policy-invalid.yaml": limits.memory_mb must not be negative
+[exit code: 2]
+
+### target ever started? (probe writes nothing in these modes; check no node child ran)
+node.exe processes with probe.js: 0

@@ -1,0 +1,30 @@
+=== Warden Windows E2E | 10-unprivileged-run-programfiles-node | WARDEN_WINDOWS_UNPRIVILEGED=1 run with node from C:\Program Files\nodejs ===
+date: 2026-10-26 11:14:10 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:XDG_STATE_HOME = 'C:\warden-test\state-nonadmin'
+PS> $env:WARDEN_WINDOWS_UNPRIVILEGED = '1'
+PS> Get-Content C:\warden-test\policy-unpriv.yaml
+PS> N 'C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe doctor' | Select-String 'Sandbox backend|Status|isolation|filtering|Network policy|unprivileged'
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy-unpriv.yaml -- "C:\Program Files\nodejs\node.exe" --preserve-symlinks-main C:\warden-test\probe.js all'
+
+command: ["C:/Program Files/nodejs/node.exe", "C:/warden-test/probe.js"]
+filesystem:
+  read: ["C:/warden-test"]
+  write: ["C:/warden-test/output"]
+env:
+  allow: ["PATH", "TEMP"]
+limits:
+  memory_mb: 256
+  timeout_s: 60
+
+✓ Sandbox backend         AppContainer
+• Namespace support       AppContainer isolation
+✓ Filesystem isolation    explicit paths only
+✓ Environment filtering   explicit vars only
+✓ Network policy          explicit hosts only
+Status: READY
+warden: this run needs administrator permission; set WARDEN_ELEVATE=1 to request it via UAC
+warden run: grant filesystem access to "C:\\Program Files\\nodejs": SetNamedSecurityInfoW: Access is denied.
+[exit code: 1]
+
+

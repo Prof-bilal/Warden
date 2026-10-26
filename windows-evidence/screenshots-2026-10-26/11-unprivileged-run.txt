@@ -1,0 +1,42 @@
+=== Warden Windows E2E | 11-unprivileged-run | WARDEN_WINDOWS_UNPRIVILEGED=1 run, node copied to user-owned C:\warden-test\bin (fs/env/net) ===
+date: 2026-10-26 11:14:13 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:XDG_STATE_HOME = 'C:\warden-test\state-nonadmin'
+PS> $env:WARDEN_WINDOWS_UNPRIVILEGED = '1'
+PS> $env:FAKE_SECRET_TOKEN = 'fake-token-not-real-0000'
+PS> $env:GITHUB_TOKEN = 'ghp_FAKEFAKEFAKEFAKEFAKE'
+PS> 'host side: FAKE_SECRET_TOKEN set=' + [bool]$env:FAKE_SECRET_TOKEN + '  GITHUB_TOKEN set=' + [bool]$env:GITHUB_TOKEN
+PS> Remove-Item C:\warden-test\output\* -Force -ErrorAction SilentlyContinue
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy-unpriv.yaml -- C:\warden-test\bin\node.exe --preserve-symlinks-main C:\warden-test\probe.js all'
+PS> '--- audit records for this run ---'
+PS> Get-Content C:\warden-test\state-nonadmin\warden\audit.jsonl -Tail 4 | ForEach-Object { $_.Substring(0, [math]::Min(200, $_.Length)) }
+
+host side: FAKE_SECRET_TOKEN set=True  GITHUB_TOKEN set=True
+probe mode=all pid=4652 node=v24.12.0
+RESULT read granted C:\warden-test\data   OK      "hello-from-granted-dir"
+RESULT read outside C:\warden-outside     DENIED  EPERM
+RESULT list user profile C:\Users\husna   DENIED  EPERM
+RESULT list C:\Users\husna\Desktop        DENIED  EPERM
+RESULT read repo file (outside grant)     DENIED  EPERM
+RESULT write granted output\              OK      written C:\warden-test\output\probe-write.txt
+RESULT write read-only grant data\        DENIED  EPERM
+RESULT write outside C:\warden-outside    DENIED  EPERM
+RESULT write user profile                 DENIED  EPERM
+RESULT write C:\Windows\Temp              DENIED  EPERM
+RESULT env PATH                           PRESENT (value hidden)
+RESULT env TEMP                           PRESENT (value hidden)
+RESULT env FAKE_SECRET_TOKEN              ABSENT  
+RESULT env GITHUB_TOKEN                   ABSENT  
+RESULT env AWS_SECRET_ACCESS_KEY          ABSENT  
+RESULT env USERPROFILE                    ABSENT  
+ENV NAMES VISIBLE IN SANDBOX: ALL_PROXY, HTTPS_PROXY, HTTP_PROXY, LOCALAPPDATA, NO_PROXY, PATH, SYSTEMROOT, TEMP, TMP, WINDIR
+proxy env: HTTPS_PROXY=http://127.0.0.1:54112
+RESULT direct TCP 1.1.1.1:443             DENIED  EACCES
+RESULT direct TCP github IP :443          DENIED  EACCES
+RESULT direct DNS example.org             DENIED  ENOTFOUND
+RESULT proxy CONNECT evil.example.net     DENIED  ETIMEDOUT
+RESULT proxy CONNECT api.github.com       DENIED  ETIMEDOUT
+DONE
+[exit code: 0]
+--- audit records for this run ---
+{"timestamp":"2026-10-26T06:14:13.7251752Z","type":"sandbox","action":"unprivileged","resource":"warden.1792995253701131800.d2cba1daee8130e8","allowed":true,"reason":"Windows unprivileged mode: ETW fi

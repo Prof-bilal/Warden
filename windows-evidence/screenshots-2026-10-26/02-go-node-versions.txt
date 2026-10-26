@@ -1,0 +1,37 @@
+=== Warden Windows E2E | 02-go-node-versions | prerequisites: go / node / npm / git / whoami / admin status ===
+date: 2026-10-26 10:59:15 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go version'
+PS> N 'node --version'
+PS> N 'npm --version'
+PS> N 'git --version'
+PS> N 'C:\Windows\System32\whoami.exe'
+PS> "Administrator (elevated) token: " + ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+PS> "Account is member of BUILTIN\Administrators (S-1-5-32-544, may be deny-only when not elevated):"
+PS> C:\Windows\System32\whoami.exe /groups | Select-String 'S-1-5-32-544|Mandatory Label'
+PS> N 'git -C C:\Users\husna\Desktop\Warden log -1 --format="commit %%H %%s"'
+PS> N 'git -C C:\Users\husna\Desktop\Warden rev-parse --abbrev-ref HEAD'
+
+go version go1.27.0 windows/amd64
+[exit code: 0]
+v24.12.0
+[exit code: 0]
+11.6.2
+[exit code: 0]
+git version 2.52.0.windows.1
+[exit code: 0]
+husnain\husna
+[exit code: 0]
+Administrator (elevated) token: False
+Account is member of BUILTIN\Administrators (S-1-5-32-544, may be deny-only when not elevated):
+
+Mandatory Label\Medium Mandatory Level                        Label            S-1-16-8192                                                                                                                                  
+                  
+BUILTIN\Administrators                                        Alias            S-1-5-32-544                                                                                                 Group used for deny only        
+                  
+commit 6bdf8a5a6e4d67a7c8bf8ddb1d9eaea49568e801 Stop the cpu-bomb control through its STOP file instead of SIGKILL
+[exit code: 0]
+fix/windows-sandbox-e2e
+[exit code: 0]
+
+

@@ -1,0 +1,17 @@
+=== Warden Windows E2E | 05-build | build: go build -o warden-windows-amd64.exe .\cmd\warden ===
+date: 2026-10-26 10:58:09 +05:00   host: HUSNAIN   user: husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go build -o warden-windows-amd64.exe .\cmd\warden'
+PS> Get-Item .\warden-windows-amd64.exe | Format-List FullName,Length,LastWriteTime
+PS> (Get-FileHash .\warden-windows-amd64.exe -Algorithm SHA256).Hash
+
+[exit code: 0]
+
+
+FullName      : C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe
+Length        : 14268928
+LastWriteTime : 10/26/2026 10:58:10 AM
+
+
+
+2182CBD9EBFCA6107EC14A17CE067F87F0C8691F0152194C9B9D0DDEE245D72C

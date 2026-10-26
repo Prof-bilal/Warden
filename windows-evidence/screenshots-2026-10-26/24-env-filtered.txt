@@ -1,0 +1,20 @@
+=== Warden Windows E2E | 24-env-filtered | environment: only PATH/TEMP pass, fake secrets stripped (ELEVATED) ===
+date: 2026-10-26 11:20:07 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:FAKE_SECRET_TOKEN = 'fake-token-not-real-0000'
+PS> $env:GITHUB_TOKEN = 'ghp_FAKEFAKEFAKEFAKEFAKE'
+PS> $env:AWS_SECRET_ACCESS_KEY = 'FAKE/AWS/KEY/NOT/REAL'
+PS> 'host side: FAKE_SECRET_TOKEN set=' + [bool]$env:FAKE_SECRET_TOKEN + ' GITHUB_TOKEN set=' + [bool]$env:GITHUB_TOKEN + ' AWS_SECRET_ACCESS_KEY set=' + [bool]$env:AWS_SECRET_ACCESS_KEY
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js env'
+
+host side: FAKE_SECRET_TOKEN set=True GITHUB_TOKEN set=True AWS_SECRET_ACCESS_KEY set=True
+probe mode=env pid=17172 node=v24.12.0
+RESULT env PATH                           PRESENT (value hidden)
+RESULT env TEMP                           PRESENT (value hidden)
+RESULT env FAKE_SECRET_TOKEN              ABSENT  
+RESULT env GITHUB_TOKEN                   ABSENT  
+RESULT env AWS_SECRET_ACCESS_KEY          ABSENT  
+RESULT env USERPROFILE                    ABSENT  
+ENV NAMES VISIBLE IN SANDBOX: ALL_PROXY, HTTPS_PROXY, HTTP_PROXY, LOCALAPPDATA, NO_PROXY, PATH, SYSTEMROOT, TEMP, TMP, WINDIR
+DONE
+[exit code: 0]

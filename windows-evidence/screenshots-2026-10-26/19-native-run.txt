@@ -1,0 +1,44 @@
+=== Warden Windows E2E | 19-native-run | native AppContainer+WFP run, checklist policy, all probes (ELEVATED) ===
+date: 2026-10-26 11:19:02 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:FAKE_SECRET_TOKEN = 'fake-token-not-real-0000'
+PS> Get-Content C:\warden-test\policy.yaml
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js all'
+
+command: ["C:/Program Files/nodejs/node.exe", "C:/warden-test/probe.js"]
+filesystem:
+  read: ["C:/warden-test"]
+  write: ["C:/warden-test/output"]
+network:
+  allow: ["api.github.com"]
+env:
+  allow: ["PATH", "TEMP"]
+limits:
+  memory_mb: 256
+  timeout_s: 60
+probe mode=all pid=18824 node=v24.12.0
+RESULT read granted C:\warden-test\data   OK      "hello-from-granted-dir"
+RESULT read outside C:\warden-outside     DENIED  EPERM
+RESULT list user profile C:\Users\husna   DENIED  EPERM
+RESULT list C:\Users\husna\Desktop        DENIED  EPERM
+RESULT read repo file (outside grant)     DENIED  EPERM
+RESULT write granted output\              OK      written C:\warden-test\output\probe-write.txt
+RESULT write read-only grant data\        DENIED  EPERM
+RESULT write outside C:\warden-outside    DENIED  EPERM
+RESULT write user profile                 DENIED  EPERM
+RESULT write C:\Windows\Temp              DENIED  EPERM
+RESULT env PATH                           PRESENT (value hidden)
+RESULT env TEMP                           PRESENT (value hidden)
+RESULT env FAKE_SECRET_TOKEN              ABSENT  
+RESULT env GITHUB_TOKEN                   ABSENT  
+RESULT env AWS_SECRET_ACCESS_KEY          ABSENT  
+RESULT env USERPROFILE                    ABSENT  
+ENV NAMES VISIBLE IN SANDBOX: ALL_PROXY, HTTPS_PROXY, HTTP_PROXY, LOCALAPPDATA, NO_PROXY, PATH, SYSTEMROOT, TEMP, TMP, WINDIR
+proxy env: HTTPS_PROXY=http://127.0.0.1:60880
+RESULT direct TCP 1.1.1.1:443             DENIED  EACCES
+RESULT direct TCP github IP :443          DENIED  EACCES
+RESULT direct DNS example.org             DENIED  ENOTFOUND
+RESULT proxy CONNECT evil.example.net     DENIED  HTTP 403
+RESULT proxy CONNECT api.github.com       OK      CONNECT 200, TLS GET /zen -> HTTP/1.1 200 OK
+DONE
+[exit code: 0]

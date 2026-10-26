@@ -1,0 +1,43 @@
+=== Warden Windows E2E | 04-published-doctor | published binary: warden doctor (non-elevated) ===
+date: 2026-10-26 10:59:27 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'warden --version'
+PS> N 'warden doctor'
+
+warden version v0.1.16
+[exit code: 0]
+WARDEN DOCTOR
+
+Environment
+────────────────────────────────
+• Operating system        windows/amd64
+• Warden version          v0.1.16
+✗ Sandbox backend         unavailable
+• Namespace support       AppContainer isolation
+✓ Network proxy           available (egress allowlist)
+✓ Policy engine           ready (YAML + validation)
+✓ Fail-closed             enabled (never runs unsandboxed)
+
+Security posture
+────────────────────────────────
+✗ Filesystem isolation    unavailable
+✗ Environment filtering   unavailable
+✗ Network policy          unavailable
+✓ Fail-closed behavior    enforced
+
+Status: NOT READY
+✗ Warden refused to start: sandbox backend unavailable
+
+The sandbox backend couldn't initialize because Warden isn't running with administrator privileges.
+
+This is not a bug — Warden fails closed by design. It will never run
+your MCP server without a working sandbox, since that would mean
+running it completely unprotected.
+
+To fix this:
+  → Re-run this command from an elevated (Administrator) terminal
+
+Warden never falls back to running unsandboxed, under any circumstances.
+
+Warden fails closed when sandboxing is unavailable.
+[exit code: 1]

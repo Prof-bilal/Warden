@@ -1,0 +1,28 @@
+=== Warden Windows E2E | 13-mcp-proxy | MCP proxy contract: bash test-mcp-proxy.sh <windows exe> (non-elevated) ===
+date: 2026-10-26 11:14:35 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden
+PS> $env:XDG_STATE_HOME = 'C:\warden-test\state-mcp'
+PS> N 'echo n| "C:\Program Files\Git\bin\bash.exe" test-mcp-proxy.sh C:/Users/husna/Desktop/Warden/warden-starter/warden/warden-windows-amd64.exe'
+
+🧪 Testing Warden MCP Proxy (stdio bridge contract)
+   binary: C:/Users/husna/Desktop/Warden/warden-starter/warden/warden-windows-amd64.exe
+
+🔍 Test 1: plain http:// remote upstream rejected at startup (fail-closed)
+✅ plain http:// remote upstream rejected with clear message
+
+🔍 Test 2: stdio bridge starts and forwards allowed tool calls
+✅ proxy listening on 127.0.0.1:18777 (stdio:cat upstream)
+✅ allowed tool call forwarded end-to-end
+
+🔍 Test 3: disallowed tool call blocked with JSON-RPC error
+✅ blocked tool call answered with policy error (not forwarded)
+
+🔍 Test 4: unparseable input rejected (never forwarded)
+✅ garbage input answered with parse error -32700
+
+🔍 Test 5: decisions audited
+✅ audit log contains stdio_proxy and block records
+
+Summary: 6 passed, 0 failed
+🎉 warden proxy stdio bridge contract verified
+[exit code: 0]

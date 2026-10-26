@@ -1,0 +1,86 @@
+=== Warden Windows E2E | 16-go-test-windows-admin | go test -v ./internal/sandbox/windows/... (ELEVATED) ===
+date: 2026-10-26 11:17:36 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go test -v -count=1 .\internal\sandbox\windows\...'
+
+=== RUN   TestTrusteeIsSidConstant
+--- PASS: TestTrusteeIsSidConstant (0.00s)
+=== RUN   TestLongPathNoTildeUnchanged
+--- PASS: TestLongPathNoTildeUnchanged (0.00s)
+=== RUN   TestAncestorDirs
+--- PASS: TestAncestorDirs (0.00s)
+=== RUN   TestEtwSessionLifecycle
+--- PASS: TestEtwSessionLifecycle (2.14s)
+=== RUN   TestEtwSessionNameReclaim
+--- PASS: TestEtwSessionNameReclaim (0.11s)
+=== RUN   TestEtwFileActivityAudited
+--- PASS: TestEtwFileActivityAudited (0.19s)
+=== RUN   TestDecodeKernelFileEvent
+--- PASS: TestDecodeKernelFileEvent (0.00s)
+=== RUN   TestDecodeKernelFileEventRejectsControlChars
+--- PASS: TestDecodeKernelFileEventRejectsControlChars (0.00s)
+=== RUN   TestKernelFileAction
+--- PASS: TestKernelFileAction (0.00s)
+=== RUN   TestEscapeUngrantedReadDenied
+Access is denied.
+--- PASS: TestEscapeUngrantedReadDenied (0.12s)
+=== RUN   TestGrantedPathReadable
+allowed--- PASS: TestGrantedPathReadable (0.13s)
+=== RUN   TestEscapeNetworkBlockedAudited
+--- PASS: TestEscapeNetworkBlockedAudited (0.15s)
+=== RUN   TestEscapeExceedsTimeoutTerminatesTree
+'ping' is not recognized as an internal or external command,
+operable program or batch file.
+--- PASS: TestEscapeExceedsTimeoutTerminatesTree (0.13s)
+=== RUN   TestWFPDLLProbeResilient
+--- PASS: TestWFPDLLProbeResilient (0.00s)
+=== RUN   TestWFPDLLNameNonEmpty
+--- PASS: TestWFPDLLNameNonEmpty (0.00s)
+=== RUN   TestDeriveFilesystemGrantsDenyByDefault
+--- PASS: TestDeriveFilesystemGrantsDenyByDefault (0.00s)
+=== RUN   TestDeriveFilesystemGrantsPolicyPaths
+--- PASS: TestDeriveFilesystemGrantsPolicyPaths (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsReadWriteConflict
+--- PASS: TestDeriveFilesystemGrantsRejectsReadWriteConflict (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsWriteUnderRuntimeBase
+--- PASS: TestDeriveFilesystemGrantsRejectsWriteUnderRuntimeBase (0.00s)
+=== RUN   TestDeriveFilesystemGrantsRejectsDriveRoot
+--- PASS: TestDeriveFilesystemGrantsRejectsDriveRoot (0.00s)
+=== RUN   TestBuildPlanRequiresAbsoluteCommand
+--- PASS: TestBuildPlanRequiresAbsoluteCommand (0.00s)
+=== RUN   TestBuildPlanSessionBoundIdentities
+--- PASS: TestBuildPlanSessionBoundIdentities (0.00s)
+=== RUN   TestBuildPlanWFPAllowlist
+--- PASS: TestBuildPlanWFPAllowlist (0.00s)
+=== RUN   TestQuoteArg
+--- PASS: TestQuoteArg (0.00s)
+=== RUN   TestBuildCommandLine
+--- PASS: TestBuildCommandLine (0.00s)
+=== RUN   TestBuildEnvBlockDenyByDefault
+--- PASS: TestBuildEnvBlockDenyByDefault (0.00s)
+=== RUN   TestIsRuntimeWriteDenied
+--- PASS: TestIsRuntimeWriteDenied (0.00s)
+=== RUN   TestAppContainerSIDShape
+--- PASS: TestAppContainerSIDShape (0.00s)
+=== RUN   TestAppContainerSIDMatchesWindows
+--- PASS: TestAppContainerSIDMatchesWindows (0.00s)
+=== RUN   TestChooseWorkDir
+--- PASS: TestChooseWorkDir (0.00s)
+=== RUN   TestUnprivilegedRefusesNetworkAllowlist
+--- PASS: TestUnprivilegedRefusesNetworkAllowlist (0.00s)
+=== RUN   TestEscapeUnprivilegedNetworkBlocked
+    unprivileged_test.go:36: only meaningful in unprivileged mode (WARDEN_WINDOWS_UNPRIVILEGED=1, no WFP)
+--- SKIP: TestEscapeUnprivilegedNetworkBlocked (0.00s)
+=== RUN   TestGrantsRestoredAfterRun
+--- PASS: TestGrantsRestoredAfterRun (0.13s)
+=== RUN   TestWFPStructLayout
+--- PASS: TestWFPStructLayout (0.00s)
+=== RUN   TestWFPGUIDsParsed
+--- PASS: TestWFPGUIDsParsed (0.00s)
+=== RUN   TestETWLogfileLayout
+--- PASS: TestETWLogfileLayout (0.00s)
+=== RUN   TestETWEventRecordLayout
+--- PASS: TestETWEventRecordLayout (0.00s)
+PASS
+ok  	github.com/warden-sandbox/warden/internal/sandbox/windows	4.449s
+[exit code: 0]

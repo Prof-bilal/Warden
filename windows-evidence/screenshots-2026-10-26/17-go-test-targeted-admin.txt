@@ -1,0 +1,38 @@
+=== Warden Windows E2E | 17-go-test-targeted-admin | go test -v -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' (ELEVATED) ===
+date: 2026-10-26 11:17:45 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go test -v -count=1 -run "TestEtw|TestEscape|TestAppContainer|TestWFP" .\internal\sandbox\windows\...'
+
+=== RUN   TestEtwSessionLifecycle
+--- PASS: TestEtwSessionLifecycle (2.11s)
+=== RUN   TestEtwSessionNameReclaim
+--- PASS: TestEtwSessionNameReclaim (0.11s)
+=== RUN   TestEtwFileActivityAudited
+--- PASS: TestEtwFileActivityAudited (0.19s)
+=== RUN   TestEscapeUngrantedReadDenied
+Access is denied.
+--- PASS: TestEscapeUngrantedReadDenied (0.13s)
+=== RUN   TestEscapeNetworkBlockedAudited
+--- PASS: TestEscapeNetworkBlockedAudited (0.12s)
+=== RUN   TestEscapeExceedsTimeoutTerminatesTree
+'ping' is not recognized as an internal or external command,
+operable program or batch file.
+--- PASS: TestEscapeExceedsTimeoutTerminatesTree (0.13s)
+=== RUN   TestWFPDLLProbeResilient
+--- PASS: TestWFPDLLProbeResilient (0.00s)
+=== RUN   TestWFPDLLNameNonEmpty
+--- PASS: TestWFPDLLNameNonEmpty (0.00s)
+=== RUN   TestAppContainerSIDShape
+--- PASS: TestAppContainerSIDShape (0.00s)
+=== RUN   TestAppContainerSIDMatchesWindows
+--- PASS: TestAppContainerSIDMatchesWindows (0.00s)
+=== RUN   TestEscapeUnprivilegedNetworkBlocked
+    unprivileged_test.go:36: only meaningful in unprivileged mode (WARDEN_WINDOWS_UNPRIVILEGED=1, no WFP)
+--- SKIP: TestEscapeUnprivilegedNetworkBlocked (0.00s)
+=== RUN   TestWFPStructLayout
+--- PASS: TestWFPStructLayout (0.00s)
+=== RUN   TestWFPGUIDsParsed
+--- PASS: TestWFPGUIDsParsed (0.00s)
+PASS
+ok  	github.com/warden-sandbox/warden/internal/sandbox/windows	4.042s
+[exit code: 0]

@@ -1,0 +1,21 @@
+=== Warden Windows E2E | 25-memory-limit | limits: memory_mb 256 Job Object limit stops a 2 GB allocation (ELEVATED) ===
+date: 2026-10-26 11:20:11 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> Select-String -Path C:\warden-test\policy.yaml -Pattern 'memory_mb'
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js mem'
+
+
+C:\warden-test\policy.yaml:10:  memory_mb: 256
+probe mode=mem pid=14840 node=v24.12.0
+allocated 32 MB
+allocated 64 MB
+allocated 96 MB
+allocated 128 MB
+allocated 160 MB
+allocated 192 MB
+allocated 224 MB
+RESULT memory allocation stopped at 224 MB DENIED  Array buffer allocation failed
+warden run: resource limit exceeded: memory (256MB)
+[exit code: 1]
+
+

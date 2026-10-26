@@ -1,0 +1,15 @@
+=== Warden Windows E2E | 29b-unprivileged-flag-while-elevated | WARDEN_WINDOWS_UNPRIVILEGED=1 in an ELEVATED terminal: flag ignored, full WFP mode (no weakening) ===
+date: 2026-10-26 11:23:40 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> $env:WARDEN_WINDOWS_UNPRIVILEGED='1'; warden run --backend windows --policy C:\warden-test\policy.yaml -- node probe.js net
+
+WARDEN_WINDOWS_UNPRIVILEGED=1   policy has network.allow: [api.github.com]
+probe mode=net pid=8180 node=v24.12.0
+proxy env: HTTPS_PROXY=http://127.0.0.1:52253
+RESULT direct TCP 1.1.1.1:443             DENIED  EACCES
+RESULT direct TCP github IP :443          DENIED  EACCES
+RESULT direct DNS example.org             DENIED  ENOTFOUND
+RESULT proxy CONNECT evil.example.net     DENIED  HTTP 403
+RESULT proxy CONNECT api.github.com       OK      CONNECT 200, TLS GET /zen -> HTTP/1.1 200 OK
+DONE
+[exit code: 0]

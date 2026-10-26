@@ -1,0 +1,8 @@
+=== Warden Windows E2E | 14-docker-fallback | optional Docker comparison: docker info ===
+date: 2026-10-26 11:14:40 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): False
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'docker info --format "{{.ServerVersion}}"'
+
+
+failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+[exit code: 1]

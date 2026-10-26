@@ -1,0 +1,22 @@
+=== Warden Windows E2E | 21-fs-write-blocked | filesystem: write inside grant OK, outside / read-only grant blocked (ELEVATED) ===
+date: 2026-10-26 11:19:25 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js fs-write'
+PS> '--- host check: files that must NOT exist after the run ---'
+PS> foreach ($p in 'C:\warden-test\data\probe-write.txt','C:\warden-outside\probe-write.txt','C:\Users\husna\warden-probe-write.txt','C:\Windows\Temp\warden-probe-write.txt') { $p + ' exists=' + (Test-Path $p) }
+PS> 'C:\warden-test\output\probe-write.txt exists=' + (Test-Path C:\warden-test\output\probe-write.txt) + '  (expected True)'
+
+probe mode=fs-write pid=14016 node=v24.12.0
+RESULT write granted output\              OK      written C:\warden-test\output\probe-write.txt
+RESULT write read-only grant data\        DENIED  EPERM
+RESULT write outside C:\warden-outside    DENIED  EPERM
+RESULT write user profile                 DENIED  EPERM
+RESULT write C:\Windows\Temp              DENIED  EPERM
+DONE
+[exit code: 0]
+--- host check: files that must NOT exist after the run ---
+C:\warden-test\data\probe-write.txt exists=False
+C:\warden-outside\probe-write.txt exists=False
+C:\Users\husna\warden-probe-write.txt exists=False
+C:\Windows\Temp\warden-probe-write.txt exists=False
+C:\warden-test\output\probe-write.txt exists=True  (expected True)

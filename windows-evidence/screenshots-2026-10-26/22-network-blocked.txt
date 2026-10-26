@@ -1,0 +1,13 @@
+=== Warden Windows E2E | 22-network-blocked | network: direct egress, DNS and unlisted host blocked (WFP + proxy) (ELEVATED) ===
+date: 2026-10-26 11:19:29 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'echo n| C:\Users\husna\Desktop\Warden\warden-starter\warden\warden-windows-amd64.exe run --backend windows --policy C:\warden-test\policy.yaml -- "C:\Program Files\nodejs\node.exe" C:\warden-test\probe.js net-blocked'
+
+probe mode=net-blocked pid=13716 node=v24.12.0
+proxy env: HTTPS_PROXY=http://127.0.0.1:54161
+RESULT direct TCP 1.1.1.1:443             DENIED  EACCES
+RESULT direct TCP github IP :443          DENIED  EACCES
+RESULT direct DNS example.org             DENIED  ENOTFOUND
+RESULT proxy CONNECT evil.example.net     DENIED  HTTP 403
+DONE
+[exit code: 0]

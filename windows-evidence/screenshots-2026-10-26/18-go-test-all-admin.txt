@@ -1,0 +1,31 @@
+=== Warden Windows E2E | 18-go-test-all-admin | go test -count=1 ./... full suite (ELEVATED) ===
+date: 2026-10-26 11:17:54 +05:00   host: HUSNAIN   user: HUSNAIN/husna   elevated(admin): True
+cwd: C:\Users\husna\Desktop\Warden\warden-starter\warden
+PS> N 'go test -count=1 ./...'
+
+ok  	github.com/warden-sandbox/warden/cmd/warden	62.290s
+ok  	github.com/warden-sandbox/warden/internal/approve	0.600s
+ok  	github.com/warden-sandbox/warden/internal/attestation	0.885s
+ok  	github.com/warden-sandbox/warden/internal/audit	0.644s
+ok  	github.com/warden-sandbox/warden/internal/clientconfig	2.504s
+ok  	github.com/warden-sandbox/warden/internal/compat	0.743s
+ok  	github.com/warden-sandbox/warden/internal/container	0.654s
+ok  	github.com/warden-sandbox/warden/internal/envfilter	0.400s
+ok  	github.com/warden-sandbox/warden/internal/gateway	0.923s
+ok  	github.com/warden-sandbox/warden/internal/maintenance	0.633s
+ok  	github.com/warden-sandbox/warden/internal/mcpbridge	2.147s
+ok  	github.com/warden-sandbox/warden/internal/mcpproxy	2.303s
+ok  	github.com/warden-sandbox/warden/internal/mcpserver	1.095s
+ok  	github.com/warden-sandbox/warden/internal/packs	1.090s
+ok  	github.com/warden-sandbox/warden/internal/policy	0.862s
+?   	github.com/warden-sandbox/warden/internal/privatefile	[no test files]
+ok  	github.com/warden-sandbox/warden/internal/proxy	2.252s
+ok  	github.com/warden-sandbox/warden/internal/sandbox	1.017s
+ok  	github.com/warden-sandbox/warden/internal/sandbox/darwin	0.744s
+ok  	github.com/warden-sandbox/warden/internal/sandbox/docker	2.581s
+?   	github.com/warden-sandbox/warden/internal/sandbox/sandboxerr	[no test files]
+ok  	github.com/warden-sandbox/warden/internal/sandbox/windows	5.009s
+ok  	github.com/warden-sandbox/warden/internal/selfupdate	0.873s
+ok  	github.com/warden-sandbox/warden/internal/ui	0.677s
+?   	github.com/warden-sandbox/warden/internal/version	[no test files]
+[exit code: 0]
