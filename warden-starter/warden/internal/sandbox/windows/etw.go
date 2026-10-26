@@ -19,10 +19,10 @@ package windows
 //     records when the payload carries a verifiable path (create, delete,
 //     rename, and the file-name events). Payload layouts are the classic
 //     kernel FileIo records; see etwdecode.go. Records without a verifiable
-//     name are dropped rather than guessed. Denied file opens never reach the
-//     file system provider (the AppContainer token denies them first), so
-//     file denials are invisible to ETW by designthe enforcement boundary
-//     is the token, not a logged syscall.
+//     name are dropped rather than guessed. A request event records the
+//     attempt, including one the AppContainer token then denies, so opens,
+//     deletes and renames are held until the OperationEnd with the same IRP
+//     reports the NTSTATUS: a failure is logged as allowed=false.
 //   - Kernel-Network events are enabled and captured for the same tree, but
 //     their endpoint payloads are not mapped in this release: the network
 //     audit trail (allowed and blocked host:port decisions) comes from the
@@ -163,6 +163,15 @@ type eventRecord struct {
 	userContext       uintptr
 }
 
+// maxPendingFile bounds the request events held for their OperationEnd. A
+// request that does not fit is logged at once without an outcome.
+const maxPendingFile = 4096
+
+// pendingFile is a file request event waiting for its completion status.
+type pendingFile struct {
+	action, name string
+}
+
 // maxEventPayload bounds how much UserData the callback will touch. ETW does
 // not deliver events larger than 64 KB.
 const maxEventPayload = 0x10000
@@ -174,6 +183,11 @@ type traceSession struct {
 	props  []byte          // EVENT_TRACE_PROPERTIES + session name allocation
 	logger *audit.Logger   // destination for mapped audit events
 	tree   map[uint32]bool // PIDs scoped into the audit; set before run()
+
+	// pending holds request events awaiting their OperationEnd, keyed by
+	// IRP. Only the ProcessTrace callback and run's exit path touch it, and
+	// both run on the run goroutine.
+	pending map[uint64]pendingFile
 
 	session uint64 // TRACEHANDLE from StartTraceW
 	trace   uint64 // TRACEHANDLE from OpenTraceW
@@ -313,10 +327,10 @@ func (t *traceSession) enableProviders() error {
 		guid     windows.GUID
 		keywords uint64
 	}{
-		// KERNEL_FILE_KEYWORD_FILENAME | CREATE | DELETE_PATH |
+		// KERNEL_FILE_KEYWORD_FILENAME | OP_END | CREATE | DELETE_PATH |
 		// RENAME_SETLINK_PATH | CREATE_NEW_FILE. Manifest kernel providers
 		// emit next to nothing with MatchAnyKeyword 0.
-		{kernelFileGUID, 0x10 | 0x80 | 0x400 | 0x800 | 0x1000},
+		{kernelFileGUID, 0x10 | 0x40 | 0x80 | 0x400 | 0x800 | 0x1000},
 		// KERNEL_NETWORK_KEYWORD_IPV4 | IPV6.
 		{kernelNetworkGUID, 0x10 | 0x20},
 	} {
@@ -370,6 +384,7 @@ func (t *traceSession) run() {
 			activeConsumer = nil
 		}
 		consumerMu.Unlock()
+		t.flushPending()
 		close(t.done)
 	}()
 
@@ -411,6 +426,12 @@ func (t *traceSession) handleEvent(record uintptr) {
 	// unsafe.Pointer rules (which forbid casting arbitrary uintptr variables
 	// directly) stay satisfied.
 	r := (*eventRecord)(*(*unsafe.Pointer)(unsafe.Pointer(&record)))
+	// A completion can be reported from another process's context; it is
+	// matched by IRP against this run's pending requests instead of by PID.
+	if r.header.providerID == kernelFileGUID && r.header.descriptor.id == kfOperationEnd {
+		t.handleOperationEnd(r)
+		return
+	}
 	if r.header.processID == 0 || !t.tree[r.header.processID] {
 		return // not one of this run's processes
 	}
@@ -427,15 +448,24 @@ func (t *traceSession) handleEvent(record uintptr) {
 	}
 }
 
-func (t *traceSession) handleKernelFile(r *eventRecord) {
+// eventPayload returns the record's UserData, or nil when it is empty or
+// larger than ETW can deliver.
+func eventPayload(r *eventRecord) []byte {
 	if r.userDataLength == 0 || int(r.userDataLength) > maxEventPayload || r.userData == 0 {
-		return
+		return nil
 	}
 	// userData is the address of the event payload; read it back out of the
 	// record (offset 96 on x64, see eventRecord) as a real pointer.
 	const eventRecordUserDataOffset = 96
 	payloadPtr := *(*unsafe.Pointer)(unsafe.Add(unsafe.Pointer(r), eventRecordUserDataOffset))
-	payload := unsafe.Slice((*byte)(payloadPtr), int(r.userDataLength))
+	return unsafe.Slice((*byte)(payloadPtr), int(r.userDataLength))
+}
+
+func (t *traceSession) handleKernelFile(r *eventRecord) {
+	payload := eventPayload(r)
+	if payload == nil {
+		return
+	}
 	name, ok := decodeKernelFileEvent(r.header.descriptor.id, payload)
 	if !ok {
 		// Read/write/flush events and other records that do not end in a
@@ -444,9 +474,58 @@ func (t *traceSession) handleKernelFile(r *eventRecord) {
 		return
 	}
 	action := kernelFileAction(r.header.descriptor.id)
-	// The audit logger stamps the timestamp; failures to encode are dropped
-	// (a callback must never take the run down with it).
-	_ = t.logger.Log(audit.Event{Type: "file", Action: action, Resource: name, Allowed: true, Reason: "observed via ETW kernel trace"})
+	if irp, ok := kernelFileIrp(r.header.descriptor.id, payload); ok {
+		if t.pending == nil {
+			t.pending = make(map[uint64]pendingFile)
+		}
+		if len(t.pending) < maxPendingFile {
+			t.pending[irp] = pendingFile{action: action, name: name}
+			return
+		}
+		t.logFile(action, name, true, "observed via ETW kernel trace; outcome not reported")
+		return
+	}
+	// Name events record a name the file system already holds.
+	t.logFile(action, name, true, "observed via ETW kernel trace")
+}
+
+// handleOperationEnd logs the pending request with the same IRP, allowed
+// when the NTSTATUS is a success. Completions of other processes' requests
+// match nothing and are ignored.
+func (t *traceSession) handleOperationEnd(r *eventRecord) {
+	if len(t.pending) == 0 {
+		return
+	}
+	irp, status, ok := decodeOperationEnd(eventPayload(r))
+	if !ok {
+		return
+	}
+	req, ok := t.pending[irp]
+	if !ok {
+		return
+	}
+	delete(t.pending, irp)
+	if ntSuccess(status) {
+		t.logFile(req.action, req.name, true, "observed via ETW kernel trace")
+		return
+	}
+	t.logFile(req.action, req.name, false, ntStatusReason(status)+" (ETW kernel trace)")
+}
+
+// flushPending logs requests whose completion never arrived (the session
+// closed first) without claiming an outcome either way beyond the attempt.
+func (t *traceSession) flushPending() {
+	for irp, req := range t.pending {
+		t.logFile(req.action, req.name, true, "observed via ETW kernel trace; outcome not reported")
+		delete(t.pending, irp)
+	}
+}
+
+// logFile writes one file audit record. The audit logger stamps the
+// timestamp; failures to encode are dropped (a callback must never take the
+// run down with it).
+func (t *traceSession) logFile(action, name string, allowed bool, reason string) {
+	_ = t.logger.Log(audit.Event{Type: "file", Action: action, Resource: name, Allowed: allowed, Reason: reason})
 }
 
 // closeSession stops the consumer and the trace session. It is safe to call

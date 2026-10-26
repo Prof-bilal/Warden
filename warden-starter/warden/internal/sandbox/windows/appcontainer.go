@@ -179,10 +179,11 @@ func freeACL(p unsafe.Pointer) {
 // sandbox by themselves; adding the capability grant is necessary and safe,
 // and appending to the current DACL never strips the caller's own rights.
 //
-// Runtime read paths (system locations) degrade gracefully: if the OS already
-// grants the AppContainer read access (the standard ALL APPLICATION PACKAGES
-// ACE), a failed grant there is tolerated; any failure on a policy path fails
-// the run closed rather than weakening the sandbox.
+// Runtime read paths (system locations) and the optional executable
+// directory degrade gracefully: if the OS already grants the AppContainer
+// read access (the standard ALL APPLICATION PACKAGES ACE), a failed grant
+// there is tolerated; any failure on a policy path fails the run closed
+// rather than weakening the sandbox.
 //
 // The returned restore func puts every touched path's original DACL (and its
 // protected/inheriting state) back, so per-run capability ACEs never pile up
@@ -204,14 +205,14 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 		// leave a permanent ACE (and a protected DACL) behind.
 		snap, serr := snapshotDACL(longPath(g.Path))
 		if serr != nil {
-			if IsRuntimeReadPath(g.Path) {
+			if g.Optional || IsRuntimeReadPath(g.Path) {
 				continue
 			}
 			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
 		snaps = append(snaps, snap)
 		if err := grantPathACE(g.Path, g.AccessMask, caps); err != nil {
-			if IsRuntimeReadPath(g.Path) {
+			if g.Optional || IsRuntimeReadPath(g.Path) {
 				continue
 			}
 			return restore, fmt.Errorf("grant filesystem access to %q: %w", g.Path, err)

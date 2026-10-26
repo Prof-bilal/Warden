@@ -258,3 +258,35 @@ func TestChooseWorkDir(t *testing.T) {
 		t.Errorf("no grants: got %q, want exe dir", got)
 	}
 }
+
+func TestDeriveFilesystemGrantsExeDirOptional(t *testing.T) {
+	grants, err := deriveFilesystemGrants(`C:\Program Files\nodejs\node.exe`, policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{`C:\data\in`}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	optional := map[string]bool{}
+	for _, g := range grants {
+		optional[strings.ToLower(g.Path)] = g.Optional
+	}
+	if !optional[`c:\program files\nodejs`] {
+		t.Fatal("executable directory grant must be optional")
+	}
+	if optional[`c:\data\in`] {
+		t.Fatal("policy grant must not be optional")
+	}
+
+	// A policy grant on the executable's directory keeps failing closed.
+	grants, err = deriveFilesystemGrants(`C:\tools\server.exe`, policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{`C:\tools`}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, g := range grants {
+		if strings.EqualFold(g.Path, `C:\tools`) && g.Optional {
+			t.Fatal("policy grant on the executable directory became optional")
+		}
+	}
+}

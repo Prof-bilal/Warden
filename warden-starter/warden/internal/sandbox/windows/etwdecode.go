@@ -7,6 +7,7 @@ package windows
 
 import (
 	"encoding/binary"
+	"fmt"
 	"strings"
 	"unicode/utf16"
 )
@@ -133,3 +134,57 @@ func kernelFileAction(id uint16) string {
 		return "file-op"
 	}
 }
+
+// kfOperationEnd is the Kernel-File completion event (Irp, ExtraInformation,
+// Status; x64 offsets 0, 8, 16). The request events above report only the
+// attempt, so the outcome of an open, delete or rename comes from the
+// OperationEnd whose Irp matches the request's.
+const kfOperationEnd = 24
+
+// kernelFileIrp returns the IRP pointer of a request event that is completed
+// by an OperationEnd. Name events (10, 11) carry a FileKey instead and report
+// false.
+func kernelFileIrp(id uint16, payload []byte) (uint64, bool) {
+	switch id {
+	case kfCreate, kfCreateNewFile, kfDeletePath, kfRenamePath:
+	default:
+		return 0, false
+	}
+	if len(payload) < 8 {
+		return 0, false
+	}
+	return binary.LittleEndian.Uint64(payload), true
+}
+
+// decodeOperationEnd extracts the IRP pointer and NTSTATUS of an
+// OperationEnd payload.
+func decodeOperationEnd(payload []byte) (irp uint64, status uint32, ok bool) {
+	if len(payload) < 20 {
+		return 0, 0, false
+	}
+	return binary.LittleEndian.Uint64(payload), binary.LittleEndian.Uint32(payload[16:]), true
+}
+
+// ntStatusNames names the failures a sandboxed open commonly ends with.
+var ntStatusNames = map[uint32]string{
+	0xC0000022: "STATUS_ACCESS_DENIED",
+	0xC0000034: "STATUS_OBJECT_NAME_NOT_FOUND",
+	0xC0000035: "STATUS_OBJECT_NAME_COLLISION",
+	0xC000003A: "STATUS_OBJECT_PATH_NOT_FOUND",
+	0xC0000043: "STATUS_SHARING_VIOLATION",
+	0xC00000BA: "STATUS_FILE_IS_A_DIRECTORY",
+	0xC0000103: "STATUS_NOT_A_DIRECTORY",
+}
+
+// ntStatusReason describes a failed NTSTATUS for an audit record, like the
+// errno the Linux backend records for a failed syscall.
+func ntStatusReason(status uint32) string {
+	if name, ok := ntStatusNames[status]; ok {
+		return fmt.Sprintf("NTSTATUS 0x%08X %s", status, name)
+	}
+	return fmt.Sprintf("NTSTATUS 0x%08X", status)
+}
+
+// ntSuccess reports whether an NTSTATUS is a success or informational code
+// (NT_SUCCESS: the severity bit is clear).
+func ntSuccess(status uint32) bool { return int32(status) >= 0 }

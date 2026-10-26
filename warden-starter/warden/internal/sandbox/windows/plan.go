@@ -136,6 +136,10 @@ type pathGrant struct {
 	Path       string
 	AccessMask uint32
 	AccessMode uint32
+	// Optional marks a grant Warden adds on its own (the executable's
+	// directory) rather than one the policy asks for. Failing to install it
+	// only narrows access, so the run goes on without it.
+	Optional bool
 }
 
 // Plan is the fully translated enforcement plan for one run. Building it is
@@ -247,7 +251,7 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 	mode := make(map[string]string)
 	var grants []pathGrant
 
-	add := func(path string, mask uint32) error {
+	add := func(path string, mask uint32, optional bool) error {
 		if path == "" {
 			return fmt.Errorf("filesystem: path must not be empty")
 		}
@@ -273,30 +277,32 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 		} else {
 			mode[key] = "read"
 		}
-		grants = append(grants, pathGrant{Path: clean, AccessMask: mask, AccessMode: grantAccess})
+		grants = append(grants, pathGrant{Path: clean, AccessMask: mask, AccessMode: grantAccess, Optional: optional})
 		return nil
 	}
 
 	// Runtime read paths first: they must never be widened to write.
 	for _, base := range RuntimeReadPaths {
-		if err := add(base, accessRead|accessExec); err != nil {
+		if err := add(base, accessRead|accessExec, false); err != nil {
 			return nil, err
 		}
 	}
 	// Policy grants, reads then writes.
 	for _, path := range p.Filesystem.Read {
-		if err := add(path, accessRead|accessExec); err != nil {
+		if err := add(path, accessRead|accessExec, false); err != nil {
 			return nil, err
 		}
 	}
 	for _, path := range p.Filesystem.Write {
-		if err := add(path, accessRead|accessWrite|accessExec); err != nil {
+		if err := add(path, accessRead|accessWrite|accessExec, false); err != nil {
 			return nil, err
 		}
 	}
 	// The executable's parent directory, read-only, so the image and its
-	// loader dependencies are reachable.
-	if err := add(parentDirWin(exe), accessRead|accessExec); err != nil {
+	// loader dependencies are reachable. It is optional: a non-administrator
+	// cannot change the DACL of an admin-owned install directory such as
+	// C:\Program Files\nodejs, which already lets AppContainers read it.
+	if err := add(parentDirWin(exe), accessRead|accessExec, true); err != nil {
 		return nil, err
 	}
 

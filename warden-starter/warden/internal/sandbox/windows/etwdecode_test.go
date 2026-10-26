@@ -59,3 +59,44 @@ func TestKernelFileAction(t *testing.T) {
 		}
 	}
 }
+
+func TestKernelFileIrp(t *testing.T) {
+	p := make([]byte, 40)
+	binary.LittleEndian.PutUint64(p, 0xffffa0012345)
+	for _, id := range []uint16{kfCreate, kfCreateNewFile, kfDeletePath, kfRenamePath} {
+		if irp, ok := kernelFileIrp(id, p); !ok || irp != 0xffffa0012345 {
+			t.Errorf("kernelFileIrp(%d) = (%#x, %v)", id, irp, ok)
+		}
+	}
+	if _, ok := kernelFileIrp(kfNameCreate, p); ok {
+		t.Error("name event reported an IRP")
+	}
+	if _, ok := kernelFileIrp(kfCreate, p[:4]); ok {
+		t.Error("short payload reported an IRP")
+	}
+}
+
+func TestDecodeOperationEnd(t *testing.T) {
+	p := make([]byte, 20)
+	binary.LittleEndian.PutUint64(p, 0xffffa0012345)
+	binary.LittleEndian.PutUint32(p[16:], 0xC0000022) // STATUS_ACCESS_DENIED
+	irp, status, ok := decodeOperationEnd(p)
+	if !ok || irp != 0xffffa0012345 || status != 0xC0000022 {
+		t.Fatalf("decodeOperationEnd = (%#x, %#x, %v)", irp, status, ok)
+	}
+	if ntSuccess(status) {
+		t.Error("STATUS_ACCESS_DENIED reported as success")
+	}
+	if !ntSuccess(0) || !ntSuccess(0x00000104) {
+		t.Error("success/informational status reported as failure")
+	}
+	if got := ntStatusReason(status); got != "NTSTATUS 0xC0000022 STATUS_ACCESS_DENIED" {
+		t.Errorf("ntStatusReason = %q", got)
+	}
+	if got := ntStatusReason(0xC0001234); got != "NTSTATUS 0xC0001234" {
+		t.Errorf("ntStatusReason(unknown) = %q", got)
+	}
+	if _, _, ok := decodeOperationEnd(p[:19]); ok {
+		t.Error("short payload decoded")
+	}
+}

@@ -146,3 +146,54 @@ func TestEtwFileActivityAudited(t *testing.T) {
 	}
 	t.Fatalf("no ETW file audit event for %q appeared in the audit log", out)
 }
+
+// TestEtwDeniedFileAudited asserts that an open the AppContainer token
+// denies lands in the audit log as allowed=false: the Kernel-File request
+// event records the attempt and its OperationEnd carries the failure status.
+func TestEtwDeniedFileAudited(t *testing.T) {
+	probeETW(t)
+
+	grantedDir := t.TempDir()
+	secretDir := t.TempDir()
+	secret := filepath.Join(secretDir, "warden-etw-denied-"+NewSessionID()+".txt")
+	if err := os.WriteFile(secret, []byte("classified"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsAny(secret, " ") {
+		t.Skipf("temp path contains spaces: %q", secret)
+	}
+
+	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{grantedDir}}}
+	code, err := runEscape(t, p, []string{comspec(t), "/c", "type", secret})
+	if err != nil {
+		if strings.Contains(err.Error(), "ETW") {
+			t.Skipf("ETW audit could not start: %v", err)
+		}
+		t.Skipf("sandbox could not start here: %v", err)
+	}
+	if code == 0 {
+		t.Fatalf("read of an un-granted path returned 0: sandbox did not deny it")
+	}
+
+	// cmd is denied on the secret's directory before it opens the file, so
+	// any record under that directory counts; none may claim success.
+	under := strings.ToLower(`\` + filepath.Base(filepath.Dir(secretDir)) + `\` + filepath.Base(secretDir) + `\`)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		denied := false
+		for _, ev := range readAuditEvents(t) {
+			if ev.Type != "file" || !strings.Contains(strings.ToLower(ev.Resource)+`\`, under) {
+				continue
+			}
+			if ev.Allowed {
+				t.Fatalf("denied open audited as allowed: %+v", ev)
+			}
+			denied = true
+		}
+		if denied {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("no allowed=false ETW file audit event under %q appeared in the audit log", secretDir)
+}
