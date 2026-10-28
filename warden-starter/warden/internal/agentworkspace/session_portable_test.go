@@ -13,7 +13,7 @@ import (
 )
 
 func TestPortableProjectionPreservesProtectedValues(t *testing.T) {
-	root := t.TempDir()
+	root := portableTestWorkspace(t)
 	path := filepath.Join(root, "config.env")
 	if err := os.WriteFile(path, []byte("API_KEY=hidden-value\nDEBUG=false\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -64,7 +64,7 @@ func TestPortableProjectionPreservesProtectedValues(t *testing.T) {
 }
 
 func TestPortableProjectionRejectsSymlinks(t *testing.T) {
-	root := t.TempDir()
+	root := portableTestWorkspace(t)
 	if err := os.WriteFile(filepath.Join(root, "real"), []byte("value"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -76,4 +76,23 @@ func TestPortableProjectionRejectsSymlinks(t *testing.T) {
 		s.Close()
 		t.Fatal("symlink was copied into portable projection")
 	}
+}
+
+// portableTestWorkspace creates the fixture below the repository working
+// directory instead of os.TempDir. Some hosted Windows runners expose their
+// temporary directory through a symlinked ancestor; production correctly
+// rejects such workspaces, but that would prevent this test from reaching the
+// projection behavior it is meant to exercise.
+func portableTestWorkspace(t *testing.T) string {
+	t.Helper()
+	base, err := filepath.Abs(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.MkdirTemp(base, ".warden-agent-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	return root
 }
