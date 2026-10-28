@@ -415,4 +415,8 @@ With MCP configured (see `.mcp.json`), the same board is available live:
 
 ### In progress
 - **Codex** [worker] (codex)
+
+### Latest messages
+- `update` team: Extended sanitized agent workspaces to macOS and Windows: portable projection/apply with no-follow/reparse/hardlink checks, native macOS Seatbelt read-only overlays + Unix broker, Windows AppContainer/WFP broker-port allowlist + deny-write ACL overlays, native Windows ReplaceFileW apply, portable tests, and CI steps for Linux mandatory E2E/macOS/Windows package tests. Verified Linux full suite (elevated), race tests, Darwin/Windows cross-builds and agentworkspace test compilation.
+- `update` team: Implemented Linux sandbox CA trust-store support in internal/sandbox/linux: detect common host CA bundle paths, mount one bundle read-only at common curl/OpenSSL/Node destinations, and add unit/integration coverage. Rebuilt /tmp/warden-gaploom-e2e/warden. Verified CA_VISIBLE and normal HTTPS TLS_HTTP=404 without -k; package tests pass.
 <!-- contextgit:team:end -->

@@ -125,7 +125,7 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 	// unprivileged mode the token has no network capability, so AppContainer
 	// isolation itself blocks all egress (see unprivileged.go).
 	if !unprivileged {
-		wfp, err := installWFPEgress(plan.PackageSID, plan.AllowPorts[0], plan.AppContainerName)
+		wfp, err := installWFPEgress(plan.PackageSID, plan.AllowPorts, plan.AppContainerName)
 		if err != nil {
 			return 0, err
 		}

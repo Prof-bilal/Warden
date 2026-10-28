@@ -81,6 +81,10 @@ warden-starter/warden/plugin.zip
 
 # Paid product docs (local only, not pushed to GitHub)
 docs/
+# Public guide for the development agent-workspace command.
+!warden-starter/warden/docs/
+warden-starter/warden/docs/*
+!warden-starter/warden/docs/agent-workspace.md
 
 # ContextGit worktrees and repository
 .contextgit/

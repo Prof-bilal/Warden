@@ -40,7 +40,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp"}
+var allCommands = []string{"agent", "run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp"}
 
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
@@ -62,6 +62,19 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "agent":
+		if hasHelpFlag(os.Args[2:]) {
+			fmt.Fprintln(os.Stdout, "warden agent --policy policy.yaml [--backend auto|linux|seatbelt|windows] -- <agent command>\nwarden agent exec --profile NAME\nSanitized workspace; declared secret fields are hidden; review required before host changes.\nSupported natively on Linux, macOS and Windows. See docs/agent-workspace.md for limits.")
+			return
+		}
+		code, err := cmdAgent(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "warden agent:", err)
+			if code == 0 {
+				code = 1
+			}
+		}
+		os.Exit(code)
 	case "connect", "serve", "stop":
 		if hasHelpFlag(os.Args[2:]) {
 			printConnectHelp(os.Args[1])
@@ -238,6 +251,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  warden <command> [options]")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
+	fmt.Fprintln(os.Stderr, "  agent      Edit a sanitized workspace with protected secret fields")
 	fmt.Fprintln(os.Stderr, "  init       Create a security policy")
 	fmt.Fprintln(os.Stderr, "  run        Run an MCP server in the sandbox")
 	fmt.Fprintln(os.Stderr, "  trace      Record access attempts for policy generation")
@@ -287,6 +301,8 @@ func printUsage() {
 // printCommandHelp dispatches to the right help function for "warden help <cmd>".
 func printCommandHelp(cmd string) {
 	switch cmd {
+	case "agent":
+		fmt.Fprintln(os.Stderr, "warden agent --policy policy.yaml -- <agent command>\nwarden agent exec --profile NAME\nSanitized workspace with reviewed apply. See docs/agent-workspace.md.")
 	case "connect", "serve", "stop":
 		printConnectHelp(cmd)
 	case "creator", "policy-diff", "report":
@@ -1611,6 +1627,10 @@ func cmdK8s(args []string) {
 	p, err := policy.Load(policyPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden k8s: %v\n", err)
+		os.Exit(2)
+	}
+	if p.Agent != nil {
+		fmt.Fprintln(os.Stderr, "warden k8s: agent projection policies require `warden agent` in a native host session")
 		os.Exit(2)
 	}
 

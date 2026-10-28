@@ -314,7 +314,10 @@ type wfpSession struct {
 // installWFPEgress installs the WFP filters for one run. It fails closed: any
 // error aborts the transaction and closes the engine so a partially configured
 // policy can never leave a default-permit path.
-func installWFPEgress(packageSID string, allowPort uint16, seedGUID string) (sess *wfpSession, err error) {
+func installWFPEgress(packageSID string, allowPorts []uint16, seedGUID string) (sess *wfpSession, err error) {
+	if len(allowPorts) == 0 {
+		return nil, fmt.Errorf("no loopback ports configured")
+	}
 	if err := wfpSupported(); err != nil {
 		return nil, err
 	}
@@ -352,10 +355,13 @@ func installWFPEgress(packageSID string, allowPort uint16, seedGUID string) (ses
 	}
 
 	for _, layer := range [2]windows.GUID{guidLayerALEAuthConnectV4, guidLayerALEAuthConnectV6} {
-		// Hard-permit: the loopback proxy bridge from this image.
-		if err := addPermitLoopback(engine, sess.subLayer, layer, allowPort, sess.pkg, &sess.filterIDs); err != nil {
-			_ = fwpmAbort(engine)
-			return nil, err
+		// Hard-permit only the loopback proxy and, for agent sessions, the
+		// authenticated ephemeral broker port.
+		for _, allowPort := range allowPorts {
+			if err := addPermitLoopback(engine, sess.subLayer, layer, allowPort, sess.pkg, &sess.filterIDs); err != nil {
+				_ = fwpmAbort(engine)
+				return nil, err
+			}
 		}
 		// Hard-block every other outbound connection for the image. UDP/DNS is
 		// denied by the AppContainer token; this closes the TCP path.

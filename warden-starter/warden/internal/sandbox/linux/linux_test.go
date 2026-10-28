@@ -34,6 +34,24 @@ func TestBuildBwrapArgsBasic(t *testing.T) {
 	}
 }
 
+func TestBuildBwrapArgsMountsTrustStoreReadOnly(t *testing.T) {
+	if findTrustStore() == "" {
+		t.Skip("no host CA bundle available")
+	}
+
+	args, err := BuildBwrapArgs([]string{"/usr/bin/true"}, policy.Policy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.Join(args, " ")
+	for _, destination := range trustStoreDestinations {
+		want := "--ro-bind " + findTrustStore() + " " + destination
+		if !strings.Contains(text, want) {
+			t.Errorf("missing read-only trust-store mount %q in %q", want, text)
+		}
+	}
+}
+
 func TestBuildBwrapArgsGrants(t *testing.T) {
 	cmd := []string{"/usr/bin/true"}
 	p := policy.Policy{

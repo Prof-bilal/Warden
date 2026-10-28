@@ -7,6 +7,7 @@
 package darwin
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -22,6 +23,26 @@ func skipOnWindows(t *testing.T) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("Seatbelt profiles use POSIX-absolute paths; not meaningful on Windows")
+	}
+}
+
+func TestBuildSeatbeltProfileReadOnlyOverlay(t *testing.T) {
+	skipOnWindows(t)
+	dir := t.TempDir()
+	file := filepath.Join(dir, "AGENTS.md")
+	if err := os.WriteFile(file, []byte("notice"), 0400); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := BuildSeatbeltProfile([]string{"/usr/bin/true"}, policy.Policy{
+		Filesystem:    policy.Filesystem{Write: []string{dir}},
+		ReadOnlyPaths: []string{file},
+	}, "/tmp/warden-proxy/egress.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `(deny file-write* (literal "` + file + `"))`
+	if !strings.Contains(profile, want) {
+		t.Fatalf("profile missing read-only overlay deny %q\n%s", want, profile)
 	}
 }
 

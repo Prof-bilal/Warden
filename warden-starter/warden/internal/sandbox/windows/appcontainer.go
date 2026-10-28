@@ -210,7 +210,7 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
 		snaps = append(snaps, snap)
-		if err := grantPathACE(g.Path, g.AccessMask, caps); err != nil {
+		if err := grantPathACE(g.Path, g.AccessMask, g.AccessMode, caps); err != nil {
 			if IsRuntimeReadPath(g.Path) {
 				continue
 			}
@@ -265,7 +265,7 @@ func (s daclSnapshot) restore() {
 
 // grantPathACE appends one GRANT_ACCESS ACE per capability SID to path's DACL
 // with the grant's access mask, then writes the merged DACL back.
-func grantPathACE(path string, accessMask uint32, caps []*windows.SID) error {
+func grantPathACE(path string, accessMask, accessMode uint32, caps []*windows.SID) error {
 	// Expand 8.3 short names (e.g. C:\Users\RUNNER~1\...) before ACL APIs.
 	// GetNamedSecurityInfo accepts short paths, but normalizing avoids
 	// runner-specific TEMP spellings that confuse later path comparisons.
@@ -285,7 +285,7 @@ func grantPathACE(path string, accessMask uint32, caps []*windows.SID) error {
 	for _, sid := range caps {
 		entries = append(entries, explicitAccess{
 			grfAccessPermissions: accessMask,
-			grfAccessMode:        grantAccess,
+			grfAccessMode:        accessMode,
 			grfInheritance:       objectInheritAce | containerInheritAce,
 			trustee: trustee{
 				trusteeForm: trusteeIsSid,

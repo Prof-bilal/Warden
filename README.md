@@ -108,6 +108,22 @@ The child can read data, write output, reach the explicitly allowed host, and
 receive only the named environment variables. **Unlisted access is not an
 implicit permission.**
 
+## Edit with hidden credentials (development)
+
+For coding sessions that need to edit files containing credentials, the
+development CLI also provides native sanitized workspaces on Linux, macOS and Windows:
+
+```bash
+warden agent --policy agent-policy.yaml -- claude
+warden agent --policy agent-policy.yaml -- codex
+```
+
+Explicitly selected dotenv, JSON, YAML and TOML fields become placeholders.
+The agent can edit surrounding content; Warden requires a sanitized review
+before applying edits with the original protected values preserved. The new
+command requires a source build and the host's native sandbox backend. See
+[agent workspace setup and limitations](warden-starter/warden/docs/agent-workspace.md).
+
 ## Trace, review, then run
 
 Tracing is an onboarding tool, not a security boundary. It runs the command

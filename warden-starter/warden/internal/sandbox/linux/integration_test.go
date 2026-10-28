@@ -134,6 +134,22 @@ func TestSandboxPositiveControlStartup(t *testing.T) {
 	requireTargetStarted(t)
 }
 
+func TestSandboxSystemTrustStoreVisible(t *testing.T) {
+	if findTrustStore() == "" {
+		t.Skip("no host CA bundle available")
+	}
+
+	p := policy.Policy{}
+	cmd := []string{"/usr/bin/sh", "-c", "test -s /etc/ssl/certs/ca-certificates.crt"}
+	out, code, err := runSandbox(t, p, cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 {
+		t.Fatalf("trust store was not visible in sandbox, exit %d, output: %s", code, out)
+	}
+}
+
 func TestSandboxReadGrantAccessible(t *testing.T) {
 	dataDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dataDir, "secret.txt"), []byte("allowed"), 0o644); err != nil {

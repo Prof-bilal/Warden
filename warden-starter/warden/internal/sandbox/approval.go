@@ -16,6 +16,9 @@ import (
 // On other backends only network approval is livethere is no comparable
 // live filesystem signaland filesystem stays hard-deny.
 func RunWithApproval(cmd []string, p policy.Policy, backend string, cfg *approve.Config) (int, error) {
+	if p.Agent != nil {
+		return 0, fmt.Errorf("agent policy requires `warden agent`")
+	}
 	if cfg == nil || !cfg.Enabled {
 		return Run(cmd, p, backend)
 	}

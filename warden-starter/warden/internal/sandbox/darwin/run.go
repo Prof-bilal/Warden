@@ -125,11 +125,13 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	sub.Stdin = os.Stdin
 	sub.Stdout = os.Stdout
 	sub.Stderr = os.Stderr
-	// Start the sandboxed process in a directory that is always allowed
-	// (TempDir) so shell `getcwd` does not fail with
-	// "cannot access parent directories: Operation not permitted" when the
-	// parent's cwd is the checkout under /Users which is deny-default.
+	// Agent sessions set AgentCwd to the sanitized projection. Ordinary runs
+	// start in a harmless temporary directory so a deny-default profile never
+	// exposes the caller's checkout as an implicit cwd.
 	sub.Dir = os.TempDir()
+	if p.AgentCwd != "" {
+		sub.Dir = p.AgentCwd
+	}
 	sub.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	sub.Env = append(envfilter.FilterDenied(parentEnv, p.EnvAllowlist(), p.EnvDenylist()),
 		"HTTP_PROXY=http://127.0.0.1:18080",

@@ -139,6 +139,39 @@ func TestBuildPlanWFPAllowlist(t *testing.T) {
 	}
 }
 
+func TestBuildPlanAgentBrokerAndReadOnlyOverlays(t *testing.T) {
+	p := policy.Policy{
+		Filesystem:    policy.Filesystem{Write: []string{`C:\work\projection`}},
+		ReadOnlyPaths: []string{`C:\work\projection\.warden`, `C:\work\projection\AGENTS.md`},
+		AgentSocket:   "tcp://127.0.0.1:49321/session-token",
+	}
+	plan, err := BuildPlan([]string{`C:\tools\server.exe`}, p, "agent", "127.0.0.1:18080")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.AllowPorts) != 2 || plan.AllowPorts[1] != 49321 {
+		t.Fatalf("AllowPorts = %v, want proxy plus broker", plan.AllowPorts)
+	}
+	grants, err := deriveFilesystemGrants(`C:\tools\server.exe`, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range p.ReadOnlyPaths {
+		found := false
+		for _, g := range grants {
+			if strings.EqualFold(g.Path, path) {
+				found = true
+				if g.AccessMode != denyAccess || g.AccessMask&denyWrite != denyWrite {
+					t.Fatalf("read-only overlay grant = %+v", g)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("missing read-only overlay %q", path)
+		}
+	}
+}
+
 func TestQuoteArg(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{`server.js`, `server.js`},

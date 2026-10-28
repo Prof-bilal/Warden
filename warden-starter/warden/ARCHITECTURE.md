@@ -227,6 +227,23 @@ runs `trace` automatically on first launch and asks the user to approve a
 generated policy interactively? Leaning yesit's a much lower-friction
 onboarding path than asking people to hand-write YAML on day one.
 
+## Agent projection extension (development checkout)
+
+`warden agent --policy policy.yaml -- <command>` prepares a sanitized copy before
+launching the command through the host-native sandbox (bubblewrap, Seatbelt, or
+AppContainer/WFP). The new optional `agent`
+section contains `workspace`, `redaction.files` (path, format, exact fields),
+`redaction.env`, `redaction.apply: review`, and `secret_exec.profiles` (fixed HTTPS
+URL and host environment credential name). Structured field selectors use JSON
+Pointer object/table paths; dotenv selectors use variable names. No scanning
+is performed. A single project grant is required; originals are never mounted.
+Ordinary `warden run` rejects an agent policy to prevent bypassing preparation.
+The supervisor alone owns original values, validates immutable placeholders,
+reviews sanitized changes with the human, and restores values during apply.
+Secret profiles are pre-approved fixed HTTPS GET operations; arbitrary edited
+commands never receive real credentials. Full behavior, parser restrictions,
+merge atomicity and platform limits are in [agent workspace](docs/agent-workspace.md).
+
 ## Non-goals (for now)
 
 - **Agent identity / audit-trail-of-who-asked.** Related but separate

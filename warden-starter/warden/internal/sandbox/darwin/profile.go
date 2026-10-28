@@ -191,6 +191,21 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 			}
 		}
 	}
+	// Agent projections are writable as a whole, but supervisor-owned notices
+	// and instruction overlays must remain immutable inside the child.
+	for _, path := range p.ReadOnlyPaths {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return "", fmt.Errorf("inspect read-only path %q: %w", path, err)
+		}
+		for _, variant := range symlinkVariants(path) {
+			if info.IsDir() {
+				fmt.Fprintf(&b, "(deny file-write* (subpath %q))\n", variant)
+			} else {
+				fmt.Fprintf(&b, "(deny file-write* (literal %q))\n", variant)
+			}
+		}
+	}
 
 	// Ensure the executable's parent directory is readable and mappable.
 	parent := filepath.Dir(exe)
@@ -220,6 +235,14 @@ func BuildSeatbeltProfile(cmd []string, p policy.Policy, socketPath string) (str
 	for _, variant := range symlinkVariants(filepath.Dir(socketPath)) {
 		writeLiteralAllow(&b, "file-read-metadata", variant)
 		writeSubpathAllow(&b, "file-read*", variant)
+	}
+	if p.AgentSocket != "" && !strings.HasPrefix(p.AgentSocket, "tcp://") {
+		for _, variant := range symlinkVariants(p.AgentSocket) {
+			writeLiteralAllow(&b, "file-read* file-write*", variant)
+		}
+		for _, variant := range symlinkVariants(filepath.Dir(p.AgentSocket)) {
+			writeSubpathAllow(&b, "file-read* file-write*", variant)
+		}
 	}
 
 	return b.String(), nil

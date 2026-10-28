@@ -1,5 +1,10 @@
 # Warden
 
+Development checkout: `warden agent` runs a native Linux, macOS or Windows coding session in a sanitized
+workspace. Explicit fields in dotenv, JSON, YAML and TOML contain placeholders;
+reviewed edits preserve the original secret values. See the
+[agent workspace guide](docs/agent-workspace.md) for setup and limitations.
+
 Development ecosystem gateway: `warden connect` (stdio) and `warden serve`
 (authenticated HTTP) combine reviewed MCP rules with local process sandboxing.
 `warden creator` creates/verifies signed allowed/denied evidence;

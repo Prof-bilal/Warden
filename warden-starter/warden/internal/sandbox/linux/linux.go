@@ -35,6 +35,32 @@ import (
 // must also be mounted; without it every bwrap invocation fails with exit 1.
 var runtimeBase = []string{"/usr", "/lib", "/lib64"}
 
+// trustStoreSources are common host CA bundle locations. A sandboxed process
+// needs the public trust roots to make ordinary HTTPS requests, but /etc is
+// intentionally not mounted as part of the runtime base. We therefore mount
+// only one detected CA bundle, never the whole host /etc tree.
+var trustStoreSources = []string{
+	"/etc/ssl/certs/ca-certificates.crt",
+	"/etc/ssl/cert.pem",
+	"/etc/ca-certificates/extracted/tls-ca-bundle.pem",
+	"/etc/pki/tls/certs/ca-bundle.crt",
+	"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
+}
+
+// trustStoreDestinations cover the paths used by curl, OpenSSL, Node, and
+// other common runtimes. They all point at the same read-only host bundle.
+var trustStoreDestinations = []string{
+	"/etc/ssl/certs/ca-certificates.crt",
+	"/etc/ssl/cert.pem",
+	"/etc/pki/tls/certs/ca-bundle.crt",
+}
+
+// proxyBypassHosts are safe to reach directly: the Linux sandbox owns its
+// loopback interface, so these addresses cannot reach host services. Keeping
+// them out of the egress proxy is required for tools that start a local
+// companion service and then connect to it over 127.0.0.1.
+const proxyBypassHosts = "127.0.0.1,localhost,[::1]"
+
 // BuildBwrapArgs translates a policy plus a resolved command into the
 // complete bwrap argument list. It is a pure function so the mount logic
 // can be unit-tested without bwrap installed.
@@ -97,6 +123,27 @@ func buildBwrapArgs(cmd []string, p policy.Policy, denied []string) ([]string, e
 		add("--ro-bind", base)
 	}
 
+	// Keep HTTPS certificate verification working without exposing the host's
+	// /etc tree. The destination parent directories are created inside the
+	// namespace, and the bundle itself is mounted read-only at well-known
+	// trust-store paths.
+	if source := findTrustStore(); source != "" {
+		seenDirs := make(map[string]bool)
+		for _, destination := range trustStoreDestinations {
+			parent := filepath.Dir(destination)
+			var parents []string
+			for parent != "/" && !seenDirs[parent] {
+				parents = append(parents, parent)
+				parent = filepath.Dir(parent)
+			}
+			for i := len(parents) - 1; i >= 0; i-- {
+				args = append(args, "--dir", parents[i])
+				seenDirs[parents[i]] = true
+			}
+			args = append(args, "--ro-bind", source, destination)
+		}
+	}
+
 	// Policy grants. A path granted both read and write is ambiguous —
 	// refuse it rather than let mount order decide.
 	mode := make(map[string]string)
@@ -147,6 +194,9 @@ func buildBwrapArgs(cmd []string, p policy.Policy, denied []string) ([]string, e
 			args = append(args, "--ro-bind", "/dev/null", path)
 		}
 	}
+	for _, path := range p.ReadOnlyPaths {
+		args = append(args, "--ro-bind", path, path)
+	}
 
 	return args, nil
 }
@@ -154,6 +204,16 @@ func buildBwrapArgs(cmd []string, p policy.Policy, denied []string) ([]string, e
 func isDirectory(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
+}
+
+func findTrustStore() string {
+	for _, path := range trustStoreSources {
+		info, err := os.Stat(path)
+		if err == nil && !info.IsDir() {
+			return path
+		}
+	}
+	return ""
 }
 
 // mountedUnder reports whether path is a mount source or lies inside one.
@@ -308,7 +368,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		"HTTP_PROXY=http://127.0.0.1:18080",
 		"HTTPS_PROXY=http://127.0.0.1:18080",
 		"ALL_PROXY=http://127.0.0.1:18080",
-		"NO_PROXY=",
+		"NO_PROXY="+proxyBypassHosts,
 	)
 
 	// The child runs in its own process group, so a terminal Ctrl-C or an

@@ -28,6 +28,14 @@ import (
 // Fields correspond one-to-one with the schema documented in
 // ARCHITECTURE.md. All filesystem paths are absolute after ResolvePaths.
 type Policy struct {
+	Agent *Agent `yaml:"agent,omitempty"`
+	// ReadOnlyPaths are supervisor-owned overlays, never policy input.
+	ReadOnlyPaths []string `yaml:"-"`
+	// AgentSocket is a supervisor-owned credential broker endpoint. It is
+	// never accepted from policy input and is populated only for `warden agent`.
+	AgentSocket string `yaml:"-"`
+	// AgentCwd is the sanitized projection working directory for `warden agent`.
+	AgentCwd string `yaml:"-"`
 	// Command is how to start the sandboxed server. Optional in the file
 	// when the CLI supplies it via `warden run --policy <file> -- <cmd...>`.
 	Command []string `yaml:"command,omitempty"`
@@ -145,6 +153,11 @@ func LoadVerified(path, expectedSHA256 string) (Policy, error) {
 		return Policy{}, fmt.Errorf("policy %q: %w", path, err)
 	}
 	p.Normalize()
+	if p.Agent != nil {
+		if err := p.Agent.resolve(dir); err != nil {
+			return Policy{}, err
+		}
+	}
 	if err := p.Validate(); err != nil {
 		return Policy{}, fmt.Errorf("policy %q: %w", path, err)
 	}
@@ -222,6 +235,11 @@ func resolve(dir, path string) (string, error) {
 // called after ResolvePaths (so grants are absolute) and before the policy
 // is handed to a sandbox backend.
 func (p *Policy) Validate() error {
+	if p.Agent != nil {
+		if err := p.Agent.validate(*p); err != nil {
+			return err
+		}
+	}
 	for _, w := range p.Filesystem.Write {
 		if err := checkGrantPath(w, "write"); err != nil {
 			return err

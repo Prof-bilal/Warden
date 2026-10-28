@@ -91,3 +91,20 @@ limits:
   # indefinite loops. Long-running tasks (migrations, exports) may need higher
   # values or a longer timeout.
   timeout_s: 300
+
+# Optional Linux agent workspace (use `warden agent`, not `warden run`).
+# Requires exactly one filesystem grant equal to agent.workspace; replace the
+# grants above when enabling it. Explicit selectors only, no secret scanner.
+# agent:
+#   workspace: ./project
+#   redaction:
+#     apply: review
+#     env: [OPENAI_API_KEY]
+#     files:
+#       - path: .env
+#         format: dotenv
+#         fields: [OPENAI_API_KEY]
+#       - path: config.json
+#         format: json
+#         fields: [/credentials/api_key]
+# See docs/agent-workspace.md for credential profiles and limitations.

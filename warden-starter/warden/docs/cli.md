@@ -59,6 +59,13 @@ banners are semantic and degrade gracefully.
 
 ## `warden run`
 
+For Linux coding sessions that need to edit files containing hidden credentials,
+use `warden agent --policy policy.yaml -- <agent command>`. The optional `agent`
+policy prepares a sanitized copy and requires human review before host changes.
+`warden agent exec --profile NAME` performs a pre-approved fixed HTTPS operation
+without exposing its credential. See [Agent workspace](agent-workspace.md) for
+the complete policy, supported formats and current restrictions.
+
 Run a server under a policy. The sandbox backend is auto-detected (native
 first, Docker fallback, fail-closed when nothing is available).
 

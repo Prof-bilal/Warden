@@ -156,6 +156,10 @@ jobs:
             echo "Positive control did not pass: sandboxed target startup was never proven on Linux"
             exit 1
           fi
+      - name: Sanitized agent workspace boundary (must actually run)
+        env:
+          WARDEN_REQUIRE_AGENT_E2E: "1"
+        run: go test -v -count=1 ./internal/agentworkspace -run TestLinuxProjectionBoundary
       # The hosted Linux runner has a finite process/thread cgroup. Some CLI
       # tests intentionally invoke a nested `go build`; running all packages
       # at the default parallelism can exhaust that limit and make the nested
@@ -216,6 +220,9 @@ jobs:
           node testdata/ecosystem/smoke-native-gateway.mjs
           if ($LASTEXITCODE -ne 0) { throw "native gateway regression failed" }
 
+      - name: Sanitized agent workspace projection and apply
+        shell: pwsh
+        run: go test -v -count=1 ./internal/agentworkspace
       - shell: pwsh
         run: go test -v ./...
         id: test
@@ -298,6 +305,8 @@ jobs:
             echo "No TestSeatbelt integration tests actually executed"
             exit 1
           fi
+      - name: Sanitized agent workspace projection and apply
+        run: go test -v -count=1 ./internal/agentworkspace
       - run: go test -count=1 ./...
 
   cross-build:

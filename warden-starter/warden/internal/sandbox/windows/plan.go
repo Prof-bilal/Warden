@@ -90,6 +90,10 @@ const (
 	accessRead  uint32 = 0x80000000 // GENERIC_READ
 	accessWrite uint32 = 0x40000000 // GENERIC_WRITE
 	accessExec  uint32 = 0x20000000 // GENERIC_EXECUTE
+	denyAccess  uint32 = 3          // DENY_ACCESS
+	// DELETE and FILE_DELETE_CHILD are separate from GENERIC_WRITE. Include
+	// both so an agent cannot remove or rename a read-only notice overlay.
+	denyWrite uint32 = accessWrite | 0x00010000 | 0x00000040
 )
 
 // GrantAccessMode value (accctrl.h GRANT_ACCESS). Kept here so plan
@@ -204,6 +208,14 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 	if err != nil {
 		return nil, err
 	}
+	ports := []uint16{port}
+	if p.AgentSocket != "" && strings.HasPrefix(p.AgentSocket, "tcp://") {
+		brokerPort, err := agentSocketPort(p.AgentSocket)
+		if err != nil {
+			return nil, err
+		}
+		ports = append(ports, brokerPort)
+	}
 	name := fmt.Sprintf("warden.%s", sessionID)
 	if len(name) > 64 {
 		name = name[:64]
@@ -218,10 +230,26 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 		CommandLine:      buildCommandLine(cmd),
 		ProxyAddress:     proxyAddr,
 		AllowIPs:         []string{bridgeHost},
-		AllowPorts:       []uint16{port},
+		AllowPorts:       ports,
 		EnvBlock:         buildEnvBlock(envfilter.FilterDenied(os.Environ(), p.EnvAllowlist(), p.EnvDenylist()), p.EnvAllowlist(), append(systemEnvPairs(os.Environ()), proxyEnvPairs(proxyAddr)...)),
 		Limits:           p.Limits,
 	}, nil
+}
+
+func agentSocketPort(endpoint string) (uint16, error) {
+	address := strings.TrimPrefix(endpoint, "tcp://")
+	if slash := strings.IndexByte(address, '/'); slash >= 0 {
+		address = address[:slash]
+	}
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
+		return 0, fmt.Errorf("windows plan: agent broker must use a loopback endpoint")
+	}
+	n, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || n == 0 {
+		return 0, fmt.Errorf("windows plan: agent broker port is invalid")
+	}
+	return uint16(n), nil
 }
 
 // proxyPort validates that addr is a loopback host:port and returns the port.
@@ -302,6 +330,12 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 	// loader dependencies are reachable.
 	if err := add(parentDirWin(exe), accessRead|accessExec); err != nil {
 		return nil, err
+	}
+	for _, path := range p.ReadOnlyPaths {
+		if path == "" || !isAbsWin(path) {
+			return nil, fmt.Errorf("filesystem: read-only path must be absolute")
+		}
+		grants = append(grants, pathGrant{Path: cleanWinPath(path), AccessMask: denyWrite, AccessMode: denyAccess})
 	}
 
 	sort.Slice(grants, func(i, j int) bool {

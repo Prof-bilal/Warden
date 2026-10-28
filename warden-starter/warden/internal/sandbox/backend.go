@@ -132,6 +132,9 @@ func dockerAvailable() bool {
 // Run executes cmd under the resolved sandbox backend.
 // backend may be empty/"auto" or an explicit backend name.
 func Run(cmd []string, p policy.Policy, backend string) (int, error) {
+	if p.Agent != nil {
+		return 0, fmt.Errorf("agent policy requires `warden agent`, which prepares a sanitized workspace")
+	}
 	name, err := Resolve(backend)
 	if err != nil {
 		return 0, err
