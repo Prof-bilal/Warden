@@ -50,6 +50,19 @@ export function generateStaticParams() {
   return getAllDocSlugs().map((slug) => ({ slug }));
 }
 
+function MobileDocsNav() {
+  return (
+    <details className="rounded-lg border border-ink-800 bg-ink-900/40 p-4 lg:hidden">
+      <summary className="cursor-pointer list-none font-sans text-sm font-semibold text-paper">
+        Browse documentation
+      </summary>
+      <div className="mt-5">
+        <DocsSidebar />
+      </div>
+    </details>
+  );
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -163,7 +176,7 @@ export default async function DocPage({
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
         {/* Breadcrumbicons.devigner.cc style */}
-        <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
+        <nav className="mb-6 font-sans text-[0.875rem] text-muted" aria-label="Breadcrumb">
           <span className="hover:text-paper transition-colors">
             <a href="/">Warden</a>
           </span>
@@ -174,6 +187,10 @@ export default async function DocPage({
           <span className="mx-1.5 text-ink-600">/</span>
           <span className="text-paper">{slugToTitle(slug)}</span>
         </nav>
+
+        <div className="mb-8 lg:hidden">
+          <MobileDocsNav />
+        </div>
 
         {/* Sidebar + Content layout */}
         <div className="flex gap-12">
@@ -186,7 +203,7 @@ export default async function DocPage({
 
           {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
+            <h1 className="font-sans text-[2.75rem] font-semibold leading-[1.08] tracking-[-0.03em] text-paper">
               {title}
             </h1>
 
@@ -200,7 +217,7 @@ export default async function DocPage({
               {prevSlug ? (
                 <a
                   href={`/docs/${prevSlug}`}
-                  className="font-hero text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
                   â† {slugToTitle(prevSlug)}
                 </a>
@@ -210,7 +227,7 @@ export default async function DocPage({
               {nextSlug ? (
                 <a
                   href={`/docs/${nextSlug}`}
-                  className="font-hero text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
                 >
                   {slugToTitle(nextSlug)} â†’
                 </a>

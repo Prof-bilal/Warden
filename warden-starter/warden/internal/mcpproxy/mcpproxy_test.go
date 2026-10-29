@@ -113,7 +113,8 @@ func TestFilterMCPMessageToolAllowlist(t *testing.T) {
 }
 
 func TestFilterMCPMessageDenyPattern(t *testing.T) {
-	// 36-char GitHub token, as used in the future.md schema sketch.
+	// 36-char GitHub token, matching the redaction examples in the archived
+	// policy notes.
 	s := testProxy(t, MCPPolicy{
 		Upstream:     "stdio:npx server",
 		DenyPatterns: []string{"ghp_[A-Za-z0-9]{36}"},

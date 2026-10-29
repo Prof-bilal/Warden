@@ -1,5 +1,5 @@
 site_name: Warden
-site_description: A lightweight sandbox runtime for MCP servers
+site_description: An open-source permission boundary for local tools and MCP servers
 site_url: https://prof-bilal.github.io/Warden
 
 theme:
@@ -14,43 +14,39 @@ repo_name: Prof-bilal/Warden
 
 nav:
   - Home: index.md
-  - About: about.md
-  - Start:
+  - Start here:
+    - Introduction: index.md
     - Install: install.md
-    - How to Use Warden: how-to-use.md
     - Quickstart: quickstart.md
+    - How Warden works: how-to-use.md
     - FAQ: faq.md
-  - Reference:
-    - Schema Reference: schema.md
-    - CLI Reference: cli.md
-    - Example Policies: examples.md
-  - Understand:
+  - Protect a tool:
+    - Files and policies: examples.md
+    - AI agent workspace: agent-workspace.md
+    - MCP gateway: mcp-gateway.md
+    - Client proxy: client-proxy.md
+  - Platforms and security:
+    - Compatibility: compatibility.md
+    - Security review: security.md
+    - Test evidence: proof.md
     - Architecture: architecture.md
-    - Security Review: security.md
-    - MCP Boundary Baseline: ecosystem-baseline.md
-    - MCP Gateway: mcp-gateway.md
-    - Creator Evidence: creator-program.md
-    - Ecosystem Maintenance: ecosystem-maintenance.md
-    - Proof & Test Results: proof.md
-    - Compatibility Matrix: compatibility.md
-  - Community:
-    - Gateway Integration: gateway.md
-    - Interactive Approval: approve.md
-    - Beta Program: beta.md
-  - Archive:
-    - Full Design Doc: design.md
-    - Roadmap: roadmap.md
-    - Product Requirements: prd.md
-    - MVP Scope: mvp.md
-    - About This Project: about.md
-  - Project:
+    - Linux local testing: platforms/linux-local-setup.md
+    - Windows testing: platforms/windows-testing.md
+  - Evidence and operations:
+    - End-to-end proof runbook: evidence/e2e-proof-test.md
+    - End-to-end proof results: evidence/e2e-proof-results.md
+    - Release preview status: operations/release-preview-status.md
+  - Reference:
+    - Policy schema: schema.md
+    - CLI reference: cli.md
+    - Example policies: examples.md
+  - Project and contribution:
     - Contributing: contributing.md
     - Testing Guide: testing.md
     - Testing Platforms: testing-platforms.md
     - Code Style: codestyle.md
     - Review Guide: reviewing.md
     - License: license.md
-    - Deploying These Docs: deploy.md
 
 markdown_extensions:
   - toc:

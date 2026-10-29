@@ -147,7 +147,8 @@ From Git Bash, using the Windows executable:
 
 ```bash
 export XDG_STATE_HOME="$PWD/windows-evidence/state"
-bash test-mcp-proxy.sh "$PWD/warden-starter/warden/warden-windows-amd64.exe"
+bash warden-starter/warden/scripts/test-mcp-proxy.sh \
+  "$PWD/warden-starter/warden/warden-windows-amd64.exe"
 ```
 
 Verify allowed forwarding, denied JSON-RPC errors, parse error `-32700`, and

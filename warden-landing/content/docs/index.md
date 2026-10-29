@@ -46,6 +46,11 @@ warden run --policy policy.yaml
 warden trace -- /usr/bin/node server.js && warden init
 ```
 
+If a local coding agent needs to edit the project, use an [AI agent
+workspace](agent-workspace.md). Warden gives the agent a sanitized copy,
+hides the declared values, and waits for your review before applying changes
+to the host project.
+
 ## Why Warden
 
 - **Filesystem**only granted paths exist inside the sandbox, read-only or
@@ -73,12 +78,13 @@ whether your server works before installing:
 1. **[Install](install.md)**Linux, macOS, Windows, Docker fallback, or
    build from source
 2. **[Quickstart](quickstart.md)**your first sandboxed run in five minutes
-3. **[Example Policies](examples.md)**copy-paste policies for filesystem,
+3. **[Protect an AI agent](agent-workspace.md)**edit code without exposing
+   declared credentials
+4. **[Example Policies](examples.md)**copy-paste policies for filesystem,
    GitHub, Slack, Postgres, and Brave Search
-4. **[Schema Reference](schema.md)**every `policy.yaml` field
-5. **[CLI Reference](cli.md)**every command and flag
-6. **[FAQ](faq.md)**common failures and fixes
-7. **[Roadmap](roadmap.md)**what's built and what's next
+5. **[Schema Reference](schema.md)**every `policy.yaml` field
+6. **[CLI Reference](cli.md)**every command and flag
+7. **[FAQ](faq.md)**common failures and fixes
 
 > **Status:** beta. Core sandboxing (Linux, macOS, Windows, Docker fallback),
 > tracing, approval mode, and gateway integration are implemented and tested.

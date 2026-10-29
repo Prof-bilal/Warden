@@ -1,5 +1,13 @@
 # Warden FAQ and Troubleshooting
 
+## Can an AI coding agent edit a project without seeing its secrets?
+
+Yes. [`warden agent`](agent-workspace.md) gives the agent a temporary sanitized
+workspace, hides the file fields and environment names you declare, and asks
+you to review the changes before applying them to the host project. Use fake
+credentials while testing and remember that only explicitly declared values
+are protected.
+
 ## `warden run` refuses to start
 
 ### "no sandbox backend available … refusing to run unsandboxed"

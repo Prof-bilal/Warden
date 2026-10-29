@@ -103,7 +103,8 @@ call are observed.
 ## 5. Test the MCP proxy and gateway
 
 ```bash
-bash test-mcp-proxy.sh warden-starter/warden/warden
+bash warden-starter/warden/scripts/test-mcp-proxy.sh \
+  warden-starter/warden/warden
 ```
 
 Verify that allowed tools are forwarded, denied tools return JSON-RPC errors,
@@ -125,7 +126,7 @@ Run the CLI smoke checks:
 ```bash
 cd /path/to/Warden
 export PATH="$PWD/warden-starter/warden:$PATH"
-bash test-k8s-mode.sh
+bash warden-starter/warden/scripts/test-k8s-mode.sh
 ```
 
 For a live API check, use a disposable kind or minikube cluster and a real
@@ -228,5 +229,5 @@ The final project report should map each product claim to its test, environment,
 evidence, result, and limitation. A green unit test or a skipped backend is not
 enough to claim that platform is end-to-end verified.
 
-See [E2E-PROOF-RESULTS.md](E2E-PROOF-RESULTS.md) for the latest Linux, Docker,
+See [E2E proof results](e2e-proof-results.md) for the latest Linux, Docker,
 MCP, CI, and Kubernetes results.

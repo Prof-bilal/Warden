@@ -4,20 +4,10 @@ import { useState } from "react";
 import { ArrowRight, Check, Copy, Github, Terminal } from "lucide-react";
 import ContainmentField from "./ContainmentField";
 
-const INSTALL_CMD =
-  "curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64";
-
 const NPM_CMD = "npm install -g warden-sandbox-cli";
 
 export default function Hero() {
-  const [copied, setCopied] = useState(false);
   const [npmCopied, setNpmCopied] = useState(false);
-
-  function handleCopy() {
-    navigator.clipboard.writeText(INSTALL_CMD);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }
 
   function handleNpmCopy() {
     navigator.clipboard.writeText(NPM_CMD);
@@ -53,14 +43,14 @@ export default function Hero() {
           </p>
 
           {/* headlineJetBrains Mono bold, gradient white, like reference */}
-          <h1 className="mx-auto mb-7 bg-gradient-to-b from-white to-white/70 bg-clip-text font-hero text-[2.75rem] font-bold leading-[1.05] tracking-[-0.04em] text-transparent sm:text-6xl md:text-7xl xl:text-[84px]">
-            Your AI tools don&apos;t need your whole machine.
+          <h1 className="mx-auto mb-7 bg-gradient-to-b from-white to-white/70 bg-clip-text font-sans text-[2.75rem] font-semibold leading-[1.05] tracking-[-0.045em] text-transparent sm:text-6xl md:text-7xl xl:text-[84px]">
+            Don&apos;t give AI agents your whole computer.
           </h1>
 
           {/* sub */}
-          <p className="mx-auto mb-10 max-w-[640px] font-hero text-[17px] leading-[1.7] text-muted md:text-[20px]">
-            Warden gives local AI tools and MCP servers only the access they need:
-            files, network, environment variables, and supported resource limits.
+          <p className="mx-auto mb-10 max-w-[640px] font-sans text-[17px] leading-[1.7] text-muted md:text-[20px]">
+            Warden gives AI tools and MCP servers access only to the files, secrets,
+            and network hosts you approve. Everything else is blocked by default.
           </p>
 
           {/* actions */}
@@ -105,22 +95,7 @@ export default function Hero() {
                 </button>
               </div>
             </div>
-            <button
-              onClick={handleCopy}
-              className="group mx-auto mt-3 flex items-center gap-2 font-hero text-[12px] text-muted/80 transition-colors hover:text-paper"
-              aria-label="Copy curl install command"
-            >
-              <span className="truncate">
-                <span className="text-muted">$ </span>
-                curl binary for Linux
-              </span>
-              {copied ? (
-                <Check size={13} className="shrink-0 text-grant" />
-              ) : (
-                <Copy size={13} className="shrink-0 transition-colors group-hover:text-paper" />
-              )}
-            </button>
-            <p className="mt-3 text-center font-hero text-[11px] uppercase leading-[1.7] tracking-[0.06em] text-muted/80">
+            <p className="mt-3 text-center font-sans text-[11px] uppercase leading-[1.7] tracking-[0.06em] text-muted/80">
               Linux · macOS · Windows · Docker fallback · MIT
             </p>
           </div>

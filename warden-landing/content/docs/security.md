@@ -4,6 +4,10 @@ Warden is designed with a deny-by-default threat model: nothing is accessible
 inside the sandbox unless the policy explicitly grants it. This document
 outlines the known threats, mitigations, gaps, and limitations.
 
+For AI coding workflows, see [the sanitized agent workspace guide](agent-workspace.md).
+It explains how protected file fields and environment values remain hidden while
+the agent edits a temporary copy, and why host changes still require review.
+
 ## Threat Model
 
 ### 1. Sandbox escapeaccess outside the granted boundary

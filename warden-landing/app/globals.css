@@ -60,10 +60,11 @@ body {
 /* ── Markdown prose for doc pages ─────────────────────────────── */
 
 .prose-warden {
-  font-family: var(--font-hero-mono), "JetBrains Mono", ui-monospace, monospace;
-  font-size: 1rem;
-  line-height: 1.75;
+  font-family: var(--font-geist-sans), Geist, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.78;
   color: #e8ebef;
+  max-width: 48rem;
 }
 
 .prose-warden > * + * {
@@ -72,10 +73,10 @@ body {
 
 /* Headings */
 .prose-warden h1 {
-  font-size: 2rem;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: 2.125rem;
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
   color: #e8ebef;
   margin-top: 0;
   margin-bottom: 0.5em;
@@ -84,10 +85,10 @@ body {
 }
 
 .prose-warden h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.55rem;
+  font-weight: 650;
   line-height: 1.25;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   color: #e8ebef;
   margin-top: 2em;
   margin-bottom: 0.5em;
@@ -97,7 +98,7 @@ body {
 
 .prose-warden h3 {
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.3;
   color: #e8ebef;
   margin-top: 1.75em;
@@ -116,7 +117,7 @@ body {
 /* Paragraphs */
 .prose-warden p {
   margin-top: 0;
-  margin-bottom: 1em;
+  margin-bottom: 1.15em;
 }
 
 /* Links */
@@ -135,7 +136,7 @@ body {
 
 /* Inline code */
 .prose-warden :not(pre) > code {
-  font-family: var(--font-hero-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-geist-mono), Geist Mono, ui-monospace, monospace;
   font-size: 0.875em;
   background: #1e242e;
   border: 1px solid #2a303c;
@@ -149,7 +150,7 @@ body {
 .prose-warden pre {
   background: #0d1017;
   border: 1px solid #2a303c;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 1em 1.25em;
   overflow-x: auto;
   font-size: 0.875rem;
@@ -159,7 +160,7 @@ body {
 }
 
 .prose-warden pre code {
-  font-family: var(--font-hero-mono), "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-geist-mono), Geist Mono, ui-monospace, monospace;
   background: none;
   border: none;
   border-radius: 0;
@@ -175,6 +176,10 @@ body {
   font-size: 0.9375rem;
   margin-top: 0;
   margin-bottom: 1em;
+}
+
+.prose-warden code {
+  font-family: var(--font-geist-mono), Geist Mono, ui-monospace, monospace;
 }
 
 .prose-warden thead {

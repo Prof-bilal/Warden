@@ -44,7 +44,8 @@ Preview packages pin their exact release; stable caches exclude previews. The Go
 updater saves the authenticated checksum manifest beside its verified cache so
 the npm launcher can validate later offline launches. These HTTPS manifests do
 not provide independent publisher signature verification. Native release gates
-and scenario coverage are recorded in `../../RELEASE_PREVIEW_STATUS.md`.
+and scenario coverage are recorded in
+`docs/operations/release-preview-status.md`.
 
 ## Goals
 

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import fs from "fs";
-import path from "path";
 import { SITE_URL } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema } from "@/lib/schema";
@@ -11,106 +9,86 @@ import DocsSidebar from "@/components/DocsSidebar";
 export const metadata: Metadata = {
   title: { absolute: "Warden documentation" },
   description:
-    "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
-  alternates: {
-    canonical: `${SITE_URL}/docs`,
-  },
+    "Learn how to run local tools and MCP servers with explicit file, network, environment, and resource permissions.",
+  alternates: { canonical: `${SITE_URL}/docs` },
   openGraph: {
     title: "Warden documentation",
     description:
-      "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
+      "Learn how to run local tools and MCP servers with explicit file, network, environment, and resource permissions.",
     url: `${SITE_URL}/docs`,
-    images: [
-      {
-        url: `${SITE_URL}/og-image.png`,
-        width: 1200,
-        height: 630,
-        alt: "Warden documentation",
-      },
-    ],
+    images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: "Warden documentation" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Warden documentation",
     description:
-      "Install Warden, run a sandboxed MCP server, then use the policy schema and CLI reference.",
+      "Learn how to run local tools and MCP servers with explicit file, network, environment, and resource permissions.",
     images: [`${SITE_URL}/og-image.png`],
   },
 };
 
 const CARDS = [
   {
-    title: "Connect a server in one command",
-    body: "warden add slack to claude-desktop — sandboxed runtime, deny-by-default policy, preview, client config registration, and undo. Any npm MCP server works with explicit --allow-* flags.",
-    href: "/docs/ecosystem-setup",
-  },
-  { title: "Policy packs & client setup", body: "Candidate profiles, multi-client setup, private backups, undo, and local verification.", href: "/docs/ecosystem-setup" },
-  {
-    title: "Install",
-    body: "Linux, macOS, Windows, Docker fallbackor build from source with Go 1.22+. What each platform needs before warden will run.",
-    href: "/docs/install",
-  },
-  {
-    title: "Quickstart",
-    body: "Sandbox your first MCP server in five minutes: copy a fixture policy, run it, then trace-and-generate for your own servers.",
+    title: "Start here",
+    body: "Install Warden, write a small policy, and run your first protected local command.",
     href: "/docs/quickstart",
   },
   {
+    title: "Protect an AI agent",
+    body: "Let a coding agent work on a sanitized project copy while protected values stay hidden and host changes require review.",
+    href: "/docs/agent-workspace",
+  },
+  {
+    title: "Write a policy",
+    body: "Choose the files, hosts, environment names, and runtime limits a tool actually needs.",
+    href: "/docs/write-policy",
+  },
+  {
+    title: "Connect an MCP server",
+    body: "Run local MCP servers through Warden and keep their filesystem, network, and environment access explicit.",
+    href: "/docs/client-proxy",
+  },
+  {
+    title: "Install",
+    body: "Check platform requirements for Linux, macOS, Windows, and the Docker fallback before you run.",
+    href: "/docs/install",
+  },
+  {
     title: "Policy schema",
-    body: "Every policy.yaml field, validation rule, and enforcement notethe one reference to keep open while writing policies.",
+    body: "Look up every policy field, validation rule, and platform-specific enforcement note.",
     href: "/docs/schema",
   },
   {
     title: "CLI reference",
-    body: "run, trace, init, logs, gateway, --approveevery subcommand and flag, verified against the source.",
+    body: "Find the commands and flags for running, tracing, logging, connecting, and reviewing.",
     href: "/docs/cli",
   },
   {
     title: "Compatibility matrix",
-    body: "18 server policy fixtures with classified verdicts. Fixture validation and fresh runtime verification are separate evidence levels.",
+    body: "See which tested MCP servers work, need setup, or have known limitations.",
     href: "/docs/compatibility",
   },
   {
-    title: "FAQ",
-    body: "Missing backends, bare npx commands, blocked access, the HOME footgun, and what Warden can't do.",
-    href: "/docs/faq",
-  },
-  {
-    title: "Architecture",
-    body: "How the CLI, policy engine, sandbox backends, egress proxy, and audit logger fit togetherwith component diagrams.",
-    href: "/docs/architecture",
-  },
-  {
-    title: "Example policies",
-    body: "Copy-paste policies for filesystem, GitHub, Slack, PostgreSQL, Brave Search, and a comprehensive reference template.",
-    href: "/docs/examples",
-  },
-  {
     title: "Security review",
-    body: "Threat model, known limitations, credential exposure risks, and best practices before relying on any policy in production.",
+    body: "Understand what Warden enforces, what it cannot guarantee, and how to verify your own setup.",
     href: "/docs/security",
   },
-  {
-    title: "Roadmap",
-    body: "M0 through M8 milestoneswhat's built, what's shipped, and what's next for Warden.",
-    href: "/docs/roadmap",
-  },
-  {
-    title: "Contributing",
-    body: "Development setup, pull request guidance, and the three highest-impact contribution areas right now.",
-    href: "/docs/contributing",
-  },
-  {
-    title: "Testing guide",
-    body: "Unit tests, integration tests, escape tests, fixtures, and CI expectations for the project.",
-    href: "/docs/testing",
-  },
-  {
-    title: "Cross-platform testing",
-    body: "Test Warden on Linux, macOS, and Windowsbuild binaries, run MCP servers, verify security boundaries.",
-    href: "/docs/testing-platforms",
-  },
 ];
+
+function Sidebar({ mobile = false }: { mobile?: boolean }) {
+  return mobile ? (
+    <details className="rounded-lg border border-ink-800 bg-ink-900/40 p-4 lg:hidden">
+      <summary className="cursor-pointer list-none font-sans text-sm font-semibold text-paper">
+        Browse documentation
+      </summary>
+      <div className="mt-5">
+        <DocsSidebar />
+      </div>
+    </details>
+  ) : (
+    <DocsSidebar />
+  );
+}
 
 export default function Docs() {
   return (
@@ -123,55 +101,52 @@ export default function Docs() {
       />
       <Nav />
       <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        {/* Breadcrumbicons.devigner.cc style */}
-        <nav className="mb-6 text-[0.875rem] text-muted" aria-label="Breadcrumb">
-          <span className="hover:text-paper transition-colors">
-            <a href="/">Warden</a>
-          </span>
+        <nav className="mb-6 font-sans text-[0.875rem] text-muted" aria-label="Breadcrumb">
+          <a href="/" className="transition-colors hover:text-paper">Warden</a>
           <span className="mx-1.5 text-ink-600">/</span>
           <span className="text-paper">Docs</span>
         </nav>
 
-        {/* Sidebar + Content layout */}
+        <div className="mb-8 lg:hidden">
+          <Sidebar mobile />
+        </div>
+
         <div className="flex gap-12">
-          {/* Sidebar */}
           <aside className="hidden w-56 shrink-0 lg:block">
             <div className="sticky top-24">
-              <DocsSidebar />
+              <Sidebar />
             </div>
           </aside>
 
-          {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
+            <h1 className="font-sans text-[2.75rem] font-semibold leading-[1.08] tracking-[-0.03em] text-paper">
               Warden documentation
             </h1>
-            <p className="mt-5 max-w-[34rem] font-hero text-[1.0625rem] leading-[1.65] text-muted">
-              Install Warden, run a local tool through a policy, then explore
-              the controls and platform limitations. Start with Install and Quickstart.
+            <p className="mt-5 max-w-[42rem] font-sans text-[1.0625rem] leading-[1.7] text-muted">
+              Run local tools with only the files, network destinations, environment
+              variables, and resources they need. Start with the quickstart or protect
+              an AI coding agent with a sanitized workspace.
             </p>
 
-            <div className="mt-14 grid gap-px overflow-hidden rounded-sm border border-ink-800 bg-ink-800 md:grid-cols-2">
-              {CARDS.map((c) => (
+            <div className="mt-12 grid gap-4 md:grid-cols-2">
+              {CARDS.map((card) => (
                 <a
-                  key={c.title}
-                  href={c.href}
-                  className="group bg-ink-950 p-7 transition-colors hover:bg-ink-900"
+                  key={card.title}
+                  href={card.href}
+                  className="group rounded-lg border border-ink-800 bg-ink-900/40 p-6 transition-colors hover:border-blueprint/50 hover:bg-ink-900"
                 >
-                  <h2 className="font-hero text-[1.125rem] font-bold text-paper">
-                    {c.title}
-                    <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5">
+                  <h2 className="font-sans text-[1.125rem] font-semibold text-paper">
+                    {card.title}
+                    <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5" aria-hidden="true">
                       →
                     </span>
                   </h2>
-                  <p className="mt-2 font-hero text-[0.9375rem] leading-[1.6] text-muted">{c.body}</p>
+                  <p className="mt-2 font-sans text-[0.9375rem] leading-[1.65] text-muted">{card.body}</p>
                 </a>
               ))}
             </div>
           </article>
         </div>
-
-
       </div>
       <Footer />
     </main>

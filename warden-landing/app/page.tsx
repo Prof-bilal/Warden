@@ -1,18 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_URL } from "@/lib/seo";
-import { getAllArticles } from "@/lib/blog";
 import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
 import BoundaryDemo from "@/components/BoundaryDemo";
-import HowItWorks from "@/components/HowItWorks";
-import Backends from "@/components/Backends";
-import Proof from "@/components/Proof";
-import Demo from "@/components/Demo";
-import HowToUse from "@/components/HowToUse";
-import Capabilities from "@/components/Capabilities";
-import Windows from "@/components/Windows";
-import Compatibility from "@/components/Compatibility";
+import AgentWorkspace from "@/components/AgentWorkspace";
 import Cta from "@/components/Cta";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
@@ -48,10 +40,6 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  // Latest articles surfaced on the homepage so every post is within
-  // one internal link of the site's strongest page.
-  const latestArticles = getAllArticles().slice(0, 3);
-
   const softwareSchema = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -102,58 +90,64 @@ export default function Home() {
       />
       <Nav />
       <Hero />
-      <section className="border-y border-ink-700 bg-ink-900/60">
-        <div className="mx-auto grid max-w-content gap-8 px-6 py-12 md:grid-cols-[1fr_auto] md:items-center">
-          <div><p className="text-xs uppercase tracking-widest text-blueprint">Local tool setup</p><h2 className="mt-3 text-2xl font-semibold">Choose your client. Review your tool’s access.</h2><p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">Review candidate policies and reversible MCP setup for Claude, Cursor, Codex, VS Code, Gemini, and other hosts. Use the CLI directly for other local processes.</p></div>
-          <div className="flex flex-wrap gap-3"><Link href="/setup" className="rounded-lg bg-blueprint px-5 py-3 text-sm font-semibold text-ink-950">Start setup →</Link><Link href="/policies" className="rounded-lg border border-ink-600 px-5 py-3 text-sm text-paper">Browse profiles</Link></div>
+      <section className="border-y border-ink-800 bg-ink-900/30">
+        <div className="mx-auto max-w-content px-6 py-20 md:py-24">
+          <div className="max-w-2xl">
+            <p className="font-sans text-xs font-semibold uppercase tracking-[0.14em] text-blueprint">The problem</p>
+            <h2 className="mt-4 font-sans text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-paper md:text-[2.5rem]">
+              AI tools run with your permissions.
+            </h2>
+            <p className="mt-5 font-sans text-base leading-[1.75] text-muted">
+              A local agent or MCP server can inherit access to files, environment values, and network destinations available to the user who started it. Warden turns that implicit access into explicit policy.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {[
+              ["Files", "Keep project access separate from credentials and unrelated folders."],
+              ["Secrets", "Pass only the environment names a tool actually needs."],
+              ["Network", "Allow specific APIs and block undeclared destinations."],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-lg border border-ink-700 bg-ink-950/60 p-5">
+                <h3 className="font-sans text-base font-semibold text-paper">{title}</h3>
+                <p className="mt-2 font-sans text-sm leading-[1.65] text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
       <BoundaryDemo />
-      <HowItWorks />
-      <Backends />
-      <Proof />
-      <Demo />
-      <HowToUse />
-      <Capabilities />
-      <Windows />
-      <Compatibility />
-      {latestArticles.length > 0 && (
-        <section className="border-t border-ink-800">
-          <div className="mx-auto max-w-content px-6 py-20">
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <h2 className="font-hero text-[1.75rem] font-bold leading-[1.2] tracking-[-0.02em] text-paper">
-                Latest from the blog
-              </h2>
-              <Link
-                href="/blog"
-                className="font-hero text-[0.9375rem] text-muted transition-colors hover:text-paper"
-              >
-                View all articles →
-              </Link>
-            </div>
-            <ul className="mt-10 grid gap-4 md:grid-cols-3">
-              {latestArticles.map((article) => (
-                <li key={article.slug}>
-                  <Link
-                    href={`/blog/${article.slug}`}
-                    className="group flex h-full flex-col rounded-2xl border border-ink-700 bg-ink-900 p-6 transition-colors hover:border-blueprint/60"
-                  >
-                    <h3 className="font-hero text-[1.0625rem] font-bold leading-snug text-paper">
-                      {article.title}
-                    </h3>
-                    <p className="mt-2 flex-1 font-hero text-[0.875rem] leading-[1.6] text-muted">
-                      {article.description}
-                    </p>
-                    <span className="mt-4 font-hero text-[0.8125rem] text-blueprint transition-colors group-hover:text-paper">
-                      Read article →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+      <AgentWorkspace />
+      <section className="border-t border-ink-800">
+        <div className="mx-auto grid max-w-content gap-10 px-6 py-20 md:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:items-start lg:gap-16">
+          <div>
+            <p className="font-sans text-xs font-semibold uppercase tracking-[0.14em] text-blueprint">One policy</p>
+            <h2 className="mt-4 font-sans text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-paper">Define what the tool needs.</h2>
+            <p className="mt-4 font-sans text-base leading-[1.75] text-muted">Everything not listed stays outside the sandbox. Keep the first policy small, run it, then expand only when the audit shows a real need.</p>
+            <Link href="/docs/schema" className="mt-6 inline-flex font-sans text-sm font-semibold text-blueprint hover:text-paper">Explore the policy reference →</Link>
           </div>
-        </section>
-      )}
+          <pre className="overflow-x-auto rounded-xl border border-ink-700 bg-ink-950 p-5 font-mono text-sm leading-[1.8] text-paper/85"><code>{`filesystem:\n  read:\n    - ./project\n\nnetwork:\n  allow:\n    - api.github.com\n\nenv:\n  allow:\n    - GITHUB_TOKEN`}</code></pre>
+        </div>
+      </section>
+      <section className="border-t border-ink-800 bg-ink-900/30">
+        <div className="mx-auto max-w-content px-6 py-20 md:py-24">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="font-sans text-xs font-semibold uppercase tracking-[0.14em] text-blueprint">Proof, not promises</p>
+              <h2 className="mt-4 font-sans text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-paper md:text-[2.5rem]">See how Warden is verified.</h2>
+              <p className="mt-4 font-sans text-base leading-[1.75] text-muted">The project publishes compatibility fixtures, sandbox proof harnesses, and platform-specific limitations. Verification maturity differs by operating system.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:w-[34rem]">
+              {[["18", "MCP fixtures"], ["14", "pass"], ["4", "backend paths"]].map(([value, label]) => (
+                <div key={label} className="rounded-lg border border-ink-700 bg-ink-950 p-4 text-center">
+                  <p className="font-sans text-2xl font-semibold text-blueprint">{value}</p>
+                  <p className="mt-1 font-sans text-xs uppercase tracking-[0.1em] text-muted">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Link href="/docs/proof" className="mt-7 inline-flex font-sans text-sm font-semibold text-blueprint hover:text-paper">Read the verification notes →</Link>
+        </div>
+      </section>
       <Cta />
       <Footer />
     </main>

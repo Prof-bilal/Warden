@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-type SidebarItem = { slug: string; label: string; external?: boolean };
+type SidebarItem = { slug: string; label: string };
 
 type Section = {
   title: string;
@@ -14,75 +14,58 @@ type Section = {
 
 const sections: Section[] = [
   {
-    title: "Guide",
+    title: "Start here",
     items: [
-      { slug: "install", label: "Installation" },
+      { slug: "index", label: "Introduction" },
+      { slug: "install", label: "Install Warden" },
       { slug: "quickstart", label: "Quickstart" },
-      { slug: "ecosystem-setup", label: "Connect a server (warden add)" },
-      { slug: "mcp-gateway", label: "Agent connections & HTTP" },
-      { slug: "creator-program", label: "Creator evidence & badges" },
-      { slug: "ecosystem-maintenance", label: "Upgrades & local reports" },
-      { slug: "write-policy", label: "Write a Policy" },
-      { slug: "schema", label: "Policy schema" },
+      { slug: "how-to-use", label: "How Warden works" },
+    ],
+  },
+  {
+    title: "Protect a tool",
+    items: [
+      { slug: "policy-filesystem", label: "Files" },
+      { slug: "write-policy", label: "Network and environment" },
+      { slug: "agent-workspace", label: "AI agent workspace" },
+      { slug: "client-proxy", label: "MCP servers" },
       { slug: "examples", label: "Example policies" },
-      { slug: "compatibility", label: "Compatibility" },
-      { slug: "faq", label: "FAQ" },
     ],
   },
   {
-    title: "Server Guides",
-    collapsible: true,
+    title: "Use Warden",
     items: [
-      { slug: "policy-github", label: "GitHub" },
-      { slug: "policy-slack", label: "Slack" },
-      { slug: "policy-filesystem", label: "Filesystem" },
-      { slug: "policy-postgres", label: "PostgreSQL" },
-      { slug: "policy-sqlite", label: "SQLite" },
-      { slug: "policy-brave", label: "Brave Search" },
-      { slug: "policy-gdrive", label: "Google Drive" },
-      { slug: "policy-notion", label: "Notion" },
-    ],
-  },
-  {
-    title: "Deep Dives",
-    items: [
-      { slug: "architecture", label: "Architecture" },
-      { slug: "security", label: "Security review" },
+      { slug: "ecosystem-setup", label: "Connect a client" },
+      { slug: "mcp-gateway", label: "Gateway and HTTP" },
+      { slug: "approve", label: "Review and approve" },
+      { slug: "how-to-use", label: "Review logs" },
       { slug: "cli", label: "CLI reference" },
-      { slug: "roadmap", label: "Roadmap" },
+      { slug: "faq", label: "Troubleshooting" },
+    ],
+  },
+  {
+    title: "Platforms",
+    items: [
+      { slug: "install", label: "Platform requirements" },
+      { slug: "testing-platforms", label: "Platform verification" },
+      { slug: "security", label: "Limitations" },
     ],
   },
   {
     title: "Reference",
     items: [
-      { slug: "features", label: "Features (in depth)", external: true },
+      { slug: "schema", label: "Policy schema" },
+      { slug: "compatibility", label: "Compatibility" },
+      { slug: "proof", label: "Test evidence" },
+      { slug: "architecture", label: "Architecture" },
     ],
   },
   {
-    title: "Contributing",
+    title: "Project",
+    collapsible: true,
     items: [
       { slug: "contributing", label: "Contributing" },
       { slug: "testing", label: "Testing guide" },
-      { slug: "testing-platforms", label: "Cross-platform testing" },
-    ],
-  },
-  {
-    title: "More",
-    collapsible: true,
-    items: [
-      { slug: "about", label: "About Warden" },
-      { slug: "how-to-use", label: "How to use Warden" },
-      { slug: "approve", label: "Interactive Approval Mode" },
-      { slug: "gateway", label: "Gateway Integration" },
-      { slug: "client-proxy", label: "Warden Client Proxy" },
-      { slug: "container-k8s", label: "Container & Kubernetes Mode" },
-      { slug: "proof", label: "Proof & Test Results" },
-      { slug: "deploy", label: "Deploying the docs to GitHub Pages" },
-      { slug: "prd", label: "Product Requirements Document" },
-      { slug: "mvp", label: "Minimum Viable Product" },
-      { slug: "beta", label: "External Beta Program (M8)" },
-      { slug: "design", label: "Code Review Guide" },
-      { slug: "codestyle", label: "Code Style Guide" },
       { slug: "license", label: "License" },
     ],
   },
@@ -90,13 +73,12 @@ const sections: Section[] = [
 
 export default function DocsSidebar() {
   const pathname = usePathname();
-  const serverGuidesExpanded = sections.find((s) => s.collapsible);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    "Server Guides": true,
+    Project: false,
   });
 
   const toggle = (title: string) => {
-    setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
+    setExpanded((previous) => ({ ...previous, [title]: !previous[title] }));
   };
 
   return (
@@ -108,7 +90,8 @@ export default function DocsSidebar() {
             {section.collapsible ? (
               <button
                 onClick={() => toggle(section.title)}
-                className="mb-2 flex w-full items-center justify-between px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted hover:text-paper transition-colors"
+                className="mb-2 flex w-full items-center justify-between px-3 font-sans text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors hover:text-paper"
+                aria-expanded={isOpen}
               >
                 {section.title}
                 <svg
@@ -117,25 +100,26 @@ export default function DocsSidebar() {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                   strokeWidth={2}
+                  aria-hidden="true"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
             ) : (
-              <h4 className="mb-2 px-3 font-hero text-[0.75rem] font-bold uppercase tracking-[0.08em] text-muted">
+              <h4 className="mb-2 px-3 font-sans text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
                 {section.title}
               </h4>
             )}
             {(!section.collapsible || isOpen) && (
               <ul className="space-y-0.5">
                 {section.items.map((item) => {
-                  const href = item.external ? "/features" : `/docs/${item.slug}`;
+                  const href = `/docs/${item.slug}`;
                   const isActive = pathname === href;
                   return (
                     <li key={item.slug}>
                       <Link
                         href={href}
-                        className={`block rounded-md px-3 py-1.5 font-hero text-[0.875rem] transition-colors ${
+                        className={`block rounded-md px-3 py-1.5 font-sans text-[0.875rem] transition-colors ${
                           isActive
                             ? "bg-blueprint/10 font-medium text-blueprint"
                             : "text-muted hover:bg-ink-800 hover:text-paper"

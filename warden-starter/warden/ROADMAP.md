@@ -3,7 +3,7 @@
 September 30, 2026 development checkpoint: ecosystem batches 4–6 now have a
 bounded standard MCP gateway, creator signing/verification, extended adapters,
 website tools, CI regression, permission review and explicit local pilot reports.
-See `BATCH_4_6_STATUS.md` in the repository root for scope and open release gates.
+See `docs/archive/batch-4-6-status.md` for scope and open release gates.
 Full 2026 protocol/OAuth interoperability, native platform coverage, maintainer
 identity federation, automatic endpoint monitoring, host bundles and a live
 pilot remain release work. No deployment or public verification service is implied.

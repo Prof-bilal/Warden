@@ -10,7 +10,7 @@
 #   5. Unparseable client input gets a parse error (-32700)
 #   6. Every decision lands in the audit log
 #
-# Usage: bash test-mcp-proxy.sh [path-to-warden-binary]
+# Usage: bash warden-starter/warden/scripts/test-mcp-proxy.sh [path-to-warden-binary]
 set -u
 
 WARDEN="${1:-}"

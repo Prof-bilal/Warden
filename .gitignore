@@ -81,10 +81,18 @@ warden-starter/warden/plugin.zip
 
 # Paid product docs (local only, not pushed to GitHub)
 docs/
+# Public website guide for the agent workspace feature.
+!warden-landing/
+!warden-landing/content/
+!warden-landing/content/docs/
+!warden-landing/content/docs/agent-workspace.md
 # Public guide for the development agent-workspace command.
 !warden-starter/warden/docs/
-warden-starter/warden/docs/*
-!warden-starter/warden/docs/agent-workspace.md
+# The Warden source docs are public project documentation. Keep the directory
+# visible to Git so reorganized guides are moved, reviewed, and published with
+# the source instead of disappearing behind an ignore rule.
+!warden-starter/warden/docs/evidence/
+!warden-starter/warden/docs/evidence/**
 
 # ContextGit worktrees and repository
 .contextgit/
