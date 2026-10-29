@@ -1,12 +1,13 @@
 # warden-sandbox-cli
 
-npm wrapper for the [Warden](https://warden-six-rouge.vercel.app/) sandbox runtime.
+npm wrapper for the [Warden](https://warden.blog/) sandbox runtime.
 
-Warden runs your MCP servers with explicit filesystem, network and environment grants.
+Warden runs AI agents, MCP servers, and local tools with explicit filesystem,
+network, and environment grants.
 
 ## 0.2.0 preview
 
-This checkout prepares `0.2.0-beta.3`. It is published by the tagged release workflow.
+This checkout prepares `0.2.0-beta.4`. It is published by the tagged release workflow.
 After the preview has been published, install it explicitly:
 
 ```bash
@@ -109,7 +110,7 @@ Preview packages use their exact version. Stable packages can use a newer cached
 stable binary, including one installed by `warden update`, but never select a
 cached preview. For an exact package-version pin or rollback, set
 `WARDEN_PIN_VERSION=1`. `warden update` follows stable by default; an explicit
-preview update requires `--version 0.2.0-beta.3` after that release exists.
+preview update requires `--version 0.2.0-beta.4` after that release exists.
 
 ### Supported platforms
 
