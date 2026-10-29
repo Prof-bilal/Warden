@@ -3,7 +3,7 @@
 Date: September 30, 2026. Website and CLI developed together. This checkpoint
 starts all three batches; it does **not** mark their research-plan release gates complete.
 
-Release follow-up: [0.2.0-beta.1 preparation](RELEASE_PREVIEW_STATUS.md) records
+Release follow-up: [0.2.0-beta.1 preparation](../operations/release-preview-status.md) records
 packed npm installation and actual Codex Linux app-server checks. Other host
 workflows and candidate pack gates still need independent evidence.
 

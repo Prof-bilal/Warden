@@ -153,7 +153,7 @@ Once local tests pass:
 
 ## References
 
-- [Linux Sandbox Implementation](../../internal/sandbox/linux/)
+- [Linux Sandbox Implementation](https://github.com/Prof-bilal/Warden/tree/main/warden-starter/warden/internal/sandbox/linux)
 - [CI Workflow](https://github.com/Prof-bilal/Warden/blob/main/.github/workflows/ci.yml)
 - [Bubblewrap Documentation](https://github.com/containers/bubblewrap)
 - [Linux User Namespaces](https://man7.org/linux/man-pages/man7/user_namespaces.7.html)

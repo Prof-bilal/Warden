@@ -33,8 +33,8 @@ nav:
     - Linux local testing: platforms/linux-local-setup.md
     - Windows testing: platforms/windows-testing.md
   - Evidence and operations:
-    - End-to-end proof runbook: evidence/e2e-proof-test.md
-    - End-to-end proof results: evidence/e2e-proof-results.md
+    - End-to-end proof runbook: verification/e2e-proof-test.md
+    - End-to-end proof results: verification/e2e-proof-results.md
     - Release preview status: operations/release-preview-status.md
   - Reference:
     - Policy schema: schema.md

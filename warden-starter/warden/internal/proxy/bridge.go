@@ -45,7 +45,7 @@ func RunBridge(socketPath, listenAddr string, command []string) (int, error) {
 	if len(command) == 0 {
 		return 0, fmt.Errorf("proxy bridge: no target command")
 	}
-	l, err := net.Listen("tcp4", listenAddr)
+	l, err := listenBridge("tcp4", listenAddr)
 	if err != nil {
 		return 0, fmt.Errorf("proxy bridge: listen on %s: %w", listenAddr, err)
 	}

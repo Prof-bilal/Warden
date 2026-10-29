@@ -91,8 +91,6 @@ docs/
 # The Warden source docs are public project documentation. Keep the directory
 # visible to Git so reorganized guides are moved, reviewed, and published with
 # the source instead of disappearing behind an ignore rule.
-!warden-starter/warden/docs/evidence/
-!warden-starter/warden/docs/evidence/**
 
 # ContextGit worktrees and repository
 .contextgit/

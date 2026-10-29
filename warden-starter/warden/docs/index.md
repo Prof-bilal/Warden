@@ -85,5 +85,5 @@ whether your server works before installing:
 > Distribution is live: [npm](https://www.npmjs.com/package/warden-sandbox-cli)
 > (`warden-sandbox-cli`) and [GitHub Releases](https://github.com/Prof-bilal/Warden/releases)
 > binaries; Homebrew tap is still pending. You can also
-> [build from source](install.md#option-c-build-from-source). See the [Roadmap](roadmap.md)
+> [build from source](install.md). See the [Roadmap](roadmap.md)
 > and [About](about.md) pages for details.

@@ -66,7 +66,7 @@ EOF
 **Why:** the policy is the entire security contract. Whatever is not granted
 here does not exist for the server: unlisted files are invisible, unlisted
 hosts are unreachable, unlisted env vars are stripped. Don't guess what the
-server needs[trace it first](#5-dont-guess-trace-instead) or copy a fixture from
+server needs, [trace it first](#5-dont-guess-trace-instead) or copy a fixture from
 the [compatibility matrix](compatibility.md).
 
 **What just happened:** nothing yetbut every path, host, and variable in
@@ -87,7 +87,7 @@ namespaces on Linux, Seatbelt on macOS, AppContainer on Windows, Docker as a
 fallbackwith the policy grants and nothing more. If the sandbox cannot be
 initialized, Warden exits with an error instead of running unsandboxed.
 
-## 5. Don't guesstrace instead
+## 5. Don't guess — trace instead
 
 ```bash
 warden trace -- /usr/bin/node ./server/dist/index.js

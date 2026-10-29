@@ -3,7 +3,7 @@
 September 30, 2026. Website and CLI implemented together. This checkpoint delivers
 working features; it does not certify every research-plan release gate or every AI agent.
 
-Release follow-up: [0.2.0-beta.1 preparation](RELEASE_PREVIEW_STATUS.md) records
+Release follow-up: [0.2.0-beta.1 preparation](../operations/release-preview-status.md) records
 verified npm packaging/downloads, version negotiation and actual Codex Linux
 app-server workflows. The platform and GUI limits below still apply.
 
