@@ -4,8 +4,10 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"net"
 	"syscall"
+	"time"
 )
 
 // listenBridge allows the fixed loopback bridge to be rebound immediately
@@ -23,5 +25,20 @@ func listenBridge(network, address string) (net.Listener, error) {
 		}
 		return socketErr
 	}
-	return config.Listen(context.Background(), network, address)
+	var lastErr error
+	for attempt := 0; attempt < 40; attempt++ {
+		listener, err := config.Listen(context.Background(), network, address)
+		if err == nil {
+			return listener, nil
+		}
+		lastErr = err
+		// A terminated Seatbelt child can take a short moment to release the
+		// fixed bridge port. Retry only the transient bind errors; all other
+		// failures remain fail-closed and return immediately.
+		if !errors.Is(err, syscall.EADDRINUSE) && !errors.Is(err, syscall.EPERM) {
+			break
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	return nil, lastErr
 }
