@@ -28,7 +28,6 @@ defaults:
 
 jobs:
   npm-wrapper:
-    if: ${{ inputs.skip_macos != true || matrix.os != 'macos-14' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -318,7 +317,6 @@ jobs:
       - run: go test -count=1 ./...
 
   cross-build:
-    if: ${{ inputs.skip_macos != true || matrix.goos != 'darwin' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
