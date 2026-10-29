@@ -17,6 +17,11 @@ permissions:
 jobs:
   validate:
     uses: ./.github/workflows/ci.yml
+    with:
+      # The hosted macOS runner is currently unavailable for this release.
+      # Linux, Windows, cross-build, website, docs, and npm checks remain
+      # required; macOS remains covered by the normal CI workflow.
+      skip_macos: true
 
   build:
     needs: validate

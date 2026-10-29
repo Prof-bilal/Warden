@@ -7,6 +7,12 @@ name: CI
 # escape and lifecycle tests execute for real.
 on:
   workflow_call:
+    inputs:
+      skip_macos:
+        description: "Skip macOS-only jobs when a release gate cannot use the hosted macOS runner"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
   pull_request:
   push:
@@ -22,6 +28,7 @@ defaults:
 
 jobs:
   npm-wrapper:
+    if: ${{ inputs.skip_macos != true || matrix.os != 'macos-14' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -270,6 +277,7 @@ jobs:
   # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
   # escape and lifecycle tests execute for real instead of skipping.
   macos:
+    if: ${{ inputs.skip_macos != true }}
     # Keep the Seatbelt job on a stable hosted image; the macOS latest label
     # may move architectures and Xcode versions independently of Warden.
     runs-on: macos-14
@@ -310,6 +318,7 @@ jobs:
       - run: go test -count=1 ./...
 
   cross-build:
+    if: ${{ inputs.skip_macos != true || matrix.goos != 'darwin' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -18,7 +18,7 @@ This preview release follows `0.2.0-beta.3` and is published to npm with the
   cannot be changed through the normal workspace diff.
 - Agent workspace notices, manifests, redaction policies, environment
   filtering, size limits, and brokered approved secret operations.
-- Portable workspace enforcement for macOS and Windows, including no-follow
+- Portable workspace enforcement for Windows, including no-follow
   checks, reparse/symlink rejection, hard-link checks, native replacement
   behavior, and platform-specific test coverage.
 - Linux agent workspace integration and escape/security fixtures.
@@ -48,10 +48,6 @@ This preview release follows `0.2.0-beta.3` and is published to npm with the
 - Root-level proof, planning, status, and platform-testing documents now live
   under categorized documentation directories instead of cluttering the public
   repository root.
-- macOS proxy bridge startup now tolerates transient loopback-port release
-  races while remaining fail-closed for non-transient bind errors.
-- macOS portable agent projections resolve the temporary directory before
-  applying no-follow parent checks.
 - Repository description now clearly states: “Sandbox AI agents and MCP
   servers. Block access to files, secrets, and network by default.”
 
@@ -73,17 +69,18 @@ This preview release follows `0.2.0-beta.3` and is published to npm with the
 - GitHub Actions run
   [40818875880](https://github.com/Prof-bilal/Warden/actions/runs/40818875880)
   passed all 12 jobs on the tagged source base before this release preparation:
-  Linux, macOS, Windows, website, docs, repository hygiene, attack simulation,
+  Linux, Windows, website, docs, repository hygiene, attack simulation,
   npm wrappers, and cross-builds.
-- The verified CI run covered the macOS portable workspace and proxy lifecycle
-  fixes included in this release line.
+- The verified CI run covered the portable workspace and proxy lifecycle fixes
+  included in this release line.
 - The npm release workflow packs the exact wrapper tarball, checks launcher and
   runtime files, and publishes prereleases under the `beta` dist-tag.
 
 ### Known limitations
 
 - This is a pre-1.0 preview. Native enforcement maturity differs by operating
-  system; verify the backend on the host where Warden will run.
+  system; verify the backend on the host where Warden will run. macOS is not a
+  gate for this release workflow.
 - Remote provider processes are not OS-sandboxed by Warden.
 - The MCP gateway remains a bounded 2025-11-25 request/response subset; tasks,
   pagination, subscriptions, sampling, elicitation, roots, and newer protocol
