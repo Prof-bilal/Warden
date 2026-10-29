@@ -74,7 +74,14 @@ func Prepare(p policy.Policy) (s *Session, err error) {
 		return nil, fmt.Errorf("workspace must contain no symlink ancestors")
 	}
 
-	dir, err := os.MkdirTemp("", "warden-agent-")
+	// macOS exposes the system temporary directory through /var, which is a
+	// symlink to /private/var. Resolve that base before creating the projection
+	// so the no-follow parent check can validate every component consistently.
+	projectionBase := os.TempDir()
+	if resolvedTemp, resolveErr := filepath.EvalSymlinks(projectionBase); resolveErr == nil {
+		projectionBase = resolvedTemp
+	}
+	dir, err := os.MkdirTemp(projectionBase, "warden-agent-")
 	if err != nil {
 		return nil, err
 	}
