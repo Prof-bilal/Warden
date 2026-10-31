@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { Newsreader, JetBrains_Mono } from "next/font/google";
+import { Newsreader, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { SITE_URL } from "@/lib/seo";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
 import "./globals.css";
@@ -19,6 +19,13 @@ const heroMono = JetBrains_Mono({
   variable: "--font-hero-mono",
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+const wordmark = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-wordmark",
+  display: "swap",
+  weight: ["500", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -95,7 +102,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable} ${heroMono.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable} ${heroMono.variable} ${wordmark.variable}`}
     >
       <head>
         {/* Google Tag Manager */}

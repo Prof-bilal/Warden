@@ -162,6 +162,21 @@ jobs:
             echo "Positive control did not pass: sandboxed target startup was never proven on Linux"
             exit 1
           fi
+      - name: Hostile repository security proof (must actually block)
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/warden-security-proof" ./cmd/warden
+          WARDEN_SECURITY_REPEATS=3 \
+            WARDEN_SECURITY_PROOF_OUT="$RUNNER_TEMP/warden-security-proof-evidence" \
+            bash testdata/agent-security/run-linux.sh "$RUNNER_TEMP/warden-security-proof"
+      - name: Upload hostile repository proof evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hostile-repository-security-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/warden-security-proof-evidence
+          retention-days: 14
+          if-no-files-found: warn
       - name: Sanitized agent workspace boundary (must actually run)
         env:
           WARDEN_REQUIRE_AGENT_E2E: "1"

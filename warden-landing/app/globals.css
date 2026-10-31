@@ -47,8 +47,33 @@ body {
   font-kerning: normal;
 }
 
+/* ── Blueprint shell ─────────────────────────────────────────── */
+/* Faint dot-matrix field behind the whole page. */
+.bp-grid-bg {
+  background-image: radial-gradient(
+    circle,
+    rgba(232, 235, 239, 0.085) 1px,
+    transparent 1.3px
+  );
+  background-size: 20px 20px;
+  background-position: center -1px;
+}
+
+/* The framed schematic: vertical hairlines bound the content column. */
+.bp-shell {
+  position: relative;
+  margin-inline: auto;
+  max-width: 1280px;
+  border-inline: 1px solid #23262A;
+}
+
+/* Decorative connector line that draws itself in. */
+.bp-connector {
+  stroke-dasharray: 60;
+}
+
 ::selection {
-  background-color: rgba(110, 147, 232, 0.35);
+  background-color: rgba(94, 240, 138, 0.28);
   color: #ffffff;
 }
 

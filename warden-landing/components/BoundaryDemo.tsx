@@ -91,7 +91,7 @@ type LogLine = {
 };
 
 function ResourceIcon({ scene }: { scene: Scene }) {
-  const cls = "text-muted";
+  const cls = "text-white/45";
   if (scene.op.startsWith("fs")) return <FileCode2 size={16} className={cls} />;
   if (scene.op.startsWith("env")) return <KeyRound size={16} className={cls} />;
   return <Globe size={16} className={cls} />;
@@ -175,31 +175,31 @@ export default function BoundaryDemo() {
       : "#6E93E8";
 
   return (
-    <section className="border-t border-ink-800 bg-ink-950">
+    <section className="border-t border-[#101C15] bg-night-950">
       <div className="mx-auto max-w-content px-6 py-20 md:py-28">
         {/* header */}
         <div className="mx-auto max-w-[640px] text-center">
-          <p className="mb-4 font-hero text-[12px] font-bold uppercase tracking-[0.12em] text-grant">
+          <p className="mb-4 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-mint">
             Interactive illustration
           </p>
-          <h2 className="font-hero text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-paper md:text-[2.25rem]">
+          <h2 className="font-sans text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-white md:text-[2.5rem]">
             Same tool. Smaller boundary.
           </h2>
-          <p className="mt-4 font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
+          <p className="mt-4 font-sans text-base leading-[1.75] text-white/50">
             Local tools normally run with your user permissions. Choose a request and toggle
             Warden to explore an explicit allowlist. This illustration is not a live security test.
           </p>
         </div>
 
         {/* console */}
-        <div className="mx-auto mt-10 max-w-5xl overflow-hidden rounded-2xl border border-ink-700 bg-[#11161e] shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+        <div className="mx-auto mt-10 max-w-5xl overflow-hidden rounded-2xl border border-[#17251D] bg-[#080D0A] shadow-[0_24px_80px_rgba(0,0,0,0.4)]">
           {/* control bar */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 bg-ink-950/80 px-4 py-3.5 md:px-6">
+          <div className="flex flex-wrap items-center gap-3 border-b border-[#17251D] bg-night-950/80 px-4 py-3.5 md:px-6">
             <span
               className={
                 "inline-flex items-center gap-2 rounded-full border px-3 py-1 font-hero text-[11px] font-bold tracking-[0.08em] " +
                 (wardenOn
-                  ? "border-grant/40 bg-grant-subtle text-grant"
+                  ? "border-grant/40 bg-grant-subtle text-mint"
                   : "border-deny/40 bg-deny-subtle text-deny")
               }
             >
@@ -215,8 +215,8 @@ export default function BoundaryDemo() {
               className={
                 "inline-flex items-center gap-2.5 rounded-full border px-3 py-1.5 font-hero text-[12px] font-semibold transition-colors " +
                 (wardenOn
-                  ? "border-grant/50 bg-grant-subtle text-paper hover:border-grant"
-                  : "border-ink-600 bg-ink-900 text-muted hover:border-ink-500")
+                  ? "border-grant/50 bg-grant-subtle text-white hover:border-grant"
+                  : "border-[#1D2E24] bg-night-900 text-white/45 hover:border-[#24382C]")
               }
             >
               <span
@@ -239,14 +239,14 @@ export default function BoundaryDemo() {
               <button
                 onClick={() => setPlaying((p) => !p)}
                 aria-label={playing ? "Pause demo" : "Play demo"}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition-colors hover:bg-ink-800 hover:text-white"
               >
                 {playing ? <Pause size={15} /> : <Play size={15} />}
               </button>
               <button
                 onClick={replay}
                 aria-label="Replay demo"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition-colors hover:bg-ink-800 hover:text-white"
               >
                 <RotateCcw size={15} />
               </button>
@@ -266,7 +266,7 @@ export default function BoundaryDemo() {
           </div>
 
           {/* scenario picker */}
-          <div className="grid grid-cols-2 gap-2 border-b border-ink-700 bg-ink-950/30 px-4 py-3 md:grid-cols-5 md:px-6">
+          <div className="grid grid-cols-2 gap-2 border-b border-[#17251D] bg-night-950/30 px-4 py-3 md:grid-cols-5 md:px-6">
             {SCENES.map((s, i) => {
               const active = i === idx % SCENES.length;
               return (
@@ -276,16 +276,16 @@ export default function BoundaryDemo() {
                   className={
                     "flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 text-left font-hero text-[11px] transition-colors " +
                     (active
-                      ? "border-blueprint/60 bg-blueprint/10 text-paper"
-                      : "border-ink-700 bg-ink-950 text-muted hover:border-ink-500 hover:text-paper")
+                      ? "border-blueprint/60 bg-blueprint/10 text-white"
+                      : "border-[#17251D] bg-night-950 text-white/45 hover:border-[#24382C] hover:text-white")
                   }
                 >
                   <span
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: s.allow ? "#3FB27E" : "#E2604F" }}
                   />
-                  <span className="min-w-0 truncate text-muted">{s.op}</span>
-                  <span className="min-w-0 truncate text-paper">{s.short}</span>
+                  <span className="min-w-0 truncate text-white/45">{s.op}</span>
+                  <span className="min-w-0 truncate text-white">{s.short}</span>
                 </button>
               );
             })}
@@ -295,12 +295,12 @@ export default function BoundaryDemo() {
             {/* pipeline: agent → gate → resource */}
             <div className="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2 md:gap-4">
               {/* agent */}
-              <div className="min-w-0 rounded-xl border border-blueprint/40 bg-ink-950/70 p-4 text-center md:p-5">
+              <div className="min-w-0 rounded-xl border border-blueprint/40 bg-night-950/70 p-4 text-center md:p-5">
                 <Bot size={18} className="mx-auto text-blueprint" />
-                <p className="mt-2 truncate font-hero text-[13px] font-bold text-paper md:text-[14px]">
+                <p className="mt-2 truncate font-hero text-[13px] font-bold text-white md:text-[14px]">
                   AI agent
                 </p>
-                <p className="font-hero text-[11px] text-muted">mcp client</p>
+                <p className="font-hero text-[11px] text-white/45">mcp client</p>
                 <p className="mt-2 truncate font-hero text-[11px] text-blueprint md:text-[12px]">
                   {scene.op}
                 </p>
@@ -323,10 +323,10 @@ export default function BoundaryDemo() {
                       denied ? (
                         <X size={26} className="text-deny" />
                       ) : (
-                        <Check size={26} className="text-grant" />
+                        <Check size={26} className="text-mint" />
                       )
                     ) : (
-                      <ShieldCheck size={26} className="text-grant" />
+                      <ShieldCheck size={26} className="text-mint" />
                     )
                   ) : (
                     <ShieldX size={26} className="text-deny/70" />
@@ -335,7 +335,7 @@ export default function BoundaryDemo() {
                 <p
                   className={
                     "mt-2 font-hero text-[10px] font-bold tracking-[0.2em] " +
-                    (wardenOn ? "text-grant" : "text-deny/70")
+                    (wardenOn ? "text-mint" : "text-deny/70")
                   }
                 >
                   {wardenOn ? "WARDEN" : "NO GATE"}
@@ -345,24 +345,24 @@ export default function BoundaryDemo() {
               {/* resource */}
               <div
                 className={
-                  "min-w-0 rounded-xl border bg-ink-950/70 p-4 text-center md:p-5 " +
+                  "min-w-0 rounded-xl border bg-night-950/70 p-4 text-center md:p-5 " +
                   (scene.sensitive ? "border-deny/40" : "border-grant/40")
                 }
               >
                 <div className="mx-auto flex justify-center">
                   <ResourceIcon scene={scene} />
                 </div>
-                <p className="mt-2 truncate font-hero text-[13px] font-bold text-paper md:text-[14px]">
+                <p className="mt-2 truncate font-hero text-[13px] font-bold text-white md:text-[14px]">
                   {scene.resource}
                 </p>
                 <p
                   className={
-                    "font-hero text-[11px] " + (scene.sensitive ? "text-deny" : "text-grant")
+                    "font-hero text-[11px] " + (scene.sensitive ? "text-deny" : "text-mint")
                   }
                 >
                   {scene.sensitive ? "sensitive" : "granted"}
                 </p>
-                <p className="mt-2 truncate font-hero text-[11px] text-muted md:text-[12px]">
+                <p className="mt-2 truncate font-hero text-[11px] text-white/45 md:text-[12px]">
                   {scene.target}
                 </p>
               </div>
@@ -410,11 +410,11 @@ export default function BoundaryDemo() {
                     >
                       {denied ? "DENY" : exposed ? "LEAKED" : "ALLOW"}
                     </span>
-                    <code className="truncate font-hero text-[13px] text-paper md:text-[14px]">
+                    <code className="truncate font-hero text-[13px] text-white md:text-[14px]">
                       {scene.op} {scene.target}
                     </code>
                   </div>
-                  <p className="mt-1.5 font-hero text-[12px] text-muted">
+                  <p className="mt-1.5 font-hero text-[12px] text-white/45">
                     {denied && (
                       <>
                         blocked at boundary · {scene.rule} ·{" "}
@@ -429,14 +429,14 @@ export default function BoundaryDemo() {
                     )}
                     {!denied && !exposed && (
                       <>
-                        {scene.rule} · <span className="text-grant">1.2ms · logged</span>
+                        {scene.rule} · <span className="text-mint">1.2ms · logged</span>
                       </>
                     )}
                   </p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-ink-700 px-4 py-3">
-                  <p className="font-hero text-[12px] text-muted">
+                <div className="rounded-xl border border-dashed border-[#17251D] px-4 py-3">
+                  <p className="font-hero text-[12px] text-white/45">
                     <span className="motion-safe:animate-pulse">●</span> evaluating {scene.op} at
                     the boundary…
                   </p>
@@ -446,11 +446,11 @@ export default function BoundaryDemo() {
 
             {/* bottom split: audit log + counters */}
             <div className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr]">
-              <div className="min-h-[8rem] rounded-xl border border-ink-700 bg-ink-950/70 px-4 py-3.5 font-hero text-[12px] leading-[1.9]">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">
+              <div className="min-h-[8rem] rounded-xl border border-[#17251D] bg-night-950/70 px-4 py-3.5 font-hero text-[12px] leading-[1.9]">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
                   Audit log
                 </p>
-                {log.length === 0 && <p className="text-muted">agent connecting…</p>}
+                {log.length === 0 && <p className="text-white/45">agent connecting…</p>}
                 {log.map((line) => (
                   <p
                     key={line.id}
@@ -460,7 +460,7 @@ export default function BoundaryDemo() {
                         ? "text-deny"
                         : line.kind === "warn"
                           ? "text-progress"
-                          : "text-grant")
+                          : "text-mint")
                     }
                   >
                     {line.text}
@@ -469,16 +469,16 @@ export default function BoundaryDemo() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "allowed", value: stats.allow, cls: "text-grant" },
+                  { label: "allowed", value: stats.allow, cls: "text-mint" },
                   { label: "denied", value: stats.deny, cls: "text-deny" },
                   { label: "exposed", value: stats.exposed, cls: "text-progress" },
                 ].map((s) => (
                   <div
                     key={s.label}
-                    className="rounded-xl border border-ink-700 bg-ink-950/70 px-3 py-3 text-center"
+                    className="rounded-xl border border-[#17251D] bg-night-950/70 px-3 py-3 text-center"
                   >
                     <p className={"font-hero text-2xl font-bold " + s.cls}>{s.value}</p>
-                    <p className="font-hero text-[10px] uppercase tracking-[0.14em] text-muted">
+                    <p className="font-hero text-[10px] uppercase tracking-[0.14em] text-white/45">
                       {s.label}
                     </p>
                   </div>

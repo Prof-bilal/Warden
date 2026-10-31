@@ -57,6 +57,34 @@ exercised). The harness writes its artifacts to `evidence/<platform>/<stamp>/`:
 The fixture target only touches harness-created temp files and loopback
 addresses; it cannot reach your real files or the internet.
 
+## Hostile repository security proof
+
+The Linux proof at `testdata/agent-security/run-linux.sh` uses a committed
+hostile-repository fixture containing `AGENTS.md`. It first runs safe controls
+without Warden against temporary fake data, then repeats the attacks inside
+the bubblewrap backend three times by default.
+
+| Attack | Expected | Result | Evidence |
+|---|---|---|---|
+| Direct, traversal, absolute, symlink, and subprocess filesystem access | blocked | machine-checked | `results.jsonl` and `audit.jsonl` |
+| HTTP/HTTPS request to a non-allowlisted domain | blocked | machine-checked | proxy deny records |
+| Subprocess network request and direct proxy bypass | blocked | machine-checked | proxy records and destination hit counters |
+| Non-allowlisted DNS lookup | blocked | machine-checked | `results.jsonl` |
+
+Run it from the Go module directory:
+
+```bash
+go build -o /tmp/warden-security-proof ./cmd/warden && \
+WARDEN_SECURITY_REPEATS=3 bash testdata/agent-security/run-linux.sh /tmp/warden-security-proof
+```
+
+The artifact directory contains per-attack JSONL records with the attack,
+policy, expected and actual outcomes, backend, reason/error, and PASS/FAIL.
+The harness fails closed when the target does not start, a prerequisite is
+missing, a fake secret appears in retained evidence, or the controlled
+destination receives a request. This proof covers the Linux bubblewrap path;
+it does not claim equivalent enforcement by macOS, Windows, or Docker.
+
 ## Known gaps that the tests do not paper over
 
 The platform-specific audit blind spots and enforcement limits are documented

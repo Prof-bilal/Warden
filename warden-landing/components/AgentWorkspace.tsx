@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { Check, EyeOff, FileCheck2, ShieldCheck } from "lucide-react";
+import { EyeOff, FileCheck2, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import SectionMarker from "@/components/bp/SectionMarker";
+import CodePanel from "@/components/bp/CodePanel";
+import Reveal from "@/components/bp/Reveal";
 
 const POLICY = `agent:
   workspace: ./project
@@ -13,76 +17,105 @@ const POLICY = `agent:
 
 export default function AgentWorkspace() {
   return (
-    <section id="agent-workspace" className="border-t border-ink-800 bg-ink-900/30">
-      <div className="mx-auto max-w-content px-6 py-20 md:py-28">
-        <div className="grid items-start gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
-          <div>
-            <p className="mb-4 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-blueprint">
-              New · AI agent workspace
-            </p>
-            <h2 className="font-sans text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-paper md:text-[2.5rem]">
-              Let the agent edit code. Keep credentials out of sight.
-            </h2>
-            <p className="mt-5 max-w-[34rem] font-sans text-base leading-[1.75] text-muted">
-              Warden gives Claude, Codex, OpenCode, or another local coding tool a temporary
-              sanitized project. The agent can work on the code it needs without receiving the
-              values you declare as protected.
-            </p>
-            <div className="mt-7 flex flex-col gap-3">
-              <div className="flex gap-3">
-                <EyeOff size={18} className="mt-0.5 shrink-0 text-blueprint" aria-hidden="true" />
-                <p className="font-sans text-sm leading-[1.65] text-paper/85">
-                  <strong className="font-semibold text-paper">Hide selected values.</strong> Environment names and file fields become opaque placeholders.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <FileCheck2 size={18} className="mt-0.5 shrink-0 text-blueprint" aria-hidden="true" />
-                <p className="font-sans text-sm leading-[1.65] text-paper/85">
-                  <strong className="font-semibold text-paper">Review before applying.</strong> Warden shows sanitized changes and waits for your approval.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <ShieldCheck size={18} className="mt-0.5 shrink-0 text-blueprint" aria-hidden="true" />
-                <p className="font-sans text-sm leading-[1.65] text-paper/85">
-                  <strong className="font-semibold text-paper">Fail safely.</strong> Failed sessions, tampered placeholders, and rejected reviews leave the host unchanged.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/docs/agent-workspace"
-              className="mt-8 inline-flex items-center gap-2 font-sans text-sm font-semibold text-blueprint transition-colors hover:text-paper"
-            >
-              Read the agent workspace guide <span aria-hidden="true">→</span>
-            </Link>
+    <section id="agent-workspace" className="border-b border-hair">
+      <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="border-b border-hair p-6 sm:p-9 lg:border-b-0 lg:border-r">
+          <SectionMarker index="05" />
+          <h2 className="mt-4 font-mono text-[1.55rem] font-semibold leading-[1.18] tracking-[-0.01em] text-offwhite md:text-[1.95rem]">
+            Let the agent edit code. Keep credentials out of sight.
+          </h2>
+          <p className="mt-5 max-w-[34rem] font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
+            Warden gives Claude, Codex, OpenCode, or another local coding tool a
+            temporary sanitized project. The agent can work on the code it needs
+            without receiving the values you declare as protected.
+          </p>
+
+          <div className="mt-7 flex flex-col gap-4">
+            <Feature
+              icon={EyeOff}
+              title="Hide selected values."
+              body="Environment names and file fields become opaque placeholders."
+            />
+            <Feature
+              icon={FileCheck2}
+              title="Review before applying."
+              body="Warden shows sanitized changes and waits for your approval."
+            />
+            <Feature
+              icon={ShieldCheck}
+              title="Fail safely."
+              body="Failed sessions, tampered placeholders, and rejected reviews leave the host unchanged."
+            />
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-ink-700 bg-ink-950 shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
-            <div className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-              <span className="font-mono text-xs text-muted">agent-policy.yaml</span>
-              <span className="flex items-center gap-1.5 font-mono text-[0.65rem] uppercase tracking-[0.1em] text-blueprint">
-                <Check size={12} aria-hidden="true" /> review required
+          <Link
+            href="/docs/agent-workspace"
+            className="mt-8 inline-flex items-center gap-2 font-sans text-[12.5px] font-semibold text-acid transition-colors hover:text-acid-bright"
+          >
+            Read the agent workspace guide <span aria-hidden>→</span>
+          </Link>
+        </div>
+
+        <Reveal className="flex flex-col">
+          <CodePanel
+            label="Agent workspace"
+            filename="agent-policy.yaml"
+            code={POLICY}
+            className="border-b border-hair"
+            meta={
+              <span className="font-mono text-[9px] uppercase tracking-micro text-acid/80">
+                review required
               </span>
+            }
+          />
+
+          <div className="grid flex-1 gap-px bg-hair sm:grid-cols-2">
+            <div className="bg-cell p-4">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/30">
+                Agent sees
+              </p>
+              <p className="mt-2 font-mono text-[10.5px] leading-[1.8] text-acid/80">
+                DATABASE_URL=&lt;WARDEN_HIDDEN&gt;
+              </p>
+              <p className="font-mono text-[10.5px] leading-[1.8] text-acid/80">
+                OPENAI_API_KEY=&lt;WARDEN_HIDDEN&gt;
+              </p>
             </div>
-            <pre className="overflow-x-auto p-5 font-mono text-[0.76rem] leading-[1.8] text-paper/85"><code>{POLICY}</code></pre>
-            <div className="grid gap-3 border-t border-ink-800 bg-ink-900/70 p-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted">Agent sees</p>
-                <p className="mt-2 font-mono text-xs leading-[1.7] text-blueprint">DATABASE_URL=&lt;WARDEN_HIDDEN&gt;</p>
-                <p className="font-mono text-xs leading-[1.7] text-blueprint">OPENAI_API_KEY=&lt;WARDEN_HIDDEN&gt;</p>
-              </div>
-              <div className="rounded-lg border border-ink-700 bg-ink-950 p-4">
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-muted">Host changes</p>
-                <p className="mt-2 flex items-center gap-2 font-mono text-xs leading-[1.7] text-paper/85">
-                  <Check size={13} className="text-blueprint" aria-hidden="true" /> sanitized diff
-                </p>
-                <p className="flex items-center gap-2 font-mono text-xs leading-[1.7] text-paper/85">
-                  <Check size={13} className="text-blueprint" aria-hidden="true" /> human approval
-                </p>
-              </div>
+            <div className="bg-cell p-4">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/30">
+                Host changes
+              </p>
+              <p className="mt-2 font-mono text-[10.5px] leading-[1.8] text-offwhite/50">
+                sanitized diff
+              </p>
+              <p className="font-mono text-[10.5px] leading-[1.8] text-offwhite/50">
+                human approval
+              </p>
             </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
+  );
+}
+
+function Feature({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border border-hair bg-void">
+        <Icon size={12} className="text-acid" aria-hidden />
+      </span>
+      <p className="font-sans text-[12.5px] leading-[1.65] text-offwhite/45">
+        <strong className="font-semibold text-offwhite/80">{title}</strong> {body}
+      </p>
+    </div>
   );
 }

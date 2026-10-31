@@ -79,8 +79,8 @@ This preview release follows `0.2.0-beta.3` and is published to npm with the
 ### Known limitations
 
 - This is a pre-1.0 preview. Native enforcement maturity differs by operating
-  system; verify the backend on the host where Warden will run. The native
-  macOS runtime job is not a gate for this release workflow.
+  system; verify the backend on the host where Warden will run. The release
+  gate for this preview covers the Linux and Windows runtime jobs.
 - Remote provider processes are not OS-sandboxed by Warden.
 - The MCP gateway remains a bounded 2025-11-25 request/response subset; tasks,
   pagination, subscriptions, sampling, elicitation, roots, and newer protocol
