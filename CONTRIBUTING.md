@@ -2,7 +2,7 @@
 
 Thank you for helping make MCP servers safe to run. This guide covers everything you need: repo layout, environment setup, what to work on, and how we review.
 
-Warden is a **security tool with a fail-closed contract**: if a sandbox primitive is unavailable, Warden must refuse to runnever fall back to executing unsandboxed. Every contribution is reviewed against that contract.
+Warden is a **security tool with a fail-closed contract**: if a sandbox primitive is unavailable, Warden must refuse to run; it must never fall back to executing unsandboxed. Every contribution is reviewed against that contract.
 
 ## Ways to contribute
 
@@ -67,7 +67,7 @@ go build -o warden ./cmd/warden
 ./warden run --policy ../examples/policy.example.yaml -- echo hello
 ```
 
-Before changing shared code, verify it cross-buildsbackends are platform-gated, so your OS only compiles some of them:
+Before changing shared code, verify it cross-builds. Backends are platform-gated, so your OS only compiles some of them:
 
 ```bash
 GOOS=darwin  GOARCH=arm64 go build ./...
@@ -83,7 +83,7 @@ go test ./internal/policy/ -run TestNormalize -v     # one test
 ./testdata/proof/run-proof.sh                        # end-to-end proof harness (writes evidence/)
 ```
 
-The proof harness is the fastest way to check that sandbox semantics still hold end-to-end after a change. Its `evidence/` output is gitignoreddon't commit run artifacts.
+The proof harness is the fastest way to check that sandbox semantics still hold end-to-end after a change. Its `evidence/` output is gitignored; do not commit run artifacts.
 
 ## What to work on
 
@@ -114,17 +114,17 @@ These are non-negotiable in review:
 - [ ] Cross-builds pass (`GOOS=darwin`, `GOOS=windows`)
 - [ ] New behavior has tests
 - [ ] Docs updated if behavior or user-facing surface changed
-- [ ] One logical change per PReasier to review, easier to roll back
+- [ ] One logical change per PR; easier to review, easier to roll back
 
-Review promise: maintainers aim to respond to new PRs within a few days. Security-relevant changes get the deepest reviewexpect questions about the failure modes of every code path.
+Review promise: maintainers aim to respond to new PRs within a few days. Security-relevant changes get the deepest review; expect questions about the failure modes of every code path.
 
 ## Reporting security issues
 
-**Do not open a public issue for a vulnerability.** See [SECURITY.md](SECURITY.md) for private reportingespecially anything that looks like a sandbox escape or a fail-open path.
+**Do not open a public issue for a vulnerability.** See [SECURITY.md](SECURITY.md) for private reporting, especially anything that looks like a sandbox escape or a fail-open path.
 
 ## Community
 
-- [Discussions](https://github.com/Prof-bilal/Warden/discussions)questions, ideas, show-and-tell
-- [Issue tracker](https://github.com/Prof-bilal/Warden/issues)bugs and scoped work
+- [Discussions](https://github.com/Prof-bilal/Warden/discussions) — questions, ideas, show-and-tell
+- [Issue tracker](https://github.com/Prof-bilal/Warden/issues) — bugs and scoped work
 
 By participating, you agree to keep the collaboration respectful and on-topic.

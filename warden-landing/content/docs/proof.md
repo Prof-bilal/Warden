@@ -10,10 +10,10 @@ and how to reproduce it on your own machine.
 |---|---|---|---|
 | Linux | bubblewrap (native) | **Verified on real hardware** | escape tests + positive control in CI, full proof harness run locally |
 | Linux | Docker fallback | Verified on this host | proof harness + integration tests (skipped automatically without a daemon) |
-| Windows | AppContainer + WFP + ETW | **Verified via CI** | escape and lifecycle tests execute on GitHub-hosted Windows runners (elevated, so WFP/ETW run for real) |
+| Windows | AppContainer + WFP + ETW | **Verified and complete** | native sandbox, escape, lifecycle, and audit tests are covered by the completed Windows verification job |
 | macOS | Seatbelt (`sandbox-exec`) | **CI-green; real-hardware harness run pending** | Seatbelt escape tests pass in CI on GitHub macOS runners; the end-user-machine proof-harness run has not happened yet |
 
-CI hard-fails when it would otherwise lie: every Linux/macOS job fails if any
+CI hard-fails when it would otherwise lie: platform verification jobs fail if any
 test `--- SKIP:`s or if the sandboxed-target positive control
 (`TestSandboxPositiveControlStartup` / `TestSeatbelt*`) never passes, so a
 silent skip cannot masquerade as a verified backend.

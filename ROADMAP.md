@@ -3,7 +3,7 @@
 Rough milestones, roughly in order. Each one should leave you with something
 you could actually demo, not just an internal refactor.
 
-## M0Repo groundwork
+## M0 — Repository groundwork
 - [x] Folder structure, README, architecture doc (this scaffold)
 - [x] Pick and reserve the project name (check GitHub/npm/crates.io/Homebrew
       for collisions before publishing anything)
@@ -11,7 +11,7 @@ you could actually demo, not just an internal refactor.
 - [x] `CONTRIBUTING.md` + issue templates
 - [x] CI skeleton (lint + build, even before there's real logic to test)
 
-## M1Linux prototype (prove the core idea works)
+## M1 — Linux prototype (prove the core idea works)
 - [x] Policy struct + YAML parsing, with schema validation and clear error
       messages on malformed policies
 - [x] Shell out to `bwrap` with bind mounts derived from `filesystem.read`
@@ -26,7 +26,7 @@ you could actually demo, not just an internal refactor.
 
 **Known limitations (M1):** No network enforcement, no resource limits.
 
-## M2Network enforcement
+## M2 — Network enforcement
 - [x] Local egress proxy with hostname allowlist
 - [x] Network namespace setup that forces the sandboxed process through the
       proxy (no direct egress path)
@@ -35,7 +35,7 @@ you could actually demo, not just an internal refactor.
 - [x] Audit logger: structured log of every file/network attempt, allowed
       or blocked
 
-## M3Usability layer
+## M3 — Usability layer
 - [x] `warden trace`run unsandboxed but instrumented, log all access
       attempts
 - [x] `warden init`generate a starter policy.yaml from a trace log
@@ -43,13 +43,13 @@ you could actually demo, not just an internal refactor.
 - [x] Resource limits: memory and wall-clock timeout enforcement, process
       killed cleanly on breach
 
-## M4macOS support
+## M4 — macOS support
 - [x] `sandbox-exec`/Seatbelt backend
 - [x] Docker fallback backend for when native sandboxing isn't available
 - [x] Backend auto-detection (`warden run` picks the best available backend
       unless `--backend` is passed explicitly)
 
-## M5Windows support
+## M5 — Windows support
 - [x] AppContainer backend with restricted token and explicit filesystem
       capabilities derived from the policy
 - [x] Windows Filtering Platform (WFP) egress filtering and blocked DNS resolution
@@ -89,7 +89,7 @@ with a clear error rather than running unaudited.
 - Docs and landing page now describe Windows as Ready with the elevation
   caveat (WFP/ETW require admin); see `docs/security.md`.
 
-## M6Polish & distribution
+## M6 — Polish & distribution
 - [x] Package as a single static binary (Homebrew tap formula, npm wrapper
       for Node users, plus manual download links in GitHub Releases)
 - [x] Docs site with a policy schema reference and worked examples
@@ -101,7 +101,7 @@ with a clear error rather than running unaudited.
       known-limitations table, and best-practices section in
       [docs/security.md](warden-starter/warden/docs/security.md)
 
-## M7Stretch goals (post-1.0)
+## M7 — Stretch goals (post-1.0)
 - [x] Interactive approval modeprompt the user the first time a server
       requests an access not in the policy, rather than hard-failing
       (`warden run --approve`: network prompts apply live via the egress
@@ -111,7 +111,7 @@ with a clear error rather than running unaudited.
 - [x] Integration with MCP gateways (e.g. wrap servers registered in a
       gateway config automatically)
 
-## M8Real-world MCP server compatibility testing
+## M8 — Real-world MCP server compatibility testing
 - [x] Build a compatibility matrix: run Warden against the 15-20 most-used
       public MCP servers (filesystem, GitHub, Slack, Postgres/SQLite,
       Google Drive, a couple of the popular community ones) and record

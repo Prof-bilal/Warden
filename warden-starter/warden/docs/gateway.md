@@ -77,4 +77,4 @@ when the gateway spawns the server (i.e. inside `warden gateway run` semantics
 - Only `env` names enter the policy; values live in the gateway config and
   the runtime environment.
 - A missing policy, an unknown `--server`, or a remote `--server` is a
-  hard errorWarden never runs the server unsandboxed.
+  hard error. Warden never runs the server unsandboxed.

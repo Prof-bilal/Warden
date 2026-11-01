@@ -131,13 +131,16 @@ Native platform status and reproducible proof are documented separately:
 
 - **Linux:** bubblewrap namespaces and the native proof harness.
 - **macOS:** Seatbelt with platform-specific limitations and fallback paths.
-- **Windows:** AppContainer/WFP/Job Objects with native verification requirements.
+- **Windows:** AppContainer/WFP/Job Objects; native sandbox, escape, lifecycle,
+  and audit tests are verified in the Windows CI job. Verify required elevation
+  and host prerequisites before production use.
 - **Docker:** explicit fallback backend with a larger trust surface.
 
 See [test evidence](https://warden.blog/docs/proof), the
 [compatibility matrix](https://warden.blog/docs/compatibility), and the
-[security review](https://warden.blog/docs/security). A CI or compile result is
-not automatically proof of native enforcement on your machine.
+[security review](https://warden.blog/docs/security). Windows is verified in CI;
+that result does not remove the need to verify native enforcement and required
+privileges on the machine where you deploy Warden.
 
 ## Documentation
 
