@@ -1,30 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Download, Github, Menu, Star, X } from "lucide-react";
+import { ArrowRight, Download, Github, Menu, Star, X } from "lucide-react";
 import { formatCount } from "@/lib/stats";
+import WardenMark from "@/components/bp/WardenMark";
 
-const productLinks = [
-  { href: "/policies", label: "Policy packs" },
-  { href: "/integrations", label: "Connections" },
-  { href: "/testing", label: "Testing" },
-  { href: "/blog", label: "Blog" },
-  { href: "/guides", label: "Guides" },
-];
-
-const primaryLinks = [
-  { href: "/setup", label: "Setup" },
-  { href: "/compatibility", label: "Compatibility" },
+const navLinks = [
   { href: "/docs", label: "Docs" },
+  { href: "/protection", label: "Security" },
+  { href: "/guides", label: "Examples" },
+  { href: "/blog", label: "Blog" },
 ];
 
 type Stats = { stars: number | null; downloads: number | null };
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
-  const [productOpen, setProductOpen] = useState(false);
   const [stats, setStats] = useState<Stats>({ stars: null, downloads: null });
 
   useEffect(() => {
@@ -36,8 +28,12 @@ export default function Nav() {
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Stats | null) => {
         if (cancelled || !data) return;
-        const stars = typeof data.stars === "number" && data.stars >= 0 ? data.stars : null;
-        const downloads = typeof data.downloads === "number" && data.downloads >= 0 ? data.downloads : null;
+        const stars =
+          typeof data.stars === "number" && data.stars >= 0 ? data.stars : null;
+        const downloads =
+          typeof data.downloads === "number" && data.downloads >= 0
+            ? data.downloads
+            : null;
         if (stars !== null || downloads !== null) setStats({ stars, downloads });
       })
       .catch(() => {})
@@ -50,76 +46,45 @@ export default function Nav() {
     };
   }, []);
 
-  const logo = (
-    <Image src="/logo.png" alt="" width={28} height={28} className="rounded-full" priority />
-  );
-  const downloadsLabel = stats.downloads === null ? null : formatCount(stats.downloads);
   const starsLabel = stats.stars === null ? null : formatCount(stats.stars);
-
-  function closeMenu() {
-    setOpen(false);
-    setProductOpen(false);
-  }
+  const downloadsLabel =
+    stats.downloads === null ? null : formatCount(stats.downloads);
 
   return (
-    <header className="border-b border-ink-800 bg-ink-950/95">
-      <div className="mx-auto flex h-[72px] max-w-display items-center justify-between gap-6 px-5 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-hair bg-void/95 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-6 px-5 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Warden home">
-          {logo}
-          <span className="font-sans text-[1.05rem] font-semibold tracking-[-0.02em] text-paper">warden</span>
+          <WardenMark size={22} className="text-acid" />
+          <span className="font-mono text-[15px] font-semibold lowercase tracking-[-0.01em] text-offwhite">
+            warden
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary navigation">
-          {primaryLinks.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
+              className="font-mono text-[11px] uppercase tracking-[0.09em] text-offwhite/60 transition-colors hover:text-offwhite"
             >
               {link.label}
             </Link>
           ))}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setProductOpen((value) => !value)}
-              aria-expanded={productOpen}
-              aria-haspopup="menu"
-              className="flex items-center gap-1 font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
-            >
-              Product
-              <ChevronDown size={14} className={productOpen ? "rotate-180 transition-transform" : "transition-transform"} />
-            </button>
-            {productOpen && (
-              <div className="absolute left-1/2 top-[calc(100%+14px)] z-50 w-48 -translate-x-1/2 rounded-lg border border-ink-700 bg-ink-950 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.45)]" role="menu">
-                {productLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMenu}
-                    className="block rounded-md px-3 py-2 font-sans text-[0.875rem] text-muted transition-colors hover:bg-ink-800 hover:text-paper"
-                    role="menuitem"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="hidden h-4 w-px bg-hair sm:block" aria-hidden />
           <a
             href="https://www.npmjs.com/package/warden-sandbox-cli"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2.5 py-1.5 font-sans text-[0.75rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800 sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-full border border-hair px-3 py-1.5 font-mono text-[11px] text-offwhite/65 transition-colors hover:border-offwhite/25 hover:text-offwhite sm:inline-flex"
             aria-label="warden-sandbox-cli on npm"
           >
-            <span className="font-medium">npm</span>
+            <span className="lowercase">npm</span>
             {downloadsLabel !== null && (
-              <span className="flex items-center gap-1 text-[0.625rem] text-muted">
-                <Download size={10} />
+              <span className="flex items-center gap-1 border-l border-hair pl-1.5 text-offwhite/45">
+                <Download size={9} aria-hidden />
                 {downloadsLabel}
               </span>
             )}
@@ -128,28 +93,29 @@ export default function Nav() {
             href="https://github.com/Prof-bilal/Warden"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2.5 py-1.5 font-sans text-[0.75rem] text-paper transition-colors hover:border-blueprint/50 hover:bg-ink-800 sm:inline-flex"
+            className="hidden items-center gap-1.5 rounded-full border border-hair px-3 py-1.5 font-mono text-[11px] text-offwhite/65 transition-colors hover:border-offwhite/25 hover:text-offwhite sm:inline-flex"
             aria-label="Warden on GitHub"
           >
-            <Github size={13} className="text-muted" />
-            <span className="font-medium">GitHub</span>
+            <Github size={13} aria-hidden />
+            GitHub
             {starsLabel !== null && (
-              <span className="flex items-center gap-1 text-[0.625rem] text-muted">
-                <Star size={10} />
+              <span className="flex items-center gap-1 border-l border-hair pl-1.5 text-offwhite/45">
+                <Star size={9} aria-hidden />
                 {starsLabel}
               </span>
             )}
           </a>
           <Link
             href="/docs/install"
-            className="hidden rounded-md bg-blueprint px-3.5 py-2 font-sans text-[0.75rem] font-semibold text-ink-950 transition-colors hover:bg-blueprint/90 md:block"
+            className="hidden items-center gap-1.5 rounded-md bg-acid px-3.5 py-2 font-sans text-[12.5px] font-semibold text-void transition-colors hover:bg-acid-bright md:inline-flex"
           >
-            Install
+            Get started
+            <ArrowRight size={13} aria-hidden />
           </Link>
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
-            className="flex items-center justify-center rounded-md border border-ink-700 p-2 text-muted transition-colors hover:bg-ink-800 hover:text-paper lg:hidden"
+            className="flex items-center justify-center rounded-md border border-hair p-2 text-offwhite/65 transition-colors hover:bg-offwhite/5 hover:text-offwhite lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
           >
@@ -159,47 +125,59 @@ export default function Nav() {
       </div>
 
       {open && (
-        <nav className="border-t border-ink-800 px-5 py-4 lg:hidden" aria-label="Mobile navigation">
-          <div className="mx-auto flex max-w-display flex-col gap-1">
-            {primaryLinks.map((link) => (
+        <nav
+          className="border-t border-hair px-5 py-4 lg:hidden"
+          aria-label="Mobile navigation"
+        >
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-1">
+            {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={closeMenu}
-                className="rounded-md px-3 py-2.5 font-sans text-sm text-muted transition-colors hover:bg-ink-800 hover:text-paper"
+                onClick={() => setOpen(false)}
+                className="rounded-md px-3 py-2.5 font-mono text-[12px] uppercase tracking-[0.08em] text-offwhite/60 transition-colors hover:bg-offwhite/5 hover:text-offwhite"
               >
                 {link.label}
               </Link>
             ))}
-            <button
-              type="button"
-              onClick={() => setProductOpen((value) => !value)}
-              aria-expanded={productOpen}
-              className="flex items-center justify-between rounded-md px-3 py-2.5 text-left font-sans text-sm text-muted transition-colors hover:bg-ink-800 hover:text-paper"
-            >
-              Product
-              <ChevronDown size={15} className={productOpen ? "rotate-180 transition-transform" : "transition-transform"} />
-            </button>
-            {productOpen && (
-              <div className="ml-3 border-l border-ink-700 pl-3">
-                {productLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMenu}
-                    className="block rounded-md px-3 py-2 font-sans text-sm text-muted transition-colors hover:bg-ink-800 hover:text-paper"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+            <div className="mt-2 flex items-center gap-2 border-t border-hair pt-3">
+              <a
+                href="https://www.npmjs.com/package/warden-sandbox-cli"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-hair px-3 py-2 font-mono text-[11px] text-offwhite/60"
+              >
+                <span className="lowercase">npm</span>
+                {downloadsLabel !== null && (
+                  <span className="flex items-center gap-1 text-offwhite/45">
+                    <Download size={9} aria-hidden />
+                    {downloadsLabel}
+                  </span>
+                )}
+              </a>
+              <a
+                href="https://github.com/Prof-bilal/Warden"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-hair px-3 py-2 font-mono text-[11px] text-offwhite/60"
+              >
+                <Github size={12} aria-hidden />
+                <span>GitHub</span>
+                {starsLabel !== null && (
+                  <span className="flex items-center gap-1 text-offwhite/45">
+                    <Star size={9} aria-hidden />
+                    {starsLabel}
+                  </span>
+                )}
+              </a>
+            </div>
             <Link
               href="/docs/install"
-              onClick={closeMenu}
-              className="mt-2 rounded-md bg-blueprint px-3 py-2.5 text-center font-sans text-sm font-semibold text-ink-950"
+              onClick={() => setOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2 rounded-md bg-acid px-3 py-2.5 text-center font-sans text-sm font-semibold text-void"
             >
-              Install Warden
+              Get started
+              <ArrowRight size={14} aria-hidden />
             </Link>
           </div>
         </nav>

@@ -419,4 +419,108 @@ With MCP configured (see `.mcp.json`), the same board is available live:
 ### Latest messages
 - `update` team: Extended sanitized agent workspaces to macOS and Windows: portable projection/apply with no-follow/reparse/hardlink checks, native macOS Seatbelt read-only overlays + Unix broker, Windows AppContainer/WFP broker-port allowlist + deny-write ACL overlays, native Windows ReplaceFileW apply, portable tests, and CI steps for Linux mandatory E2E/macOS/Windows package tests. Verified Linux full suite (elevated), race tests, Darwin/Windows cross-builds and agentworkspace test compilation.
 - `update` team: Implemented Linux sandbox CA trust-store support in internal/sandbox/linux: detect common host CA bundle paths, mount one bundle read-only at common curl/OpenSSL/Node destinations, and add unit/integration coverage. Rebuilt /tmp/warden-gaploom-e2e/warden. Verified CA_VISIBLE and normal HTTPS TLS_HTTP=404 without -k; package tests pass.
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Codex** [worker] (codex)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Codex** [worker] (codex)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Codex** [worker] (codex)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Codex** [worker] (codex)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Codex** [worker] (codex)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### To do
+- **Freebuff** [worker] (freebuff)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Command Code** [worker] (commandcode)
+
+
+## Team: Ungrouped runs (managed by ContextGit)
+
+Base: fix/agent-sandbox-e2e. Work only inside the files your task
+owns; if you need a file another task owns, post a message instead of editing it.
+
+With MCP configured (see `.mcp.json`), the same board is available live:
+`team_status`, `list_tasks`, `read_board`, `claim_task`, `complete_task`,
+`post_update`, `check_ownership`, `publish_contract`, `peers`.
+
+### In progress
+- **Command Code** [worker] (commandcode)
 <!-- contextgit:team:end -->

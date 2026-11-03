@@ -412,7 +412,7 @@ Compared to Docker:
 ### Current Limitations
 
 - **Linux only**: GitHub Actions on Linux runners only
-- **No Windows**: Windows runners not yet supported  
+- **Windows**: native Warden verification is supported separately by the Windows CI job; this action's documented runner matrix remains Linux-focused.
 - **No interactive**: Approval mode disabled in CI
 - **Linux amd64 binaries only**: released and source-built binaries target Linux amd64
 
@@ -435,7 +435,7 @@ The install step uses the first source that works, in this order:
 
 ### Planned Improvements
 
-- Windows runner support
+- Windows runner support for this action remains a separate follow-up; Warden's native Windows backend is verified by the main Windows CI job.
 - macOS runner support
 - Integration with GitHub security features
 - SARIF output for security events
@@ -445,8 +445,8 @@ The install step uses the first source that works, in this order:
 - **Issues**: [GitHub Issues](https://github.com/Prof-bilal/Warden/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/Prof-bilal/Warden/discussions)
 - **Security**: security@warden-project.org
-- **Docs**: [Full Documentation](../../../docs/)
+- **Docs**: [Full Documentation](../../../../warden-starter/warden/docs/)
 
 ## License
 
-MIT License - see [LICENSE](../../../LICENSE) for details.
+MIT License - see [LICENSE](../../../../LICENSE) for details.

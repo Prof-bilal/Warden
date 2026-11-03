@@ -76,13 +76,13 @@ The binary alone isn't enougheach platform needs its sandbox primitive:
 | OS | Needs | Check |
 |---|---|---|
 | Linux | `bwrap` (bubblewrap) for the native backend; **`strace` required for `warden run` auditing and `warden trace`** | `command -v bwrap strace` |
-| Linux (no bwrap) | Docker daemonWarden falls back to `--backend docker` | `docker info` |
+| Linux (no bwrap) | Docker daemon; Warden falls back to `--backend docker` | `docker info` |
 | macOS | `sandbox-exec` (ships with macOS) preferred; Docker as fallback | `command -v sandbox-exec` |
 | Windows | AppContainer support (Windows 10+); fails closed without it | built-in |
 | Anywhere without a native backend | Docker daemon | `docker info` |
 
 > **⚠️ Important:** `strace` is required on Linux for the native (bubblewrap)
-> backendWarden uses it for the file/network audit on **every `warden run`**
+> backend. Warden uses it for the file/network audit on **every `warden run`**
 > and for `warden trace`. Without it, `warden run` refuses to start (fail-closed):
 > ```
 > warden run: strace not found: required for complete file/network auditing on Linux

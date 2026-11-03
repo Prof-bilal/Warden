@@ -3,7 +3,7 @@
 ## Goals
 
 1. **Transparent to the MCP client.** The AI client (Claude, an IDE, etc.)
-   should not know or care that the server is sandboxedstdio in/out
+   should not know or care that the server is sandboxed; stdio in/out
    behaves identically to running the server directly.
 2. **Deny by default.** No filesystem path, network host, or env var is
    available unless the policy explicitly grants it.
@@ -61,7 +61,7 @@ Entry point. Subcommands:
 Parses and validates the policy YAML (schema below), resolves relative
 paths, and translates the declarative policy into the specific arguments
 each sandbox backend needs (bind mounts, seccomp filters, network rules).
-This is the one piece of logic that's shared across all platformskeeping
+   This is the one piece of logic that's shared across all platforms; keeping
 it isolated from the backends makes it easier to test without needing a
 Linux/macOS matrix in CI.
 
@@ -80,13 +80,13 @@ One implementation per platform, behind a common interface
   - **Pseudo-fs:** `/dev`, `/proc`, and a fresh `/tmp` (tmpfs) are mounted.
   - **Env passthrough:** Only names in `env.allow` are forwarded from the
     parent environment. Empty allowlist ⇒ empty environment.
-- **macOS`sandbox-exec` (Seatbelt profiles).** Apple-provided, deprecated
+- **macOS `sandbox-exec` (Seatbelt profiles).** Apple-provided, deprecated
   but functional and still the most practical unprivileged option; profile
   is generated from the policy. Network is deny-by-default except loopback
   TCP to the egress proxy bridge (and its Unix socket). Structured file-deny
   audit events are Linux/`strace`-only; Seatbelt still enforces file denies
   as EPERM, and the egress proxy records network allow/deny decisions.
-- **FallbackDocker.** Used when the native backend for the current OS is
+- **Fallback Docker.** Used when the native backend for the current OS is
   unavailable, or explicitly requested via `--backend docker`. Preference
   order for `--backend auto` (the default):
   - Linux: `bwrap` → Docker → fail closed
@@ -100,7 +100,7 @@ One implementation per platform, behind a common interface
   hosts the current executable is used; on macOS/Windows set
   `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary (macOS auto-detect
   still prefers Seatbelt when `sandbox-exec` is present).
-- **WindowsM5 (implemented).** The AppContainer backend uses a restricted
+- **Windows (implemented and verified).** The AppContainer backend uses a restricted
   token, filesystem capabilities, Windows Filtering Platform rules, ETW audit
   events, and a Job Object for process-tree limits. Until all of those
   enforcement primitives are installed successfully, Warden refuses to run;

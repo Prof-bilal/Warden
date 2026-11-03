@@ -94,6 +94,12 @@ docs/
 
 # ContextGit worktrees and repository
 .contextgit/
+.worktrees/
+warden-shots/warden-agent-workspace-feature.mp4
+warden-shots/warden-agent-workspace-feature-review.jpg
+warden-shots/warden-landing-blueprint-redesign.jpg
+warden-shots/agent-workspace-proof.md
+warden-shots/agent-workspace-terminal-proof.txt
 
 # Marketing / social image assets (local only, not pushed to GitHub)
 assets/

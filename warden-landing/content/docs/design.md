@@ -3,7 +3,7 @@
 ## Goals
 
 1. **Transparent to the MCP client.** The AI client (Claude, an IDE, etc.)
-   should not know or care that the server is sandboxedstdio in/out
+   should not know or care that the server is sandboxed; stdio in/out
    behaves identically to running the server directly.
 2. **Deny by default.** No filesystem path, network host, or env var is
    available unless the policy explicitly grants it.
@@ -58,7 +58,7 @@ Entry point. Subcommands:
 Parses and validates the policy YAML (schema below), resolves relative
 paths, and translates the declarative policy into the specific arguments
 each sandbox backend needs (bind mounts, seccomp filters, network rules).
-This is the one piece of logic that's shared across all platformskeeping
+This is the one piece of logic that's shared across all platforms; keeping
 it isolated from the backends makes it easier to test without needing a
 Linux/macOS matrix in CI.
 
