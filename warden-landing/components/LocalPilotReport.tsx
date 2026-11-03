@@ -65,7 +65,7 @@ export default function LocalPilotReport() {
   };
   return (
     <section className="rounded-2xl border border-ink-700 p-6 sm:p-8">
-      <h2 className="text-2xl font-semibold">Your local pilot report</h2>
+      <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">Your local pilot report</h2>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
         Import events you explicitly recorded with the CLI. This page totals
         them locally. Event counts do not represent unique users or verified

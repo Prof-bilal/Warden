@@ -46,7 +46,7 @@ Each entry is a path (relative to the policy file, resolved by
 
 - `read` paths are bind-mounted **read-only**.
 - `write` paths are bind-mounted **read-write**.
-- Paths inside the runtime base (`/usr`, `/lib64`) cannot be granted write —
+- Paths inside the runtime base (`/usr`, `/lib64`) cannot be granted write, 
   that would make part of the system writable and widen the sandbox.
 - A path listed in both `read` and `write` is coalesced to a single `write`
   grant at load time (`Normalize`), since a write grant already subsumes

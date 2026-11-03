@@ -23,7 +23,7 @@ export default function Page() {
           ["Codex Linux", "app-server workflow tested"],
         ].map(([value, label]) => (
           <div key={label} className="rounded-xl border border-ink-700 p-6">
-            <p className="text-2xl font-semibold text-blueprint">{value}</p>
+            <p className="font-mono text-[1.5rem] font-semibold text-acid">{value}</p>
             <p className="mt-2 text-xs text-muted">{label}</p>
           </div>
         ))}
@@ -83,7 +83,7 @@ export default function Page() {
       </p>
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border border-ink-700 p-6">
-          <h2 className="text-xl font-semibold">Custom agents & SDKs</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Custom agents & SDKs</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             Use a stdio connection that launches Warden with a policy, followed
             by the original command and argument array. In-process servers need
@@ -97,7 +97,7 @@ export default function Page() {
           </Link>
         </section>
         <section className="rounded-xl border border-progress/30 bg-progress-subtle p-6">
-          <h2 className="text-xl font-semibold">Remote & hosted agents</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Remote & hosted agents</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             The development gateway exposes authenticated Streamable HTTP for
             its supported 2025-11-25 subset. Public hosting requires a reachable

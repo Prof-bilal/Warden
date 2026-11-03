@@ -158,7 +158,7 @@ export default function Backends() {
                 <li className="flex gap-2.5">
                   <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-grant" />
                   <span>
-                    <span className="text-paper/90">Linux —</span> 7 escape tests pass on real
+                    <span className="text-paper/90">Linux, </span> 7 escape tests pass on real
                     hardware (Arch x86_64): grants readable, unlisted paths invisible, writes
                     outside grants denied, env filtered, fail-closed without bwrap.
                   </span>
@@ -166,14 +166,14 @@ export default function Backends() {
                 <li className="flex gap-2.5">
                   <Clock3 size={14} className="mt-0.5 shrink-0 text-progress" />
                   <span>
-                    <span className="text-paper/90">macOS —</span> the Seatbelt backend is implemented;
+                    <span className="text-paper/90">macOS, </span> the Seatbelt backend is implemented;
                     a real end-user machine proof run remains pending in the recorded evidence.
                   </span>
                 </li>
                 <li className="flex gap-2.5">
                   <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-grant" />
                   <span>
-                    <span className="text-paper/90">Windows —</span> a supplied native capture reports file and network
+                    <span className="text-paper/90">Windows, </span> a supplied native capture reports file and network
                     denials. Full WFP, ETW, and cleanup checks require a real Windows host
                     and an elevated shell.
                   </span>

@@ -36,7 +36,7 @@ export default async function Page({
     >
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <section className="rounded-2xl border border-ink-700 bg-ink-900 p-7">
-          <h2 className="text-xl font-semibold">What this profile grants</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">What this profile grants</h2>
           <dl className="mt-6 space-y-5 text-sm">
             <div>
               <dt className="text-muted">Files</dt>
@@ -74,7 +74,7 @@ export default async function Page({
           <span className="text-xs font-medium uppercase tracking-wide text-progress">
             Candidate · workflow unverified
           </span>
-          <h2 className="mt-5 text-xl font-semibold">Version & evidence</h2>
+          <h2 className="mt-5 font-mono text-[1.1rem] font-semibold text-offwhite">Version & evidence</h2>
           <p className="mt-4 break-all font-mono text-xs text-muted">
             {p.artifact}@{p.version}
           </p>

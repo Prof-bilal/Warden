@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
 import JsonLd from "@/components/JsonLd";
+import PageHeader from "@/components/bp/PageHeader";
 import { createMetadata, SITE_URL } from "@/lib/seo";
 import { breadcrumbSchema } from "@/lib/schema";
 
@@ -14,20 +14,18 @@ export const metadata: Metadata = createMetadata({
 
 export default function Terms() {
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd
         data={breadcrumbSchema([
           { name: "Home", url: `${SITE_URL}/` },
           { name: "Terms", url: `${SITE_URL}/terms` },
         ])}
       />
-      <Nav />
-      <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
-        <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          Terms of use
-        </h1>
 
-        <div className="prose-warden mt-10">
+      <PageHeader eyebrow="Legal" title="Terms of use" />
+
+      <div className="px-6 py-12 md:py-16">
+        <div className="prose-warden mx-auto">
           <h2>Website content</h2>
           <p>
             Content on this website is provided for informational purposes.
@@ -62,7 +60,6 @@ export default function Terms() {
           </p>
         </div>
       </div>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

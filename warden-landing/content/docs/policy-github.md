@@ -1,6 +1,6 @@
 # GitHub MCP Server Policy
 
-GitHub MCP server ko sandbox karo. REST + GraphQL dono `api.github.com` pe hain.
+Sandbox the GitHub MCP server. Both **REST** and **GraphQL** live on `api.github.com`.
 
 ## What it needs
 
@@ -8,7 +8,7 @@ GitHub MCP server ko sandbox karo. REST + GraphQL dono `api.github.com` pe hain.
 |---|---|---|
 | Filesystem | Read + Write | Cache for API responses, output for generated files |
 | Network | `api.github.com` | REST API + GraphQL (same hostname) |
-| Env | `GITHUB_TOKEN` | GitHub personal access token |
+| Env | `GITHUB_TOKEN` | GitHub **personal access token** |
 
 ## Complete Policy
 
@@ -50,18 +50,18 @@ warden run --policy policy-github.yaml
 
 ## Tips
 
-- `HOME` do agar server ko git config ya `.netrc` padhna ho
-- `GITHUB_TOKEN` policy mein mat likho - sirf name do, value shell se aayegi
-- GraphQL aur REST dono `api.github.com` pe hain, ek entry sufficient hai
-- Long-running PR reviews ke liye `timeout_s` badha do
+- Grant `HOME` if the server needs to read git config or `.netrc`
+- **Never** put `GITHUB_TOKEN` in the policy, give only the name; the value comes from the shell
+- Both GraphQL and REST are on `api.github.com`, so **one entry is enough**
+- Increase `timeout_s` for **long-running PR reviews**
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `permission denied` on network | Check `network.allow` mein `api.github.com` hai |
-| Token not found | `GITHUB_TOKEN` export karo shell mein, policy mein sirf name hai |
-| Rate limiting | `cache` directory ka write grant do |
+| `permission denied` on network | Check that `api.github.com` is in `network.allow` |
+| Token not found | Export `GITHUB_TOKEN` in the shell; the policy contains only the name |
+| Rate limiting | Grant write access to the `cache` directory |
 
 ## Resources
 

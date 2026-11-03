@@ -29,13 +29,13 @@ const wordmark = Space_Grotesk({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#10141a",
+  themeColor: "#0b0d0c",
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Warden — Permissions for Local AI Tools",
+    default: "Warden | Permissions for Local AI Tools",
     template: "%s | Warden",
   },
   description:
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: "Warden",
-    title: "Warden — Permissions for Local AI Tools",
+    title: "Warden | Permissions for Local AI Tools",
     description:
       "Give local AI tools and MCP servers only the access they need. Open source, local, and fail-closed.",
     images: [
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — Permissions for Local AI Tools",
+    title: "Warden | Permissions for Local AI Tools",
     description:
       "Give local AI tools and MCP servers only the access they need.",
     images: ["/og-image.png"],

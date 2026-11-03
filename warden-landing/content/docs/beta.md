@@ -83,7 +83,7 @@ labels: compatibility
 
 ## Failures (one per bullet)
 
-<!-- For each: what broke, and your best-guess class —
+<!-- For each: what broke, and your best-guess class, 
      warden-bug / schema-gap / inherent (see docs/compatibility.md). -->
 
 -

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Github } from "lucide-react";
-import Wordmark from "@/components/bp/Wordmark";
+import { ArrowRight, Check, Copy, Github, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import StatRow from "@/components/bp/StatRow";
 
 const installCommand = "npm i -g warden-sandbox-cli";
@@ -17,8 +16,76 @@ const stats: [string, string][] = [
 
 const labels = ["Isolate", "Control", "Observe", "Safe by default"];
 
+// Marks that the hero video has already played once in this browser session,
+// so the landing page does not replay it every time the visitor navigates back.
+const PLAYED_KEY = "warden-hero-played";
+
 export default function Hero() {
   const [copied, setCopied] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [playing, setPlaying] = useState(true);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let alreadyPlayed = false;
+    try {
+      alreadyPlayed = window.sessionStorage.getItem(PLAYED_KEY) === "1";
+    } catch {
+      alreadyPlayed = false;
+    }
+
+    // Already seen this session, leave it on the poster frame, no autoplay.
+    if (alreadyPlayed) {
+      setPlaying(false);
+      return;
+    }
+
+    const markPlayed = () => {
+      try {
+        window.sessionStorage.setItem(PLAYED_KEY, "1");
+      } catch {
+        /* storage unavailable, fall back to normal autoplay behavior */
+      }
+    };
+
+    // Try to start with sound; browsers may block unmuted autoplay, so fall
+    // back to muted playback and let the viewer enable sound explicitly.
+    video.muted = false;
+    const attempt = video.play();
+    if (!attempt) return;
+    attempt.then(
+      () => {
+        setMuted(false);
+        markPlayed();
+      },
+      () => {
+        video.muted = true;
+        setMuted(true);
+        video.play().then(markPlayed).catch(() => {});
+      },
+    );
+  }, []);
+
+  function toggleSound() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !video.muted;
+    setMuted(video.muted);
+    if (!video.muted) video.play().catch(() => {});
+  }
+
+  function togglePlay() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
+  }
 
   function copyInstall() {
     navigator.clipboard.writeText(installCommand).catch(() => {});
@@ -29,7 +96,7 @@ export default function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-hair">
       <div className="grid lg:grid-cols-[0.2fr_0.6fr_0.2fr]">
-        {/* left — pipeline labels */}
+        {/* left, pipeline labels */}
         <div className="relative flex flex-col justify-center border-b border-hair p-6 lg:border-b-0 lg:border-r">
           <ul className="font-mono text-[10px] uppercase tracking-micro">
             {labels.map((label, i) => (
@@ -51,16 +118,44 @@ export default function Hero() {
           </p>
         </div>
 
-        {/* center — wordmark, scaled to fill the column */}
-        <div className="relative flex items-center justify-center overflow-hidden border-b border-hair py-8 lg:border-b-0 lg:border-r">
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(ellipse_60%_90%_at_50%_150%,rgba(94,240,138,0.1),transparent_70%)]"
-            aria-hidden
+        {/* center, hero video */}
+        <div className="relative flex items-center justify-center overflow-hidden border-b border-hair lg:border-b-0 lg:border-r">
+          <video
+            ref={videoRef}
+            className="h-auto w-full object-cover"
+            src="/videos/warden-hero.mp4"
+            poster="/videos/warden-hero-poster.jpg"
+            muted
+            playsInline
+            preload="metadata"
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => setPlaying(false)}
           />
-          <Wordmark />
+          <div className="absolute bottom-3 right-3 flex items-center overflow-hidden rounded-full border border-hair bg-void/80 shadow-[0_6px_20px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? "Pause video" : "Play video"}
+              aria-pressed={playing}
+              className="flex h-9 w-9 items-center justify-center text-offwhite/70 transition-colors hover:bg-offwhite/[0.07] hover:text-acid"
+            >
+              {playing ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+            <span className="h-4 w-px bg-hair" aria-hidden />
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={muted ? "Enable sound" : "Mute"}
+              aria-pressed={!muted}
+              className="flex h-9 w-9 items-center justify-center text-offwhite/70 transition-colors hover:bg-offwhite/[0.07] hover:text-acid"
+            >
+              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            </button>
+          </div>
         </div>
 
-        {/* right — statement */}
+        {/* right, statement */}
         <div className="flex flex-col justify-center p-6">
           <h1 className="font-mono text-[1.1rem] font-semibold uppercase leading-[1.4] tracking-[-0.01em] text-offwhite lg:text-[1.22rem]">
             Give AI tools

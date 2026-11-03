@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
+import PageHeader from "@/components/bp/PageHeader";
 import JsonLd from "@/components/JsonLd";
 import ArticleCard from "@/components/ArticleCard";
 import { getAllArticles, getAuthorBySlug, getCategoryBySlug, CATEGORIES } from "@/lib/blog";
@@ -32,104 +32,81 @@ export default function BlogIndex() {
   });
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd data={breadcrumbs} />
       <JsonLd data={collection} />
-      <Nav />
-      <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
-        <p className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-grant">
-          Blog
-        </p>
-        <h1 className="mt-3 font-hero text-[2.5rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper">
-          Articles on sandboxing MCP servers
-        </h1>
-        <p className="mt-4 font-hero text-[1.0625rem] leading-relaxed text-muted">
-          Sandboxing, policy enforcement, and platform internals for MCP
-          servers and AI tooling. Warden is the open-source sandbox runtime
-          these articles describe.
-        </p>
 
-        <nav aria-label="Topic guides" className="mt-8">
-          <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted">
-            Start with a question
-          </h2>
-          <ul className="mt-3 space-y-2 font-hero text-[0.9375rem]">
-            <li>
-              <Link href="/blog/why-mcp-servers-need-sandboxes" className="text-paper hover:text-blueprint">
-                Why an MCP server needs a sandbox
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/how-warden-enforces-policies" className="text-paper hover:text-blueprint">
-                How a Warden policy becomes an OS sandbox
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/sandboxing-backends-bubblewrap-seatbelt-appcontainer" className="text-paper hover:text-blueprint">
-                How Linux, macOS, and Windows backends differ
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/i-tested-18-mcp-servers" className="text-paper hover:text-blueprint">
-                Which of 18 MCP servers can run under Warden
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/deny-by-default-invisible-not-denied" className="text-paper hover:text-blueprint">
-                Why hiding a path is stronger than permission denied
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/ai-tried-to-escape-my-sandbox" className="text-paper hover:text-blueprint">
-                What the published escape tests actually showed
-              </Link>
-            </li>
-            <li>
-              <Link href="/guides/mcp-server-security" className="text-paper hover:text-blueprint">
-                How to securely run an MCP server
-              </Link>
-            </li>
-            <li>
-              <Link href="/docs/install" className="text-paper hover:text-blueprint">
-                How to install Warden and run a server
-              </Link>
-            </li>
-          </ul>
-        </nav>
+      <PageHeader
+        eyebrow="Blog"
+        title="Articles on sandboxing MCP servers"
+        description="Sandboxing, policy enforcement, and platform internals for MCP servers and AI tooling. Warden is the open-source sandbox runtime these articles describe."
+      />
 
-        <nav
-          aria-label="Blog categories"
-          className="mt-8 flex flex-wrap gap-2"
-        >
-          {CATEGORIES.map((category) => (
-            <Link
-              key={category.slug}
-              href={`/blog/category/${category.slug}`}
-              className="rounded-full border border-ink-700 px-3 py-1 font-hero text-[0.8125rem] text-muted transition-colors hover:border-blueprint/50 hover:text-paper"
-            >
-              {category.name}
-            </Link>
-          ))}
-        </nav>
+      <div className="px-6 py-12 md:py-16">
+        <div className="mx-auto max-w-[48rem]">
+          <nav aria-label="Topic guides">
+            <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+              Start with a question
+            </h2>
+            <ul className="mt-4 divide-y divide-hair border-y border-hair">
+              {[
+                ["/blog/why-mcp-servers-need-sandboxes", "Why an MCP server needs a sandbox"],
+                ["/blog/how-warden-enforces-policies", "How a Warden policy becomes an OS sandbox"],
+                [
+                  "/blog/sandboxing-backends-bubblewrap-seatbelt-appcontainer",
+                  "How Linux, macOS, and Windows backends differ",
+                ],
+                ["/blog/i-tested-18-mcp-servers", "Which of 18 MCP servers can run under Warden"],
+                [
+                  "/blog/deny-by-default-invisible-not-denied",
+                  "Why hiding a path is stronger than permission denied",
+                ],
+                ["/blog/ai-tried-to-escape-my-sandbox", "What the published escape tests actually showed"],
+                ["/guides/mcp-server-security", "How to securely run an MCP server"],
+                ["/docs/install", "How to install Warden and run a server"],
+              ].map(([href, label]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="block py-2.5 font-mono text-[14px] text-offwhite/80 transition-colors hover:text-acid"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <div className="mt-12 border-t border-ink-800">
-          {articles.length === 0 ? (
-            <p className="py-12 font-hero text-muted">
-              No articles published yet.
-            </p>
-          ) : (
-            articles.map((article) => (
-              <ArticleCard
-                key={article.slug}
-                article={article}
-                category={getCategoryBySlug(article.categorySlug)}
-                author={getAuthorBySlug(article.authorSlug)}
-              />
-            ))
-          )}
+          <nav aria-label="Blog categories" className="mt-8 flex flex-wrap gap-2">
+            {CATEGORIES.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/blog/category/${category.slug}`}
+                className="border border-hair px-3 py-1 font-mono text-[11px] uppercase tracking-micro text-offwhite/45 transition-colors hover:border-acid/40 hover:text-acid"
+              >
+                {category.name}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mt-12 border-t border-hair">
+            {articles.length === 0 ? (
+              <p className="py-12 font-sans text-offwhite/45">
+                No articles published yet.
+              </p>
+            ) : (
+              articles.map((article) => (
+                <ArticleCard
+                  key={article.slug}
+                  article={article}
+                  category={getCategoryBySlug(article.categorySlug)}
+                  author={getAuthorBySlug(article.authorSlug)}
+                />
+              ))
+            )}
+          </div>
         </div>
       </div>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

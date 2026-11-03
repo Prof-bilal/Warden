@@ -17,7 +17,7 @@ export default function Diagram({
       height={768}
       priority={priority}
       sizes="(max-width: 1024px) 90vw, 55vw"
-      className="h-auto w-full rounded-[6px] object-contain"
+      className="h-auto w-full object-contain"
     />
   );
 }

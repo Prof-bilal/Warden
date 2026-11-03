@@ -44,7 +44,7 @@ flowchart TB
 Entry point. Subcommands:
 
 - `warden run --policy <file> -- <command...>`run a server under a policy.
-- `warden run --policy <file> --approve [--approve-timeout <dur>] -- <command...>` —
+- `warden run --policy <file> --approve [--approve-timeout <dur>] -- <command...>`, 
   interactive approval mode (M7): the first out-of-policy access prompts on
   the controlling terminal instead of only hard-failing (see below).
 - `warden trace -- <command...>`run **unsandboxed** but instrumented,

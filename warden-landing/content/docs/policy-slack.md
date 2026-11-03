@@ -1,6 +1,6 @@
 # Slack MCP Server Policy
 
-Slack MCP server ko sandbox karo. Slack API + web UI dono access chahiye.
+Sandbox the Slack MCP server. It needs access to both the **Slack API** and the **web UI**.
 
 ## What it needs
 
@@ -52,18 +52,18 @@ warden run --policy policy-slack.yaml
 
 ## Tips
 
-- `write` grant mein sirf `cache` do - write grant read bhi subsume karta hai
-- `read: []` alag se mat do agar `write` same path pe hai
-- `HOME` Node.js libraries ke liye chahiye
-- `SLACK_TEAM_ID` optional lagta hai lekin zaroori hai
+- Grant **only** `cache` under `write`, a **write grant also includes read**
+- Do **not** add a separate `read: []` if `write` points to the same path
+- `HOME` is needed by Node.js libraries
+- `SLACK_TEAM_ID` looks optional but is **required**
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `token not found` | `SLACK_BOT_TOKEN` export karo shell mein |
-| Network blocked | `slack.com` + `api.slack.com` dono list karo |
-| OAuth errors | `cache` directory ka write grant do |
+| `token not found` | Export `SLACK_BOT_TOKEN` in the shell |
+| Network blocked | List **both** `slack.com` and `api.slack.com` |
+| OAuth errors | Grant write access to the `cache` directory |
 
 ## Resources
 

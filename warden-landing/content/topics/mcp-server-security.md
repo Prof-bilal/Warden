@@ -64,7 +64,7 @@ That last step is the one most DIY setups miss. A broken container flag or a mis
 
 ## Where Warden fits
 
-[Warden](/) is an open-source sandbox runtime that applies this baseline to local MCP servers. A `policy.yaml` names the command and the grants. Warden compiles that file into the host sandbox — bubblewrap on Linux, Seatbelt on macOS, AppContainer on Windows — and starts the server only after the sandbox exists. If no backend can enforce the policy, Warden refuses the run.
+[Warden](/) is an open-source sandbox runtime that applies this baseline to local MCP servers. A `policy.yaml` names the command and the grants. Warden compiles that file into the host sandbox, bubblewrap on Linux, Seatbelt on macOS, AppContainer on Windows, and starts the server only after the sandbox exists. If no backend can enforce the policy, Warden refuses the run.
 
 The published compatibility set covers 18 MCP servers with pinned policies: 14 pass, 2 work only with extra per-deployment grants, and 2 fail for reasons the matrix records (a Docker socket, and a browser server that needs arbitrary hosts). Those numbers are the test record, not a promise that every future server or every bypass has been tried. The write-up is [I tested 18 MCP servers](/blog/i-tested-18-mcp-servers), and the table is the [compatibility matrix](/docs/compatibility).
 

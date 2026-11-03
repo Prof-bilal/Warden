@@ -38,7 +38,7 @@ runners cannot open the WFP engine** (`FwpmEngineOpen0` returns
 `wfpSupported()` runs a full capability probe (transaction + sublayer + a
 real block-all filter, then abort) and fails closed cleanly, so WFP-dependent
 tests skip with a clear reason. A green Windows CI run therefore proves
-compilation and non-WFP unit tests — not WFP egress enforcement. Real
+compilation and non-WFP unit tests, not WFP egress enforcement. Real
 verification requires a self-hosted Windows runner running
 `go test -v ./internal/sandbox/windows/...`.
 

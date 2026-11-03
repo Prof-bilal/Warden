@@ -1,6 +1,6 @@
 # Google Drive MCP Server Policy
 
-Google Drive MCP server ko sandbox karo. Multiple Google APIs access chahiye.
+Sandbox the Google Drive MCP server. It needs access to **multiple Google APIs**.
 
 ## What it needs
 
@@ -54,24 +54,24 @@ warden run --policy policy-gdrive.yaml
 
 ## Tips
 
-- `credentials.json` file ka exact path do
-- 3 Google API hosts chahiye - sab `network.allow` mein daalo
-- OAuth flow `oauth2.googleapis.com` pe hota hai
-- `cache` directory API responses ke liye chahiye
+- Give the **exact path** to `credentials.json`
+- **3 Google API hosts** are needed, add all of them to `network.allow`
+- The OAuth flow happens on `oauth2.googleapis.com`
+- The `cache` directory is needed for API responses
 
 ## Security
 
-- `credentials.json` ko **read-only** grant do (sirf `read`)
-- `GOOGLE_CLIENT_SECRET` policy mein mat likho
-- `cache` directory mein sensitive data store hota hai
+- Grant `credentials.json` **read-only** access (only `read`)
+- **Never** put `GOOGLE_CLIENT_SECRET` in the policy
+- The `cache` directory may store **sensitive data**
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `OAuth error` | `oauth2.googleapis.com` `network.allow` mein hai? |
-| `credentials not found` | `credentials.json` ka path check karo |
-| `API error` | `www.googleapis.com` `network.allow` mein hai? |
+| `OAuth error` | Is `oauth2.googleapis.com` in `network.allow`? |
+| `credentials not found` | Check the path to `credentials.json` |
+| `API error` | Is `www.googleapis.com` in `network.allow`? |
 
 ## Resources
 

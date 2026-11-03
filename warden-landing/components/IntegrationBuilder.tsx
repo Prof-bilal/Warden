@@ -88,7 +88,7 @@ export default function IntegrationBuilder() {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <section className="rounded-2xl border border-ink-700 p-6 sm:p-8">
-        <h2 className="text-xl font-semibold">Choose a connection</h2>
+        <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Choose a connection</h2>
         <div className="mt-5 flex gap-3">
           {[
             ["stdio", "Local command"],
@@ -157,7 +157,7 @@ export default function IntegrationBuilder() {
         </label>
       </section>
       <section className="min-w-0 rounded-2xl border border-ink-700 p-6 sm:p-8">
-        <h2 className="text-xl font-semibold">Review your rules</h2>
+        <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Review your rules</h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           Tools outside this list are denied. Resources and prompts start
           disabled. Keep normal agent approval controls.

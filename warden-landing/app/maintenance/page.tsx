@@ -19,7 +19,7 @@ export default function Page() {
     >
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <section className="min-w-0 rounded-xl border border-ink-700 p-6">
-          <h2 className="text-xl font-semibold">Before an upgrade</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Before an upgrade</h2>
           <CodeBlock className="mt-5">
             {[
               "warden policy-diff --before old.yaml --after candidate.yaml",
@@ -34,7 +34,7 @@ export default function Page() {
           </p>
         </section>
         <section className="min-w-0 rounded-xl border border-ink-700 p-6">
-          <h2 className="text-xl font-semibold">Measure your pilot locally</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Measure your pilot locally</h2>
           <CodeBlock className="mt-5">
             {[
               "warden report record --file ./pilot.jsonl --client cursor --event setup-completed --seconds 90",

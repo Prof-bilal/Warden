@@ -2,8 +2,7 @@
 
 Will Warden work with *your* MCP server? This page is the public,
 tested answer. Every row below has a permanent regression fixture under
-`testdata/compat/`
-— the exact `policy.yaml` the server needsenforced by
+`testdata/compat/`, the exact `policy.yaml` the server needs, enforced by
 `go test ./internal/compat/`, so a future Warden change cannot silently
 break a server that used to work. Each pinned policy is reproduced in
 [full below](#pinned-policies), so you can copy it without leaving this site.
@@ -91,7 +90,7 @@ Every non-pass row gets a class, per the M8 triage rule:
   single leading wildcard label (`*.example.com`), which grants a subdomain
   patternthe exact gap Playwright hit. The fixture in
   `testdata/compat/playwright/policy.yaml` can now record the subdomain
-  grant it previously had to pin to a single host. (A full `*` grant —
+  grant it previously had to pin to a single host. (A full `*` grant, 
   any domainis still deliberately rejected: it is equivalent to no
   sandbox at all.)
 - **No unix-socket grants.** The Docker daemon socket and browser IPC
@@ -769,5 +768,5 @@ warden init
 warden logs --tail 20
 ```
 
-Found friction? File a [compatibility report](./beta.md#filing-a-compatibility-report)
-— that is exactly the signal the beta program is collecting.
+Found friction? File a [compatibility report](./beta.md#filing-a-compatibility-report),
+that is exactly the signal the beta program is collecting.

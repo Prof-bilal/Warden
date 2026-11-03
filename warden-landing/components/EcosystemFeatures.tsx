@@ -8,7 +8,7 @@ const features = [
   },
   {
     title: "Fail-closed security",
-    body: "Blocked by default. If an action is not explicitly allowed, it cannot run — no prompts, no surprises.",
+    body: "Blocked by default. If an action is not explicitly allowed, it cannot run, no prompts, no surprises.",
   },
   {
     title: "Full audit logs",

@@ -1,12 +1,12 @@
 # PostgreSQL MCP Server Policy
 
-PostgreSQL MCP server ko sandbox karo. Database connections ke liye special handling chahiye.
+Sandbox the PostgreSQL MCP server. Database connections need **special handling**.
 
 ## What it needs
 
 | Resource | Access | Details |
 |---|---|---|
-| Filesystem | Read | `.pgpass` aur `.postgresql` credentials |
+| Filesystem | Read | `.pgpass` and `.postgresql` credentials |
 | Network | DB hosts | PostgreSQL server hostnames |
 | Env | `PG*` variables | Connection details (host, port, password) |
 
@@ -19,12 +19,12 @@ filesystem:
   read:
     - "./config/.pgpass"             # Password file
     - "./config/.postgresql"         # SSL/connection config
-  write: []                          # DB server files nahi likhta
+  write: []                          # It does not write DB server files
 
 network:
   allow:
     - "localhost"                    # Local DB
-    - "db.internal.example.com"      # Remote DB (apna hostname daalo)
+    - "db.internal.example.com"      # Remote DB (put your own hostname)
 
 env:
   allow:
@@ -59,24 +59,24 @@ warden run --policy policy-postgres.yaml
 
 ## Tips
 
-- `PGPASSWORD` policy mein mat likho - shell se aayegi
-- `.pgpass` file ka exact path do (relative to policy file)
-- Multiple DB hosts ho toh sab `network.allow` mein daalo
-- `timeout_s: 600` rakho migrations ke liye
+- **Never** put `PGPASSWORD` in the policy, it comes from the shell
+- Give the **exact path** to the `.pgpass` file (relative to the policy file)
+- If you have multiple DB hosts, add **all** of them to `network.allow`
+- Use `timeout_s: 600` for migrations
 
 ## Security
 
-- `PGPASSWORD` kabhi policy file mein mat likho
-- `.pgpass` file permissions check karo (600)
-- SSL mode production mein `require` rakho
+- **Never** put `PGPASSWORD` in the policy file
+- Check the `.pgpass` file permissions (**600**)
+- Use `require` for the SSL mode in production
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `connection refused` | `PGHOST` + `PGPORT` check karo, `network.allow` mein add karo |
-| `password authentication failed` | `PGPASSWORD` shell mein set hai? |
-| SSL errors | `PGSSLMODE` set karo |
+| `connection refused` | Check `PGHOST` + `PGPORT` and add the host to `network.allow` |
+| `password authentication failed` | Is `PGPASSWORD` set in the shell? |
+| SSL errors | Set `PGSSLMODE` |
 
 ## Resources
 

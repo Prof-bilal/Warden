@@ -37,8 +37,8 @@ Expected output (Linux, ready):
 ✓ Sandbox active
 ```
 
-Exit code `0` means ready, `1` means NOT READY (with the missing piece named
-— e.g. `bwrap` or `strace`), `2` means you used the command wrong.
+Exit code `0` means ready, `1` means NOT READY (with the missing piece named,
+e.g. `bwrap` or `strace`), `2` means you used the command wrong.
 
 **Why:** Warden refuses to run a server unsandboxed. `doctor` tells you
 *before* you try whether this host can enforce a policyon Linux it checks
@@ -153,7 +153,7 @@ Expected ending:
    artifacts: .../evidence/linux/<stamp>
 ```
 
-**Why:** this is the same harness used for Warden's own release claims —
+**Why:** this is the same harness used for Warden's own release claims, 
 eight allow/block checks against the sandbox, gated on a positive control
 that proves the target really started. It writes `results.jsonl`,
 `audit.jsonl`, `summary.json`, and `evidence.md`. Details:

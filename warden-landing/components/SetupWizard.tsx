@@ -155,7 +155,7 @@ export default function SetupWizard({
         <div className="p-6 sm:p-8">
           {step === 0 && (
             <>
-              <h2 className="text-2xl font-semibold">
+              <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
                 Where does your agent run?
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -202,7 +202,7 @@ export default function SetupWizard({
           )}
           {step === 1 && (
             <>
-              <h2 className="text-2xl font-semibold">
+              <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
                 Choose the server&apos;s access
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -345,7 +345,7 @@ export default function SetupWizard({
           )}
           {step === 2 && (
             <>
-              <h2 className="text-2xl font-semibold">
+              <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
                 Review, preview, then apply
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-muted">

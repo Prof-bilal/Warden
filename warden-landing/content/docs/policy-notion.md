@@ -1,6 +1,6 @@
 # Notion MCP Server Policy
 
-Notion MCP server ko sandbox karo. Single-host API egress.
+Sandbox the Notion MCP server. **Single-host API egress.**
 
 ## What it needs
 
@@ -49,18 +49,18 @@ warden run --policy policy-notion.yaml
 
 ## Tips
 
-- Single-host server hai - sirf `api.notion.com`
-- `cache` directory API responses ke liye chahiye
-- `HOME` Node.js initialization ke liye chahiye
-- `NOTION_API_KEY` Notion integration settings se milta hai
+- This is a **single-host** server, only `api.notion.com`
+- The `cache` directory is needed for API responses
+- `HOME` is needed for Node.js initialization
+- `NOTION_API_KEY` comes from the Notion **integration settings**
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `API key not found` | `NOTION_API_KEY` shell mein export karo |
-| Network blocked | `api.notion.com` `network.allow` mein hai? |
-| Cache errors | `cache` directory ka write grant do |
+| `API key not found` | Export `NOTION_API_KEY` in the shell |
+| Network blocked | Is `api.notion.com` in `network.allow`? |
+| Cache errors | Grant write access to the `cache` directory |
 
 ## Resources
 

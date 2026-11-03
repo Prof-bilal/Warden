@@ -1,6 +1,6 @@
 ---
 title: "Deny-by-Default: Why 'Permission Denied' Isn't Enough"
-description: "Warden makes ungranted paths invisible instead of unreadable — bind mounts, not permission bits. Why invisibility is the stronger boundary, and how it's tested."
+description: "Warden makes ungranted paths invisible instead of unreadable, bind mounts, not permission bits. Why invisibility is the stronger boundary, and how it's tested."
 tldr:
   - "A permission-denied error tells a process that the path exists."
   - "On Linux, Warden bind-mounts only granted paths, so an ungranted directory is not visible."
@@ -13,9 +13,9 @@ image: /diagrams/filesystem-capabilities.webp
 draft: false
 ---
 
-Most developers treat "permission denied" as security. It isn't — it's a notification. When a process gets `EACCES`, it learns the resource exists. It can retry. It can race. It can probe for escalation. The OS said no *this time*.
+Most developers treat "permission denied" as security. It isn't, it's a notification. When a process gets `EACCES`, it learns the resource exists. It can retry. It can race. It can probe for escalation. The OS said no *this time*.
 
-Warden's filesystem model says something stronger: the resource does not exist. A sandboxed process listing an ungranted directory doesn't get "permission denied" — it gets nothing. The project's integration test asserts exactly this: `ls` on a sibling directory outside the grant prints `NOT_VISIBLE`.
+Warden's filesystem model says something stronger: the resource does not exist. A sandboxed process listing an ungranted directory doesn't get "permission denied", it gets nothing. The project's integration test asserts exactly this: `ls` on a sibling directory outside the grant prints `NOT_VISIBLE`.
 
 ## How invisibility is built
 
@@ -27,7 +27,7 @@ Same guarantee, three mechanisms: the process cannot name what it cannot see.
 
 ## Why this distinction matters for AI tooling
 
-An AI agent that hits "permission denied" does what agents do: it tries another path, rephrases the request, looks for a symlink, checks the parent directory. Each attempt is fine in isolation and dangerous in aggregate. Against invisibility, there is no second attempt worth making — the directory isn't there.
+An AI agent that hits "permission denied" does what agents do: it tries another path, rephrases the request, looks for a symlink, checks the parent directory. Each attempt is fine in isolation and dangerous in aggregate. Against invisibility, there is no second attempt worth making, the directory isn't there.
 
 This is also why the audit log matters more than the block. The log shows what the server *tried* to touch: the exact paths, hosts, and variables. That record is how you learn what your MCP server actually wants, and it's how policies get tightened from observed behavior (`warden trace` → `warden init` → `warden run`).
 

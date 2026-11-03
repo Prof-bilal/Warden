@@ -16,14 +16,14 @@ import Reveal from "@/components/bp/Reveal";
 import StatRow from "@/components/bp/StatRow";
 
 export const metadata: Metadata = {
-  title: { absolute: "Warden — Permissions for Local AI Tools" },
+  title: { absolute: "Warden | Permissions for Local AI Tools" },
   description:
     "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
-    title: "Warden — Permissions for Local AI Tools",
+    title: "Warden | Permissions for Local AI Tools",
     description:
       "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
     url: SITE_URL,
@@ -32,13 +32,13 @@ export const metadata: Metadata = {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "Warden — Permissions for Local AI Tools",
+        alt: "Warden | Permissions for Local AI Tools",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Warden — Permissions for Local AI Tools",
+    title: "Warden | Permissions for Local AI Tools",
     description:
       "Give local AI tools and MCP servers only the access they need, with explicit permissions.",
     images: [`${SITE_URL}/og-image.png`],
@@ -52,7 +52,7 @@ const problemCards = [
   },
   {
     tag: "Secrets",
-    body: "Pass only the environment names a tool actually needs — never the whole shell.",
+    body: "Pass only the environment names a tool actually needs, never the whole shell.",
   },
   {
     tag: "Network",
@@ -108,7 +108,7 @@ export default function Home() {
           "@type": "WebPage",
           "@id": `${SITE_URL}/#webpage`,
           url: SITE_URL,
-          name: "Warden — Permissions for Local AI Tools",
+          name: "Warden | Permissions for Local AI Tools",
           description:
             "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
           isPartOf: { "@type": "WebSite", name: "Warden", url: SITE_URL },
@@ -183,7 +183,7 @@ export default function Home() {
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-[560px] font-mono text-[10px] leading-[1.7] text-offwhite/25">
                 MCP compatibility fixtures are tracked against the published test
-                matrix — the boundary is only as good as what is measured.
+                matrix, the boundary is only as good as what is measured.
               </p>
               <Link
                 href="/docs/proof"

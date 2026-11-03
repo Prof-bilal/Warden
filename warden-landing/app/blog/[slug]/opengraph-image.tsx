@@ -24,8 +24,8 @@ export default async function ArticleOgImage({
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          backgroundColor: "#10141a",
-          color: "#E8EBEF",
+          backgroundColor: "#0B0D0C",
+          color: "#E8E8E3",
           padding: 72,
         }}
       >
@@ -35,7 +35,7 @@ export default async function ArticleOgImage({
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: "#16a34a",
+              backgroundColor: "#5EF08A",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -45,18 +45,18 @@ export default async function ArticleOgImage({
               style={{
                 width: 20,
                 height: 28,
-                backgroundColor: "#0a0f14",
+                backgroundColor: "#0B0D0C",
                 borderRadius: 4,
               }}
             />
           </div>
-          <div style={{ fontSize: 32, color: "#8D95A5" }}>warden</div>
+          <div style={{ fontSize: 32, color: "#8B908A" }}>warden</div>
           {category && (
             <div
               style={{
                 fontSize: 26,
-                color: "#3B82F6",
-                border: "1px solid #233043",
+                color: "#5EF08A",
+                border: "1px solid #23262A",
                 borderRadius: 999,
                 padding: "6px 20px",
               }}
@@ -78,7 +78,7 @@ export default async function ArticleOgImage({
           {title}
         </div>
 
-        <div style={{ display: "flex", fontSize: 28, color: "#8D95A5" }}>
+        <div style={{ display: "flex", fontSize: 28, color: "#8B908A" }}>
           warden.blog
         </div>
       </div>

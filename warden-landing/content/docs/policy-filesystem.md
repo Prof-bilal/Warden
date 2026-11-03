@@ -1,14 +1,14 @@
 # Filesystem MCP Server Policy
 
-Filesystem MCP server sirf local file I/O karta hai. Sabse simple policy.
+The Filesystem MCP server only performs **local file I/O**. It has the **simplest** policy.
 
 ## What it needs
 
 | Resource | Access | Details |
 |---|---|---|
-| Filesystem | Read | Sirf wo directories jo serve karni hain |
-| Network | None | Koi internet access nahi |
-| Env | None | Koi variables nahi |
+| Filesystem | Read | Only the directories it should serve |
+| Network | None | **No internet access** |
+| Env | None | **No variables** |
 
 ## Complete Policy
 
@@ -17,8 +17,8 @@ command: ["node", "@modelcontextprotocol/server-filesystem"]
 
 filesystem:
   read:
-    - "./my-files"           # Sirf ye directory serve hogi
-  write: []                  # Kuch bhi mat likho (read-only)
+    - "./my-files"           # Only this directory is served
+  write: []                  # Write nothing (read-only)
 
 network:
   allow: []                  # No network
@@ -43,10 +43,10 @@ warden run --policy policy-filesystem.yaml
 
 ## Tips
 
-- Sirf woh directories grant karo jo sach mein chahiye
-- `write: []` rakho agar sirf padhna hai
-- Write grant dena ho toh alag directory do (output dir)
-- Sabse secure server hai - no network, no env
+- Grant **only** the directories you actually need
+- Use `write: []` if you only need to **read**
+- If it needs write access, give it a **separate** directory (the output dir)
+- This is the **most secure** server, **no network, no env**
 
 ## Variations
 
@@ -57,7 +57,7 @@ filesystem:
   read:
     - "./data"
   write:
-    - "./output"             # Output files yahan jayengi
+    - "./output"             # Output files go here
 ```
 
 ### Multiple directories
@@ -75,9 +75,9 @@ filesystem:
 
 | Error | Fix |
 |---|---|
-| `permission denied` | Check `filesystem.read` mein directory hai |
-| File not found | Path relative hai policy file ke folder ke against |
-| Write failed | `filesystem.write` mein directory add karo |
+| `permission denied` | Check that the directory is listed in `filesystem.read` |
+| File not found | The path is **relative** to the policy file's folder |
+| Write failed | Add the directory to `filesystem.write` |
 
 ## Resources
 

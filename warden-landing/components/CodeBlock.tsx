@@ -30,18 +30,18 @@ export default function CodeBlock({
 
   return (
     <div className={`group relative ${className}`}>
-      <pre className="overflow-x-auto rounded-[8px] border border-ink-700 bg-ink-950 px-4 py-3 pr-20 font-hero text-[0.8125rem] leading-[1.7] text-paper">
+      <pre className="overflow-x-auto border border-hair bg-void px-4 py-3 pr-20 font-mono text-[12px] leading-[1.75] text-offwhite/80">
         <code>{children}</code>
       </pre>
       <button
         onClick={handleCopy}
         aria-label="Copy command"
-        className="absolute right-2 top-2 flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 font-hero text-[0.6875rem] text-muted transition-all hover:border-ink-500 hover:text-paper"
+        className="absolute right-2 top-2 flex items-center gap-1.5 rounded border border-hair bg-cell px-2 py-1 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/40 transition-colors hover:border-acid/40 hover:text-acid"
       >
         {copied ? (
           <>
-            <Check size={11} className="text-grant" />
-            <span className="text-grant">Copied</span>
+            <Check size={11} className="text-acid" />
+            <span className="text-acid">Copied</span>
           </>
         ) : (
           <>

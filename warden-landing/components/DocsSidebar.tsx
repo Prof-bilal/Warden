@@ -90,7 +90,7 @@ export default function DocsSidebar() {
             {section.collapsible ? (
               <button
                 onClick={() => toggle(section.title)}
-                className="mb-2 flex w-full items-center justify-between px-3 font-sans text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted transition-colors hover:text-paper"
+                className="mb-2 flex w-full items-center justify-between px-3 font-mono text-[9.5px] font-medium uppercase tracking-micro text-offwhite/35 transition-colors hover:text-offwhite"
                 aria-expanded={isOpen}
               >
                 {section.title}
@@ -106,7 +106,7 @@ export default function DocsSidebar() {
                 </svg>
               </button>
             ) : (
-              <h4 className="mb-2 px-3 font-sans text-[0.75rem] font-semibold uppercase tracking-[0.08em] text-muted">
+              <h4 className="mb-2 px-3 font-mono text-[9.5px] font-medium uppercase tracking-micro text-offwhite/35">
                 {section.title}
               </h4>
             )}
@@ -119,10 +119,10 @@ export default function DocsSidebar() {
                     <li key={item.slug}>
                       <Link
                         href={href}
-                        className={`block rounded-md px-3 py-1.5 font-sans text-[0.875rem] transition-colors ${
+                        className={`block rounded-md px-3 py-1.5 font-sans text-[13px] transition-colors ${
                           isActive
-                            ? "bg-blueprint/10 font-medium text-blueprint"
-                            : "text-muted hover:bg-ink-800 hover:text-paper"
+                            ? "bg-acid/10 font-medium text-acid"
+                            : "text-offwhite/45 hover:bg-offwhite/5 hover:text-offwhite"
                         }`}
                       >
                         {item.label}
