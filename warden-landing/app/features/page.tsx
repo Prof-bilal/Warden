@@ -3,8 +3,8 @@ import { SITE_URL } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema } from "@/lib/schema";
 import Link from "next/link";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
+import PageHeader from "@/components/bp/PageHeader";
 import FeatureNav from "@/components/FeatureNav";
 import Diagram from "@/components/Diagram";
 import CodeBlock from "@/components/CodeBlock";
@@ -43,11 +43,11 @@ export const metadata: Metadata = {
 
 function Flag({ name, desc }: { name: string; desc: string }) {
   return (
-    <div className="flex flex-col gap-0.5 border-b border-ink-800 py-2.5 last:border-b-0 sm:flex-row sm:gap-6">
+    <div className="flex flex-col gap-0.5 border-b border-hair py-2.5 last:border-b-0 sm:flex-row sm:gap-6">
       <span className="shrink-0 sm:w-56">
         <CopyableCode text={name} />
       </span>
-      <span className="font-hero text-[0.875rem] leading-[1.55] text-muted">{desc}</span>
+      <span className="font-sans text-[13px] leading-[1.65] text-offwhite/45">{desc}</span>
     </div>
   );
 }
@@ -67,9 +67,9 @@ function Note({
     progress: "border-progress/30 bg-progress-subtle text-progress",
   }[tone];
   return (
-    <div className={`rounded-[8px] border px-4 py-3 font-hero text-[0.875rem] leading-[1.6] ${styles}`}>
-      <span className="font-medium">{title}</span>{" "}
-      <span className="text-muted">{children}</span>
+    <div className={`border px-4 py-3 font-sans text-[13px] leading-[1.7] ${styles}`}>
+      <span className="font-semibold">{title}</span>{" "}
+      <span className="text-offwhite/45">{children}</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ const FEATURES: Feature[] = [
     name: "warden run",
     tagline: "Run any MCP server inside the sandbox",
     badge: "Core",
-    body: "The heart of Warden. Point it at a policy and a server commandWarden initializes an OS-native sandbox (bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP + Job Objects on Windows, Docker as a fallback), applies every grant, and only then starts the process. If the sandbox cannot be initialized, Warden refuses to run. Before launch it prints a summary of exactly what the server will and won't see.",
+    body: "The heart of Warden. Point it at a policy and a server command, Warden initializes an OS-native sandbox (bubblewrap on Linux, Seatbelt on macOS, AppContainer + WFP + Job Objects on Windows, Docker as a fallback), applies every grant, and only then starts the process. If the sandbox cannot be initialized, Warden refuses to run. Before launch it prints a summary of exactly what the server will and won't see.",
     bullets: [
       "Deny-by-default: unlisted paths, hosts, and env vars are invisible, not merely blocked",
       "Backend auto-detection with --backend override (auto | linux | seatbelt | windows | docker)",
@@ -124,7 +124,7 @@ const FEATURES: Feature[] = [
     id: "init",
     name: "warden init",
     tagline: "Draft a deny-by-default policy",
-    body: "Creates policy.yamlthe single file that describes everything a server may touch. Run it after a trace and it converts the recorded accesses into a conservative starter policy; or write one by hand using the schema. Warden refuses to overwrite an existing policy, so re-running is always safe.",
+    body: "Creates policy.yaml, the single file that describes everything a server may touch. Run it after a trace and it converts the recorded accesses into a conservative starter policy; or write one by hand using the schema. Warden refuses to overwrite an existing policy, so re-running is always safe.",
     bullets: [
       "Generates filesystem read/write, network allowlist, env allowlist, and limits sections",
       "Reads the latest trace by default, or a specific log with --log",
@@ -146,7 +146,7 @@ const FEATURES: Feature[] = [
     id: "trace",
     name: "warden trace",
     tagline: "Record what a server really accesses",
-    body: "Runs the server once without the sandbox (deliberately) and records every filesystem, network, and environment access to a JSONL trace. That trace is the raw material for warden initso the policy matches the server's real behavior instead of your guesswork. One run, one trace, one honest policy.",
+    body: "Runs the server once without the sandbox (deliberately) and records every filesystem, network, and environment access to a JSONL trace. That trace is the raw material for warden init, so the policy matches the server's real behavior instead of your guesswork. One run, one trace, one honest policy.",
     bullets: [
       "Records access attempts as JSONL events in the Warden state directory",
       "The recommended flow: trace once → init → review the generated policy → run sandboxed",
@@ -169,7 +169,7 @@ const FEATURES: Feature[] = [
     id: "logs",
     name: "warden logs",
     tagline: "Every allow/deny decision, on the record",
-    body: "Reads the audit loga JSONL file where Warden records each access decision a sandboxed server made, allowed or denied. Tail it live while a server runs, or review after an incident. The audit log is the product: claims about blocking are backed by entries you can grep.",
+    body: "Reads the audit log, a JSONL file where Warden records each access decision a sandboxed server made, allowed or denied. Tail it live while a server runs, or review after an incident. The audit log is the product: claims about blocking are backed by entries you can grep.",
     bullets: [
       "JSONL format: one decision per line, easy to ingest elsewhere",
       "--follow polls every 250ms for a live tail",
@@ -195,7 +195,7 @@ const FEATURES: Feature[] = [
     bullets: [
       "Detects bwrap / sandbox-exec / AppContainer availability",
       "Validates namespace and network enforcement support",
-      "A failed check is never interpreted as 'sandbox disabled'Warden fails closed",
+      "A failed check is never interpreted as 'sandbox disabled', Warden fails closed",
     ],
     usage: "warden doctor",
     flags: [],
@@ -216,10 +216,10 @@ const FEATURES: Feature[] = [
     tagline: "Sandbox every server in your MCP client config",
     body: "Reads Claude Desktop / Claude Code / Cursor / VS Code style mcpServers configs (JSON) or gateway YAML registries, and sandboxes their stdio servers. Four subcommands cover the lifecycle: generate per-server policies, run one server sandboxed, wrap the whole config so the gateway itself launches every server through Warden, and list what's registered.",
     bullets: [
-      "gateway initgenerate deny-by-default <name>.yaml per stdio server; never overwrites; remote (SSE/HTTP) servers are skipped",
-      "gateway runlaunch one registered server under its policy, with the same --backend/--approve flags as warden run",
-      "gateway wrapprint or write a wrapped copy of the config whose stdio commands are prefixed with 'warden run --policy ...'",
-      "gateway listshow registered servers, stdio vs remote, and policy presence",
+      "gateway init, generate deny-by-default <name>.yaml per stdio server; never overwrites; remote (SSE/HTTP) servers are skipped",
+      "gateway run, launch one registered server under its policy, with the same --backend/--approve flags as warden run",
+      "gateway wrap, print or write a wrapped copy of the config whose stdio commands are prefixed with 'warden run --policy ...'",
+      "gateway list, show registered servers, stdio vs remote, and policy presence",
     ],
     usage:
       "warden gateway <init|run|wrap|list> --config <file> --policies <dir> [options]",
@@ -235,7 +235,7 @@ const FEATURES: Feature[] = [
     note: {
       tone: "deny",
       title: "Fails closed.",
-      text: "gateway run refuses when the policy is missing or the server is remoteno silent unsandboxed launch.",
+      text: "gateway run refuses when the policy is missing or the server is remote, no silent unsandboxed launch.",
     },
     image: {
       src: "/diagrams/mcp-client-proxy.jpeg",
@@ -248,8 +248,8 @@ const FEATURES: Feature[] = [
     tagline: "Filter MCP JSON-RPC in both directions",
     body: "A local filtering proxy that sits between your MCP client and an upstream server. Newline-delimited JSON-RPC messages are inspected both ways: tool calls are checked against an allowlist, secret deny patterns (like API-token regexes) block responses from leaking credentials, and oversized payloads are rejected. Every decision is audited. Supports local stdio upstreams and remote http(s) MCP servers (Streamable HTTP and SSE).",
     bullets: [
-      "Tool allowlistonly listed tools may be called",
-      "Deny patternsregexes that block secrets (e.g. ghp_… tokens) from crossing the proxy",
+      "Tool allowlist, only listed tools may be called",
+      "Deny patterns, regexes that block secrets (e.g. ghp_… tokens) from crossing the proxy",
       "Payload size caps and request auditing",
       "stdio upstreams receive only env.allow variables (deny-by-default)",
     ],
@@ -264,7 +264,7 @@ const FEATURES: Feature[] = [
     note: {
       tone: "progress",
       title: "Experimental.",
-      text: "The stdio upstream subprocess is filtered and audited at the message level but is not itself sandboxedwrap warden proxy in warden run when it needs filesystem/network isolation.",
+      text: "The stdio upstream subprocess is filtered and audited at the message level but is not itself sandboxed, wrap warden proxy in warden run when it needs filesystem/network isolation.",
     },
     image: {
       src: "/diagrams/mcp-client-proxy.jpeg",
@@ -275,11 +275,11 @@ const FEATURES: Feature[] = [
     id: "k8s",
     name: "warden k8s",
     tagline: "Translate policies into container + K8s hardening",
-    body: "Compiles a Warden policy into hardened Deployment + NetworkPolicy manifests or a docker run commandsame grants, different enforcement layer. Generated manifests ship with secure defaults: read-only root filesystem, non-root user, all capabilities dropped, and seccomp RuntimeDefault.",
+    body: "Compiles a Warden policy into hardened Deployment + NetworkPolicy manifests or a docker run command, same grants, different enforcement layer. Generated manifests ship with secure defaults: read-only root filesystem, non-root user, all capabilities dropped, and seccomp RuntimeDefault.",
     bullets: [
-      "renderemit K8s YAML manifests (Deployment + NetworkPolicy egress rules)",
-      "dockeremit the equivalent docker run command",
-      "validatecheck a policy is deployable and surface warnings (e.g. FQDN limitations)",
+      "render, emit K8s YAML manifests (Deployment + NetworkPolicy egress rules)",
+      "docker, emit the equivalent docker run command",
+      "validate, check a policy is deployable and surface warnings (e.g. FQDN limitations)",
       "filesystem.read → readOnlyRootFilesystem + RO volumes; network.allow → NetworkPolicy egress; limits → resource limits",
     ],
     usage: "warden k8s <render|docker|validate> --policy <file> [options]",
@@ -335,7 +335,7 @@ export default function FeaturesPage() {
   };
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(featuresSchema) }}
@@ -346,62 +346,48 @@ export default function FeaturesPage() {
           { name: "Features", url: `${SITE_URL}/features` },
         ])}
       />
-      <Nav />
 
-      {/* Page header */}
-      <div className="border-t border-ink-800">
-        <div className="mx-auto max-w-content px-6 pb-10 pt-16">
-          <span className="inline-block rounded-full border border-ink-700 bg-ink-900 px-3 py-1 font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
-            Feature Reference
-          </span>
-          <h1 className="mt-5 max-w-3xl font-hero text-[2.25rem] font-bold leading-[1.12] tracking-[-0.02em] text-paper sm:text-[2.75rem]">
-            Every Warden feature, explained in depth.
-          </h1>
-          <p className="mt-4 max-w-2xl font-hero text-[1rem] leading-[1.65] text-muted">
-            Warden is a local sandbox runtime for MCP servers. Nine commands
-            cover that surface, from sandboxing a single server to wrapping a
-            whole MCP client config. Everything
-            below ships today and is backed by the test suite. For the full
-            policy schema, see{" "}
-            <Link
-              href="/docs/schema"
-              className="text-blueprint transition-colors hover:text-paper"
-            >
-              the policy schema docs
-            </Link>
-            .
-          </p>
-        </div>
-      </div>
+      <PageHeader eyebrow="Feature Reference" title="Every Warden feature, explained in depth.">
+        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
+          Warden is a local sandbox runtime for MCP servers. Nine commands cover
+          that surface, from sandboxing a single server to wrapping a whole MCP
+          client config. Everything below ships today and is backed by the test
+          suite. For the full policy schema, see{" "}
+          <Link
+            href="/docs/schema"
+            className="text-acid transition-colors hover:text-acid-bright"
+          >
+            the policy schema docs
+          </Link>
+          .
+        </p>
+      </PageHeader>
 
       <FeatureNav />
 
-      {/* Feature sections */}
-      <div className="mx-auto max-w-content px-6">
+      <div>
         {FEATURES.map((f, idx) => (
           <section
             key={f.id}
             id={f.id}
-            className="scroll-mt-32 border-b border-ink-800 py-14 last:border-b-0"
+            className="scroll-mt-32 border-b border-hair px-6 py-14 last:border-b-0"
           >
-            {/* Section header */}
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-hero text-[0.75rem] text-muted">
+              <span className="font-mono text-[11px] text-offwhite/35">
                 {String(idx + 1).padStart(2, "0")}
               </span>
-              <h2 className="font-hero text-[1.375rem] font-bold tracking-[-0.01em] text-paper">
+              <h2 className="font-mono text-[1.35rem] font-semibold tracking-[-0.01em] text-offwhite">
                 {f.name}
               </h2>
-              <span className="rounded-full border border-blueprint/30 bg-blueprint/10 px-2.5 py-0.5 text-[0.6875rem] font-medium text-blueprint">
+              <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
                 {f.badge}
               </span>
             </div>
-            <p className="mt-2 font-hero text-[1.0625rem] text-muted">{f.tagline}</p>
+            <p className="mt-2 font-sans text-[14px] text-offwhite/50">{f.tagline}</p>
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_22rem]">
-              {/* Left: prose + usage */}
               <div className="min-w-0">
-                <p className="max-w-2xl font-hero text-[0.9375rem] leading-[1.7] text-muted">
+                <p className="max-w-2xl font-sans text-[14px] leading-[1.75] text-offwhite/45">
                   {f.body}
                 </p>
 
@@ -410,14 +396,14 @@ export default function FeaturesPage() {
                     {f.bullets.map((b) => (
                       <li
                         key={b}
-                        className="flex gap-2.5 font-hero text-[0.9375rem] leading-[1.6] text-muted"
+                        className="flex gap-2.5 font-sans text-[13.5px] leading-[1.7] text-offwhite/45"
                       >
                         <svg
                           width="14"
                           height="14"
                           viewBox="0 0 16 16"
                           fill="none"
-                          className="mt-1 shrink-0 text-grant"
+                          className="mt-1 shrink-0 text-acid"
                         >
                           <path
                             d="M3.5 8.5l3 3 6-7"
@@ -433,9 +419,8 @@ export default function FeaturesPage() {
                   </ul>
                 )}
 
-                {/* Usage */}
                 <div className="mt-7">
-                  <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
                     Usage
                   </span>
                   <div className="mt-2">
@@ -443,10 +428,9 @@ export default function FeaturesPage() {
                   </div>
                 </div>
 
-                {/* Flags */}
                 {f.flags.length > 0 && (
                   <div className="mt-6">
-                    <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                    <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
                       Flags
                     </span>
                     <div className="mt-2">
@@ -457,9 +441,8 @@ export default function FeaturesPage() {
                   </div>
                 )}
 
-                {/* Examples */}
                 <div className="mt-6">
-                  <span className="font-hero text-[0.6875rem] uppercase tracking-[0.08em] text-muted">
+                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
                     Examples
                   </span>
                   <div className="mt-2">
@@ -476,9 +459,8 @@ export default function FeaturesPage() {
                 )}
               </div>
 
-              {/* Right: diagram */}
               <div className="min-w-0">
-                <div className="overflow-hidden rounded-[12px] border border-ink-800 lg:sticky lg:top-32">
+                <div className="overflow-hidden border border-hair lg:sticky lg:top-32">
                   <Diagram src={f.image.src} alt={f.image.alt} />
                 </div>
               </div>
@@ -487,34 +469,31 @@ export default function FeaturesPage() {
         ))}
       </div>
 
-      {/* Bottom CTA */}
-      <div className="mx-auto max-w-content px-6 pb-24 pt-4">
-        <div className="rounded-[12px] border border-ink-700 bg-ink-900 p-8 text-center">
-          <h2 className="font-hero text-[1.375rem] font-bold text-paper">
+      <div className="px-6 pb-24 pt-14">
+        <div className="border border-hair bg-cell p-8 text-center">
+          <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
             Ready to sandbox your first server?
           </h2>
-          <p className="mx-auto mt-2 max-w-md font-hero text-[0.9375rem] text-muted">
-            Install the CLI, trace once, and run under a policyin about two
+          <p className="mx-auto mt-2 max-w-md font-sans text-[13.5px] leading-[1.7] text-offwhite/45">
+            Install the CLI, trace once, and run under a policy, in about two
             minutes.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/docs/install"
-              className="rounded-[8px] bg-blueprint px-5 py-2.5 font-hero text-[0.875rem] font-medium text-ink-950 transition-opacity hover:opacity-90"
+              className="rounded-md bg-acid px-5 py-2.5 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
             >
               Install Warden
             </Link>
             <Link
               href="/docs/quickstart"
-              className="rounded-[8px] border border-ink-600 px-5 py-2.5 font-hero text-[0.875rem] font-medium text-paper transition-colors hover:border-ink-500"
+              className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
             >
               Read the quickstart
             </Link>
           </div>
         </div>
       </div>
-
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

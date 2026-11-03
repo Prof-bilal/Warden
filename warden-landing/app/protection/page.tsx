@@ -88,7 +88,7 @@ export default function Page() {
       </div>
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border border-ink-700 p-7">
-          <h2 className="text-xl font-semibold">Evidence has levels</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Evidence has levels</h2>
           <ol className="mt-5 space-y-4 text-sm leading-relaxed text-muted">
             <li>
               <strong className="text-paper">Metadata reviewed:</strong> an
@@ -110,7 +110,7 @@ export default function Page() {
           </ol>
         </section>
         <section className="rounded-xl border border-ink-700 p-7">
-          <h2 className="text-xl font-semibold">Local setup checks</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Local setup checks</h2>
           <p className="mt-4 text-sm leading-relaxed text-muted">
             Applying a wrapper probes the selected sandbox using an inert Warden
             process before writing. It never starts the target server for that

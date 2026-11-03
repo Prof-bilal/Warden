@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
 import JsonLd from "@/components/JsonLd";
 import ArticleMarkdown from "@/components/ArticleMarkdown";
 import { breadcrumbSchema, faqPageSchema } from "@/lib/schema";
@@ -33,7 +32,7 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
   };
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd data={articleSchema} />
       <JsonLd
         data={breadcrumbSchema([
@@ -43,84 +42,96 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
         ])}
       />
       {topic.faqs.length > 0 && <JsonLd data={faqPageSchema(url, topic.faqs)} />}
-      <Nav />
-      <article className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
-        <nav aria-label="Breadcrumb" className="mb-8 font-hero text-[0.8125rem] text-muted">
-          <Link href="/" className="transition-colors hover:text-paper">
-            Home
-          </Link>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <Link href="/guides" className="transition-colors hover:text-paper">
-            Guides
-          </Link>
-        </nav>
+      <article className="px-6 pb-20 pt-10 md:pt-14">
+        <div className="mx-auto max-w-[48rem]">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          >
+            <Link href="/" className="transition-colors hover:text-offwhite">
+              Home
+            </Link>
+            <span className="text-offwhite/20">/</span>
+            <Link href="/guides" className="transition-colors hover:text-offwhite">
+              Guides
+            </Link>
+          </nav>
 
-        <h1 className="font-hero text-[2.25rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper sm:text-[2.5rem]">
-          {topic.title}
-        </h1>
-        <p className="mt-5 font-hero text-[1.0625rem] leading-[1.7] text-muted">{topic.answer}</p>
-        <p className="mt-4 font-hero text-[0.875rem] text-muted">
-          <Link href="/author/prof-bilal" className="text-paper hover:text-blueprint">
-            Abdullah Bilal
-          </Link>
-          <span className="mx-2 text-ink-600">·</span>
-          <time dateTime={topic.date}>Published {formatDate(topic.date)}</time>
-        </p>
+          <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
+            {topic.title}
+          </h1>
+          <p className="mt-5 font-sans text-[15px] leading-[1.75] text-offwhite/50">
+            {topic.answer}
+          </p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-micro text-offwhite/35">
+            <Link
+              href="/author/prof-bilal"
+              className="text-offwhite/70 transition-colors hover:text-acid"
+            >
+              Abdullah Bilal
+            </Link>
+            <span className="mx-2 text-offwhite/20">·</span>
+            <time dateTime={topic.date}>Published {formatDate(topic.date)}</time>
+          </p>
 
-        {topic.tldr.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-ink-700 bg-ink-900 px-5 py-4">
-            <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-grant">
-              Answer in short
-            </h2>
-            <ul className="mt-3 list-disc space-y-1.5 pl-5 font-hero text-[0.9375rem] leading-[1.6] text-muted">
-              {topic.tldr.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+          {topic.tldr.length > 0 && (
+            <section className="mt-8 border border-hair bg-cell px-5 py-4">
+              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-acid">
+                Answer in short
+              </h2>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 font-sans text-[14px] leading-[1.65] text-offwhite/50">
+                {topic.tldr.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-        <div className="mt-10">
-          <ArticleMarkdown content={topic.body} />
+          <div className="mt-10">
+            <ArticleMarkdown content={topic.body} />
+          </div>
+
+          {topic.faqs.length > 0 && (
+            <section className="mt-12">
+              <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
+                Questions people ask
+              </h2>
+              <dl className="mt-4 divide-y divide-hair border-y border-hair">
+                {topic.faqs.map((item) => (
+                  <div key={item.question} className="py-5">
+                    <dt className="font-mono text-[15px] font-semibold text-offwhite">
+                      {item.question}
+                    </dt>
+                    <dd className="mt-2 font-sans text-[14px] leading-[1.7] text-offwhite/50">
+                      {item.answer}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          {topic.related.length > 0 && (
+            <section className="mt-12 border-t border-hair pt-8">
+              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+                Keep reading
+              </h2>
+              <ul className="mt-4 space-y-3">
+                {topic.related.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="font-mono text-[15px] font-medium text-offwhite transition-colors hover:text-acid"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
-
-        {topic.faqs.length > 0 && (
-          <section className="mt-12">
-            <h2 className="font-hero text-[1.375rem] font-bold text-paper">Questions people ask</h2>
-            <dl className="mt-4 divide-y divide-ink-800 border-y border-ink-800">
-              {topic.faqs.map((item) => (
-                <div key={item.question} className="py-5">
-                  <dt className="font-hero text-[1rem] font-bold text-paper">{item.question}</dt>
-                  <dd className="mt-2 font-hero text-[0.9375rem] leading-[1.65] text-muted">
-                    {item.answer}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        )}
-
-        {topic.related.length > 0 && (
-          <section className="mt-12 border-t border-ink-800 pt-8">
-            <h2 className="font-hero text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-muted">
-              Keep reading
-            </h2>
-            <ul className="mt-4 space-y-3">
-              {topic.related.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="font-hero text-[1.0625rem] font-medium text-paper hover:text-blueprint"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
       </article>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

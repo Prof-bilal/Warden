@@ -28,7 +28,7 @@ export default function Page() {
       <IntegrationBuilder />
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         <section className="rounded-xl border border-ink-700 p-6">
-          <h2 className="text-xl font-semibold">SDKs and custom agents</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">SDKs and custom agents</h2>
           <p className="mt-3 text-sm text-muted">
             Use structured stdio arguments or connect to /mcp with a bearer
             credential. Examples cover OpenAI Agents, LangChain and Pydantic AI.
@@ -38,7 +38,7 @@ export default function Page() {
           </Link>
         </section>
         <section className="rounded-xl border border-ink-700 p-6">
-          <h2 className="text-xl font-semibold">Remote providers</h2>
+          <h2 className="font-mono text-[1.1rem] font-semibold text-offwhite">Remote providers</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             Warden can filter a remote MCP endpoint. It cannot sandbox the
             provider&apos;s machine. Upstream credentials stay separate from

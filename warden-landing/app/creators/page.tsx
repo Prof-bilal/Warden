@@ -39,7 +39,7 @@ export default function Page() {
             key={title}
             className="rounded-2xl border border-ink-700 p-7"
           >
-            <h2 className="text-2xl font-semibold">{title}</h2>
+            <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">{title}</h2>
             <img
               src={`/badges/${file}`}
               alt={`Warden: ${title.toLowerCase()}`}
@@ -52,7 +52,7 @@ export default function Page() {
         ))}
       </div>
       <section className="mt-8 rounded-2xl border border-ink-700 p-7">
-        <h2 className="text-2xl font-semibold">Start with disposable data</h2>
+        <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">Start with disposable data</h2>
         <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted">
           The creator kit supplies rules, positive/negative check templates and
           a README badge. Run a prepared server inside the sandbox with fake

@@ -1,14 +1,14 @@
 # SQLite MCP Server Policy
 
-SQLite MCP server ko sandbox karo. Local database, no network needed.
+Sandbox the SQLite MCP server. **Local database, no network needed.**
 
 ## What it needs
 
 | Resource | Access | Details |
 |---|---|---|
-| Filesystem | Write | DB directory (WAL + journal sidecars ke liye) |
-| Network | None | Local database hai |
-| Env | None | Variables nahi chahiye |
+| Filesystem | Write | DB directory (for WAL + journal sidecars) |
+| Network | None | It is a **local database** |
+| Env | None | **No variables needed** |
 
 ## Complete Policy
 
@@ -43,32 +43,32 @@ warden run --policy policy-sqlite.yaml
 
 ## Tips
 
-- **Important:** SQLite ko `write` grant chahiye DB file ke **directory** pe
-  - Sirf `db.sqlite3` pe nahi chalega
-  - WAL aur journal files next to DB file banti hain
-- `read: []` rakho agar sirf write karna hai
-- `network: []` rakho kyunki local database hai
+- **Important:** SQLite needs a `write` grant on the **directory** containing the DB file
+  - Granting only `db.sqlite3` **will not work**
+  - WAL and journal files are created **next to** the DB file
+- Use `read: []` if you only need to **write**
+- Use `network: []` because it is a **local database**
 
-## Why Write on Directory?
+## Why Write on the Directory?
 
-SQLite WAL (Write-Ahead Logging) mode mein multiple files banti hain:
+In **WAL (Write-Ahead Logging)** mode, SQLite creates **multiple files**:
 
 ```
 data/
   mydb.sqlite3        # Main database
   mydb.sqlite3-wal    # Write-ahead log
-  mydb.sqlite3-shm   # Shared memory file
+  mydb.sqlite3-shm    # Shared memory file
 ```
 
-Isliye directory pe write grant dena zaroori hai.
+That is why you **must** grant write access on the **directory**.
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `database is locked` | Write grant check karo - directory pe hona chahiye |
-| `permission denied` | `filesystem.write` mein directory add karo |
-| `unable to open database file` | Path relative hai policy file ke folder ke against |
+| `database is locked` | Check the write grant, it must be on the **directory** |
+| `permission denied` | Add the directory to `filesystem.write` |
+| `unable to open database file` | The path is **relative** to the policy file's folder |
 
 ## Resources
 

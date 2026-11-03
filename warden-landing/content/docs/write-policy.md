@@ -1,7 +1,7 @@
 # Write a Policy
 
-Policy.yaml likhna bahut simple hai. Sirf 3 cheezein batani hain:
-**kya padh sakta hai**, **kahan network kar sakta hai**, aur **kaunse secrets mil sakte hain**.
+Writing `policy.yaml` is **simple**. You only need to declare **three things**:
+**what it can read**, **where it can reach on the network**, and **which secrets it can receive**.
 
 ## Basic Structure
 
@@ -19,37 +19,38 @@ env:
   allow: ["API_KEY"]
 ```
 
-Bas! Jo cheez list mein nahi hai, wo **exist hi nahi karti** sandbox ke andar.
+That's it. Anything **not** in the list **does not exist** inside the sandbox.
 
 ---
 
-## Step 1: `command` - Server kaise start hoga
+## Step 1: `command` - How the server starts
 
 ```yaml
 command: ["/usr/bin/node", "./server/dist/index.js"]
 ```
 
-- Pehla element: executable ka **absolute path**
-- Baaki elements: arguments
+- First element: the **absolute path** to the executable
+- Remaining elements: arguments
 
-**Tip:** Bare name (`node`, `npx`) bhi kaam karta hai PATH se resolve hota hai.
-Lekin checked-in policy mein absolute path likho.
+**Tip:** A bare name (`node`, `npx`) also works and resolves through `PATH`.
+But in a **checked-in policy**, write the **absolute path**.
 
 ---
 
-## Step 2: `filesystem` - Kya padh/likh sakta hai
+## Step 2: `filesystem` - What it can read and write
 
 ```yaml
 filesystem:
-  read: ["./data", "./config"]     # Sirf ye directories padh sakta hai
-  write: ["./output"]              # Sirf ye directory mein likh sakta hai
+  read: ["./data", "./config"]     # Only these directories are readable
+  write: ["./output"]              # Only this directory is writable
 ```
 
 **Rules:**
-- Relative paths policy file ke folder ke against resolve hote hain
-- `read` = sirf padh sakta hai (read-only mount)
-- `write` = padh + likh dono kar sakta hai
-- Jo path list mein nahi hai, wo **invisible** hai (permission denied nahi, literally exists nahi)
+
+- Relative paths resolve against the **policy file's directory**
+- `read` = **read-only** mount
+- `write` = **read and write**
+- Any path not in the list is **invisible** (not "permission denied", it literally **does not exist**)
 
 **Common patterns:**
 
@@ -61,7 +62,7 @@ filesystem:
 
 ---
 
-## Step 3: `network` - Kahan internet kar sakta hai
+## Step 3: `network` - Where it can connect
 
 ```yaml
 network:
@@ -71,14 +72,15 @@ network:
 ```
 
 **Rules:**
-- Sirf hostnames ya IP addresses
-- Ports part of grant nahi hain (proxy forward karta hai)
-- DNS resolution blocked hai allowed hosts ke liye
-- `[]` = koi network access nahi
+
+- **Hostnames** or **IP addresses** only
+- Ports are **not** part of the grant (the proxy forwards them)
+- **DNS resolution is blocked** for hosts that are not allowed
+- `[]` = **no network access**
 
 ---
 
-## Step 4: `env` - Kaunse secrets mil sakte hain
+## Step 4: `env` - Which secrets it can receive
 
 ```yaml
 env:
@@ -89,11 +91,12 @@ env:
 ```
 
 **Rules:**
-- Sirf **names** likho, values policy mein kabhi nahi hoti
-- Values parent shell se aati hain runtime pe
-- `[]` = empty environment (koi variable nahi)
 
-**Security tip:** `HOME` mat do agar `~/.ssh` bhi grant kar rahe ho.
+- Write **names** only, values are **never** stored in the policy
+- Values come from the **parent shell** at runtime
+- `[]` = **empty environment** (no variables)
+
+**Security tip:** Do **not** grant `HOME` if you are also granting `~/.ssh`.
 
 ---
 
@@ -105,8 +108,8 @@ limits:
   timeout_s: 300       # Max time (seconds)
 ```
 
-- 0 ya omit = no limit
-- Linux pe enforced hai (process kill hota hai limit breach pe)
+- `0` or omitted = **no limit**
+- Enforced on **Linux** (the process is **killed** when a limit is breached)
 
 ---
 
@@ -174,20 +177,20 @@ limits:
 
 ---
 
-## Shortcut: Auto-Generate Policy
+## Shortcut: Auto-Generate a Policy
 
-Policy guess mat karo. Pehle trace karo:
+**Do not guess** the policy. **Trace first**:
 
 ```bash
-# Step 1: Server ko run karo, access record hoga
+# Step 1: Run the server and record its access
 warden trace -- node server.js
 
-# Step 2: Trace se policy generate karo
+# Step 2: Generate a policy from the trace
 warden init
 ```
 
-`init` sirf successful accesses ko grant karta hai. Generated policy review karo,
-aur tight karo jo broad hai.
+`init` grants only **successful** observed accesses. **Review** the generated
+policy and **tighten** anything that is too broad.
 
 ---
 
@@ -195,16 +198,16 @@ aur tight karo jo broad hai.
 
 | Mistake | Fix |
 |---|---|
-| Same path in read AND write | Write grant subsumes read. Sirf `write` mein daalo |
-| `HOME` + broad filesystem | `HOME` do + `~/.ssh` grant = SSH keys leak |
-| Wildcard hosts (`*`) | Supported nahi. Har host alag list karo |
-| Bare command name | Absolute path do ya PATH pe rely karo |
-| No limits set | Memory/timeout set karo (especially CI mein) |
+| Same path in read AND write | A **write grant subsumes read**. Put it only under `write` |
+| `HOME` + broad filesystem | Granting `HOME` **and** `~/.ssh` leaks SSH keys |
+| Wildcard hosts (`*`) | **Not supported**. List each host separately |
+| Bare command name | Use an **absolute path**, or rely on `PATH` |
+| No limits set | Set **memory/timeout** (especially in CI) |
 
 ---
 
 ## Next Steps
 
-- [Server Guides](policy-github.md) - Har MCP server ka detailed guide
-- [Compatibility Matrix](compatibility.md) - 18 tested servers with exact policies
-- [Schema Reference](schema.md) - Har field ka detailed explanation
+- [Server Guides](policy-github.md), a detailed guide for each MCP server
+- [Compatibility Matrix](compatibility.md), 18 tested servers with exact policies
+- [Schema Reference](schema.md), a detailed explanation of every field

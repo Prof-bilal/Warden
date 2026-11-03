@@ -15,7 +15,7 @@ function getAllDocSlugs(): string[] {
         .readdirSync(DOCS_DIR)
         .filter((f) => f.endsWith(".md"))
         .map((f) => f.replace(/\.md$/, ""))
-        // /docs/index duplicates the docs hub at /docs — keep it out of the sitemap.
+        // /docs/index duplicates the docs hub at /docs, keep it out of the sitemap.
         .filter((slug) => slug !== "index")
     );
   } catch {

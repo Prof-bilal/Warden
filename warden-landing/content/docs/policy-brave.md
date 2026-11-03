@@ -1,6 +1,6 @@
 # Brave Search MCP Server Policy
 
-Brave Search MCP server ko sandbox karo. Single-host API egress.
+Sandbox the Brave Search MCP server. **Single-host API egress.**
 
 ## What it needs
 
@@ -49,18 +49,18 @@ warden run --policy policy-brave.yaml
 
 ## Tips
 
-- Single-host server hai - sirf `api.search.brave.com`
-- `cache` directory ka write grant do (search results cache hoti hain)
-- Light server hai - `memory_mb: 128` sufficient hai
-- `HOME` Node.js initialization ke liye chahiye
+- This is a **single-host** server, only `api.search.brave.com`
+- Grant write access to the `cache` directory (search results are cached)
+- It is a **light** server, `memory_mb: 128` is enough
+- `HOME` is needed for Node.js initialization
 
 ## Troubleshooting
 
 | Error | Fix |
 |---|---|
-| `API key not found` | `BRAVE_API_KEY` shell mein export karo |
-| Network blocked | `api.search.brave.com` `network.allow` mein hai? |
-| Cache errors | `cache` directory ka write grant do |
+| `API key not found` | Export `BRAVE_API_KEY` in the shell |
+| Network blocked | Is `api.search.brave.com` in `network.allow`? |
+| Cache errors | Grant write access to the `cache` directory |
 
 ## Resources
 

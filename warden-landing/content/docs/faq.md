@@ -85,7 +85,7 @@ generating the policy.
 ### Wildcard hosts (`*.example.com`)
 
 A **single leading wildcard label** is supported: `network.allow` accepts
-`*.example.com` to grant a subdomain pattern (locked in by regression test —
+`*.example.com` to grant a subdomain pattern (locked in by regression test, 
 see the policy schema). Fully arbitrary hosts (any top-level domain, e.g.
 browser-like servers) remain out of scope. Daemon sockets (`/var/run/docker.sock`)
 have no grant type and are [inherently incompatible](compatibility.md#failures-classified).
@@ -93,5 +93,5 @@ have no grant type and are [inherently incompatible](compatibility.md#failures-c
 ### "Will this work with my server?"
 
 Check the [Compatibility Matrix](compatibility.md) first. If your server
-isn't listed, trace it and [file a compatibility report](beta.md#filing-a-compatibility-report) —
+isn't listed, trace it and [file a compatibility report](beta.md#filing-a-compatibility-report), 
 that's exactly the signal the beta program collects.

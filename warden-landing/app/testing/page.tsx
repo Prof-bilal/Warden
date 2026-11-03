@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { SITE_URL } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema } from "@/lib/schema";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
 import Link from "next/link";
+import PageShell from "@/components/PageShell";
+import PageHeader from "@/components/bp/PageHeader";
 import {
   AUDIT_SUMMARY,
   GO_CHECKS,
@@ -100,28 +100,29 @@ const PLATFORMS: {
 
 const STATUS_STYLE: Record<Status, { box: string; dot: string }> = {
   Verified: {
-    box: "border-grant/30 bg-grant-subtle text-grant",
-    dot: "bg-grant",
+    box: "border-acid/30 bg-acid/10 text-acid",
+    dot: "bg-acid",
   },
   "Partially verified": {
     box: "border-progress/30 bg-progress-subtle text-progress",
     dot: "bg-progress",
   },
   "Not yet run": {
-    box: "border-ink-600 bg-ink-950 text-muted",
-    dot: "bg-ink-600",
+    box: "border-hair bg-void text-offwhite/35",
+    dot: "bg-offwhite/20",
   },
 };
 
-const TH = "px-4 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-muted";
-const TD = "px-4 py-2.5 text-[13px] text-paper/90";
+const TH =
+  "px-4 py-3 text-left font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35";
+const TD = "px-4 py-2.5 text-[12.5px] text-offwhite/75";
 
 function Badge({ children, tone }: { children: ReactNode; tone: "pass" | "block" }) {
   return (
     <span
       className={
-        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-[0.06em] " +
-        (tone === "pass" ? "bg-grant text-ink-950" : "bg-deny text-ink-950")
+        "inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-micro " +
+        (tone === "pass" ? "bg-acid text-void" : "bg-deny text-void")
       }
     >
       {children}
@@ -136,58 +137,47 @@ export default function TestingPage() {
   const auditAllowed = AUDIT_SUMMARY.file.allowed + AUDIT_SUMMARY.network.allowed;
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd
         data={breadcrumbSchema([
           { name: "Home", url: `${SITE_URL}/` },
           { name: "Testing", url: `${SITE_URL}/testing` },
         ])}
       />
-      <Nav />
 
-      {/* header */}
-      <section className="border-t border-ink-800">
-        <div className="mx-auto max-w-content px-6 pb-14 pt-16 text-center md:pt-24">
-          <p className="mb-4 font-hero text-[12px] font-bold uppercase tracking-[0.12em] text-grant">
-            Test proof
-          </p>
-          <h1 className="mx-auto max-w-3xl font-hero text-[2.25rem] font-bold leading-[1.1] tracking-[-0.02em] text-paper sm:text-[2.75rem]">
-            Warden test proof, by platform.
-          </h1>
-          <p className="mx-auto mt-4 max-w-[38rem] font-hero text-[15px] leading-[1.7] text-muted md:text-[16px]">
-            Each result below comes from a recorded run. Platforms without a recorded run are marked
-            as not yet run.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/docs/testing-platforms"
-              className="rounded-[10px] bg-gradient-to-r from-grant to-blueprint px-5 py-2.5 font-hero text-[14px] font-semibold text-white transition hover:brightness-110"
-            >
-              Full testing guide
-            </Link>
-            <Link
-              href="/docs/quickstart"
-              className="rounded-[10px] border border-ink-600 bg-ink-900 px-5 py-2.5 font-hero text-[14px] font-semibold text-paper transition hover:-translate-y-px hover:border-grant/60"
-            >
-              Quickstart
-            </Link>
-          </div>
+      <PageHeader eyebrow="Test proof" title="Warden test proof, by platform.">
+        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
+          Each result below comes from a recorded run. Platforms without a
+          recorded run are marked as not yet run.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href="/docs/testing-platforms"
+            className="rounded-md bg-acid px-5 py-2.5 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
+          >
+            Full testing guide
+          </Link>
+          <Link
+            href="/docs/quickstart"
+            className="rounded-md border border-hair bg-cell px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
+          >
+            Quickstart
+          </Link>
         </div>
-      </section>
+      </PageHeader>
 
       {/* platforms */}
-      <section className="mx-auto max-w-content px-6 pb-20">
-        <div className="grid gap-4 md:grid-cols-2">
+      <section className="border-b border-hair px-6 py-12 md:py-14">
+        <div className="grid gap-px border border-hair bg-hair md:grid-cols-2">
           {PLATFORMS.map((p) => (
-            <div
-              key={p.name}
-              className="rounded-2xl border border-ink-700 bg-ink-900 p-5 transition-colors hover:border-ink-500 md:p-6"
-            >
+            <div key={p.name} className="bg-cell p-5 md:p-6">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="font-hero text-[17px] font-bold text-paper">{p.name}</h3>
+                <h3 className="font-mono text-[15px] font-semibold text-offwhite">
+                  {p.name}
+                </h3>
                 <span
                   className={
-                    "flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-hero text-[11px] font-bold " +
+                    "flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] uppercase tracking-micro " +
                     STATUS_STYLE[p.status].box
                   }
                 >
@@ -195,17 +185,19 @@ export default function TestingPage() {
                   {p.status}
                 </span>
               </div>
-              <p className="mt-2 inline-block rounded-md border border-ink-700 bg-ink-950 px-2 py-0.5 font-hero text-[12px] text-paper/90">
+              <p className="mt-2 inline-block border border-hair bg-void px-2 py-0.5 font-mono text-[11px] text-offwhite/70">
                 {p.backend}
               </p>
-              <p className="mt-3 font-hero text-[12.5px] leading-[1.6] text-muted">{p.note}</p>
+              <p className="mt-3 font-sans text-[12.5px] leading-[1.7] text-offwhite/45">
+                {p.note}
+              </p>
               <div className="mt-4 space-y-2">
                 {p.commands.map((c) => (
                   <div key={c.label} className="flex items-start gap-3">
-                    <span className="mt-1 w-20 shrink-0 font-hero text-[10px] font-bold uppercase tracking-[0.1em] text-muted">
+                    <span className="mt-0.5 w-20 shrink-0 font-mono text-[9px] uppercase tracking-micro text-offwhite/30">
                       {c.label}
                     </span>
-                    <code className="block min-w-0 flex-1 overflow-x-auto rounded-lg bg-ink-950 px-2.5 py-1.5 font-hero text-[12px] text-blueprint">
+                    <code className="block min-w-0 flex-1 overflow-x-auto bg-void px-2.5 py-1.5 font-mono text-[11.5px] text-acid">
                       {c.cmd}
                     </code>
                   </div>
@@ -217,25 +209,26 @@ export default function TestingPage() {
       </section>
 
       {/* Linux proof harness */}
-      <section className="mx-auto max-w-content px-6 pb-20">
-        <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 px-5 py-4">
-            <h2 className="font-hero text-[15px] font-bold text-paper">
+      <section className="border-b border-hair px-6 py-12 md:py-14">
+        <div className="border border-hair bg-cell">
+          <div className="flex flex-wrap items-center gap-3 border-b border-hair px-5 py-4">
+            <h2 className="font-mono text-[14px] font-semibold text-offwhite">
               Linux proof harness
             </h2>
-            <span className="rounded-full border border-grant/30 bg-grant-subtle px-2.5 py-0.5 font-hero text-[11px] font-bold text-grant">
+            <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
               {stepsPass}/{HARNESS.stepsPassed + HARNESS.stepsFailed} steps pass
             </span>
           </div>
-          <p className="border-b border-ink-800 px-5 py-4 font-hero text-[12.5px] leading-[1.7] text-muted">
-            Run <span className="text-paper/90">{HARNESS.runId}</span> on {HARNESS.platform} ({HARNESS.backend}).
-            The positive control (the target process starts) is {HARNESS.positiveControl}, and the run
-            exited with code {HARNESS.runExit}. Each step's observed result is compared with its expected result.
+          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
+            Run <span className="text-offwhite/80">{HARNESS.runId}</span> on {HARNESS.platform} (
+            {HARNESS.backend}). The positive control (the target process starts) is{" "}
+            {HARNESS.positiveControl}, and the run exited with code {HARNESS.runExit}. Each
+            step&apos;s observed result is compared with its expected result.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-left font-hero">
+            <table className="w-full min-w-[36rem] border-collapse text-left">
               <thead>
-                <tr className="border-b border-ink-700 bg-ink-950/60">
+                <tr className="border-b border-hair bg-void/60">
                   <th className={TH}>Step</th>
                   <th className={TH}>What it checks</th>
                   <th className={TH}>Expected</th>
@@ -249,14 +242,14 @@ export default function TestingPage() {
                   return (
                     <tr
                       key={s.step}
-                      className="border-b border-ink-800 transition-colors last:border-b-0 hover:bg-ink-800/40"
+                      className="border-b border-hair transition-colors last:border-b-0 hover:bg-offwhite/[0.03]"
                     >
-                      <td className={TD + " font-mono text-[12px]"}>{s.step}</td>
+                      <td className={TD + " font-mono text-[11.5px]"}>{s.step}</td>
                       <td className={TD}>{s.what}</td>
-                      <td className={TD + " text-muted"}>{s.expected}</td>
-                      <td className={TD + " text-muted"}>{s.observed}</td>
+                      <td className={TD + " text-offwhite/45"}>{s.expected}</td>
+                      <td className={TD + " text-offwhite/45"}>{s.observed}</td>
                       <td className="px-4 py-2.5 text-center">
-                        <Badge tone={ok ? "pass" : "block"}>{ok ? "✓ PASS" : "✗ FAIL"}</Badge>
+                        <Badge tone={ok ? "pass" : "block"}>{ok ? "PASS" : "FAIL"}</Badge>
                       </td>
                     </tr>
                   );
@@ -268,23 +261,25 @@ export default function TestingPage() {
       </section>
 
       {/* Go checks */}
-      <section className="mx-auto max-w-content px-6 pb-20">
-        <div className="overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
-          <div className="flex flex-wrap items-center gap-3 border-b border-ink-700 px-5 py-4">
-            <h2 className="font-hero text-[15px] font-bold text-paper">Go build, vet and test</h2>
-            <span className="rounded-full border border-grant/30 bg-grant-subtle px-2.5 py-0.5 font-hero text-[11px] font-bold text-grant">
+      <section className="border-b border-hair px-6 py-12 md:py-14">
+        <div className="border border-hair bg-cell">
+          <div className="flex flex-wrap items-center gap-3 border-b border-hair px-5 py-4">
+            <h2 className="font-mono text-[14px] font-semibold text-offwhite">
+              Go build, vet and test
+            </h2>
+            <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
               {TEST_FUNCTION_COUNT} test functions
             </span>
           </div>
-          <p className="border-b border-ink-800 px-5 py-4 font-hero text-[12.5px] leading-[1.7] text-muted">
-            Project checks from AGENTS.md, run on {RUN_DATE} on Linux. The suite runs serially
-            (<code className="text-blueprint">-p 1</code>); parallel runs can exhaust the process limit
-            and fail for reasons unrelated to Warden.
+          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
+            Project checks from AGENTS.md, run on {RUN_DATE} on Linux. The suite runs
+            serially (<code className="text-acid">-p 1</code>); parallel runs can exhaust
+            the process limit and fail for reasons unrelated to Warden.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] border-collapse text-left font-hero">
+            <table className="w-full min-w-[36rem] border-collapse text-left">
               <thead>
-                <tr className="border-b border-ink-700 bg-ink-950/60">
+                <tr className="border-b border-hair bg-void/60">
                   <th className={TH}>Check</th>
                   <th className={TH}>Exit</th>
                   <th className={TH}>Result</th>
@@ -294,13 +289,15 @@ export default function TestingPage() {
                 {GO_CHECKS.map((g) => (
                   <tr
                     key={g.check}
-                    className="border-b border-ink-800 transition-colors last:border-b-0 hover:bg-ink-800/40"
+                    className="border-b border-hair transition-colors last:border-b-0 hover:bg-offwhite/[0.03]"
                   >
-                    <td className={TD + " font-mono text-[12px]"}>{g.check}</td>
+                    <td className={TD + " font-mono text-[11.5px]"}>{g.check}</td>
                     <td className={TD}>
-                      <Badge tone={g.exit === 0 ? "pass" : "block"}>{g.exit === 0 ? "0 PASS" : `${g.exit} FAIL`}</Badge>
+                      <Badge tone={g.exit === 0 ? "pass" : "block"}>
+                        {g.exit === 0 ? "0 PASS" : `${g.exit} FAIL`}
+                      </Badge>
                     </td>
-                    <td className={TD + " text-muted"}>{g.result}</td>
+                    <td className={TD + " text-offwhite/45"}>{g.result}</td>
                   </tr>
                 ))}
               </tbody>
@@ -310,52 +307,61 @@ export default function TestingPage() {
       </section>
 
       {/* Audit log */}
-      <section className="mx-auto max-w-content px-6 pb-20">
-        <div className="rounded-2xl border border-ink-700 bg-ink-900 p-5 md:p-6">
-          <h2 className="font-hero text-[15px] font-bold text-paper">Audit log from the proof run</h2>
-          <p className="mt-2 font-hero text-[12.5px] leading-[1.7] text-muted">
-            The run wrote {AUDIT_SUMMARY.total} audit entries. Every blocked access is logged, not
-            silently dropped.
+      <section className="border-b border-hair px-6 py-12 md:py-14">
+        <div className="border border-hair bg-cell p-5 md:p-6">
+          <h2 className="font-mono text-[14px] font-semibold text-offwhite">
+            Audit log from the proof run
+          </h2>
+          <p className="mt-2 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
+            The run wrote {AUDIT_SUMMARY.total} audit entries. Every blocked access is
+            logged, not silently dropped.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-ink-700 bg-ink-950 p-4">
-              <p className="font-hero text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Allowed</p>
-              <p className="mt-1 font-hero text-[22px] font-bold text-grant">{auditAllowed}</p>
+          <div className="mt-5 grid gap-px border border-hair bg-hair sm:grid-cols-3">
+            <div className="bg-void p-4">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+                Allowed
+              </p>
+              <p className="mt-1 font-mono text-[22px] font-semibold text-acid">
+                {auditAllowed}
+              </p>
             </div>
-            <div className="rounded-xl border border-ink-700 bg-ink-950 p-4">
-              <p className="font-hero text-[11px] font-bold uppercase tracking-[0.1em] text-muted">Blocked</p>
-              <p className="mt-1 font-hero text-[22px] font-bold text-deny">{auditBlocked}</p>
+            <div className="bg-void p-4">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+                Blocked
+              </p>
+              <p className="mt-1 font-mono text-[22px] font-semibold text-deny">
+                {auditBlocked}
+              </p>
             </div>
-            <div className="rounded-xl border border-ink-700 bg-ink-950 p-4">
-              <p className="font-hero text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
+            <div className="bg-void p-4">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
                 File / network
               </p>
-              <p className="mt-1 font-hero text-[14px] text-paper/90">
+              <p className="mt-1 font-mono text-[12px] text-offwhite/70">
                 File {AUDIT_SUMMARY.file.allowed} allowed · {AUDIT_SUMMARY.file.blocked} blocked
               </p>
-              <p className="font-hero text-[14px] text-paper/90">
-                Network {AUDIT_SUMMARY.network.allowed} allowed · {AUDIT_SUMMARY.network.blocked} blocked
+              <p className="font-mono text-[12px] text-offwhite/70">
+                Network {AUDIT_SUMMARY.network.allowed} allowed ·{" "}
+                {AUDIT_SUMMARY.network.blocked} blocked
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-content px-6 pb-24">
-        <div className="flex flex-wrap gap-6 font-hero text-[13px]">
-          <Link href="/docs/testing-platforms" className="text-blueprint transition-colors hover:text-paper">
+      <section className="px-6 py-10">
+        <div className="flex flex-wrap gap-6 font-mono text-[11px] uppercase tracking-micro">
+          <Link href="/docs/testing-platforms" className="text-acid transition-colors hover:text-acid-bright">
             Full testing guide
           </Link>
-          <Link href="/docs/install" className="text-blueprint transition-colors hover:text-paper">
+          <Link href="/docs/install" className="text-acid transition-colors hover:text-acid-bright">
             Install guide
           </Link>
-          <Link href="/docs/quickstart" className="text-blueprint transition-colors hover:text-paper">
+          <Link href="/docs/quickstart" className="text-acid transition-colors hover:text-acid-bright">
             Quickstart
           </Link>
         </div>
       </section>
-
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

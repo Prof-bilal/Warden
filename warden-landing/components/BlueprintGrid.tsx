@@ -95,7 +95,7 @@ export function PanelRowA() {
             MCP servers.
           </h2>
           <p className="max-w-[36rem] font-sans text-[13px] leading-[1.75] text-offwhite/45">
-            Control what AI tools can access — filesystem, network, environment
+            Control what AI tools can access, filesystem, network, environment
             variables, and runtime limits. Deny by default, fail closed, and keep a
             full audit trail.
           </p>

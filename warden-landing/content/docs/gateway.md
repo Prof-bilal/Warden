@@ -67,8 +67,8 @@ Gateway `env` values may reference the parent environment:
 
 For `gateway run`, pre-existing process env wins over the gateway default, so
 `export GITHUB_TOKEN=...` overrides the file. For `wrap`, expansion happens
-when the gateway spawns the server (i.e. inside `warden gateway run` semantics
-— the gateway itself passes values through to the `warden run` child).
+when the gateway spawns the server (i.e. inside `warden gateway run` semantics,
+the gateway itself passes values through to the `warden run` child).
 
 ## Security notes
 

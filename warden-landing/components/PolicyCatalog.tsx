@@ -71,7 +71,7 @@ export default function PolicyCatalog() {
                 Candidate
               </span>
             </div>
-            <h2 className="mt-6 text-2xl font-semibold">{p.name}</h2>
+            <h2 className="mt-6 font-mono text-[1.35rem] font-semibold text-offwhite">{p.name}</h2>
             <p className="mt-2 min-h-12 text-sm leading-relaxed text-muted">
               {p.profile}
             </p>

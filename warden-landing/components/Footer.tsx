@@ -1,5 +1,5 @@
 import Link from "next/link";
-import WardenMark from "@/components/bp/WardenMark";
+import Image from "next/image";
 
 const columns = [
   {
@@ -54,7 +54,13 @@ export default function Footer({ variant = "dark" }: { variant?: "light" | "dark
                 light ? "text-[#14171A]" : "text-offwhite"
               }`}
             >
-              <WardenMark size={20} className={light ? "text-[#0B6B4A]" : "text-acid"} />
+              <Image
+                src="/warden-mark.png"
+                alt=""
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] shrink-0"
+              />
               <span className="lowercase">warden</span>
             </Link>
             <p

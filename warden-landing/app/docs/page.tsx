@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema } from "@/lib/schema";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import Link from "next/link";
+import PageShell from "@/components/PageShell";
 import DocsSidebar from "@/components/DocsSidebar";
 
 export const metadata: Metadata = {
@@ -77,8 +77,8 @@ const CARDS = [
 
 function Sidebar({ mobile = false }: { mobile?: boolean }) {
   return mobile ? (
-    <details className="rounded-lg border border-ink-800 bg-ink-900/40 p-4 lg:hidden">
-      <summary className="cursor-pointer list-none font-sans text-sm font-semibold text-paper">
+    <details className="border border-hair bg-cell p-4 lg:hidden">
+      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-offwhite/70">
         Browse documentation
       </summary>
       <div className="mt-5">
@@ -92,19 +92,23 @@ function Sidebar({ mobile = false }: { mobile?: boolean }) {
 
 export default function Docs() {
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd
         data={breadcrumbSchema([
           { name: "Home", url: `${SITE_URL}/` },
           { name: "Docs", url: `${SITE_URL}/docs` },
         ])}
       />
-      <Nav />
-      <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        <nav className="mb-6 font-sans text-[0.875rem] text-muted" aria-label="Breadcrumb">
-          <a href="/" className="transition-colors hover:text-paper">Warden</a>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <span className="text-paper">Docs</span>
+      <div className="px-6 pb-20 pt-8 md:pt-12">
+        <nav
+          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          aria-label="Breadcrumb"
+        >
+          <Link href="/" className="transition-colors hover:text-offwhite">
+            Warden
+          </Link>
+          <span className="text-offwhite/20">/</span>
+          <span className="text-offwhite/70">Docs</span>
         </nav>
 
         <div className="mb-8 lg:hidden">
@@ -119,36 +123,40 @@ export default function Docs() {
           </aside>
 
           <article className="min-w-0 flex-1">
-            <h1 className="font-sans text-[2.75rem] font-semibold leading-[1.08] tracking-[-0.03em] text-paper">
+            <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.1] tracking-[-0.02em] text-offwhite sm:text-[2.4rem]">
               Warden documentation
             </h1>
-            <p className="mt-5 max-w-[42rem] font-sans text-[1.0625rem] leading-[1.7] text-muted">
+            <p className="mt-5 max-w-[42rem] font-sans text-[15px] leading-[1.75] text-offwhite/45">
               Run local tools with only the files, network destinations, environment
               variables, and resources they need. Start with the quickstart or protect
               an AI coding agent with a sanitized workspace.
             </p>
 
-            <div className="mt-12 grid gap-4 md:grid-cols-2">
+            <div className="mt-12 grid gap-px border border-hair bg-hair md:grid-cols-2">
               {CARDS.map((card) => (
-                <a
+                <Link
                   key={card.title}
                   href={card.href}
-                  className="group rounded-lg border border-ink-800 bg-ink-900/40 p-6 transition-colors hover:border-blueprint/50 hover:bg-ink-900"
+                  className="group bg-cell p-6 transition-colors hover:bg-offwhite/[0.03]"
                 >
-                  <h2 className="font-sans text-[1.125rem] font-semibold text-paper">
+                  <h2 className="font-mono text-[15px] font-semibold text-offwhite">
                     {card.title}
-                    <span className="ml-2 inline-block text-blueprint transition-transform group-hover:translate-x-0.5" aria-hidden="true">
+                    <span
+                      className="ml-2 inline-block text-acid transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    >
                       →
                     </span>
                   </h2>
-                  <p className="mt-2 font-sans text-[0.9375rem] leading-[1.65] text-muted">{card.body}</p>
-                </a>
+                  <p className="mt-2 font-sans text-[13px] leading-[1.7] text-offwhite/45">
+                    {card.body}
+                  </p>
+                </Link>
               ))}
             </div>
           </article>
         </div>
       </div>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

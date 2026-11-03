@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
+import PageHeader from "@/components/bp/PageHeader";
 import JsonLd from "@/components/JsonLd";
 import ArticleCard from "@/components/ArticleCard";
 import {
@@ -55,58 +55,62 @@ export default async function CategoryPage({
   ]);
 
   const collection = collectionPageSchema({
-    name: `${category.name}Warden Blog`,
+    name: `${category.name} | Warden Blog`,
     description: category.description,
     url: `${SITE_URL}/blog/category/${category.slug}`,
     itemUrls: articles.map((a) => `${SITE_URL}/blog/${a.slug}`),
   });
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <JsonLd data={breadcrumbs} />
       <JsonLd data={collection} />
-      <Nav />
-      <div className="mx-auto max-w-[48rem] px-6 pb-20 pt-10 md:pt-16">
-        <nav
-          aria-label="Breadcrumb"
-          className="mb-8 text-[0.8125rem] text-muted"
-        >
-          <Link href="/" className="transition-colors hover:text-paper">
-            Home
-          </Link>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <Link href="/blog" className="transition-colors hover:text-paper">
-            Blog
-          </Link>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <span className="text-paper">{category.name}</span>
-        </nav>
 
-        <h1 className="text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
-          {category.name} articles
-        </h1>
-        <p className="mt-4 text-[1.0625rem] leading-relaxed text-muted">
-          {category.description}
-        </p>
-
-        <div className="mt-12 border-t border-ink-800">
-          {articles.length === 0 ? (
-            <p className="py-12 text-muted">
-              No articles in this category yet.
-            </p>
-          ) : (
-            articles.map((article) => (
-              <ArticleCard
-                key={article.slug}
-                article={article}
-                category={category}
-                author={getAuthorBySlug(article.authorSlug)}
-              />
-            ))
-          )}
+      <div className="px-6 pt-10 md:pt-14">
+        <div className="mx-auto max-w-[48rem]">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          >
+            <Link href="/" className="transition-colors hover:text-offwhite">
+              Home
+            </Link>
+            <span className="text-offwhite/20">/</span>
+            <Link href="/blog" className="transition-colors hover:text-offwhite">
+              Blog
+            </Link>
+            <span className="text-offwhite/20">/</span>
+            <span className="text-offwhite/70">{category.name}</span>
+          </nav>
         </div>
       </div>
-      <Footer />
-    </main>
+
+      <PageHeader
+        eyebrow="Category"
+        title={`${category.name} articles`}
+        description={category.description}
+      />
+
+      <div className="px-6 py-12 md:py-16">
+        <div className="mx-auto max-w-[48rem]">
+          <div className="border-t border-hair">
+            {articles.length === 0 ? (
+              <p className="py-12 font-sans text-offwhite/45">
+                No articles in this category yet.
+              </p>
+            ) : (
+              articles.map((article) => (
+                <ArticleCard
+                  key={article.slug}
+                  article={article}
+                  category={category}
+                  author={getAuthorBySlug(article.authorSlug)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </PageShell>
   );
 }

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Download, Github, Menu, Star, X } from "lucide-react";
 import { formatCount } from "@/lib/stats";
-import WardenMark from "@/components/bp/WardenMark";
 
 const navLinks = [
   { href: "/docs", label: "Docs" },
@@ -54,7 +54,14 @@ export default function Nav() {
     <header className="sticky top-0 z-50 border-b border-hair bg-void/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-6 px-5 sm:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Warden home">
-          <WardenMark size={22} className="text-acid" />
+          <Image
+            src="/warden-mark.png"
+            alt=""
+            width={26}
+            height={26}
+            className="h-[26px] w-[26px] shrink-0"
+            priority
+          />
           <span className="font-mono text-[15px] font-semibold lowercase tracking-[-0.01em] text-offwhite">
             warden
           </span>

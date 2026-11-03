@@ -1,7 +1,18 @@
 import Link from "next/link";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
-import { ArrowUpRight, ShieldCheck } from "lucide-react";
+import PageShell from "@/components/PageShell";
+import PageHeader from "@/components/bp/PageHeader";
+import { ArrowUpRight } from "lucide-react";
+
+const TOOLS: [string, string][] = [
+  ["/setup", "Setup"],
+  ["/integrations", "Connections"],
+  ["/policies", "Policy packs"],
+  ["/creators", "Creators"],
+  ["/verify", "Verify evidence"],
+  ["/maintenance", "Maintenance"],
+  ["/compatibility", "Compatibility"],
+  ["/protection", "Protection boundary"],
+];
 
 export default function EcosystemShell({
   active,
@@ -17,54 +28,35 @@ export default function EcosystemShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-ink-950">
-      <Nav />
-      <div className="border-b border-ink-700 bg-ink-900/60">
-        <nav
-          aria-label="MCP security tools"
-          className="mx-auto flex max-w-content flex-wrap gap-2 px-6 py-4"
-        >
-          {[
-            ["/setup", "Setup"],
-            ["/integrations", "Connections"],
-            ["/policies", "Policy packs"],
-            ["/creators", "Creators"],
-            ["/verify", "Verify evidence"],
-            ["/maintenance", "Maintenance"],
-            ["/compatibility", "Compatibility"],
-            ["/protection", "Protection boundary"],
-          ].map(([href, label]) => (
+    <PageShell>
+      <nav aria-label="MCP security tools" className="border-b border-hair">
+        <div className="flex flex-wrap items-center gap-1 px-4 py-2.5 sm:px-6">
+          {TOOLS.map(([href, label]) => (
             <Link
               key={href}
               href={href}
               aria-current={active === href ? "page" : undefined}
-              className={`rounded-lg px-4 py-2 text-sm transition-colors ${active === href ? "bg-blueprint/15 text-blueprint" : "text-muted hover:bg-ink-800 hover:text-paper"}`}
+              className={`rounded-md px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-micro transition-colors ${
+                active === href
+                  ? "bg-acid/10 text-acid"
+                  : "text-offwhite/45 hover:text-offwhite"
+              }`}
             >
               {label}
             </Link>
           ))}
           <Link
             href="/docs/ecosystem-setup"
-            className="ml-auto flex items-center gap-2 px-4 py-2 text-sm text-muted hover:text-paper"
+            className="ml-auto hidden items-center gap-1.5 px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35 transition-colors hover:text-offwhite sm:inline-flex"
           >
-            CLI guide <ArrowUpRight size={14} />
+            CLI guide <ArrowUpRight size={12} />
           </Link>
-        </nav>
-      </div>
-      <div className="mx-auto max-w-content px-6 pb-20 pt-14 sm:pt-20">
-        <p className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-blueprint">
-          <ShieldCheck size={15} />
-          {eyebrow}
-        </p>
-        <h1 className="max-w-4xl font-display text-4xl leading-tight tracking-tight sm:text-6xl">
-          {title}
-        </h1>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          {description}
-        </p>
-        <div className="mt-12">{children}</div>
-      </div>
-      <Footer />
-    </main>
+        </div>
+      </nav>
+
+      <PageHeader eyebrow={eyebrow} title={title} description={description} />
+
+      <div className="px-6 py-12 md:py-16">{children}</div>
+    </PageShell>
   );
 }

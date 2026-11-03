@@ -20,7 +20,7 @@ export default function RunAnywhere() {
             Run anywhere.
           </h2>
           <p className="mt-4 max-w-[470px] font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
-            Warden uses the sandbox primitives already present on your machine — no
+            Warden uses the sandbox primitives already present on your machine, no
             VM, no container requirement, no cloud relay.
           </p>
         </div>

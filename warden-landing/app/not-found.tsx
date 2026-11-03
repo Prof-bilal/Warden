@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import PageShell from "@/components/PageShell";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -10,40 +9,38 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main className="flex min-h-screen flex-col bg-ink-950">
-      <Nav />
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
-        <p className="font-mono text-[0.6875rem] uppercase tracking-widest text-blueprint">
+    <PageShell>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-micro text-acid">
           404
         </p>
-        <h1 className="mt-4 text-[2.5rem] font-semibold leading-[1.1] tracking-[-0.02em] text-paper">
+        <h1 className="mt-4 font-mono text-[2rem] font-semibold leading-[1.1] tracking-[-0.02em] text-offwhite sm:text-[2.5rem]">
           Page not found
         </h1>
-        <p className="mt-4 max-w-md text-[1.0625rem] leading-relaxed text-muted">
+        <p className="mt-4 max-w-md font-sans text-[15px] leading-[1.75] text-offwhite/45">
           The page you are looking for does not exist or may have moved.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/"
-            className="rounded-lg border border-ink-600 px-4 py-2 text-[0.875rem] font-medium text-paper transition-colors hover:border-blueprint/50"
+            className="rounded-md bg-acid px-4 py-2 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
           >
             Go to homepage
           </Link>
           <Link
             href="/blog"
-            className="rounded-lg border border-ink-600 px-4 py-2 text-[0.875rem] font-medium text-paper transition-colors hover:border-blueprint/50"
+            className="rounded-md border border-hair bg-cell px-4 py-2 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
           >
             Read the blog
           </Link>
           <Link
             href="/docs"
-            className="rounded-lg border border-ink-600 px-4 py-2 text-[0.875rem] font-medium text-paper transition-colors hover:border-blueprint/50"
+            className="rounded-md border border-hair bg-cell px-4 py-2 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
           >
             Browse the docs
           </Link>
         </div>
       </div>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

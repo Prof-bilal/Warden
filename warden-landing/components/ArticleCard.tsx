@@ -10,12 +10,12 @@ interface Props {
 
 export default function ArticleCard({ article, category, author }: Props) {
   return (
-    <article className="border-b border-ink-800 py-8 first:pt-0 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-hero text-[0.6875rem] uppercase tracking-[0.12em] text-muted">
+    <article className="border-b border-hair py-8 first:pt-0 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
         {category && (
           <Link
             href={`/blog/category/${category.slug}`}
-            className="text-blueprint transition-colors hover:text-paper"
+            className="text-acid transition-colors hover:text-acid-bright"
           >
             {category.name}
           </Link>
@@ -23,25 +23,25 @@ export default function ArticleCard({ article, category, author }: Props) {
         <time dateTime={article.date}>{formatDate(article.date)}</time>
       </div>
 
-      <h3 className="mt-3 font-hero text-[1.25rem] font-bold leading-snug text-paper">
+      <h3 className="mt-3 font-mono text-[1.2rem] font-semibold leading-snug text-offwhite">
         <Link
           href={`/blog/${article.slug}`}
-          className="transition-colors hover:text-blueprint"
+          className="transition-colors hover:text-acid"
         >
           {article.title}
         </Link>
       </h3>
 
-      <p className="mt-2 font-hero text-[0.9375rem] leading-relaxed text-muted">
+      <p className="mt-2 font-sans text-[14px] leading-[1.7] text-offwhite/45">
         {article.description}
       </p>
 
       {author && (
-        <p className="mt-3 font-hero text-[0.8125rem] text-muted">
+        <p className="mt-3 font-mono text-[11px] text-offwhite/35">
           By{" "}
           <Link
             href={`/author/${author.slug}`}
-            className="text-paper transition-colors hover:text-blueprint"
+            className="text-offwhite/70 transition-colors hover:text-acid"
           >
             {author.name}
           </Link>

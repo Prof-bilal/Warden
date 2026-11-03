@@ -3,8 +3,8 @@ import { SITE_URL } from "@/lib/seo";
 import fs from "fs";
 import path from "path";
 import { notFound } from "next/navigation";
-import Nav from "@/components/Nav";
-import Footer from "@/components/Footer";
+import Link from "next/link";
+import PageShell from "@/components/PageShell";
 import MarkdownContent from "@/components/MarkdownContent";
 import DocsSidebar from "@/components/DocsSidebar";
 import JsonLd from "@/components/JsonLd";
@@ -52,8 +52,8 @@ export function generateStaticParams() {
 
 function MobileDocsNav() {
   return (
-    <details className="rounded-lg border border-ink-800 bg-ink-900/40 p-4 lg:hidden">
-      <summary className="cursor-pointer list-none font-sans text-sm font-semibold text-paper">
+    <details className="border border-hair bg-cell p-4 lg:hidden">
+      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-offwhite/70">
         Browse documentation
       </summary>
       <div className="mt-5">
@@ -156,7 +156,7 @@ export default async function DocPage({
   };
 
   return (
-    <main className="min-h-screen bg-ink-950">
+    <PageShell>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
@@ -173,37 +173,35 @@ export default async function DocPage({
           { name: title, url: `${SITE_URL}/docs/${slug}` },
         ])}
       />
-      <Nav />
-      <div className="mx-auto max-w-content px-6 pb-20 pt-8 md:pt-12">
-        {/* Breadcrumbicons.devigner.cc style */}
-        <nav className="mb-6 font-sans text-[0.875rem] text-muted" aria-label="Breadcrumb">
-          <span className="hover:text-paper transition-colors">
-            <a href="/">Warden</a>
-          </span>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <span className="hover:text-paper transition-colors">
-            <a href="/docs">Docs</a>
-          </span>
-          <span className="mx-1.5 text-ink-600">/</span>
-          <span className="text-paper">{slugToTitle(slug)}</span>
+      <div className="px-6 pb-20 pt-8 md:pt-12">
+        <nav
+          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          aria-label="Breadcrumb"
+        >
+          <Link href="/" className="transition-colors hover:text-offwhite">
+            Warden
+          </Link>
+          <span className="text-offwhite/20">/</span>
+          <Link href="/docs" className="transition-colors hover:text-offwhite">
+            Docs
+          </Link>
+          <span className="text-offwhite/20">/</span>
+          <span className="text-offwhite/70">{slugToTitle(slug)}</span>
         </nav>
 
         <div className="mb-8 lg:hidden">
           <MobileDocsNav />
         </div>
 
-        {/* Sidebar + Content layout */}
         <div className="flex gap-12">
-          {/* Sidebar */}
           <aside className="hidden w-56 shrink-0 lg:block">
             <div className="sticky top-24">
               <DocsSidebar />
             </div>
           </aside>
 
-          {/* Main content */}
           <article className="min-w-0 flex-1">
-            <h1 className="font-sans text-[2.75rem] font-semibold leading-[1.08] tracking-[-0.03em] text-paper">
+            <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.03em] text-offwhite sm:text-[2.5rem]">
               {title}
             </h1>
 
@@ -212,35 +210,31 @@ export default async function DocPage({
               <MarkdownContent content={content.replace(/^#[^\n]*\n+/, "")} />
             </div>
 
-            {/* Prev / Next navigation */}
-            <div className="mt-16 flex items-center justify-between border-t border-ink-700 pt-8">
+            <div className="mt-16 flex items-center justify-between border-t border-hair pt-8">
               {prevSlug ? (
-                <a
+                <Link
                   href={`/docs/${prevSlug}`}
-                  className="font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-mono text-[11.5px] uppercase tracking-micro text-offwhite/40 transition-colors hover:text-acid"
                 >
-                  â† {slugToTitle(prevSlug)}
-                </a>
+                  ← {slugToTitle(prevSlug)}
+                </Link>
               ) : (
                 <span />
               )}
               {nextSlug ? (
-                <a
+                <Link
                   href={`/docs/${nextSlug}`}
-                  className="font-sans text-[0.875rem] text-muted transition-colors hover:text-paper"
+                  className="font-mono text-[11.5px] uppercase tracking-micro text-offwhite/40 transition-colors hover:text-acid"
                 >
-                  {slugToTitle(nextSlug)} â†’
-                </a>
+                  {slugToTitle(nextSlug)} →
+                </Link>
               ) : (
                 <span />
               )}
             </div>
-
-
           </article>
         </div>
       </div>
-      <Footer />
-    </main>
+    </PageShell>
   );
 }

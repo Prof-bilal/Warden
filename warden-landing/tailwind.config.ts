@@ -6,17 +6,17 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          950: "#10141A",
-          900: "#171C24",
-          800: "#1E242E",
-          700: "#2A303C",
-          600: "#3A4150",
+          950: "#0B0D0C",
+          900: "#0E100F",
+          800: "#1A1D1C",
+          700: "#23262A",
+          600: "#34383C",
         },
-        paper: "#E8EBEF",
-        muted: "#8D95A5",
+        paper: "#E8E8E3",
+        muted: "#8B908A",
         grant: {
-          DEFAULT: "#3FB27E",
-          subtle: "rgba(63, 178, 126, 0.12)",
+          DEFAULT: "#5EF08A",
+          subtle: "rgba(94, 240, 138, 0.10)",
         },
         deny: {
           DEFAULT: "#E2604F",
@@ -26,7 +26,7 @@ const config: Config = {
           DEFAULT: "#D6A24A",
           subtle: "rgba(214, 162, 74, 0.12)",
         },
-        blueprint: "#6E93E8",
+        blueprint: "#5EF08A",
         night: {
           950: "#050907",
           900: "#080D0A",
@@ -58,8 +58,14 @@ const config: Config = {
         hero: ["var(--font-hero-mono)", "JetBrains Mono", "Fira Code", "var(--font-geist-mono)", "ui-monospace", "monospace"],
         wordmark: ["var(--font-wordmark)", "Space Grotesk", "system-ui", "sans-serif"],
       },
+      borderRadius: {
+        lg: "3px",
+        xl: "2px",
+        "2xl": "2px",
+        "3xl": "3px",
+      },
       maxWidth: {
-        content: "72rem",
+        content: "80rem",
         display: "80rem", // 1280pxInvisibleTech page max-width
       },
       letterSpacing: {

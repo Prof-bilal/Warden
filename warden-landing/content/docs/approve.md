@@ -34,7 +34,7 @@ are remembered, so a chatty server cannot prompt-loop you. "Allow once"
   including denials and timeouts.
 - **Prompts are selective, not noisy.** A filesystem prompt fires only for a
   failed access that maps to a real grant (absolute, non-runtime path,
-  outside current grants) naming a path that **exists on the host** —
+  outside current grants) naming a path that **exists on the host**, 
   routine probes for optional files never ask. Runtime paths (`/usr`,
   `/proc`, `/tmp`, …) and the server's own executable never ask.
 - **Write grants into the runtime base (`/usr`, `/lib64`, …) are refused**:

@@ -6,7 +6,7 @@ generates local commands. It does not read your computer or accept credentials.
 
 ## One command instead of five
 
-If the server you want is a catalog pack (`warden packs list` — filesystem,
+If the server you want is a catalog pack (`warden packs list`, filesystem,
 git, memory, github, brave, context7, slack, notion) or **any npm MCP
 package**, `warden add` chains the whole flow for you: sandboxed runtime
 preparation, deny-by-default policy generation, preview + confirmation,
