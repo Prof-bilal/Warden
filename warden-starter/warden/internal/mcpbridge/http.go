@@ -105,11 +105,11 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if r.Host != h.authority {
-		http.Error(w, "unrecognized authority", 403)
+		http.Error(w, "unrecognized authority", http.StatusForbidden)
 		return
 	}
 	if origin := r.Header.Get("Origin"); origin != "" && !contains(h.origins, origin) {
-		http.Error(w, "origin denied", 403)
+		http.Error(w, "origin denied", http.StatusForbidden)
 		return
 	}
 	if r.URL.Path == "/.well-known/oauth-protected-resource/mcp" {
@@ -123,7 +123,7 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Path == "/__warden/stop" {
 		if r.Method != "POST" || h.control == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Warden-Control")), []byte(h.control)) != 1 {
-			http.Error(w, "unauthorized", 401)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		w.WriteHeader(202)
@@ -144,16 +144,16 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("WWW-Authenticate", "Bearer")
 		}
-		http.Error(w, "unauthorized", 401)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 	if r.Method == "GET" {
 		w.Header().Set("Allow", "POST, DELETE")
-		http.Error(w, "standalone SSE streams are not supported", 405)
+		http.Error(w, "standalone SSE streams are not supported", http.StatusMethodNotAllowed)
 		return
 	}
 	if r.Method != "POST" && r.Method != "DELETE" {
-		http.Error(w, "method unsupported", 405)
+		http.Error(w, "method unsupported", http.StatusMethodNotAllowed)
 		return
 	}
 	id := r.Header.Get("Mcp-Session-Id")
@@ -179,7 +179,7 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	contentType, _, contentError := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if contentError != nil || contentType != "application/json" {
-		http.Error(w, "application/json required", 415)
+		http.Error(w, "application/json required", http.StatusUnsupportedMediaType)
 		return
 	}
 	if !strings.Contains(r.Header.Get("Accept"), "application/json") || !strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
@@ -188,7 +188,7 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	b, e := io.ReadAll(http.MaxBytesReader(w, r.Body, int64(h.maxBytes)))
 	if e != nil {
-		http.Error(w, "message too large", 413)
+		http.Error(w, "message too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 	m, e := Parse(b)
@@ -213,7 +213,7 @@ func (h *HTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if count >= 4 || len(h.sessions) >= 32 {
 			h.mu.Unlock()
-			http.Error(w, "session capacity reached", 429)
+			http.Error(w, "session capacity reached", http.StatusTooManyRequests)
 			return
 		}
 		id = RandomID()

@@ -268,7 +268,7 @@ func (s *Server) toolRunSandbox(args map[string]any) (*toolResult, error) {
 		StartedAt:  timeNow(),
 	})
 
-	execCmd := exec.Command(bin, runArgs...)
+	execCmd := exec.Command(bin, runArgs...) // #nosec G204 -- runs warden with a run-subcommand argv; no shell
 	buf := &limitedBuffer{max: maxOutputBytes}
 	execCmd.Stdout = buf
 	execCmd.Stderr = buf

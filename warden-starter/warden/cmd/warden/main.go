@@ -1212,10 +1212,9 @@ func cmdLogs(args []string) {
 		os.Exit(1)
 	}
 	if follow {
-		if err := followLog(logPath, followOffset); err != nil {
-			fmt.Fprintf(os.Stderr, "warden logs: %v\n", err)
-			os.Exit(1)
-		}
+		// followLog only returns on error, so always report it and exit.
+		fmt.Fprintf(os.Stderr, "warden logs: %v\n", followLog(logPath, followOffset))
+		os.Exit(1)
 	}
 }
 

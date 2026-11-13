@@ -127,15 +127,13 @@ func TestRunHelpClean(t *testing.T) {
 func TestBareInvocationNonTTYNoBanner(t *testing.T) {
 	bin := buildWarden(t)
 	tmp := t.TempDir()
-	_, stderr, _ := runWarden(t, bin, []string{"NO_COLOR=1", "XDG_STATE_HOME=" + tmp, "WARDEN_NO_FIRST_RUN=1"}, "")
-	// bare invocation is `warden` with no args -> we passed empty string as arg? Need to pass no args, but runWarden passes args slice; if we pass "" it is an arg.
-	// Instead invoke with no args via exec directly
+	// Invoke with no args directly; runWarden would pass an empty-string arg.
 	cmd := exec.Command(bin)
 	cmd.Env = append(os.Environ(), "NO_COLOR=1", "XDG_STATE_HOME="+tmp, "WARDEN_NO_FIRST_RUN=1")
 	var errBuf bytes.Buffer
 	cmd.Stderr = &errBuf
 	_ = cmd.Run()
-	stderr = errBuf.String()
+	stderr := errBuf.String()
 	if strings.Contains(stderr, "██") {
 		t.Errorf("bare non-TTY should not contain large banner, got %q", stderr)
 	}

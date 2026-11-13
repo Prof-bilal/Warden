@@ -550,7 +550,7 @@ func (s *ProxyServer) handleStdioTransport(conn net.Conn) {
 	defer childOutR.Close()
 	defer childOutW.Close()
 
-	cmd := exec.Command(argv[0], argv[1:]...)
+cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- user-configured upstream MCP command argv; no shell
 	cmd.Stdin = childInR
 	cmd.Stdout = childOutW
 	cmd.Stderr = os.Stderr
@@ -705,7 +705,7 @@ func terminateChild(cmd *exec.Cmd, done <-chan error) {
 		return
 	case <-time.After(750 * time.Millisecond):
 		_ = cmd.Process.Signal(syscall.SIGKILL)
-		_ = <-done
+		<-done
 	}
 }
 

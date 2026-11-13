@@ -285,7 +285,7 @@ func cmdClientConfig(cmd string, args []string) error {
 	}
 	info, e := os.Stat(*wardenBin)
 	if e != nil || !info.Mode().IsRegular() {
-		return fmt.Errorf("Warden executable is unavailable")
+		return fmt.Errorf("warden executable is unavailable")
 	}
 	if !validSetupBackend(*backend) {
 		return fmt.Errorf("invalid backend")

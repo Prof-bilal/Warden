@@ -296,7 +296,7 @@ func TestSSRFRedirectsAndRemoteSSE(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth = r.Header.Get("Authorization")
 		if r.URL.Path == "/redirect" {
-			http.Redirect(w, r, "/mcp", 302)
+			http.Redirect(w, r, "/mcp", http.StatusFound)
 			return
 		}
 		if r.Method != "POST" {

@@ -33,20 +33,20 @@ func TestLimitHelper(t *testing.T) {
 }
 
 func TestWaitWithLimitsTimeout(t *testing.T) {
-	err, breach := runLimitHelper(t, "sleep", policy.Limits{TimeoutS: 1})
+	breach, err := runLimitHelper(t, "sleep", policy.Limits{TimeoutS: 1})
 	if breach == nil || breach.Kind != "wall-clock timeout" {
 		t.Fatalf("breach = %#v, wait error = %v", breach, err)
 	}
 }
 
 func TestWaitWithLimitsMemory(t *testing.T) {
-	err, breach := runLimitHelper(t, "memory", policy.Limits{MemoryMB: 8})
+	breach, err := runLimitHelper(t, "memory", policy.Limits{MemoryMB: 8})
 	if breach == nil || breach.Kind != "memory" {
 		t.Fatalf("breach = %#v, wait error = %v", breach, err)
 	}
 }
 
-func runLimitHelper(t *testing.T, mode string, limits policy.Limits) (error, *LimitExceededError) {
+func runLimitHelper(t *testing.T, mode string, limits policy.Limits) (*LimitExceededError, error) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], "-test.run=TestLimitHelper", "--", mode)
 	cmd.Env = append(os.Environ(), "WARDEN_LIMIT_HELPER=1")

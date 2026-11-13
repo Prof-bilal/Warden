@@ -258,10 +258,6 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), nil)
 }
 
-func runWithEnv(cmd []string, p policy.Policy, parentEnv []string) (int, error) {
-	return runWithEnvAndAudit(cmd, p, parentEnv, nil, nil)
-}
-
 // RunWithApproval spawns the command like Run but with interactive approval
 // mode (M7): blocked network requests prompt on the terminal and apply live
 // via the egress proxy, while blocked file accesses detected in the live
@@ -355,7 +351,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		program = strace
 		runArgs = append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath, setpriv}, runArgs...)
 	}
-	sub := exec.Command(program, runArgs...)
+	sub := exec.Command(program, runArgs...) // #nosec G204 -- user-specified program argv; no shell, the program is what Warden sandboxes
 	sub.Stdin = os.Stdin
 	sub.Stdout = os.Stdout
 	sub.Stderr = os.Stderr
@@ -420,7 +416,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	var limitErr *LimitExceededError
 	if prompter != nil {
 		var restarted bool
-		runErr, limitErr, restarted = waitWithLimitsCtx(sub, p.Limits, ctx)
+		limitErr, restarted, runErr = waitWithLimitsCtx(sub, p.Limits, ctx)
 		if restarted {
 			// Preserve the partial trace as evidence, then ask the CLI
 			// to respawn under the widened policy file.
@@ -430,7 +426,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 			return 0, approve.ErrRestartRequested
 		}
 	} else {
-		runErr, limitErr = waitWithLimits(sub, p.Limits)
+		limitErr, runErr = waitWithLimits(sub, p.Limits)
 	}
 	if tracePath != "" {
 		if err := importTraceFile(tracePath, logger); err != nil {

@@ -28,7 +28,7 @@ func Trace(cmd, env []string, stdin io.Reader, stdout, stderr io.Writer, logger 
 	defer os.Remove(path)
 
 	args := append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", path, "--"}, cmd...)
-	sub := exec.Command(strace, args...)
+	sub := exec.Command(strace, args...) // #nosec G204 -- strace from LookPath; argv only, no shell
 	sub.Env = env
 	sub.Stdin = stdin
 	sub.Stdout = stdout

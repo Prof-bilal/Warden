@@ -30,9 +30,9 @@ func (e *LimitExceededError) Error() string {
 // waitWithLimits waits for cmd while monitoring the whole child process tree.
 // Commands run in their own process group, so graceful termination reaches
 // the bridge, server, and any workers rather than only the outer launcher.
-func waitWithLimits(cmd *exec.Cmd, limits policy.Limits) (error, *LimitExceededError) {
-	runErr, limitErr, _ := waitWithLimitsCtx(cmd, limits, nil)
-	return runErr, limitErr
+func waitWithLimits(cmd *exec.Cmd, limits policy.Limits) (*LimitExceededError, error) {
+	limitErr, _, runErr := waitWithLimitsCtx(cmd, limits, nil)
+	return limitErr, runErr
 }
 
 // waitWithLimitsCtx behaves like waitWithLimits but additionally aborts when
@@ -40,9 +40,9 @@ func waitWithLimits(cmd *exec.Cmd, limits policy.Limits) (error, *LimitExceededE
 // filesystem grant). restarted reports that cancellationnot process exit
 // or a limit breachended the wait; the caller must terminate the group
 // (done here) and translate the outcome, typically into a respawn.
-func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context) (runErr error, limitErr *LimitExceededError, restarted bool) {
+func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context) (limitErr *LimitExceededError, restarted bool, runErr error) {
 	if limits.MemoryMB == 0 && limits.TimeoutS == 0 && ctx == nil {
-		return cmd.Wait(), nil, false
+		return nil, false, cmd.Wait()
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -70,21 +70,21 @@ func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context)
 	for {
 		select {
 		case err := <-done:
-			return err, nil, false
+			return nil, false, err
 		case <-cancel:
 			// Approval restart: the group is terminated so the CLI can
 			// respawn with the widened policy. The wait result is
 			// meaningless here (we killed it on purpose), hence discarded.
 			_ = terminateProcessGroup(cmd.Process.Pid, done)
-			return nil, nil, true
+			return nil, true, nil
 		case <-timeout:
 			err := terminateProcessGroup(cmd.Process.Pid, done)
-			return err, &LimitExceededError{Kind: "wall-clock timeout", Limit: fmt.Sprintf("%ds", limits.TimeoutS)}, false
+			return &LimitExceededError{Kind: "wall-clock timeout", Limit: fmt.Sprintf("%ds", limits.TimeoutS)}, false, err
 		case <-ticks:
 			used, err := processTreeRSS(cmd.Process.Pid)
 			if err == nil && used > maxBytes {
 				err := terminateProcessGroup(cmd.Process.Pid, done)
-				return err, &LimitExceededError{Kind: "memory", Limit: fmt.Sprintf("%dMB", limits.MemoryMB)}, false
+				return &LimitExceededError{Kind: "memory", Limit: fmt.Sprintf("%dMB", limits.MemoryMB)}, false, err
 			}
 		}
 	}

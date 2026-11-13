@@ -92,7 +92,7 @@ func ConfigPath(id, scope, explicit string) (string, error) {
 			}
 			return filepath.Join(appdata, "Claude", "claude_desktop_config.json"), nil
 		default:
-			return "", fmt.Errorf("Claude Desktop has no supported default path on this OS; supply --config")
+			return "", fmt.Errorf("no supported default path for Claude Desktop on this OS; supply --config")
 		}
 	default:
 		return "", fmt.Errorf("supply --config for this host")

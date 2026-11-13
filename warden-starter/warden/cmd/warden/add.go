@@ -320,7 +320,7 @@ func resolveAddSource(o addOptions) (src addSource, runtimeDir string, err error
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
-		return src, "", fmt.Errorf("Node.js is required")
+		return src, "", fmt.Errorf("node.js is required")
 	}
 	if node, err = filepath.Abs(node); err != nil {
 		return src, "", err

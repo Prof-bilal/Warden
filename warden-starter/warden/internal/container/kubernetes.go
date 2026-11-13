@@ -280,34 +280,6 @@ func generateNetworkPolicyManifest(p policy.Policy, options TranslateOptions) (*
 	return policy, nil
 }
 
-// generateSeccompProfileManifest creates a SecurityProfile manifest
-func generateSeccompProfileManifest(p policy.Policy, options TranslateOptions) (*SeccompProfileManifest, error) {
-	name := sanitizeName(options.Image)
-	if name == "" {
-		name = "warden-app"
-	}
-
-	seccompProfile, err := generateSeccompProfile(p, options)
-	if err != nil {
-		return nil, fmt.Errorf("generate seccomp profile: %w", err)
-	}
-
-	manifest := &SeccompProfileManifest{
-		APIVersion: "security-profiles-operator.x-k8s.io/v1beta1",
-		Kind:       "SeccompProfile",
-		Metadata: ObjectMeta{
-			Name:      name + "-seccomp",
-			Namespace: options.Namespace,
-			Labels: map[string]string{
-				"app": name,
-			},
-		},
-		Spec: *seccompProfile,
-	}
-
-	return manifest, nil
-}
-
 // RenderKubernetesYAML converts manifests to YAML output
 func RenderKubernetesYAML(manifests *KubernetesManifests) (string, error) {
 	var output strings.Builder

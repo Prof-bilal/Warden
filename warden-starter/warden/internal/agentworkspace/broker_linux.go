@@ -76,13 +76,13 @@ func brokerHandler(profiles map[string]policy.SecretProfile, secrets map[string]
 		req.Header.Set("Authorization", "Bearer "+secrets[name])
 		res, err := client.Do(req)
 		if err != nil {
-			http.Error(w, "approved upstream unavailable", 502)
+			http.Error(w, "approved upstream unavailable", http.StatusBadGateway)
 			return
 		}
 		defer res.Body.Close()
 		body, err := io.ReadAll(io.LimitReader(res.Body, 2<<20+1))
 		if err != nil || len(body) > 2<<20 {
-			http.Error(w, "upstream response exceeded limit", 502)
+			http.Error(w, "upstream response exceeded limit", http.StatusBadGateway)
 			return
 		}
 		text := string(body)
@@ -148,7 +148,7 @@ func RequestProfile(socket, name string, out io.Writer) error {
 	client := &http.Client{Transport: transport, Timeout: 30 * time.Second}
 	res, err := client.Get("http://warden/profiles/" + url.PathEscape(name))
 	if err != nil {
-		return fmt.Errorf("Warden session broker unavailable")
+		return fmt.Errorf("warden session broker unavailable")
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {

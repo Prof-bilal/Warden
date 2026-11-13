@@ -49,7 +49,7 @@ func MarkFirstRun() error {
 		return err
 	}
 	marker := filepath.Join(dir, firstRunMarker)
-	f, err := os.OpenFile(marker, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := os.OpenFile(marker, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) // #nosec G304 -- fixed marker name inside the Warden state dir; no user-controlled segment
 	if err != nil {
 		if os.IsExist(err) {
 			return nil
