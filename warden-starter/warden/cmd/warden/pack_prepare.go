@@ -43,7 +43,7 @@ func prepareNPMRuntime(artifact, dest, backend string) error {
 	}
 	node, e := exec.LookPath("node")
 	if e != nil {
-		return fmt.Errorf("Node.js is required")
+		return fmt.Errorf("node.js is required")
 	}
 	node, e = filepath.Abs(node)
 	if e != nil {

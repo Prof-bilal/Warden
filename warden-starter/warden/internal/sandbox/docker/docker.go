@@ -40,7 +40,7 @@ func Available() bool {
 	if err != nil {
 		return false
 	}
-	cmd := exec.Command(docker, "info")
+	cmd := exec.Command(docker, "info") // #nosec G204 -- docker binary from LookPath; argv only, no shell
 	cmd.Env = os.Environ()
 	// Discard output: we only care about exit status.
 	cmd.Stdout = nil
@@ -302,7 +302,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		"ALL_PROXY=http://127.0.0.1:18080",
 		"NO_PROXY=",
 	})
-	sub := exec.Command(dockerBin, runArgs...)
+	sub := exec.Command(dockerBin, runArgs...) // #nosec G204 -- docker binary from LookPath; argv only, no shell
 	sub.Stdin = os.Stdin
 	sub.Stdout = os.Stdout
 	sub.Stderr = os.Stderr
@@ -313,7 +313,7 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	if err := sub.Start(); err != nil {
 		return 0, fmt.Errorf("start sandboxed process: %w", err)
 	}
-	runErr, limitErr := waitWithTimeout(sub, p.Limits.TimeoutS)
+	limitErr, runErr := waitWithTimeout(sub, p.Limits.TimeoutS)
 	if limitErr != nil {
 		if logger != nil {
 			_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: limitErr.Limit, Allowed: false, Reason: limitErr.Error()})
@@ -377,7 +377,7 @@ func injectEnvFlags(runArgs []string, filtered, proxyEnv []string) []string {
 }
 
 func ensureImage(dockerBin, image string) error {
-	inspect := exec.Command(dockerBin, "image", "inspect", image)
+	inspect := exec.Command(dockerBin, "image", "inspect", image) // #nosec G204 -- docker binary from LookPath; argv only, no shell
 	inspect.Stdout = nil
 	inspect.Stderr = nil
 	if inspect.Run() == nil {
@@ -386,9 +386,9 @@ func ensureImage(dockerBin, image string) error {
 	return fmt.Errorf("docker image %q is not available locally; pull it or set WARDEN_DOCKER_IMAGE to an image you already have", image)
 }
 
-func waitWithTimeout(cmd *exec.Cmd, timeoutS int) (error, *LimitExceededError) {
+func waitWithTimeout(cmd *exec.Cmd, timeoutS int) (*LimitExceededError, error) {
 	if timeoutS <= 0 {
-		return cmd.Wait(), nil
+		return nil, cmd.Wait()
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -396,16 +396,16 @@ func waitWithTimeout(cmd *exec.Cmd, timeoutS int) (error, *LimitExceededError) {
 	defer timer.Stop()
 	select {
 	case err := <-done:
-		return err, nil
+		return nil, err
 	case <-timer.C:
 		terminateSandbox(cmd)
 		select {
 		case err := <-done:
-			return err, &LimitExceededError{Kind: "wall-clock timeout", Limit: strconv.Itoa(timeoutS) + "s"}
+			return &LimitExceededError{Kind: "wall-clock timeout", Limit: strconv.Itoa(timeoutS) + "s"}, err
 		case <-time.After(750 * time.Millisecond):
 			killSandbox(cmd)
 			err := <-done
-			return err, &LimitExceededError{Kind: "wall-clock timeout", Limit: strconv.Itoa(timeoutS) + "s"}
+			return &LimitExceededError{Kind: "wall-clock timeout", Limit: strconv.Itoa(timeoutS) + "s"}, err
 		}
 	}
 }

@@ -27,7 +27,7 @@ func StartProcess(ctx context.Context, warden string, args []string, env []strin
 	if len(args) < 2 || args[0] != "run" {
 		return nil, fmt.Errorf("managed process must launch Warden run")
 	}
-	cmd := exec.CommandContext(ctx, warden, args...)
+	cmd := exec.CommandContext(ctx, warden, args...) // #nosec G204 -- warden binary; args must start with "run" (checked above); no shell
 	cmd.Env = env
 	cmd.Stderr = stderr
 	configureProcess(cmd)

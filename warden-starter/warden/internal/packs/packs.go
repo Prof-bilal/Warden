@@ -222,7 +222,7 @@ func PreparedCommand(id, runtimePath, dataPath string) ([]string, error) {
 	}
 	node, err := exec.LookPath("node")
 	if err != nil {
-		return nil, fmt.Errorf("Node.js is required")
+		return nil, fmt.Errorf("node.js is required")
 	}
 	node, err = filepath.Abs(node)
 	if err != nil {

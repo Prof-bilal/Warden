@@ -51,7 +51,7 @@ func RunBridge(socketPath, listenAddr string, command []string) (int, error) {
 	}
 	defer l.Close()
 
-	cmd := exec.Command(command[0], command[1:]...)
+	cmd := exec.Command(command[0], command[1:]...) // #nosec G204 -- user-specified command argv; no shell
 	// Leaving these nil would attach /dev/null.  The bridge is executed by
 	// Warden, so inherit its stdio explicitly via the process descriptors.
 	cmd.Stdin = os.Stdin

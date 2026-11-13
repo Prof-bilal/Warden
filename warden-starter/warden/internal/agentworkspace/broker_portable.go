@@ -195,7 +195,7 @@ func RequestProfile(socket, name string, out io.Writer) error {
 	}
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Warden session broker unavailable")
+		return fmt.Errorf("warden session broker unavailable")
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
