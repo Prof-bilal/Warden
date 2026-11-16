@@ -69,7 +69,7 @@ env:
 ### 2. Start the Proxy
 
 ```bash
-warden proxy --policy mcp-proxy-policy.yaml --listen localhost:8765
+warden proxy --policy mcp-proxy-policy.yaml --listen 127.0.0.1:8765
 ```
 
 ### 3. Configure Your Client
@@ -78,6 +78,9 @@ The proxy speaks newline-delimited JSON-RPC over TCP (stdio-style framing).
 Point your MCP client at the proxy through a stdio-to-TCP bridge, or use
 clients that can connect directly. Example with `socat`/`ncat` for a
 manual test:
+
+The listener is restricted to a numeric loopback address. Remote/LAN
+listeners are refused because this proxy has no client-authentication layer.
 
 ```bash
 # Send a JSON-RPC message to the proxy from the command line
@@ -101,7 +104,7 @@ mcp:
   #   "http://127.0.0.1:PORT"   plain HTTP allowed for loopback dev servers only
   upstream: "https://mcp.github.com/mcp"
   
-  # Optional: Allowed tool names (deny-by-default if specified)
+  # Allowed tool names. Empty or omitted means deny all tool calls.
   allow_tools:
     - "list_repositories"
     - "get_file"
@@ -266,14 +269,15 @@ warden proxy [OPTIONS]
 
 Options:
   --policy <file>     MCP proxy policy file (required)
-  --listen <addr>     Listen address (default: localhost:8765)  
+  --listen <addr>     Numeric loopback listen address (default: 127.0.0.1:8765)
   --upstream <url>    Override upstream from policy
+  --unsafe-unconfined  Required for stdio upstreams; message filtering is not OS sandboxing
   --help              Show help
 
 Examples:
   warden proxy --policy mcp-policy.yaml
-  warden proxy --policy mcp-policy.yaml --listen :9000
-  warden proxy --policy mcp-policy.yaml --upstream "stdio:cat"
+  warden proxy --policy mcp-policy.yaml --listen 127.0.0.1:9000
+  warden proxy --policy mcp-policy.yaml --upstream "stdio:cat" --unsafe-unconfined
 ```
 
 ## Audit Logging
@@ -440,7 +444,7 @@ warden proxy --policy mcp-proxy-policy.yaml --listen 127.0.0.1:8765
 
 3. **"Tool not in allow list"**
    - Add the tool name to `mcp.allow_tools`
-   - Or remove `allow_tools` to allow all tools
+   - An empty or omitted `allow_tools` list blocks all tool calls; list the exact tools required
 
 4. **"Blocked pattern detected"**
    - Review `mcp.deny_patterns` for overly broad rules

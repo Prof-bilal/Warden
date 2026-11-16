@@ -9,7 +9,7 @@ import Diagram from "@/components/Diagram";
 const STEPS: StepperItem[] = [
   {
     title: "Install Warden",
-    summary: "npm install -g warden-sandbox-cli",
+    summary: "npm install -g warden-sandbox-cli@beta",
     body: "Install the CLI globally via npm. Works on Linux, macOS, and Windows.",
     image: <Diagram src="/diagrams/install-cli.jpeg" alt="Installing the Warden CLI in a terminal" />,
   },

@@ -281,9 +281,13 @@ func (s *Server) toolRunSandbox(args map[string]any) (*toolResult, error) {
 	events, _ := readEventsFrom(logPath, startOffset)
 	allowed, denied, deniedSample := summarizeEvents(events)
 
+	exitCode := -1
+	if execCmd.ProcessState != nil {
+		exitCode = execCmd.ProcessState.ExitCode()
+	}
 	res := &runOutput{
 		Status:       status,
-		ExitCode:     execCmd.ProcessState.ExitCode(),
+		ExitCode:     exitCode,
 		PolicyPath:   policyPath,
 		Command:      resolved,
 		AllowedOps:   allowed,
@@ -698,15 +702,19 @@ type limitedBuffer struct {
 }
 
 func (l *limitedBuffer) Write(p []byte) (int, error) {
-	l.total += len(p)
+	n := len(p)
+	l.total += n
 	if l.buf.Len() < l.max {
 		room := l.max - l.buf.Len()
-		if len(p) > room {
+		if n > room {
 			p = p[:room]
 		}
 		l.buf.Write(p)
 	}
-	return len(p), nil
+	// Report the full input as consumed: output is intentionally truncated,
+	// but this writer must not make exec.Cmd treat the capture as a failed
+	// short write.
+	return n, nil
 }
 
 func (l *limitedBuffer) String() string {

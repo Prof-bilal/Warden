@@ -3,6 +3,38 @@
 All notable Warden changes are recorded here. Warden is pre-1.0 security
 software; platform behavior and verification scope are documented separately.
 
+## 0.2.0-beta.5
+
+This preview release follows `0.2.0-beta.4` and is published to npm with the
+`beta` dist-tag. `latest` is unchanged.
+
+### Breaking
+
+- `warden proxy` with a `stdio:` upstream now requires `--unsafe-unconfined`,
+  because stdio upstreams are not OS-sandboxed. Run the proxy under
+  `warden run` instead, or pass the flag to accept the risk.
+- The proxy listener must be a numeric loopback address. Remote binding is
+  refused.
+
+### Security
+
+- An empty or omitted MCP tool allowlist now denies every tool call.
+- Upstream MCP session IDs are isolated per downstream client, so one client
+  cannot reuse another client's upstream session.
+- A missing process state no longer crashes the MCP server. Exit codes are
+  reported as -1 when unknown.
+
+### Fixed
+
+- `warden init` now grants files the traced program opened with relative paths.
+  Before, the generated policy could not run the program it was built from.
+- `warden add` no longer sets a 300-second wall-clock limit on the server it
+  creates. Long-lived MCP servers were being killed after 5 minutes. The
+  memory cap is kept.
+- Documentation: rewrote the quickstart as a single tutorial that needs no
+  repository fixtures, restructured the CLI reference (all commands listed),
+  rewrote the troubleshooting page, and fixed the sidebar and broken wording.
+
 ## 0.2.0-beta.4 — 2026-10-29
 
 This preview release follows `0.2.0-beta.3` and is published to npm with the

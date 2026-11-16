@@ -25,7 +25,8 @@ mcp:
   upstream: "https://mcp.github.com/mcp"
   # upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
   
-  # Tools that clients are allowed to call
+  # Tools that clients are allowed to call. An empty/omitted list blocks all
+  # tool calls; list the narrowest set required by the client.
   allow_tools:
     - "list_repositories"
     - "get_file"  

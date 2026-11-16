@@ -46,10 +46,10 @@ endpoint (directly, or bridged via `mcp-remote` if you prefer a stdio hop):
 ```yaml
 # mcp-proxy-policy.yaml
 mcp:
-  # Option Aremote HTTPS upstream (Streamable HTTP / SSE):
+  # Option A: remote HTTPS upstream (Streamable HTTP / SSE):
   upstream: "https://mcp.github.com/mcp"
 
-  # Option Blocal stdio command (or a stdio bridge to a remote server):
+  # Option B: local stdio command (or a stdio bridge to a remote server):
   # upstream: "stdio:npx -y mcp-remote https://mcp.github.com/mcp"
 
   allow_tools:
@@ -336,7 +336,7 @@ Client Request
 - `warden proxy` runs a real stdio JSON-RPC bridge: spawns the upstream
   subprocess, relays newline-delimited JSON-RPC in both directions
 - **Remote HTTP/SSE upstreams** (Streamable HTTP): POST-per-message with
-  SSE-framed responses, plus the server→client GET event streamall
+  SSE-framed responses, plus the server→client GET event stream. All
   filtered, all audited, TLS verified, plain http:// loopback-only
 - **`Mcp-Session-Id` handling**: the id issued on the initialize response is
   captured and replayed on every subsequent request, so session-based servers
@@ -355,7 +355,7 @@ Client Request
   your client establishes (for stdio bridges, `env.allow` governs token reachability)
 
 **Known safe by design:** every blocked message is answered with a JSON-RPC
-error and audited; nothing blocked is ever forwardedincluding on the HTTP
+error and audited; nothing blocked is ever forwarded, including on the HTTP
 path, where a filtered payload never leaves loopback.
 
 ## Live Interop Results

@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -12,7 +13,9 @@ import (
 // successful audit events. It deliberately omits failed attempts and unknown
 // resources: a trace is a suggestion for an allowlist, not permission to
 // widen it. The caller may add environment grants after reviewing the file.
-func StarterFromAudit(events []audit.Event, command []string) Policy {
+// Relative file paths are resolved against baseDir, the directory the traced
+// program ran in; pass "" when that is unknown and relative paths are skipped.
+func StarterFromAudit(events []audit.Event, command []string, baseDir string) Policy {
 	read := make(map[string]struct{})
 	write := make(map[string]struct{})
 	hosts := make(map[string]struct{})
@@ -22,7 +25,11 @@ func StarterFromAudit(events []audit.Event, command []string) Policy {
 		}
 		switch event.Type {
 		case "file":
-			grant, isWrite, ok := ProposeFileGrant(event.Action, event.Resource)
+			resource := event.Resource
+			if !filepath.IsAbs(resource) && baseDir != "" {
+				resource = filepath.Join(baseDir, resource)
+			}
+			grant, isWrite, ok := ProposeFileGrant(event.Action, resource)
 			if !ok {
 				continue
 			}

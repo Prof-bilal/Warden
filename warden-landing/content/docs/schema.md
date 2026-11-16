@@ -74,13 +74,13 @@ network:
 ```
 
 A list of hostnames or IP literals the sandboxed process may reach. Ports
-are **not** part of the grantthe egress proxy forwards all ports for an
+are **not** part of the grant. The egress proxy forwards all ports for an
 allowlisted host.
 
 **Validation rules:**
 
 - Entries must not be empty.
-- Must be a bare hostname or IP literalpaths (`/foo`), query strings
+- Must be a bare hostname or IP literal. Paths (`/foo`), query strings
   (`?q=1`), fragments (`#anchor`), and colons (interpreted as ports) are
   rejected.
 - Hostnames must not exceed 253 characters; each label must be 1–63 chars,
@@ -106,7 +106,7 @@ env:
 ```
 
 A list of environment variable **names** to forward from the parent process.
-Values are **never** stored in the policy filethey are read from the
+Values are **never** stored in the policy file. They are read from the
 parent at runtime. An empty allowlist results in an empty environment for the
 sandboxed process.
 

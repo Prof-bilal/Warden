@@ -66,17 +66,26 @@ const defaultHTTPTimeout = 10 * time.Minute
 
 // ProxyServer is the MCP client proxy server
 type ProxyServer struct {
-	policy          MCPPolicy
-	listener        net.Listener
-	audit           *audit.Logger
-	patterns        []*regexp.Regexp // Compiled deny patterns
-	transport       MCPTransport
-	upstream        string
-	upstreamURL     *url.URL // parsed absolute URL when transport is http/sse
-	client          *http.Client
-	httpWriteMu     sync.Mutex // serializes client-connection writes + session id for http/sse transports
-	upstreamSession string     // Mcp-Session-Id captured from the initialize response
+	policy      MCPPolicy
+	listener    net.Listener
+	audit       *audit.Logger
+	patterns    []*regexp.Regexp // Compiled deny patterns
+	transport   MCPTransport
+	upstream    string
+	upstreamURL *url.URL // parsed absolute URL when transport is http/sse
+	client      *http.Client
 }
+
+// clientSession contains state that belongs to exactly one downstream client.
+// It must never be stored on ProxyServer: sharing an upstream MCP session
+// between clients can cross-contaminate authorization and request state.
+type clientSession struct {
+	mu              sync.Mutex
+	upstreamSession string
+}
+
+func (c *clientSession) Lock()   { c.mu.Lock() }
+func (c *clientSession) Unlock() { c.mu.Unlock() }
 
 // NewProxyServer creates a new MCP proxy server. All three transports are
 // supported: stdio (subprocess bridge), http (Streamable HTTP), and sse
@@ -151,6 +160,13 @@ func NewProxyServer(policy MCPPolicy, logger *audit.Logger) (*ProxyServer, error
 
 // Start starts the MCP proxy server
 func (s *ProxyServer) Start(listen string) error {
+	host, _, err := net.SplitHostPort(listen)
+	if err != nil {
+		return fmt.Errorf("invalid listen address %q: %w", listen, err)
+	}
+	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+		return fmt.Errorf("proxy listener must use a numeric loopback address; refusing %q", listen)
+	}
 	listener, err := net.Listen("tcp", listen)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", listen, err)
@@ -201,6 +217,7 @@ func (s *ProxyServer) handleConnection(conn net.Conn) {
 // upstream, and upstream output that is not JSON-RPC 2.0 is dropped and
 // audited.
 func (s *ProxyServer) handleHTTPTransport(conn net.Conn) {
+	state := &clientSession{}
 	httpConn := conn
 	clientErr := make(chan error, 2)
 	upstreamDone := make(chan struct{})
@@ -212,7 +229,7 @@ func (s *ProxyServer) handleHTTPTransport(conn net.Conn) {
 
 	// Client -> upstream: read JSON-RPC lines, filter, POST upstream.
 	go func() {
-		err := s.clientToUpstreamHTTP(sessCtx, conn)
+		err := s.clientToUpstreamHTTP(sessCtx, conn, state)
 		clientErr <- err
 	}()
 
@@ -222,7 +239,7 @@ func (s *ProxyServer) handleHTTPTransport(conn net.Conn) {
 	// must be forwarded between requests.
 	if s.transport == TransportSSE {
 		go func() {
-			s.upstreamSSEToClient(sessCtx, httpConn)
+			s.upstreamSSEToClient(sessCtx, httpConn, state)
 			close(upstreamDone)
 		}()
 	}
@@ -262,7 +279,7 @@ func isConnClosed(err error) bool {
 // client connection in request order (MCP requests are sequential per
 // connection here, which matches the stdio framing this listener speaks).
 // The function returns when the client disconnects (EOF) or ctx is canceled.
-func (s *ProxyServer) clientToUpstreamHTTP(ctx context.Context, conn net.Conn) error {
+func (s *ProxyServer) clientToUpstreamHTTP(ctx context.Context, conn net.Conn, state *clientSession) error {
 	sc := bufio.NewScanner(conn)
 	sc.Buffer(make([]byte, 4*1024), s.scanCap())
 	for sc.Scan() {
@@ -278,34 +295,34 @@ func (s *ProxyServer) clientToUpstreamHTTP(ctx context.Context, conn net.Conn) e
 		var msg MCPMessage
 		if err := json.Unmarshal([]byte(line), &msg); err != nil || msg.JSONRPC != "2.0" {
 			s.logEvent("mcp_block", "unparseable_request", false, "client sent a non-JSON-RPC line; not forwarded")
-			_ = s.writeClient(conn, &s.httpWriteMu, errorResponse(nil, -32700, "Parse error: message is not JSON-RPC 2.0 and was not forwarded by Warden"))
+			_ = s.writeClient(conn, state, errorResponse(nil, -32700, "Parse error: message is not JSON-RPC 2.0 and was not forwarded by Warden"))
 			continue
 		}
 		allowed, reason := s.filterMCPMessage(msg, "outbound")
 		if !allowed {
-			_ = s.writeClient(conn, &s.httpWriteMu, errorResponse(msg.ID, -32001, "blocked by Warden policy: "+reason))
+			_ = s.writeClient(conn, state, errorResponse(msg.ID, -32001, "blocked by Warden policy: "+reason))
 			continue
 		}
 		if s.transport == TransportSSE {
 			// SSE upstreams receive messages as POST bodies and answer inside
 			// SSE-framed response bodies; relay those data lines to the client.
-			if err := s.postSSEMessage(conn, line); err != nil {
-				_ = s.writeClient(conn, &s.httpWriteMu, errorResponse(msg.ID, -32603, "upstream error: "+err.Error()))
+			if err := s.postSSEMessage(conn, line, state); err != nil {
+				_ = s.writeClient(conn, state, errorResponse(msg.ID, -32603, "upstream error: "+err.Error()))
 			}
 			continue
 		}
-		respBody, mediaType, err := s.postJSONRPC(line)
+		respBody, mediaType, err := s.postJSONRPC(line, state)
 		if err != nil {
-			_ = s.writeClient(conn, &s.httpWriteMu, errorResponse(msg.ID, -32603, "upstream error: "+err.Error()))
+			_ = s.writeClient(conn, state, errorResponse(msg.ID, -32603, "upstream error: "+err.Error()))
 			continue
 		}
 		// Production MCP servers answer POSTs with SSE-framed bodies even on
 		// the plain-http transport; dispatch on the declared media type and
 		// keep raw JSON lines as the legacy path.
 		if strings.Contains(mediaType, "text/event-stream") {
-			s.relaySSE(conn, respBody)
+			s.relaySSE(conn, respBody, state)
 		} else {
-			s.relayUpstreamLines(conn, respBody)
+			s.relayUpstreamLines(conn, respBody, state)
 		}
 		respBody.Close()
 	}
@@ -318,7 +335,7 @@ func (s *ProxyServer) clientToUpstreamHTTP(ctx context.Context, conn net.Conn) e
 // relayUpstreamLines filters the upstream response body line-by-line and
 // forwards allowed JSON-RPC 2.0 lines to the client. Non-JSON-RPC lines are
 // dropped and auditednever forwarded.
-func (s *ProxyServer) relayUpstreamLines(conn net.Conn, body io.Reader) {
+func (s *ProxyServer) relayUpstreamLines(conn net.Conn, body io.Reader, state *clientSession) {
 	sc := bufio.NewScanner(body)
 	sc.Buffer(make([]byte, 4*1024), s.scanCap())
 	for sc.Scan() {
@@ -335,7 +352,7 @@ func (s *ProxyServer) relayUpstreamLines(conn net.Conn, body io.Reader) {
 		if !allowed {
 			continue
 		}
-		if err := s.writeClient(conn, &s.httpWriteMu, line+"\n"); err != nil {
+		if err := s.writeClient(conn, state, line+"\n"); err != nil {
 			return
 		}
 	}
@@ -346,7 +363,7 @@ func (s *ProxyServer) relayUpstreamLines(conn net.Conn, body io.Reader) {
 // Streamable HTTP convention: Accept: application/json, text/event-stream so
 // servers may answer either way. When the server issued an Mcp-Session-Id at
 // initialize time, it is replayed on every subsequent request.
-func (s *ProxyServer) postJSONRPC(line string) (io.ReadCloser, string, error) {
+func (s *ProxyServer) postJSONRPC(line string, state *clientSession) (io.ReadCloser, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout())
 	// Every early-return path must cancel; success hands ownership to the
 	// returned ctxBody, whose Close() runs the cancel.
@@ -361,7 +378,7 @@ func (s *ProxyServer) postJSONRPC(line string) (io.ReadCloser, string, error) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("MCP-Protocol-Version", "2025-06-18")
-	if sid := s.sessionID(); sid != "" {
+	if sid := state.sessionID(); sid != "" {
 		req.Header.Set("Mcp-Session-Id", sid)
 	}
 	res, err := s.client.Do(req)
@@ -371,7 +388,7 @@ func (s *ProxyServer) postJSONRPC(line string) (io.ReadCloser, string, error) {
 	// A session-capable server hands out the id on the initialize response;
 	// capture it exactly once per connection so later calls stay in-session.
 	if sid := res.Header.Get("Mcp-Session-Id"); sid != "" {
-		s.rememberSession(sid)
+		state.rememberSession(sid)
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		io.Copy(io.Discard, io.LimitReader(res.Body, 1<<16))
@@ -385,19 +402,19 @@ func (s *ProxyServer) postJSONRPC(line string) (io.ReadCloser, string, error) {
 
 // sessionID returns the captured upstream Mcp-Session-Id, or "" before
 // initialize has answered.
-func (s *ProxyServer) sessionID() string {
-	s.httpWriteMu.Lock()
-	defer s.httpWriteMu.Unlock()
-	return s.upstreamSession
+func (c *clientSession) sessionID() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.upstreamSession
 }
 
 // rememberSession stores the upstream Mcp-Session-Id exactly once: the id is
 // minted at initialize and must not be overwritten by later responses.
-func (s *ProxyServer) rememberSession(sid string) {
-	s.httpWriteMu.Lock()
-	defer s.httpWriteMu.Unlock()
-	if s.upstreamSession == "" {
-		s.upstreamSession = sid
+func (c *clientSession) rememberSession(sid string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.upstreamSession == "" {
+		c.upstreamSession = sid
 	}
 }
 
@@ -430,16 +447,16 @@ func (s *ProxyServer) timeout() time.Duration {
 // server answers inside the response's event stream; those data payloads are
 // the answer to the client's request and are filtered and forwarded like any
 // other inbound message.
-func (s *ProxyServer) postSSEMessage(conn net.Conn, line string) error {
-	body, mediaType, err := s.postJSONRPC(line)
+func (s *ProxyServer) postSSEMessage(conn net.Conn, line string, state *clientSession) error {
+	body, mediaType, err := s.postJSONRPC(line, state)
 	if err != nil {
 		return err
 	}
 	defer body.Close()
 	if strings.Contains(mediaType, "text/event-stream") {
-		s.relaySSE(conn, body)
+		s.relaySSE(conn, body, state)
 	} else {
-		s.relayUpstreamLines(conn, body)
+		s.relayUpstreamLines(conn, body, state)
 	}
 	return nil
 }
@@ -448,7 +465,7 @@ func (s *ProxyServer) postSSEMessage(conn net.Conn, line string) error {
 // server-to-client channel for SSE transport) and relays each event to the
 // client as a JSON-RPC line, filtered like any other inbound message. It
 // returns when the stream ends or sessCtx is canceled (client gone).
-func (s *ProxyServer) upstreamSSEToClient(sessCtx context.Context, conn net.Conn) {
+func (s *ProxyServer) upstreamSSEToClient(sessCtx context.Context, conn net.Conn, state *clientSession) {
 	ctx, cancel := context.WithCancel(sessCtx)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.upstreamURL.String(), nil)
@@ -459,7 +476,7 @@ func (s *ProxyServer) upstreamSSEToClient(sessCtx context.Context, conn net.Conn
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("MCP-Protocol-Version", "2025-06-18")
-	if sid := s.sessionID(); sid != "" {
+	if sid := state.sessionID(); sid != "" {
 		req.Header.Set("Mcp-Session-Id", sid)
 	}
 	res, err := s.client.Do(req)
@@ -476,7 +493,7 @@ func (s *ProxyServer) upstreamSSEToClient(sessCtx context.Context, conn net.Conn
 		}
 		return
 	}
-	s.relaySSE(conn, res.Body)
+	s.relaySSE(conn, res.Body, state)
 }
 
 // relaySSE reads an SSE body and forwards each event's data payload to the
@@ -484,7 +501,7 @@ func (s *ProxyServer) upstreamSSEToClient(sessCtx context.Context, conn net.Conn
 // may itself span multiple `data:` lines per the SSE spec; every data line
 // that decodes as JSON-RPC 2.0 is forwarded individually, matching the
 // newline-delimited framing this listener speaks to its clients.
-func (s *ProxyServer) relaySSE(conn net.Conn, body io.Reader) {
+func (s *ProxyServer) relaySSE(conn net.Conn, body io.Reader, state *clientSession) {
 	sc := bufio.NewScanner(body)
 	sc.Buffer(make([]byte, 4*1024), s.scanCap())
 	for sc.Scan() {
@@ -508,7 +525,7 @@ func (s *ProxyServer) relaySSE(conn net.Conn, body io.Reader) {
 		if !allowed {
 			continue
 		}
-		if err := s.writeClient(conn, &s.httpWriteMu, payload+"\n"); err != nil {
+		if err := s.writeClient(conn, state, payload+"\n"); err != nil {
 			return
 		}
 	}
@@ -550,7 +567,7 @@ func (s *ProxyServer) handleStdioTransport(conn net.Conn) {
 	defer childOutR.Close()
 	defer childOutW.Close()
 
-cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- user-configured upstream MCP command argv; no shell
+	cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- user-configured upstream MCP command argv; no shell
 	cmd.Stdin = childInR
 	cmd.Stdout = childOutW
 	cmd.Stderr = os.Stderr
@@ -666,9 +683,14 @@ func (s *ProxyServer) childToClient(childOutR io.Reader, conn net.Conn, connMu *
 // writeClient serializes writes to the client connection so the two bridge
 // goroutines (blocked-request errors and forwarded responses) never
 // interleave partial lines.
-func (s *ProxyServer) writeClient(conn net.Conn, mu *sync.Mutex, line string) error {
-	mu.Lock()
-	defer mu.Unlock()
+type writeLocker interface {
+	Lock()
+	Unlock()
+}
+
+func (s *ProxyServer) writeClient(conn net.Conn, locker writeLocker, line string) error {
+	locker.Lock()
+	defer locker.Unlock()
 	_, err := io.WriteString(conn, line)
 	return err
 }
@@ -779,7 +801,7 @@ func toolNameFromParams(params interface{}) string {
 // isToolAllowed checks if a tool name is in the allowlist
 func (s *ProxyServer) isToolAllowed(toolName string) bool {
 	if len(s.policy.AllowTools) == 0 {
-		return true // No restrictions if allowlist is empty
+		return false // Secure default: an empty allowlist grants no tools.
 	}
 
 	for _, allowed := range s.policy.AllowTools {

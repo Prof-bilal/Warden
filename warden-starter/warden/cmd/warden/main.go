@@ -1127,7 +1127,10 @@ func cmdInit(args []string) {
 		fmt.Fprintf(os.Stderr, "warden init: close audit log: %v\n", closeErr)
 		os.Exit(1)
 	}
-	starter := policy.StarterFromAudit(events, cmd)
+	// Trace records relative paths as the program opened them, so resolve them
+	// against the directory the program ran in (this command's directory).
+	baseDir, _ := os.Getwd()
+	starter := policy.StarterFromAudit(events, cmd, baseDir)
 	data, err := starter.Marshal()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden init: encode policy: %v\n", err)
@@ -1353,15 +1356,15 @@ func printProxyHelp() {
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
 	fmt.Fprintln(os.Stderr, "  --policy <file>            MCP proxy policy file (required)")
-	fmt.Fprintln(os.Stderr, "  --listen <addr>            Listen address (default: localhost:8765)")
+	fmt.Fprintln(os.Stderr, "  --listen <addr>            Numeric loopback listen address (default: 127.0.0.1:8765)")
 	fmt.Fprintln(os.Stderr, "  --upstream <url>           Override upstream from policy")
 	fmt.Fprintln(os.Stderr, "  --transport <type>         Force transport: http, sse, or auto (default: auto)")
 	fmt.Fprintln(os.Stderr, "  --help                     Show this help")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
 	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml")
-	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --listen :9000")
-	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --upstream \"stdio:cat\"")
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --listen 127.0.0.1:9000")
+	fmt.Fprintln(os.Stderr, "  warden proxy --policy mcp-policy.yaml --upstream \"stdio:cat\" --unsafe-unconfined")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Policy Format:"))
 	fmt.Fprintln(os.Stderr, "  mcp:")
@@ -1375,13 +1378,14 @@ func printProxyHelp() {
 	fmt.Fprintln(os.Stderr, "  • Upstreams: stdio commands or http(s):// MCP servers (Streamable HTTP")
 	fmt.Fprintln(os.Stderr, "    and SSE). Plain http:// is allowed only for loopback dev servers;")
 	fmt.Fprintln(os.Stderr, "    remote upstreams must use https://.")
-	fmt.Fprintln(os.Stderr, "  • A stdio subprocess receives only env.allow variables (deny-by-default),")
-	fmt.Fprintln(os.Stderr, "    but is NOT itself sandboxed. Wrap `warden proxy` in `warden run` if the")
-	fmt.Fprintln(os.Stderr, "    upstream needs filesystem/network isolation.")
+	fmt.Fprintln(os.Stderr, "  • The listener is restricted to numeric loopback addresses; remote binding is refused.")
+	fmt.Fprintln(os.Stderr, "  • An empty mcp.allow_tools list blocks all tool calls; list tools explicitly.")
+	fmt.Fprintln(os.Stderr, "  • A stdio subprocess receives only env.allow variables but is not OS-sandboxed.")
+	fmt.Fprintln(os.Stderr, "    It requires --unsafe-unconfined; otherwise wrap it with `warden run`.")
 }
 
 func cmdProxy(args []string) {
-	policyPath, listen, upstreamOverride, transportOverride, err := parseProxyArgs(args)
+	policyPath, listen, upstreamOverride, transportOverride, unsafeUnconfined, err := parseProxyArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
 		printProxyHelp()
@@ -1411,6 +1415,10 @@ func cmdProxy(args []string) {
 
 	if p.MCP.Upstream == "" {
 		fmt.Fprintf(os.Stderr, "warden proxy: policy must specify mcp.upstream\n")
+		os.Exit(2)
+	}
+	if strings.HasPrefix(p.MCP.Upstream, "stdio:") && !unsafeUnconfined {
+		fmt.Fprintln(os.Stderr, "warden proxy: stdio upstreams are not OS-sandboxed; pass --unsafe-unconfined or run the proxy itself under `warden run`")
 		os.Exit(2)
 	}
 
@@ -1475,29 +1483,29 @@ func cmdProxy(args []string) {
 	fmt.Fprintln(os.Stderr, "\nwarden proxy: shutting down")
 }
 
-func parseProxyArgs(args []string) (policyPath, listen, upstream, transport string, err error) {
-	listen = "localhost:8765" // default
+func parseProxyArgs(args []string) (policyPath, listen, upstream, transport string, unsafeUnconfined bool, err error) {
+	listen = "127.0.0.1:8765" // numeric loopback; remote binding is refused
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
 		case arg == "--policy" || arg == "-policy":
 			if i+1 >= len(args) {
-				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", false, fmt.Errorf("flag %s requires a value", arg)
 			}
 			if policyPath != "" {
-				return "", "", "", "", fmt.Errorf("--policy specified twice")
+				return "", "", "", "", false, fmt.Errorf("--policy specified twice")
 			}
 			policyPath = args[i+1]
 			i++
 		case strings.HasPrefix(arg, "--policy="):
 			if policyPath != "" {
-				return "", "", "", "", fmt.Errorf("--policy specified twice")
+				return "", "", "", "", false, fmt.Errorf("--policy specified twice")
 			}
 			policyPath = strings.TrimPrefix(arg, "--policy=")
 		case arg == "--listen" || arg == "-listen":
 			if i+1 >= len(args) {
-				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", false, fmt.Errorf("flag %s requires a value", arg)
 			}
 			listen = args[i+1]
 			i++
@@ -1505,7 +1513,7 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream, transport stri
 			listen = strings.TrimPrefix(arg, "--listen=")
 		case arg == "--upstream" || arg == "-upstream":
 			if i+1 >= len(args) {
-				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", false, fmt.Errorf("flag %s requires a value", arg)
 			}
 			upstream = args[i+1]
 			i++
@@ -1513,24 +1521,26 @@ func parseProxyArgs(args []string) (policyPath, listen, upstream, transport stri
 			upstream = strings.TrimPrefix(arg, "--upstream=")
 		case arg == "--transport" || arg == "-transport":
 			if i+1 >= len(args) {
-				return "", "", "", "", fmt.Errorf("flag %s requires a value", arg)
+				return "", "", "", "", false, fmt.Errorf("flag %s requires a value", arg)
 			}
 			transport = args[i+1]
 			i++
+		case arg == "--unsafe-unconfined":
+			unsafeUnconfined = true
 		case strings.HasPrefix(arg, "--transport="):
 			transport = strings.TrimPrefix(arg, "--transport=")
 		case strings.HasPrefix(arg, "-"):
-			return "", "", "", "", fmt.Errorf("unknown flag %q (want --policy, --listen, --upstream, or --transport)", arg)
+			return "", "", "", "", false, fmt.Errorf("unknown flag %q (want --policy, --listen, --upstream, --transport, or --unsafe-unconfined)", arg)
 		default:
-			return "", "", "", "", fmt.Errorf("unexpected argument %q", arg)
+			return "", "", "", "", false, fmt.Errorf("unexpected argument %q", arg)
 		}
 	}
 
 	if policyPath == "" {
-		return "", "", "", "", fmt.Errorf("missing required flag --policy")
+		return "", "", "", "", false, fmt.Errorf("missing required flag --policy")
 	}
 
-	return policyPath, listen, upstream, transport, nil
+	return policyPath, listen, upstream, transport, unsafeUnconfined, nil
 }
 
 func printMCPHelp() {

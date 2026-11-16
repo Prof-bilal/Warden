@@ -13,7 +13,7 @@ warden run --policy policy.yaml --approve --approve-timeout 2m -- /usr/bin/node 
 | Access | Prompt offers | Effect when approved |
 |---|---|---|
 | Network host | allow once / for this session / and save to policy / deny | **Live**: the proxy allows the host immediately (session) and optionally appends it to `network.allow` in the policy file (save) |
-| Filesystem path | save + restart now / save for next run / deny | **Saved**: the grant is appended to the policy file (`filesystem.read` on the path, or `filesystem.write` on the parent dir for mutating accessexactly what `warden init` would generate). Bind mounts are fixed at spawn, so a restart is required; Warden respawns the server automatically on "restart now" |
+| Filesystem path | save + restart now / save for next run / deny | **Saved**: the grant is appended to the policy file (`filesystem.read` on the path, or `filesystem.write` on the parent dir for mutating access, which is exactly what `warden init` would generate). Bind mounts are fixed at spawn, so a restart is required; Warden respawns the server automatically on "restart now" |
 
 You are asked **once per resource per run**: session/session-save/deny answers
 are remembered, so a chatty server cannot prompt-loop you. "Allow once"
@@ -28,14 +28,13 @@ are remembered, so a chatty server cannot prompt-loop you. "Allow once"
   `--approve` with no interactive terminal refuses to start at all, so it
   can never silently downgrade to deny-everything under an MCP client.
 - **Filesystem approvals always persist.** A restart reloads policy from
-  disk, so a memory-only filesystem grant would be a liethere is no
+  disk, so a memory-only filesystem grant would be a lie. There is no
   "session-only" filesystem option.
 - **Every decision is audit-logged** (`type: approval` in `warden logs`),
   including denials and timeouts.
 - **Prompts are selective, not noisy.** A filesystem prompt fires only for a
   failed access that maps to a real grant (absolute, non-runtime path,
-  outside current grants) naming a path that **exists on the host**, 
-  routine probes for optional files never ask. Runtime paths (`/usr`,
+  outside current grants) naming a path that **exists on the host**. Routine probes for optional files never ask. Runtime paths (`/usr`,
   `/proc`, `/tmp`, …) and the server's own executable never ask.
 - **Write grants into the runtime base (`/usr`, `/lib64`, …) are refused**:
   no backend could honor them.
@@ -48,7 +47,7 @@ are remembered, so a chatty server cannot prompt-loop you. "Allow once"
 - **macOS Seatbelt, Docker, Windows**: network approval only. Those
   backends have no live filesystem signal (Seatbelt reports EPERM without
   structured events, ETW/container tracing is post-hoc), so filesystem
-  stays hard-denyuse `warden trace` + `warden init` to widen the policy.
+  stays hard-deny. Use `warden trace` + `warden init` to widen the policy.
 
 ## Non-goals
 

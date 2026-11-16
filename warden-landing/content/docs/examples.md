@@ -3,7 +3,7 @@
 Copy any of these policies as a starting point for your own MCP server, then
 adjust the `command` path, grants, and env allowlist to match your setup.
 Relative paths in these files are resolved against the policy file's own
-directorynot your shell's current working directory.
+directory, not your shell's current working directory.
 
 > **Tip:** The easiest way to get a policy right is to run
 > `warden trace -- <your-server-command>` first, then `warden init`. The
@@ -26,12 +26,12 @@ The source files live under `examples/` in the repo. The full content of each on
 | [Slack](#slack) | API + web UI, needs `SLACK_BOT_TOKEN` and `SLACK_TEAM_ID` |
 | [PostgreSQL](#postgresql) | Database connections, `.pgpass` / `.postgresql` credentials |
 | [Brave Search](#brave-search) | Search API only, needs `BRAVE_API_KEY` |
-| [Comprehensive reference](#comprehensive-reference) | Full schema with annotations for every fielduse as a template |
+| [Comprehensive reference](#comprehensive-reference) | Full schema with annotations for every field. Use it as a template |
 | [Gateway registry](#gateway-registry) | Wrapping servers registered in an MCP gateway config |
 
 ## Filesystem
 
-Local file access onlyno network egress, no env passthrough.
+Local file access only. No network egress, no env passthrough.
 
 ```yaml
 # Example Warden policy@modelcontextprotocol/server-filesystem
@@ -239,10 +239,10 @@ limits:
 
 ## Comprehensive reference
 
-Full schema with annotations for every fielduse as a template.
+Full schema with annotations for every field. Use it as a template.
 
 ```yaml
-# Warden PolicyComprehensive Reference
+# Warden policy: comprehensive reference
 # =========================================
 #
 # This file documents the full policy schema with examples for every field.
@@ -427,7 +427,7 @@ nowhere.
 ### Home directory grants
 
 Several examples pass `HOME` through `env.allow` and grant read access to
-`~/.config`-style paths. This is intentionalmany Node.js and Python
+`~/.config`-style paths. This is intentional. Many Node.js and Python
 libraries expect `HOME` to be set. **Do not combine `HOME` with a broad
 `filesystem.read` grant** (especially `~/.ssh`); see
 [Security Review](security.md#5-credential-exposure) for details.
@@ -435,7 +435,7 @@ libraries expect `HOME` to be set. **Do not combine `HOME` with a broad
 ### Empty allowlists are explicit
 
 Notice that `network.allow: []` and `env.allow: []` appear in the filesystem
-example. An empty list is *not* the same as omitting the keythe former
+example. An empty list is *not* the same as omitting the key. The former
 explicitly denies everything, the latter falls back to the default (which
 varies by field). Being explicit in your policy makes intent clear and helps
 `warden init` produce a correct starter.

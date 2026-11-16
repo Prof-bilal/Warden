@@ -35,7 +35,7 @@ protection.
 ## Install
 
 ```bash
-npm install -g warden-sandbox-cli
+npm install -g warden-sandbox-cli@beta
 warden doctor
 ```
 

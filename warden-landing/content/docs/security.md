@@ -10,7 +10,7 @@ the agent edits a temporary copy, and why host changes still require review.
 
 ## Threat Model
 
-### 1. Sandbox escapeaccess outside the granted boundary
+### 1. Sandbox escape: access outside the granted boundary
 
 **Threat.** A compromised or buggy sandboxed process attempts to read files,
 write to disk, or reach the network outside the paths and hosts granted in
@@ -149,9 +149,9 @@ traffic to unauthorized destinations.
 | CPU limits | No CPU throttling or cgroup-based limits on any platform. |
 | Process-tree visibility | Limits apply to the direct child process tree only; grandchildren spawned via `fork()` + `exec()` outside the tracked tree may escape limits. |
 | macOS Seatbelt | Deprecated by Apple; may be removed in a future macOS release with no Warden fallback on native. |
-| Docker fallback | Requires a running Docker daemon. The in-container proxy bridge must be a Linux ELF binaryon macOS this requires cross-compilation. |
+| Docker fallback | Requires a running Docker daemon. The in-container proxy bridge must be a Linux ELF binary. On macOS this requires cross-compilation. |
 | Windows AppContainer | WFP and the ETW audit session require an elevated (admin) process; warden fails closed without it. The kernel (WPP-style) ETW providers accept one enabling session, so another controller holding them (PerfView, an EDR) also fails the run closed. |
-| Windows audit visibility | A denied file open is enforced by the AppContainer token before it reaches the file system, so it produces no ETW eventa denial shows up as an absent allowed operation, not a blocked record. Kernel-Network payloads are captured but not yet decoded; network allow/deny audit comes from the egress proxy and the WFP deny filters. |
+| Windows audit visibility | A denied file open is enforced by the AppContainer token before it reaches the file system, so it produces no ETW event. A denial shows up as an absent allowed operation, not a blocked record. Kernel-Network payloads are captured but not yet decoded; network allow/deny audit comes from the egress proxy and the WFP deny filters. |
 | strace auditing | Workload-dependent overhead; no fresh benchmark is claimed here. Native Linux requires strace for file/network auditing and refuses launch without it. Docker does not use strace. |
 | Egress proxy scope | Only intercepts HTTP/HTTPS traffic. Raw TCP and UDP connections cannot be filtered by the proxy. |
 
@@ -168,7 +168,7 @@ traffic to unauthorized destinations.
    check for blocked attempts that may indicate a misconfigured policy or
    unexpected server behavior.
 
-4. **Keep Warden updated.** Security fixes land in new releasescheck
+4. **Keep Warden updated.** Security fixes land in new releases. Check the
    [roadmap](roadmap.md) for the current status and the issue
    tracker for disclosed vulnerabilities.
 
@@ -176,5 +176,5 @@ traffic to unauthorized destinations.
    resolve to unexpected locations inside the sandbox.
 
 6. **Minimize `filesystem.write` grants.** Write access lets the server
-   modify files on diskgrant write only where absolutely necessary and
+   modify files on disk. Grant write only where absolutely necessary and
    prefer read-only mounts elsewhere.

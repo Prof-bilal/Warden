@@ -349,9 +349,9 @@ export default function FeaturesPage() {
 
       <PageHeader eyebrow="Feature Reference" title="Every Warden feature, explained in depth.">
         <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
-          Warden is a local sandbox runtime for MCP servers. Nine commands cover
-          that surface, from sandboxing a single server to wrapping a whole MCP
-          client config. Everything below ships today and is backed by the test
+          Warden is a local sandbox runtime for MCP servers and AI tools. Its CLI
+          has about two dozen commands. The core ones cover the full flow, from
+          sandboxing a single server to wrapping a whole MCP client config. Everything below ships today and is backed by the test
           suite. For the full policy schema, see{" "}
           <Link
             href="/docs/schema"

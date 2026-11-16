@@ -83,7 +83,7 @@ One implementation per platform, behind a common interface
   TCP to the egress proxy bridge (and its Unix socket). Structured file-deny
   audit events are Linux/`strace`-only; Seatbelt still enforces file denies
   as EPERM, and the egress proxy records network allow/deny decisions.
-- **FallbackDocker.** Used when the native backend for the current OS is
+- **Fallback: Docker.** Used when the native backend for the current OS is
   unavailable, or explicitly requested via `--backend docker`. Preference
   order for `--backend auto` (the default):
   - Linux: `bwrap` → Docker → fail closed
@@ -97,7 +97,7 @@ One implementation per platform, behind a common interface
   hosts the current executable is used; on macOS/Windows set
   `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary (macOS auto-detect
   still prefers Seatbelt when `sandbox-exec` is present).
-- **WindowsM5.** An AppContainer backend will use a restricted token,
+- **Windows (M5).** An AppContainer backend will use a restricted token,
   filesystem capabilities, Windows Filtering Platform rules, ETW audit
   events, and a Job Object for process-tree limits. Until all of those
   enforcement primitives are installed successfully, Warden refuses to run;
@@ -117,7 +117,7 @@ connection. It logs every allow/deny decision.
 With `--approve`, the proxy consults an approver callback before denying:
 the user may allow the host once, for the session (in-memory allowlist), or
 persistently (allowlist plus append to the policy file). Prompts go to
-`/dev/tty`never the MCP stdio channeland any prompt failure denies
+`/dev/tty`, never the MCP stdio channel, and any prompt failure denies
 (fail closed). See `docs/approve.md`.
 
 ### 5. Audit Logger
@@ -175,7 +175,7 @@ limits:
 
 Open question for M2/M3: should the policy support a "learn mode" flag that
 runs `trace` automatically on first launch and asks the user to approve a
-generated policy interactively? Leaning yesit's a much lower-friction
+generated policy interactively? Leaning yes. It's a much lower-friction
 onboarding path than asking people to hand-write YAML on day one.
 
 ## Non-goals (for now)

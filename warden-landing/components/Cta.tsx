@@ -18,7 +18,7 @@ export default function Cta() {
         </p>
 
         <CopyChip
-          value="npm i -g warden-sandbox-cli"
+          value="npm i -g warden-sandbox-cli@beta"
           className="mx-auto mt-7 w-fit"
         />
 

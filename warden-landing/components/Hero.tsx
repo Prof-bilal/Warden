@@ -5,13 +5,13 @@ import Link from "next/link";
 import { ArrowRight, Check, Copy, Github, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import StatRow from "@/components/bp/StatRow";
 
-const installCommand = "npm i -g warden-sandbox-cli";
+const installCommand = "npm i -g warden-sandbox-cli@beta";
 
 const stats: [string, string][] = [
   ["18", "MCP servers tested"],
   ["8/8", "Linux proof checks passed"],
   ["7/7", "attack simulations contained"],
-  ["0", "permissions granted by default"],
+  ["0", "access granted by default"],
 ];
 
 const labels = ["Isolate", "Control", "Observe", "Safe by default"];

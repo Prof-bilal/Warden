@@ -1,30 +1,32 @@
-# FAQ / Troubleshooting
+# Troubleshooting and FAQ
+
+Find your error message below. Each entry names the cause and the fix.
 
 ## `warden run` refuses to start
 
-### "no sandbox backend available … refusing to run unsandboxed"
+### "no sandbox backend available ... refusing to run unsandboxed"
 
-No usable backend on this host. On Linux install `bwrap`
-([Install](install.md#per-os-prerequisites)); on macOS make sure
-`sandbox-exec` exists; anywhere else, start the Docker daemon. Warden never
-falls back to an unsandboxed runthis error is the product working as
-designed.
+Warden could not find a sandbox on this computer. Fix it for your system:
 
-### "command … is not an absolute path"
+- **Linux:** install `bwrap` (bubblewrap). See [Install](install.md#per-os-prerequisites).
+- **macOS:** check that `sandbox-exec` exists.
+- **Anywhere else:** start the Docker daemon.
 
-The executable must resolve to an absolute path so the backend can
-bind-mount its directory. Bare names (`npx`, `uvx`, `node`) are resolved via
-your `PATH` automaticallyif you see this error, the name isn't on `PATH`
-in the shell launching Warden. Check with `command -v npx`, or put the
-absolute path in the policy's `command:`.
+Warden never runs a program without a sandbox. This error is the protection working as designed.
 
-### "executable …: no such file or directory"
+### "command ... is not an absolute path"
 
-The absolute path doesn't exist *on this host*. Common cause: a policy
-written on another machine (or a fixture copied verbatim) whose `command:`
-points at someone else's install. Point it at your entry point.
+The program has to be given as an absolute path. Bare names such as `npx`, `uvx`, or `node` are looked up on your `PATH`. If you see this error, the name is not on the `PATH` of the shell that starts Warden. Check with `command -v npx`, or put the full path in the policy's `command:` line.
 
-## My server starts, then something is denied
+### "executable ...: no such file or directory"
+
+The path does not exist on this computer. This usually happens when a policy was copied from another machine, so its `command:` points at a different install. Change it to the location of your server file.
+
+### "strace not found"
+
+On Linux, Warden needs `strace` to audit programs. Install it with your package manager, for example `sudo apt install strace`. The [install page](install.md#per-os-prerequisites) lists the commands for each distribution.
+
+## My program starts, but something is denied
 
 ### How do I see what was blocked?
 
@@ -32,58 +34,38 @@ points at someone else's install. Point it at your entry point.
 warden logs --tail 20
 ```
 
-Every event names the type (`file`/`network`), action, resource, and
-allowed/blocked reason. Blocked file paths and hostnames map directly onto
-the grant you need to add.
+Each line names the type (`file` or `network`), the action, the resource, and whether it was allowed, with the reason. A blocked path or host tells you exactly which grant to add.
 
-### The policy looks right but access still fails
+### The policy looks right, but access still fails
 
-- **Same path in `read` and `write`?** `Load` coalesces the overlap to a
-  single write grantharmless, but check `warden logs` for the real
-  denial, which is usually a *parent* directory that was never granted.
-- **SQLite writes failing?** Grant `write` on the database *directory*, not
-  the db fileWAL and journal sidecars live next to it.
-- **Child processes failing?** The sandbox covers the whole process tree,
-  including grandchildren. The denial still appears in the log with the
-  exact resource.
+- **The same path is in both `read` and `write`:** this is harmless. Check `warden logs` for the real denial. It is usually a parent folder that was never granted.
+- **SQLite writes fail:** grant `write` on the folder that holds the database, not only the database file. Journal files sit next to it.
+- **Child processes fail:** the sandbox covers the whole process tree, including child processes. The denial still shows up in the log with the exact resource.
 
 ### Can I approve access interactively instead of editing YAML?
 
-Yes: `warden run --policy policy.yaml --approve -- <cmd>`. Network grants
-apply live; filesystem grants are saved to the policy file and the server
-restarts (bind mounts are fixed at spawn). Approval needs a terminal and
-fails closed without one.
+Yes. Run `warden run --policy policy.yaml --approve -- <command>`. Network grants apply right away. Filesystem grants are saved to the policy file, and the program restarts, because folder access is set when it starts. Approval needs a terminal. Without one, Warden stops.
 
-## Security footguns
+## Security questions
 
-### I passed `HOME` and now the server can read `~/.ssh`?
+### Can an AI coding agent edit a project without seeing its secrets?
 
-Expectedand your policy bug, not Warden's. `HOME` passthrough plus a
-`filesystem.read` grant covering `~/.ssh` (or a parent of it) exposes your
-keys. Grant only the exact credential paths the server needs
-(`./config/.pgpass`, not `~`), and re-read the
-[Security Review](security.md#5-credential-exposure) before shipping a
-policy that passes `HOME`.
+Yes. [`warden agent`](agent-workspace.md) gives the agent a temporary sanitized copy of the project. It hides the files and environment variables you declare as secret, and it asks you to review the changes before they reach your project. Use fake credentials while you test, and remember that only the values you declare are protected.
 
-### `warden trace` shows my secretsis that logged?
+### I passed `HOME`, and now the program can read `~/.ssh`
 
-`trace` runs unsandboxed by design, so observed env values can appear in the
-trace log. `init` only writes variable *names* into the policyvalues stay
-in your shellbut treat raw trace logs as sensitive and delete them after
-generating the policy.
+That comes from the policy, not from Warden. Passing `HOME` together with a `filesystem.read` grant that covers `~/.ssh`, or any parent of it, exposes your keys. Grant only the exact credential files the program needs, such as `./config/.pgpass` and not `~`. Read the [security review](security.md#5-credential-exposure) before you ship a policy that passes `HOME`.
 
-## Things Warden can't do (by design or yet)
+### `warden trace` recorded my secrets. Is that logged?
+
+`trace` runs the program without the sandbox, so environment values can appear in the trace log. `warden init` writes only variable names into the policy, and the values stay in your shell. Treat raw trace logs as sensitive, and delete them after you generate the policy.
+
+## Limits
 
 ### Wildcard hosts (`*.example.com`)
 
-A **single leading wildcard label** is supported: `network.allow` accepts
-`*.example.com` to grant a subdomain pattern (locked in by regression test —
-see the policy schema). Fully arbitrary hosts (any top-level domain, e.g.
-browser-like servers) remain out of scope. Daemon sockets (`/var/run/docker.sock`)
-have no grant type and are [inherently incompatible](compatibility.md#failures-classified).
+A single leading wildcard is supported: `network.allow` accepts `*.example.com` to allow a subdomain pattern. See the [policy schema](schema.md). Arbitrary hosts, such as browser-style servers that need any site, are out of scope. Daemon sockets such as `/var/run/docker.sock` have no grant type and are [not supported](compatibility.md#failures-classified).
 
 ### "Will this work with my server?"
 
-Check the [Compatibility Matrix](compatibility.md) first. If your server
-isn't listed, trace it and [file a compatibility report](beta.md#filing-a-compatibility-report) —
-that's exactly the signal the beta program collects.
+Check the [compatibility matrix](compatibility.md) first. If your server is not listed, [file a compatibility report](beta.md#filing-a-compatibility-report). That is exactly the information the beta program collects.
