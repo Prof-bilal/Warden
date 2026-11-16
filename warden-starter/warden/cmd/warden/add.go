@@ -348,7 +348,8 @@ func resolveAddSource(o addOptions) (src addSource, runtimeDir string, err error
 		Filesystem: policy.Filesystem{Read: []string{runtimeAbs}},
 		Network:    policy.Network{Allow: o.allowHosts},
 		Env:        policy.Env{Allow: o.allowEnv},
-		Limits:     policy.Limits{MemoryMB: 512, TimeoutS: 300},
+		// No wall-clock limit: an MCP server is long-lived, and a timeout would kill it mid-session.
+		Limits: policy.Limits{MemoryMB: 512},
 	}
 	for _, p := range o.allowRead {
 		abs, err := filepath.Abs(p)

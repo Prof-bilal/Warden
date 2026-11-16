@@ -1,7 +1,6 @@
 # MCP gateway for agents and SDKs
 
-Build the development checkout first. `connect` speaks standard newline-delimited
-stdio; `serve` exposes authenticated Streamable HTTP at `/mcp`. These commands
+These commands are in the current 0.2.0 beta and newer (`npm install -g warden-sandbox-cli@beta`). `connect` speaks standard newline-delimited stdio; `serve` exposes authenticated Streamable HTTP at `/mcp`. These commands
 are separate from the legacy `proxy` command, whose listener is custom TCP.
 
 ## Supported boundary

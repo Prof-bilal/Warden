@@ -106,7 +106,7 @@ the current Warden ELF binary (Linux). On macOS/Windows hosts, set
 `WARDEN_DOCKER_BRIDGE` to a cross-compiled Linux binary. The default image
 is `alpine:3.20` (override with `WARDEN_DOCKER_IMAGE`).
 
-### WindowsAppContainer + WFP + ETW (M5)
+### Windows: AppContainer + WFP + ETW (M5)
 
 The backend runs the command under an AppContainer (LowBox) token derived
 from the policy: filesystem capabilities are installed as DACL grants,
@@ -114,7 +114,7 @@ Windows Filtering Platform (WFP) rules on a per-run sublayer permit only
 loopback traffic to the egress proxy and deny everything else outbound, a
 Job Object enforces process-tree memory/time limits, and a real-time ETW
 session audits Kernel-File activity for the process tree. Warden refuses to
-run if any of these primitives fail to installit never falls back to an
+run if any of these primitives fail to install. It never falls back to an
 unrestricted process. Note that WFP and ETW both require an elevated (admin)
 process; see `docs/security.md` for the known limitations.
 

@@ -1,23 +1,29 @@
-# Quickstart
+# Quickstart: run a program in a sandbox
 
-Sandbox your first MCP server in five minutes. We'll use the `filesystem`
-server fixturelocal file I/O only, so the policy stays tiny.
+This takes about five minutes. You will write a small policy, run a program inside Warden, and see a blocked access in the audit log.
 
-## 1. Start from a fixture policy
+**Before you start:** install Warden and make sure `warden doctor` says **READY** (see [Install](install.md)).
 
-Every tested server has an exact policy under `testdata/compat/`. Copy the
-closest one:
+You do not need to know YAML or sandboxing first. Each step says what it does and what you should see.
+
+## 1. Make a test folder
 
 ```bash
-cp testdata/compat/filesystem/policy.yaml ./policy.yaml
-cat policy.yaml
+mkdir -p warden-test/data && cd warden-test
+echo "hello from data" > data/notes.txt
+echo "top secret" > secret.txt
 ```
 
+You now have one file the sandbox will be allowed to read (`data/notes.txt`) and one it will not (`secret.txt`).
+
+## 2. Write a policy
+
+Save this as `policy.yaml`:
+
 ```yaml
-command: ["/usr/bin/node", "./server/dist/index.js"]
+command: ["/bin/cat", "./data/notes.txt"]
 filesystem:
-  read:
-    - "./data"
+  read: ["./data"]
   write: []
 network:
   allow: []
@@ -25,58 +31,62 @@ env:
   allow: []
 ```
 
-Relative paths resolve against the policy file's own directory. Point
-`command` at your installed server entry point (absolute path), and set the
-`read` grant to the directory you want the server to serve.
+What it says:
 
-## 2. Run it sandboxed
+- `command`: the program to run. Here it is `cat`, which prints a file.
+- `filesystem.read`: the only folder the program can see.
+- `network.allow` and `env.allow`: empty, so the program gets no network access and no environment variables.
+
+Relative paths are resolved from the folder that contains the policy file.
+
+## 3. Run it in the sandbox
 
 ```bash
 warden run --policy ./policy.yaml
 ```
 
-Your MCP client talks to the sandboxed server over stdio exactly as if it
-were unsandboxed. Try reading a file outside the grantit fails, and the
-denial is logged rather than silent:
+Expected output:
 
-```bash
-warden logs --tail 10
+```
+hello from data
 ```
 
-## 3. Don't guesstrace instead
+The file was readable because it is inside the granted folder.
 
-For a server with no fixture, observe what it actually touches first:
+## 4. See what the sandbox blocks
 
-```bash
-warden trace -- /usr/bin/node ./server/dist/index.js
+Now try to read the secret file. Change the `command` line in `policy.yaml` to:
+
+```yaml
+command: ["/bin/cat", "./secret.txt"]
 ```
 
-Exercise the server from your client, stop it, then generate a conservative
-starter policy from the trace:
+Run it again:
 
 ```bash
-warden init
+warden run --policy ./policy.yaml
 ```
 
-`init` only grants successful observed accesses and never converts a blocked
-event into a grant. Review `policy.yaml`, tighten anything too broad
-(`trace` runs unsandboxed by design), then `warden run` with it.
+Expected output:
 
-## 4. Iterate with the audit log
+```
+cat: ./secret.txt: No such file or directory
+```
+
+The file is not hidden behind a permission error. It does not exist inside the sandbox, because it is not in a granted folder. Change the command back to `./data/notes.txt` when you are done.
+
+## 5. Check the audit log
 
 ```bash
-warden logs --tail 20   # what was allowed / blocked and why
-warden logs --follow    # watch a running server live
+warden logs --tail 5
 ```
 
-Blocked attempts name the exact path or host, so widening a policy is
-mechanical: add the grant, re-run. If a server needs something the schema
-can't express (wildcard hosts, daemon sockets), check the
-[Compatibility Matrix](compatibility.md#failures-classified)it may be a
-known gap rather than your mistake.
+Each line is one access the program attempted, in JSON, with `"allowed":true` or `"allowed":false`. Blocked lines name the exact path or host, so when a program needs something new, you add that one grant to the policy and run again.
 
 ## Next steps
 
-- [Schema Reference](schema.md)every field, validation rules, enforcement notes
-- [CLI Reference](cli.md)`trace`, `init`, `logs`, `--approve`, gateway commands
-- [FAQ](faq.md)when something fails, start here
+- **Your own MCP server:** set `command` to how you normally start it, for example `["/usr/bin/node", "/path/to/server/index.js"]`. Use an absolute path to the server file. Add only the folders, hosts, and environment variables it needs. [Example policies](examples.md) has copy-paste starting points for common servers, and the [compatibility matrix](compatibility.md) lists tested servers.
+- **Not sure what a server needs?** `warden trace -- <command>` runs the program once without the sandbox and records what it touches. `warden init` then writes a draft policy from that recording. Treat the draft as a starting point. It may be missing grants, so review it and run `warden run` again to check.
+- **Coding agents:** see [Protect an AI agent](agent-workspace.md).
+- **Something failed:** see the [FAQ](faq.md).
+- **Field-by-field reference:** [Schema](schema.md). **All commands:** [CLI reference](cli.md).

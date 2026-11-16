@@ -115,10 +115,12 @@ limits:
 
 ## Complete Examples
 
+The examples below use placeholder paths. Replace each `command` with the absolute path to that server's entry file on your machine. The [server guides](policy-github.md) give exact paths and tested policies.
+
 ### GitHub MCP Server
 
 ```yaml
-command: ["node", "@modelcontextprotocol/server-github"]
+command: ["/usr/bin/node", "/path/to/server-github/dist/index.js"]
 
 filesystem:
   read: ["./cache"]
@@ -138,7 +140,7 @@ limits:
 ### Slack MCP Server
 
 ```yaml
-command: ["node", "@modelcontextprotocol/server-slack"]
+command: ["/usr/bin/node", "/path/to/server-slack/dist/index.js"]
 
 filesystem:
   read: []
@@ -158,7 +160,7 @@ limits:
 ### Filesystem MCP Server
 
 ```yaml
-command: ["node", "@modelcontextprotocol/server-filesystem"]
+command: ["/usr/bin/node", "/path/to/server-filesystem/dist/index.js"]
 
 filesystem:
   read: ["./my-files"]
@@ -189,8 +191,7 @@ warden trace -- node server.js
 warden init
 ```
 
-`init` grants only **successful** observed accesses. **Review** the generated
-policy and **tighten** anything that is too broad.
+`init` grants only **successful** observed accesses, so the draft is not always complete. **Review** the generated policy, tighten anything too broad, then run it. If a file is missing, `warden logs` shows the denial, and you add that grant.
 
 ---
 

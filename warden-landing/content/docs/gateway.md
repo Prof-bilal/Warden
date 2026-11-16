@@ -14,7 +14,7 @@ prefix for every local server.
 
 Only **stdio** entries (a local command) can be sandboxed. Remote entries
 (`type`/`url`, `endpoint`, `http_url`, non-stdio `transport`) are skipped with
-a reasonthere is no local process to confine.
+a reason. There is no local process to confine.
 
 ## Workflow
 
@@ -55,7 +55,7 @@ spawns `warden run` with those values in its environment, and Warden forwards
 only the names in the policy's `env.allow` to the sandboxed server. Policies
 never store secrets.
 
-`wrap` fails closed when any stdio server lacks a policyrun `gateway init`
+`wrap` fails closed when any stdio server lacks a policy. Run `gateway init`
 first. Remote entries pass through untouched.
 
 ## Environment templates

@@ -1,26 +1,16 @@
 # What Warden Is
 
-**Your MCP servers run with your keys to the kingdom. Warden takes them back.**
+**Warden is a sandbox for AI tools.** It runs an MCP server, a coding agent, or any local script so it can only see the files, network hosts, and environment variables you allow.
 
-Every MCP server you installthat filesystem helper, that Slack bot, that
-script you cloned five minutes agoruns as a plain process with **your**
-full permissions: your SSH keys, your tokens, your files, unrestricted
-network. Nothing in the MCP protocol stops a buggy or malicious server from
-reading `~/.ssh` or exfiltrating data. Most installs are one `npx` command
-away from total access.
-
-Warden runs each server in a restricted sandbox instead. A server only ever
-sees the files, network hosts, and environment variables you explicitly
-grant iteverything else is invisible. Sandboxing is invisible to the
-protocol: your MCP client talks to the sandboxed server exactly as before.
+Most MCP servers you install run as a normal process with **your** permissions: your SSH keys, your tokens, your files, and unrestricted network access. Nothing in the MCP protocol stops a buggy or malicious server from reading `~/.ssh` or sending data out. Warden fixes that without changing how your client talks to the server.
 
 ```bash
 warden run --policy ./policy.yaml -- node ./my-mcp-server/index.js
 ```
 
-## How it works in 30 seconds
+## How it works
 
-Write a policy describing what the server may touch:
+You describe what the program may touch in a small policy file:
 
 ```yaml
 # policy.yaml
@@ -37,59 +27,44 @@ limits:
   timeout_s: 300
 ```
 
-Run it sandboxedor generate the policy automatically by watching the
-server once, unsandboxed:
+Then run it inside the sandbox:
 
 ```bash
 warden run --policy policy.yaml
-# or:
+```
+
+Not sure what to put in the policy? Let Warden watch the program once, without the sandbox, and draft one for you:
+
+```bash
 warden trace -- /usr/bin/node server.js && warden init
 ```
 
-If a local coding agent needs to edit the project, use an [AI agent
-workspace](agent-workspace.md). Warden gives the agent a sanitized copy,
-hides the declared values, and waits for your review before applying changes
-to the host project.
+Review the draft before you rely on it.
+
+If a local coding agent needs to edit your project, use an [AI agent workspace](agent-workspace.md). The agent works on a sanitized copy, declared secrets stay hidden, and you review the changes before they touch your project.
 
 ## Why Warden
 
-- **Filesystem**only granted paths exist inside the sandbox, read-only or
-  read-write as you specify. The rest isn't "permission denied"it's gone.
-- **Network**only allowlisted hostnames resolve and connect. Everything
-  else is blocked before DNS even resolves.
-- **Environment**only the variables you name are passed through. Your
-  shell environment never leaks in by default.
-- **Audit log**every access attempt, allowed *and blocked*, is recorded.
-  See what a server *tried* to do with `warden logs`.
-- **Single static binary**, near-zero overheadsandboxing a server is no
-  harder than running it. No daemon, no containers per run.
+- **Files:** Only the paths you grant exist inside the sandbox, read-only or read-write as you choose. Everything else is not there at all, so the program cannot even see it.
+- **Network:** Only the hosts you allow can be reached. Other hosts are blocked before DNS lookup.
+- **Environment:** Only the variables you name are passed in. Your shell environment does not leak in by default.
+- **Audit log:** Every access, allowed and blocked, is recorded. Run `warden logs` to see what a program tried to do.
+- **One binary:** No daemon and no container per run. Sandboxing a program is about as easy as running it.
 
 ## Proven against real servers
 
-Warden is tested against **18 real-world MCP servers14 pass, 2
-conditional, 2 fail (documented)**each with its exact policy pinned as a
-regression fixture, so updates can't silently break what used to work. Check
-whether your server works before installing:
+Warden is tested against 18 real MCP servers: 14 pass, 2 pass with conditions, and 2 fail (documented). Each tested server has its policy pinned as a regression test, so updates cannot silently break what works. Check your server before you install:
 
-**[→ Compatibility Matrix](compatibility.md)** · **[→ Beta Program](beta.md)**
+**[Compatibility matrix](compatibility.md)** · **[Beta program](beta.md)**
 
 ## Get started
 
-1. **[Install](install.md)**Linux, macOS, Windows, Docker fallback, or
-   build from source
-2. **[Quickstart](quickstart.md)**your first sandboxed run in five minutes
-3. **[Protect an AI agent](agent-workspace.md)**edit code without exposing
-   declared credentials
-4. **[Example Policies](examples.md)**copy-paste policies for filesystem,
-   GitHub, Slack, Postgres, and Brave Search
-5. **[Schema Reference](schema.md)**every `policy.yaml` field
-6. **[CLI Reference](cli.md)**every command and flag
-7. **[FAQ](faq.md)**common failures and fixes
+1. **[Install](install.md):** Linux, macOS, Windows, Docker fallback, or build from source.
+2. **[Quickstart](quickstart.md):** Your first sandboxed run in about five minutes.
+3. **[Protect an AI agent](agent-workspace.md):** Let an agent edit code without seeing your secrets.
+4. **[Example policies](examples.md):** Copy-paste policies for filesystem, GitHub, Slack, Postgres, and Brave Search.
+5. **[Schema reference](schema.md):** Every `policy.yaml` field.
+6. **[CLI reference](cli.md):** Every command and flag.
+7. **[FAQ and troubleshooting](faq.md):** Common errors and how to fix them.
 
-> **Status:** beta. Core sandboxing (Linux, macOS, Windows, Docker fallback),
-> tracing, approval mode, and gateway integration are implemented and tested.
-> Distribution is live: [npm](https://www.npmjs.com/package/warden-sandbox-cli)
-> (`warden-sandbox-cli`) and [GitHub Releases](https://github.com/Prof-bilal/Warden/releases)
-> binaries; Homebrew tap is still pending. You can also
-> [build from source](install.md#option-c-build-from-source). See the [Roadmap](roadmap.md)
-> and [About](about.md) pages for details.
+> **Status: beta.** Sandboxing on Linux, macOS, and Windows, plus Docker fallback, tracing, approval mode, and gateway integration are implemented and tested. Install from [npm](https://www.npmjs.com/package/warden-sandbox-cli) (`warden-sandbox-cli`) or [GitHub Releases](https://github.com/Prof-bilal/Warden/releases). A Homebrew tap is not available yet. You can also [build from source](install.md#3-build-from-source). See the [roadmap](roadmap.md) and [about](about.md) pages for details.

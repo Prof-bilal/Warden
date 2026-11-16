@@ -71,4 +71,4 @@ servers pass, conditionally pass, or fail.
 Unit, integration, and escape tests: see [Testing](testing.md) and
 [`TESTING.md`](https://github.com/Prof-bilal/Warden/blob/main/warden-starter/warden/TESTING.md).
 CI runs the full suite on Linux, macOS, and Windows plus cross-platform
-buildsno platform is tested only by cross-compilation.
+builds. No platform is tested only by cross-compilation.

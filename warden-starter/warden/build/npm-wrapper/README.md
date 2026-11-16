@@ -7,7 +7,7 @@ network, and environment grants.
 
 ## 0.2.0 preview
 
-This checkout prepares `0.2.0-beta.4`. It is published by the tagged release workflow.
+This checkout prepares `0.2.0-beta.5`. It is published by the tagged release workflow.
 After the preview has been published, install it explicitly:
 
 ```bash
@@ -33,7 +33,7 @@ fresh revocation data; a badge alone does not establish safety.
 Warden is intended to be installed as a **global** CLI. This puts the `warden` command on your `PATH`:
 
 ```bash
-npm install -g warden-sandbox-cli
+npm install -g warden-sandbox-cli@beta
 ```
 
 Then verify:
@@ -43,7 +43,7 @@ warden --version
 warden help
 ```
 
-`npm install -g warden-sandbox-cli` installs the `warden` CLI globally. After a successful global install you can run `warden` from any directory.
+`npm install -g warden-sandbox-cli@beta` installs the `warden` CLI globally. After a successful global install you can run `warden` from any directory.
 
 ### Advanced: local (project) install
 
@@ -88,7 +88,7 @@ Older releases published before `warden update` existed will not recognize that
 command. Upgrade those installs manually:
 
 ```bash
-npm install -g warden-sandbox-cli@latest
+npm install -g warden-sandbox-cli@beta
 ```
 
 ## How it works
@@ -110,7 +110,7 @@ Preview packages use their exact version. Stable packages can use a newer cached
 stable binary, including one installed by `warden update`, but never select a
 cached preview. For an exact package-version pin or rollback, set
 `WARDEN_PIN_VERSION=1`. `warden update` follows stable by default; an explicit
-preview update requires `--version 0.2.0-beta.4` after that release exists.
+preview update requires `--version 0.2.0-beta.5` after that release exists.
 
 ### Supported platforms
 

@@ -66,7 +66,7 @@ break a server that used to work. Each pinned policy is reproduced in
 
 Every non-pass row gets a class, per the M8 triage rule:
 
-### Fixed during triage (Warden bugshighest impact first)
+### Fixed during triage (Warden bugs. Highest impact first)
 
 1. **Same path in `read` and `write` rejected (Slack).** The shipped Slack
    example listed `./data/cache` in both lists; it passed validation but
@@ -88,10 +88,10 @@ Every non-pass row gets a class, per the M8 triage rule:
   hostnames, leaving no honest policy for a browser-automation server
   (Playwright) that visits arbitrary domains. The schema now accepts a
   single leading wildcard label (`*.example.com`), which grants a subdomain
-  patternthe exact gap Playwright hit. The fixture in
+  pattern. The exact gap Playwright hit. The fixture in
   `testdata/compat/playwright/policy.yaml` can now record the subdomain
   grant it previously had to pin to a single host. (A full `*` grant, 
-  any domainis still deliberately rejected: it is equivalent to no
+  any domain is still deliberately rejected: it is equivalent to no
   sandbox at all.)
 - **No unix-socket grants.** The Docker daemon socket and browser IPC
   sockets have no scoped-down representation in the schema.

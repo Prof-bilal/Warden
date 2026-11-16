@@ -119,7 +119,7 @@ export function PanelRowA() {
 
       <RevealItem className="bg-cell">
         <Panel label="Install">
-          <CopyChip value="npm i -g warden-sandbox-cli" />
+          <CopyChip value="npm i -g warden-sandbox-cli@beta" />
           <p className="mt-3 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/30">
             Deny by default · fail closed
           </p>

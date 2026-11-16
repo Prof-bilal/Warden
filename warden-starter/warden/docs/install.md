@@ -1,95 +1,84 @@
-# Install
+# How to Install Warden
 
-## Day-one options
+Pick one route. All three give you the same single `warden` binary.
 
-> **Note:** Homebrew (`warden-sandbox/warden`) distribution is pending. Today,
-> install via npm, GitHub Release, or build from sourceall give you the
-> same single static binary.
+> **Note:** A Homebrew tap is not available yet.
 
-### Option Anpm (easiest)
+## Choose how to install
 
-Warden is a **global CLI**. Install it with `-g` so the `warden` command is
-on your `PATH`:
+### 1. npm (recommended)
+
+Install it globally so the `warden` command is on your `PATH`:
 
 ```bash
-npm install -g warden-sandbox-cli
+npm install -g warden-sandbox-cli@beta
 warden --version
-warden help
 ```
 
-`npm install -g warden-sandbox-cli` installs the `warden` CLI globally.
+The first `warden` command downloads the binary for your platform from the matching GitHub Release. The download is cached in `~/.cache/warden/<version>/`, so later runs reuse it. `warden update` checks the published `SHA256SUMS` when it upgrades.
 
-A local (project) install is an advanced/development option and does **not**
-put `warden` on your global shell `PATH`:
+Installed from an older release that has no `warden update`? Upgrade with:
 
 ```bash
-npm install warden-sandbox-cli          # local only
-npx warden --version                    # use via npx
-# warden --version                      # will fail: command not found
+npm install -g warden-sandbox-cli@beta
 ```
 
-The platform binary is
-downloaded lazily on the first `warden` invocation: the npm launcher prints
-`Downloading warden v<version>...`, fetches the matching GitHub Release
-binary (5 binaries + `SHA256SUMS` per release) into
-`~/.cache/warden/<version>/`, and then runs it. Later invocations reuse the
-cached binary. Checksum verification against the published `SHA256SUMS` is
-performed by `warden update` when upgrading.
+A local (project) install puts `warden` only in that project, not on your global `PATH`. Use it with `npx warden --version` if you need that.
 
-Releases that predate `warden update` do not include that commandupgrade
-those installs with:
+### 2. GitHub Release
+
+Download the binary for your platform from [Releases](https://github.com/Prof-bilal/Warden/releases), check it against `SHA256SUMS`, and put it on your `PATH`. Linux example:
 
 ```bash
-npm install -g warden-sandbox-cli@latest
-```
-
-### Option BGitHub Release
-
-Download the binary for your platform from
-[Releases](https://github.com/Prof-bilal/Warden/releases), verify the
-checksum in `SHA256SUMS`, and put it on your `PATH`:
-
-```bash
-# Linux example
 curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/warden-linux-amd64
-sha256sum -c SHA256SUMS  # from the same release page
+curl -LO https://github.com/Prof-bilal/Warden/releases/latest/download/SHA256SUMS
+sha256sum -c SHA256SUMS --ignore-missing
 chmod +x warden-linux-amd64
 sudo mv warden-linux-amd64 /usr/local/bin/warden
-warden  # prints usage; exit code is 1 with no subcommand, that's normal
 ```
 
-### Option CBuild from source
+Running `warden` with no command prints usage and exits with code 1. That is expected.
 
-Requires **Go 1.24+** (see `go.mod`):
+### 3. Build from source
+
+You need **Go 1.24 or newer**:
 
 ```bash
 git clone https://github.com/Prof-bilal/Warden.git
 cd Warden/warden-starter/warden
 go build -o warden ./cmd/warden
-./warden  # prints usage; exit code is 1 with no subcommand, that's normal
+./warden --version
 ```
 
-## Per-OS prerequisites
+## Check what your machine needs
 
-The binary alone isn't enougheach platform needs its sandbox primitive:
+Warden needs a sandbox tool from your operating system. Run this after installing:
 
-| OS | Needs | Check |
+```bash
+warden doctor
+```
+
+It prints the sandbox status and whether this machine is ready. If it says **NOT READY**, fix the missing item it names before you run anything else.
+
+### Per-OS prerequisites
+
+| OS | What it needs | How to check |
 |---|---|---|
-| Linux | `bwrap` (bubblewrap) for the native backend; **`strace` required for `warden run` auditing and `warden trace`** | `command -v bwrap strace` |
-| Linux (no bwrap) | Docker daemon; Warden falls back to `--backend docker` | `docker info` |
-| macOS | `sandbox-exec` (ships with macOS) preferred; Docker as fallback | `command -v sandbox-exec` |
-| Windows | AppContainer support (Windows 10+); fails closed without it | built-in |
-| Anywhere without a native backend | Docker daemon | `docker info` |
+| Linux | `bwrap` (bubblewrap) and `strace` | `command -v bwrap strace` |
+| Linux without bwrap | Docker daemon. Warden falls back to `--backend docker` | `docker info` |
+| macOS | `sandbox-exec` (included with macOS). Docker is the fallback | `command -v sandbox-exec` |
+| Windows | AppContainer support (Windows 10 or newer) | Built in |
+| Any other system | Docker daemon | `docker info` |
 
-> **⚠️ Important:** `strace` is required on Linux for the native (bubblewrap)
-> backend. Warden uses it for the file/network audit on **every `warden run`**
-> and for `warden trace`. Without it, `warden run` refuses to start (fail-closed):
-> ```
-> warden run: strace not found: required for complete file/network auditing on Linux
-> ```
-> The Docker fallback does not require `strace` (`--backend docker`).
+On Linux, `strace` is required for the native backend. Warden uses it for file and network auditing on every `warden run` and for `warden trace`. Without it, `warden run` refuses to start:
 
-Install dependencies on common distros:
+```
+warden run: strace not found: required for complete file/network auditing on Linux
+```
+
+The Docker fallback does not need `strace`.
+
+Install the Linux packages on common distros:
 
 ```bash
 sudo apt install bubblewrap strace      # Debian/Ubuntu
@@ -97,72 +86,14 @@ sudo dnf install bubblewrap strace      # Fedora
 sudo pacman -S bubblewrap strace        # Arch
 ```
 
-If **no** backend is available, Warden refuses to runit never silently
-falls back to unsandboxed execution. See the [FAQ](faq.md#warden-run-refuses-to-start)
-if you hit that error.
+If no sandbox backend is available, Warden refuses to run. It never falls back to running a program unsandboxed. See the [FAQ](faq.md#warden-run-refuses-to-start) if you hit that error.
 
-## What a successful install looks like
+## Confirm it works
 
-`npm install -g warden-sandbox-cli` itself prints only npm's standard
-outputthere is no Warden banner or progress screen at install time. The
-binary is fetched on the first `warden` invocation:
-
-```
-$ warden --version
-Downloading warden v0.1.17...
-warden version 0.1.17
-```
-
-Bare `warden` (no subcommand) then shows usage and exits 1. In an
-interactive terminal it starts with the large ASCII banner:
-
-```
-██     ██  █████  ██████  ██████  ███████ ███    ██
-██     ██ ██   ██ ██   ██ ██   ██ ██      ████   ██
-██  █  ██ ███████ ██████  ██   ██ █████   ██ ██  ██
-██ ███ ██ ██   ██ ██   ██ ██   ██ ██      ██  ██ ██
- ███ ███  ██   ██ ██   ██ ██████  ███████ ██   ████
-               MCP SERVER SANDBOX
-
-WARDEN
-Secure execution for MCP servers.
-
-Usage:
-  warden <command> [options]
-
-Commands:
-  init       Create a security policy
-  run        Run an MCP server in the sandbox
-  ...
-
-Get started:
-
-  warden init
-  warden run --policy policy.yaml -- <server>
-  ...
-```
-
-When output is piped or `CI` is set, the large banner is omitted and only
-the compact `WARDEN` header + usage is printed. Colors respect `NO_COLOR`
-and `TERM=dumb`; set `WARDEN_NO_UNICODE=1` for ASCII fallbacks.
-
-First-run after install, `warden` (no args) in an interactive terminal
-shows a one-time welcome with the banner, capabilities, and next steps
-(`warden init` / `warden doctor`). It is never shown in CI, never shown
-for `warden run`, and can be disabled with `WARDEN_NO_FIRST_RUN=1`. See
-[CLI Reference](cli.md#cli-experience).
-
-## Verify your install
-
-From the repo checkout, run a no-op command under the strictest fixture
-policy (the `time` server needs nothing at alladjust the binary path to
-your OS, e.g. `/bin/true` on macOS):
+Run the doctor check again:
 
 ```bash
-warden run --policy testdata/compat/time/policy.yaml -- /usr/bin/true
-echo "exit: $?"
-warden logs --tail 5
-warden doctor   # shows Environment + Security posture + Status: READY
+warden doctor
 ```
 
-Next: [Quickstart](quickstart.md).
+You should see the sandbox status and **READY**. Then continue with the [Quickstart](quickstart.md), which walks through a first sandboxed run.

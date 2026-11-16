@@ -59,19 +59,17 @@ grant when the agent needs to propose edits.
 
 ## Run the agent
 
-Build Warden from the current source tree, then pass the agent command after
-`--`:
+Pass the agent command after `--`:
 
 ```sh
-go build -o /tmp/warden ./cmd/warden
-/tmp/warden agent --policy /path/to/policy.yaml -- claude
+warden agent --policy /path/to/policy.yaml -- claude
 ```
 
 Other local coding tools work the same way:
 
 ```sh
-/tmp/warden agent --policy /path/to/policy.yaml -- codex
-/tmp/warden agent --policy /path/to/policy.yaml -- opencode run "Inspect the project"
+warden agent --policy /path/to/policy.yaml -- codex
+warden agent --policy /path/to/policy.yaml -- opencode run "Inspect the project"
 ```
 
 The executable, its runtime dependencies, and its provider connection must be

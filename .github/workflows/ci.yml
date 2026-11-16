@@ -31,7 +31,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-14, windows-2022]
+        # Release runs pass skip_macos while the hosted macOS runner is unavailable.
+        os: ${{ inputs.skip_macos && fromJSON('["ubuntu-latest","windows-2022"]') || fromJSON('["ubuntu-latest","macos-14","windows-2022"]') }}
     defaults:
       run:
         working-directory: warden-starter/warden/build/npm-wrapper

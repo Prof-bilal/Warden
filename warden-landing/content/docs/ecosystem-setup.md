@@ -1,8 +1,6 @@
 # Policy packs and reversible MCP setup
 
-These commands are implemented in this development checkout. Build this checkout
-first; older published binaries may not include them. The [setup wizard](/setup)
-generates local commands. It does not read your computer or accept credentials.
+These commands are in the current 0.2.0 beta and newer. If `warden add` is not recognized, update with `npm install -g warden-sandbox-cli@beta`. The [setup wizard](/setup) generates local commands. It does not read your computer or accept credentials.
 
 ## One command instead of five
 

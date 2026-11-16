@@ -19,7 +19,7 @@ func TestStarterFromAuditIsConservative(t *testing.T) {
 		{Type: "file", Action: "openat", Resource: "/usr/lib/libc.so", Allowed: true},
 		{Type: "network", Action: "connect", Resource: "api.example.test:443", Allowed: true},
 		{Type: "network", Action: "connect", Resource: "blocked.example.test:443", Allowed: false},
-	}, []string{"/usr/bin/server", "--stdio"})
+	}, []string{"/usr/bin/server", "--stdio"}, "")
 	if got, want := strings.Join(p.Filesystem.Read, ","), "/work/input.txt"; got != want {
 		t.Errorf("read = %q, want %q", got, want)
 	}
@@ -35,5 +35,23 @@ func TestStarterFromAuditIsConservative(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "command:") {
 		t.Errorf("starter YAML omits command: %s", data)
+	}
+}
+
+func TestStarterFromAuditResolvesRelativePaths(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX paths not absolute on Windows")
+	}
+	p := StarterFromAudit([]audit.Event{
+		{Type: "file", Action: "openat", Resource: "./data/notes.txt", Allowed: true},
+	}, []string{"/bin/cat", "./data/notes.txt"}, "/work/project")
+	if got, want := strings.Join(p.Filesystem.Read, ","), "/work/project/data/notes.txt"; got != want {
+		t.Errorf("read = %q, want %q", got, want)
+	}
+	none := StarterFromAudit([]audit.Event{
+		{Type: "file", Action: "openat", Resource: "./data/notes.txt", Allowed: true},
+	}, []string{"/bin/cat"}, "")
+	if len(none.Filesystem.Read) != 0 {
+		t.Errorf("relative path granted without baseDir: %v", none.Filesystem.Read)
 	}
 }
