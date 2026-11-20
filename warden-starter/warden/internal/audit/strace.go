@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -75,6 +76,15 @@ func ParseStraceLine(line string) (Event, bool) {
 	}
 	resource := syscallResource(action, line[open+1:])
 	result := syscallResult(line)
+	if action == "open" || action == "openat" || action == "openat2" {
+		if number, annotation, found := strings.Cut(result, "<"); found {
+			openedPath, complete := strings.CutSuffix(annotation, ">")
+			if fd, err := strconv.Atoi(number); err == nil && fd >= 0 && complete &&
+				path.IsAbs(openedPath) && !strings.ContainsAny(openedPath, "<>\\") {
+				resource = openedPath
+			}
+		}
+	}
 	allowed := !strings.HasPrefix(result, "-1 ")
 	reason := "syscall succeeded"
 	if !allowed {

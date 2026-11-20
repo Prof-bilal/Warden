@@ -6,9 +6,12 @@ on:
     paths:
       - '.github/actions/warden-action/**'
       - '.github/workflows/test-warden-action.yml'
+      - 'warden-starter/warden/**'
   pull_request:
     paths:
       - '.github/actions/warden-action/**'
+      - '.github/workflows/test-warden-action.yml'
+      - 'warden-starter/warden/**'
 
 jobs:
   test-basic-functionality:
@@ -40,7 +43,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y strace bubblewrap jq python3-yaml
+          sudo apt-get install -y strace bubblewrap jq
       
       - name: Test minimal policy
         uses: ./.github/actions/warden-action
@@ -72,13 +75,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      - name: Build CLI
+        working-directory: warden-starter/warden
+        run: go build -o "$RUNNER_TEMP/warden" ./cmd/warden
+
       - name: Test policy validator
         run: |
           # Test with valid policy
           echo "Testing valid policy..."
-          python3 .github/actions/warden-action/scripts/validate-policy.py \
-            .github/policies/ai-review.yaml
+          "$RUNNER_TEMP/warden" validate .github/policies/ai-review.yaml
           
           # Test with invalid policy
           echo "Testing invalid policy..."
@@ -91,12 +100,25 @@ jobs:
             allow: ["*"]  # Should fail
           EOF
           
-          if python3 .github/actions/warden-action/scripts/validate-policy.py invalid-policy.yaml; then
+          if "$RUNNER_TEMP/warden" validate invalid-policy.yaml; then
             echo "❌ Validator should have rejected invalid policy"
             exit 1
           else
             echo "✅ Validator correctly rejected invalid policy"
           fi
+
+      - name: Test policy widening gate
+        run: |
+          printf 'env: {deny: ["*_TOKEN"]}\n' > "$RUNNER_TEMP/before.yaml"
+          printf 'env: {deny: ["*_TOKEN", "*_KEY"]}\n' > "$RUNNER_TEMP/after.yaml"
+          "$RUNNER_TEMP/warden" policy-diff --before "$RUNNER_TEMP/before.yaml" \
+            --after "$RUNNER_TEMP/after.yaml" --format markdown --fail-on widen
+          result=0
+          "$RUNNER_TEMP/warden" policy-diff --before "$RUNNER_TEMP/after.yaml" \
+            --after "$RUNNER_TEMP/before.yaml" --format markdown --fail-on widen \
+            > "$RUNNER_TEMP/warden-policy-review.md" || result=$?
+          test "$result" = 3
+          grep -Fq 'Removed env_deny' "$RUNNER_TEMP/warden-policy-review.md"
 
   test-policy-generation:
     runs-on: ubuntu-latest
@@ -105,7 +127,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+      - name: Build CLI
+        working-directory: warden-starter/warden
+        run: |
+          go build -o "$RUNNER_TEMP/warden" ./cmd/warden
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
       - name: Test policy generator
         run: |
           # Test AI review policy generation

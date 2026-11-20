@@ -41,7 +41,8 @@ func waitWithLimits(cmd *exec.Cmd, limits policy.Limits) (*LimitExceededError, e
 // or a limit breachended the wait; the caller must terminate the group
 // (done here) and translate the outcome, typically into a respawn.
 func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context) (limitErr *LimitExceededError, restarted bool, runErr error) {
-	if limits.MemoryMB == 0 && limits.TimeoutS == 0 && ctx == nil {
+	duration, reason := limits.WallClockLimit(time.Now())
+	if limits.MemoryMB == 0 && reason == "" && ctx == nil {
 		return nil, false, cmd.Wait()
 	}
 	done := make(chan error, 1)
@@ -49,8 +50,8 @@ func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context)
 
 	var timeout <-chan time.Time
 	var timer *time.Timer
-	if limits.TimeoutS > 0 {
-		timer = time.NewTimer(time.Duration(limits.TimeoutS) * time.Second)
+	if reason != "" {
+		timer = time.NewTimer(duration)
 		defer timer.Stop()
 		timeout = timer.C
 	}
@@ -78,8 +79,12 @@ func waitWithLimitsCtx(cmd *exec.Cmd, limits policy.Limits, ctx context.Context)
 			_ = terminateProcessGroup(cmd.Process.Pid, done)
 			return nil, true, nil
 		case <-timeout:
+			if reason == "temporary grant expired" {
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+				return &LimitExceededError{Kind: reason, Limit: limits.GrantDeadline.UTC().Format(time.RFC3339Nano)}, false, <-done
+			}
 			err := terminateProcessGroup(cmd.Process.Pid, done)
-			return &LimitExceededError{Kind: "wall-clock timeout", Limit: fmt.Sprintf("%ds", limits.TimeoutS)}, false, err
+			return &LimitExceededError{Kind: reason, Limit: fmt.Sprintf("%ds", limits.TimeoutS)}, false, err
 		case <-ticks:
 			used, err := processTreeRSS(cmd.Process.Pid)
 			if err == nil && used > maxBytes {

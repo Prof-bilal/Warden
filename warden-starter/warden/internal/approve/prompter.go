@@ -63,6 +63,21 @@ func (p *Prompter) NetworkApprover() proxy.Approver {
 	return func(host, port string) proxy.Decision { return p.DecideNetwork(host, port) }
 }
 
+// Confirm asks for explicit consent on the controlling terminal.
+func (p *Prompter) Confirm(question string) (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	answer, err := p.askLocked(question+"\n", "Type yes to approve [default: deny]: ")
+	return answer == "yes", err
+}
+
+func (p *Prompter) ConfirmGrant(question string) (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	answer, err := p.askLocked(question+"\n", "Approve one grant? [y/N] ")
+	return strings.EqualFold(answer, "y"), err
+}
+
 // DecideNetwork resolves one blocked host:port to a proxy.Decision,
 // prompting on the terminal for the first request per host.
 func (p *Prompter) DecideNetwork(host, port string) proxy.Decision {

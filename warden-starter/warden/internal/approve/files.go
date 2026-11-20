@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/warden-sandbox/warden/internal/audit"
 	"github.com/warden-sandbox/warden/internal/policy"
+	"github.com/warden-sandbox/warden/internal/privatefile"
 )
 
 // SaveHostGrant reloads the policy file fresh, adds a network host, and
@@ -15,17 +17,38 @@ import (
 // keeps concurrent approvalse.g. a network and a filesystem prompt in
 // the same runfrom clobbering each other's grants.
 func SaveHostGrant(policyPath, host string) error {
-	p, err := policy.Load(policyPath)
-	if err != nil {
-		return fmt.Errorf("reload policy for approval: %w", err)
+	return updateGrant(policyPath, "", func(p *policy.Policy) (bool, error) { return p.AddHost(host) })
+}
+
+// SaveReviewedGrant takes one exact host or read grant and verifies that the
+// policy still has the bytes the user reviewed.
+func SaveReviewedGrant(policyPath, digest, value string, host bool) error {
+	if digest == "" {
+		return fmt.Errorf("reviewed policy digest required")
 	}
-	if _, err := p.AddHost(host); err != nil {
-		return fmt.Errorf("add network grant: %w", err)
+	return updateGrant(policyPath, digest, func(p *policy.Policy) (bool, error) {
+		if host {
+			return p.AddHost(value)
+		}
+		return p.AddFileGrant(value, false)
+	})
+}
+
+func SaveTemporaryGrant(policyPath, digest string, grant policy.TemporaryGrant) error {
+	if digest == "" || !grant.Expires.After(time.Now()) {
+		return fmt.Errorf("temporary grant requires a reviewed digest and future expiry")
 	}
-	if err := p.Save(policyPath); err != nil {
-		return fmt.Errorf("save approved grant: %w", err)
-	}
-	return nil
+	return updateGrant(policyPath, digest, func(p *policy.Policy) (bool, error) {
+		p.Version = 2
+		for i, existing := range p.TemporaryGrants {
+			if existing.Host == grant.Host && existing.Path == grant.Path {
+				p.TemporaryGrants[i] = grant
+				return true, p.Validate()
+			}
+		}
+		p.TemporaryGrants = append(p.TemporaryGrants, grant)
+		return true, p.Validate()
+	})
 }
 
 // SaveFileGrant reloads the policy file fresh, adds a filesystem grant, and
@@ -42,17 +65,69 @@ func SaveFileGrant(policyPath, grant string, write bool) error {
 			}
 		}
 	}
-	p, err := policy.Load(policyPath)
+	return updateGrant(policyPath, "", func(p *policy.Policy) (bool, error) { return p.AddFileGrant(grant, write) })
+}
+
+func updateGrant(policyPath, digest string, apply func(*policy.Policy) (bool, error)) error {
+	path, err := filepath.EvalSymlinks(policyPath)
+	if err != nil {
+		return err
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("grant policy must be a regular file")
+	}
+	// shortcut: a crash can leave a lock, switch to an OS-held lock when one is shared across platforms.
+	lockPath := path + ".grant.lock"
+	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("lock policy for grant update: %w", err)
+	}
+	defer os.Remove(lockPath)
+	if err := lock.Close(); err != nil {
+		return err
+	}
+	p, current, err := policy.LoadVerifiedWithDigest(policyPath, digest)
 	if err != nil {
 		return fmt.Errorf("reload policy for approval: %w", err)
 	}
-	if _, err := p.AddFileGrant(grant, write); err != nil {
-		return fmt.Errorf("add filesystem grant: %w", err)
+	changed, err := apply(&p)
+	if err != nil || !changed {
+		return err
 	}
-	if err := p.Save(policyPath); err != nil {
-		return fmt.Errorf("save approved grant: %w", err)
+	data, err := p.Marshal()
+	if err != nil {
+		return err
 	}
-	return nil
+	temp, err := os.CreateTemp(filepath.Dir(path), ".warden-grant-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temp.Name())
+	if err := privatefile.Protect(temp.Name(), false); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	_, writeErr := temp.Write(data)
+	if writeErr == nil {
+		writeErr = temp.Sync()
+	}
+	if closeErr := temp.Close(); writeErr == nil {
+		writeErr = closeErr
+	}
+	if writeErr != nil {
+		return writeErr
+	}
+	if latest, err := filepath.EvalSymlinks(policyPath); err != nil || latest != path {
+		return fmt.Errorf("policy file target changed during grant update")
+	}
+	if _, err := policy.LoadVerified(policyPath, current); err != nil {
+		return fmt.Errorf("policy changed during grant update: %w", err)
+	}
+	return os.Rename(temp.Name(), path)
 }
 
 // ShouldPromptFile decides whether a failed file syscall deserves a prompt.

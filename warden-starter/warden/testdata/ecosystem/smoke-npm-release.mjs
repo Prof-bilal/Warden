@@ -130,5 +130,6 @@ try {
   await success(installed, ["unwrap", "--client", "cursor", "--config", config, "--server", "filesystem", "--yes"]); assert.equal(await readFile(config, "utf8"), original);
   checks.push("npm preview/apply/idempotence/policy-drift refusal/exact rollback with disposable host config");
   await writeFile(join(priv, "scenario-inputs.json"), JSON.stringify({ installed, policy, rules, upstream, project, data, selected, outside, runtime, privateDirectory: priv, env: { HOME: home, XDG_CONFIG_HOME: env.XDG_CONFIG_HOME, XDG_STATE_HOME: env.XDG_STATE_HOME } }, null, 2));
-  console.log(JSON.stringify({ status: "pass", version: metadata.version, backend: "linux", upstream: "@modelcontextprotocol/server-filesystem@2026.8.31", releaseOrigin: "local HTTPS fixture, candidate not published", checks, evidenceDirectory: root }));
+  const pkg = JSON.parse(await readFile(join(runtime, "node_modules/@modelcontextprotocol/server-filesystem/package.json"), "utf8"));
+  console.log(JSON.stringify({ status: "pass", version: metadata.version, backend: "linux", upstream: `${pkg.name}@${pkg.version}`, releaseOrigin: "local HTTPS fixture, candidate not published", checks, evidenceDirectory: root }));
 } finally { await new Promise(r => server.close(r)); }

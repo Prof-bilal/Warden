@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Github, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { ArrowRight, Check, Copy, Github, Pause, Play } from "lucide-react";
 import StatRow from "@/components/bp/StatRow";
 
 const installCommand = "npm i -g warden-sandbox-cli@beta";
@@ -18,17 +18,16 @@ const labels = ["Isolate", "Control", "Observe", "Safe by default"];
 
 // Marks that the hero video has already played once in this browser session,
 // so the landing page does not replay it every time the visitor navigates back.
-const PLAYED_KEY = "warden-hero-played";
+const PLAYED_KEY = "warden-zero-config-played";
 
 export default function Hero() {
   const [copied, setCopied] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let alreadyPlayed = false;
     try {
@@ -38,10 +37,7 @@ export default function Hero() {
     }
 
     // Already seen this session, leave it on the poster frame, no autoplay.
-    if (alreadyPlayed) {
-      setPlaying(false);
-      return;
-    }
+    if (alreadyPlayed) return;
 
     const markPlayed = () => {
       try {
@@ -51,31 +47,8 @@ export default function Hero() {
       }
     };
 
-    // Try to start with sound; browsers may block unmuted autoplay, so fall
-    // back to muted playback and let the viewer enable sound explicitly.
-    video.muted = false;
-    const attempt = video.play();
-    if (!attempt) return;
-    attempt.then(
-      () => {
-        setMuted(false);
-        markPlayed();
-      },
-      () => {
-        video.muted = true;
-        setMuted(true);
-        video.play().then(markPlayed).catch(() => {});
-      },
-    );
+    video.play().then(markPlayed).catch(() => {});
   }, []);
-
-  function toggleSound() {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = !video.muted;
-    setMuted(video.muted);
-    if (!video.muted) video.play().catch(() => {});
-  }
 
   function togglePlay() {
     const video = videoRef.current;
@@ -123,8 +96,10 @@ export default function Hero() {
           <video
             ref={videoRef}
             className="h-auto w-full object-cover"
-            src="/videos/warden-hero.mp4"
-            poster="/videos/warden-hero-poster.jpg"
+            src="/videos/warden-zero-config.mp4"
+            poster="/videos/warden-zero-config-poster.jpg"
+            aria-label="Filesystem MCP demo. Warden allows a read in the shared directory and blocks writes, outside reads and access to a protected environment file."
+            loop
             muted
             playsInline
             preload="metadata"
@@ -141,16 +116,6 @@ export default function Hero() {
               className="flex h-9 w-9 items-center justify-center text-offwhite/70 transition-colors hover:bg-offwhite/[0.07] hover:text-acid"
             >
               {playing ? <Pause size={14} /> : <Play size={14} />}
-            </button>
-            <span className="h-4 w-px bg-hair" aria-hidden />
-            <button
-              type="button"
-              onClick={toggleSound}
-              aria-label={muted ? "Enable sound" : "Mute"}
-              aria-pressed={!muted}
-              className="flex h-9 w-9 items-center justify-center text-offwhite/70 transition-colors hover:bg-offwhite/[0.07] hover:text-acid"
-            >
-              {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
             </button>
           </div>
         </div>

@@ -22,6 +22,17 @@
 # then feed the JSONL log into `warden init` to auto-generate a starter policy.
 command: ["/usr/bin/node", "./server/dist/index.js"]
 
+# Optional version 2 fields for temporary grants and install review.
+# version: 2
+# temporary_grants:
+#   - host: docs.example.org
+#     expires: 2026-12-01T12:00:00Z
+#   - path: ./data/report.json
+#     expires: 2026-12-01T12:30:00Z
+# guard:
+#   minimum_release_age: 72h
+#   strict: true
+
 # ── Filesystem ───────────────────────────────────────────────────────────────
 #
 # The sandbox is deny-by-default. Only paths listed here are visible inside

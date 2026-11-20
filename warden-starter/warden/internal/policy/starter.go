@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -16,6 +17,16 @@ import (
 // Relative file paths are resolved against baseDir, the directory the traced
 // program ran in; pass "" when that is unknown and relative paths are skipped.
 func StarterFromAudit(events []audit.Event, command []string, baseDir string) Policy {
+	return starterFromAudit(events, command, baseDir, "")
+}
+
+// StarterFromObservedReads accepts files intentionally mounted under a scratch
+// runtime path, such as a project in /tmp, while learning.
+func StarterFromObservedReads(events []audit.Event, command []string, mount string) Policy {
+	return starterFromAudit(events, command, "", mount)
+}
+
+func starterFromAudit(events []audit.Event, command []string, baseDir, readMount string) Policy {
 	read := make(map[string]struct{})
 	write := make(map[string]struct{})
 	hosts := make(map[string]struct{})
@@ -30,6 +41,9 @@ func StarterFromAudit(events []audit.Event, command []string, baseDir string) Po
 				resource = filepath.Join(baseDir, resource)
 			}
 			grant, isWrite, ok := ProposeFileGrant(event.Action, resource)
+			if !ok && readMount != "" && filepath.IsAbs(resource) && Within(resource, readMount) && !WriteAction(event.Action) {
+				grant, isWrite, ok = filepath.Clean(resource), false, true
+			}
 			if !ok {
 				continue
 			}
@@ -68,7 +82,12 @@ func StarterFromAudit(events []audit.Event, command []string, baseDir string) Po
 }
 
 // Marshal returns a readable policy document suitable for warden init.
-func (p Policy) Marshal() ([]byte, error) { return yaml.Marshal(p) }
+func (p Policy) Marshal() ([]byte, error) {
+	if !p.Limits.GrantDeadline.IsZero() {
+		return nil, fmt.Errorf("cannot save a policy with temporary grants applied")
+	}
+	return yaml.Marshal(p)
+}
 
 func sortedSet(set map[string]struct{}) []string {
 	values := make([]string, 0, len(set))

@@ -158,8 +158,9 @@ func (j *jobObject) wait(process windows.Handle, limits policy.Limits, logger *a
 	}()
 
 	var timeout <-chan time.Time
-	if limits.TimeoutS > 0 {
-		t := time.NewTimer(time.Duration(limits.TimeoutS) * time.Second)
+	duration, reason := limits.WallClockLimit(time.Now())
+	if reason != "" {
+		t := time.NewTimer(duration)
 		defer t.Stop()
 		timeout = t.C
 	}
@@ -177,11 +178,15 @@ func (j *jobObject) wait(process windows.Handle, limits policy.Limits, logger *a
 			return code, nil
 		case <-timeout:
 			j.terminate()
+			detail := fmt.Sprintf("%ds", limits.TimeoutS)
+			if reason == "temporary grant expired" {
+				detail = limits.GrantDeadline.UTC().Format(time.RFC3339Nano)
+			}
 			if logger != nil {
-				_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: fmt.Sprintf("%ds", limits.TimeoutS), Allowed: false, Reason: "wall-clock timeout"})
+				_ = logger.Log(audit.Event{Type: "limit", Action: "terminate", Resource: detail, Allowed: false, Reason: reason})
 			}
 			<-done
-			return 0, &LimitExceededError{Kind: "wall-clock timeout", Limit: fmt.Sprintf("%ds", limits.TimeoutS)}
+			return 0, &LimitExceededError{Kind: reason, Limit: detail}
 		case <-ticks:
 			used, err := j.peakMemory()
 			// The hard Job Object limit already blocks allocations; this

@@ -72,7 +72,7 @@ export default async function Page({
         </section>
         <aside className="rounded-2xl border border-ink-700 p-7">
           <span className="text-xs font-medium uppercase tracking-wide text-progress">
-            Candidate · workflow unverified
+            {p.status === "reviewed" ? "Reviewed" : "Candidate · workflow unverified"}
           </span>
           <h2 className="mt-5 font-mono text-[1.1rem] font-semibold text-offwhite">Version & evidence</h2>
           <p className="mt-4 break-all font-mono text-xs text-muted">

@@ -48,7 +48,7 @@ You don't need to write Go to help:
 
 ## Development setup
 
-Requirements: **Go ≥ 1.24** (see `warden-starter/warden/go.mod`), `git`, and on Linux `bubblewrap` + `strace` for the integration tests. Docker is optional (the docker-backend tests skip without a daemon).
+Requirements include Go 1.26 or later (see `warden-starter/warden/go.mod`), `git`, and on Linux `bubblewrap` and `strace` for the integration tests. Docker is optional (the Docker backend tests skip without a daemon).
 
 ```bash
 git clone https://github.com/Prof-bilal/Warden.git

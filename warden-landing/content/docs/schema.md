@@ -13,9 +13,15 @@ fully-worked example.
 | `network` | `Network` | Yes || Network egress allowlist. |
 | `env` | `Env` | Yes || Environment variable passthrough list. |
 | `limits` | `Limits` | No || Resource limits enforced on Linux. |
+| `version` | `int` | No | Unversioned | Use `2` for temporary grants or Install Guard settings. |
+| `temporary_grants` | sequence | No || Exact host or read-path grants with an RFC 3339 expiration. |
+| `guard` | mapping | No || Additional requirements for Install Guard in version 2. |
 
 \* A policy file without `command:` is valid as long as the CLI supplies the
 command via `warden run --policy <file> -- <cmd...>`.
+
+See the [Install Guard guide](/docs/install-guard) for the
+`guard` fields and usage.
 
 ## `command`
 

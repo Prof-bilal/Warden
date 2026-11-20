@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Warden · MCP tool pin incident</title>
+<style>
+  html, body { margin: 0; }
+  * { box-sizing: border-box; }
+  #pins {
+    width: 1920px; height: 1080px; background: #111714; color: #f2f5ee;
+    font-family: system-ui, sans-serif;
+  }
+  .scene { position: absolute; inset: 124px 192px auto; }
+  .label { margin: 0 0 28px; color: #bef488; font: 30px monospace; letter-spacing: .12em; }
+  h1, h2 { margin: 0; font-size: 88px; line-height: 1.02; letter-spacing: -.035em; }
+  p { margin: 26px 0 0; font-size: 40px; color: #c6d1c4; }
+  .record {
+    margin-top: 36px; border: 2px solid #49604f; background: #1a241d;
+    padding: 28px 40px; font: 36px/1.5 monospace;
+  }
+  .record + .record { margin-top: 16px; }
+  .accepted { color: #bef488; }
+  .denied { color: #ffd4a5; }
+  .guide { color: #bef488; font: 31px monospace; }
+</style>
+<div id="pins" data-composition-id="pins" data-width="1920" data-height="1080" data-duration="32" data-fps="30">
+  <section id="setup" class="scene clip" data-start="0" data-duration="6" data-track-index="0">
+    <div>
+      <p class="label">WARDEN / MCP TOOL PINS</p>
+      <h1>Same name.<br>Different definition.</h1>
+      <p>A scripted server changes one tool between two sessions.</p>
+    </div>
+  </section>
+  <section id="observe" class="scene clip" data-start="6" data-duration="7" data-track-index="0">
+    <div>
+      <p class="label">SESSION 1 / FIRST OBSERVATION</p>
+      <h2>The tool is visible.</h2>
+      <p>Warden saves the definition’s SHA-256 on first discovery.</p>
+      <div class="record">read · “Read a fixture note.”<br><span class="accepted">tools/list → ["read"]</span></div>
+    </div>
+  </section>
+  <section id="hide" class="scene clip" data-start="13" data-duration="10" data-track-index="0">
+    <div>
+      <p class="label">SESSION 2 / DEFINITION CHANGED</p>
+      <h2>The bridge hides it.</h2>
+      <div class="record">read · “Read a note and return its length.”<br><span class="denied">tools/list → []</span></div>
+      <div class="record denied">tools/call → -32001<br>tool absent or definition changed</div>
+    </div>
+  </section>
+  <section id="review" class="scene clip" data-start="23" data-duration="9" data-track-index="0">
+    <div>
+      <p class="label">WARDEN / REVIEW BEFORE ACCEPTING</p>
+      <h2>Inspect the change.</h2>
+      <div class="record">tool definition differs from pinned hash</div>
+      <div class="record accepted">warden mcp pin --server fixture --diff read</div>
+      <p class="guide">/docs/mcp-tool-pins</p>
+    </div>
+  </section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script>
+  const timeline = gsap.timeline({ paused: true });
+  timeline.from("#observe .record", { y: 10, opacity: 0, duration: .35 }, 7.5);
+  timeline.from("#hide .record", { y: 10, opacity: 0, duration: .35, stagger: 2.75 }, 14.25);
+  timeline.from("#review .record", { y: 10, opacity: 0, duration: .35, stagger: 1.75 }, 24);
+  window.__timelines = { pins: timeline };
+</script>
+</html>

@@ -2,7 +2,8 @@
 import readline from "node:readline";
 import fs from "node:fs/promises";
 const input=readline.createInterface({input:process.stdin});
-const tools=["read","write","erase"].map(name=>({name,description:`Fixture ${name}`,inputSchema:{type:"object",properties:{path:{type:"string"},content:{type:"string"}},required:["path"]}}));
+const readDescription = process.argv[2] ?? "Fixture read";
+const tools=["read","write","erase"].map(name=>({name,description:name==="read"?readDescription:`Fixture ${name}`,inputSchema:{type:"object",properties:{path:{type:"string"},content:{type:"string"}},required:["path"]}}));
 input.on("line",async line=>{const m=JSON.parse(line);if(m.id===undefined)return;let result={};let error;
  switch(m.method){
  case "initialize":result={protocolVersion:"2025-11-25",capabilities:{tools:{}},serverInfo:{name:"warden-disposable-fixture",version:"1"}};break;

@@ -194,6 +194,9 @@ type SyscallRule struct {
 
 // TranslatePolicy converts a Warden policy to container security manifests
 func TranslatePolicy(p policy.Policy, options TranslateOptions) (*ContainerManifest, error) {
+	if len(p.TemporaryGrants) > 0 {
+		return nil, fmt.Errorf("container manifests cannot enforce temporary grants")
+	}
 	manifest := &ContainerManifest{}
 
 	// Generate Docker configuration

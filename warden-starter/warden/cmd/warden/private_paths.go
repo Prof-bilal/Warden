@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 )
@@ -39,6 +40,7 @@ func canonicalOutput(path string) (string, error) {
 // Its runtime directories mirror the existing backends; Linux/Docker /tmp is
 // fresh scratch, while Seatbelt exposes the host temporary directories.
 func outsideUpstream(path string, p policy.Policy, command []string, backend string) error {
+	p = p.WithActiveGrants(time.Now())
 	real, e := canonicalOutput(path)
 	if e != nil {
 		return e

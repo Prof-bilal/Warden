@@ -16,7 +16,7 @@ func TestAllProfilesValidateWithNarrowGrants(t *testing.T) {
 	_ = os.Mkdir(data, 0700)
 	seen := map[string]bool{}
 	for _, pack := range List() {
-		if seen[pack.ID] || pack.Version == "" || pack.Upstream == "" || pack.Status != "candidate" {
+		if seen[pack.ID] || pack.Version == "" || pack.Upstream == "" || (pack.Status != "candidate" && pack.Status != "reviewed") {
 			t.Fatalf("invalid metadata: %+v", pack)
 		}
 		seen[pack.ID] = true
@@ -44,6 +44,9 @@ func TestAllProfilesValidateWithNarrowGrants(t *testing.T) {
 		}
 		if pack.PathMode != "write" && len(p.Filesystem.Write) != 0 {
 			t.Fatal("unexpected write grant")
+		}
+		if pack.Status == "reviewed" && !p.Filesystem.ProtectSecrets {
+			t.Fatal("reviewed pack must protect secrets")
 		}
 	}
 	if len(seen) != 8 {

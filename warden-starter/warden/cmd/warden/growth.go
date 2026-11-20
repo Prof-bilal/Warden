@@ -6,8 +6,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"path/filepath"
@@ -23,6 +25,44 @@ import (
 	"github.com/warden-sandbox/warden/internal/version"
 )
 
+var errPolicyReviewRequired = errors.New("policy changes require review")
+
+func writePolicyDiffMarkdown(w io.Writer, diff maintenance.Diff) error {
+	var out strings.Builder
+	out.WriteString("## Warden policy review\n\n")
+	if diff.ReviewRequired {
+		out.WriteString("Review required.\n")
+	} else {
+		out.WriteString("No widening detected.\n")
+	}
+	for _, change := range diff.Changes {
+		for _, value := range change.Added {
+			fmt.Fprintf(&out, "\n- Added %s: <code>%s</code>", change.Surface, html.EscapeString(fmt.Sprintf("%q", value)))
+		}
+		for _, value := range change.Removed {
+			fmt.Fprintf(&out, "\n- Removed %s: <code>%s</code>", change.Surface, html.EscapeString(fmt.Sprintf("%q", value)))
+		}
+	}
+	for _, note := range []struct {
+		changed bool
+		text    string
+	}{
+		{diff.CommandChanged, "Command changed."},
+		{diff.LimitsExpanded, "Resource limits expanded."},
+		{diff.SecretsProtectionDisabled, "Secret-file protection disabled."},
+		{diff.AgentChanged, "Agent workspace or secret profile changed."},
+		{diff.MCPChanged, "MCP configuration changed."},
+		{diff.TemporaryGrantsExpanded, "Temporary grants expanded."},
+		{diff.InstallGuardWeakened, "Install Guard requirements weakened."},
+	} {
+		if note.changed {
+			fmt.Fprintf(&out, "\n- %s", note.text)
+		}
+	}
+	_, err := fmt.Fprintln(w, out.String())
+	return err
+}
+
 func printGrowthHelp(cmd string) {
 	fmt.Fprint(os.Stderr, `Usage:
   warden creator init --output <new-directory>
@@ -30,7 +70,7 @@ func printGrowthHelp(cmd string) {
   warden creator definition-hash --manifest <single-tool-definition.json>
   warden creator check --policy <yaml> --rules <json> --artifact <directory> --manifest <checks.json> --key <private-key> --output <evidence.json> [--backend auto] -- <prepared-server> [args...]
   warden creator verify --policy <yaml> --rules <json> --artifact <directory> --manifest <checks.json> --public-key <trusted-key> --revocations <trusted-fresh-json> --evidence <evidence.json> [--badge <new.svg>] -- <same-command> [args...]
-  warden policy-diff --before <yaml> --after <yaml>
+  warden policy-diff --before <yaml> --after <yaml> [--format json|markdown] [--fail-on widen]
   warden report record --file <local.jsonl> --client <id> --event <setup-completed|setup-failed|first-protected-task|repeat-use|rollback|badge-activation> [--seconds N]
   warden report summary --file <local.jsonl>
 
@@ -48,11 +88,16 @@ func cmdGrowth(cmd string, args []string) error {
 		fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 		before := fs.String("before", "", "old policy")
 		after := fs.String("after", "", "new policy")
+		format := fs.String("format", "json", "output format")
+		failOn := fs.String("fail-on", "", "exit 3 when widening requires review")
 		if e := fs.Parse(args); e != nil {
 			return e
 		}
 		if fs.NArg() != 0 || *before == "" || *after == "" {
 			return fmt.Errorf("--before and --after required")
+		}
+		if (*format != "json" && *format != "markdown") || (*failOn != "" && *failOn != "widen") {
+			return fmt.Errorf("invalid policy diff format or fail-on value")
 		}
 		a, e := policy.Load(*before)
 		if e != nil {
@@ -62,7 +107,16 @@ func cmdGrowth(cmd string, args []string) error {
 		if e != nil {
 			return e
 		}
-		return json.NewEncoder(os.Stdout).Encode(maintenance.Compare(a, b))
+		diff := maintenance.Compare(a, b)
+		if *format == "markdown" {
+			e = writePolicyDiffMarkdown(os.Stdout, diff)
+		} else {
+			e = json.NewEncoder(os.Stdout).Encode(diff)
+		}
+		if e == nil && *failOn == "widen" && diff.ReviewRequired {
+			return errPolicyReviewRequired
+		}
+		return e
 	}
 	if cmd == "report" {
 		return cmdReport(args)
@@ -184,6 +238,7 @@ func cmdGrowth(cmd string, args []string) error {
 	if e != nil {
 		return e
 	}
+	reviewedPolicy = reviewedPolicy.WithActiveGrants(time.Now())
 	resolved, e := sandbox.Resolve(*backend)
 	if e != nil {
 		return e

@@ -19,6 +19,7 @@ const sections: Section[] = [
       { slug: "index", label: "What Warden is" },
       { slug: "install", label: "Install" },
       { slug: "quickstart", label: "Quickstart" },
+      { slug: "migration", label: "Migrate to Warden 2.0" },
     ],
   },
   {
@@ -34,6 +35,9 @@ const sections: Section[] = [
     title: "Day to day",
     items: [
       { slug: "approve", label: "Review and approve" },
+      { slug: "install-guard", label: "Review package installs" },
+      { slug: "claude-code-hook", label: "Claude Code tool hook" },
+      { slug: "mcp-tool-pins", label: "Pin MCP tool definitions" },
       { slug: "cli", label: "CLI reference" },
       { slug: "faq", label: "Troubleshooting" },
     ],

@@ -13,9 +13,28 @@ fully-worked example.
 | `network` | `Network` | Yes || Network egress allowlist. |
 | `env` | `Env` | Yes || Environment variable passthrough list. |
 | `limits` | `Limits` | No || Resource limits enforced on Linux. |
+| `version` | `int` | No | Unversioned | Use `2` with temporary grants or Install Guard settings. Unversioned policies and version 1 still load. |
+| `temporary_grants` | sequence | No || Exact host or read-path grants with an RFC 3339 expiration. |
+| `guard` | mapping | No || Additional requirements for `warden guard` in version 2. |
 
 \* A policy file without `command:` is valid as long as the CLI supplies the
 command via `warden run --policy <file> -- <cmd...>`.
+
+## `guard`
+
+```yaml
+version: 2
+guard:
+  minimum_release_age: 72h
+  strict: true
+```
+
+Pass the policy to `warden guard npm install` or `warden guard pip install`
+with `--policy <file>`. The cooldown uses the greater of the optional
+nonnegative policy duration and the configured user cooldown. Strict metadata
+checks apply if the policy, user configuration, or CLI requests them.
+Script allowlists come from user configuration. A cooldown override requires
+an explicit, audited `--override-age` for each invocation.
 
 ## `command`
 

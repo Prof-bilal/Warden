@@ -143,6 +143,40 @@ func CoversFile(p Policy, path string) bool {
 	return false
 }
 
+// AllowsHookPath applies the allow and deny rules to one advisory file check.
+func (p Policy) AllowsHookPath(path string, write bool) bool {
+	if p.DeniesHookPath(path) {
+		return false
+	}
+	if !write {
+		return CoversFile(p, path)
+	}
+	for _, root := range p.Filesystem.Write {
+		if Within(path, root) {
+			return true
+		}
+	}
+	return false
+}
+
+// DeniesHookPath recognizes explicit deny rules and protected secret paths.
+func (p Policy) DeniesHookPath(path string) bool {
+	if p.Filesystem.ProtectSecrets && IsProtectedSecretPath(path) {
+		return true
+	}
+	for _, pattern := range p.Filesystem.Deny {
+		if filepath.IsAbs(pattern) && Within(path, pattern) {
+			return true
+		}
+	}
+	for _, root := range append(append([]string{}, p.Filesystem.Read...), p.Filesystem.Write...) {
+		if Within(path, root) && matchesAnyDeny(path, root, p.Filesystem.Deny) {
+			return true
+		}
+	}
+	return false
+}
+
 // AddHost adds host to network.allow (lowercased, like `init` generates).
 // It reports whether the list changed. The policy is validated before
 // returning success; an invalid host leaves the policy untouched.

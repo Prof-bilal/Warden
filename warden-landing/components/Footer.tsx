@@ -5,6 +5,7 @@ const columns = [
   {
     title: "Product",
     links: [
+      ["Warden 2.0", "/v2"],
       ["How it works", "/#how-it-works"],
       ["How to use", "/#how-to-use"],
       ["Setup", "/setup"],

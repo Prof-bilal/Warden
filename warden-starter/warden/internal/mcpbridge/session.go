@@ -48,12 +48,18 @@ type Session struct {
 	rules       Rules
 	journal     *Journal
 	id          string
+	pins        PinStore
+	pinServer   string
 	initialized bool
 	ready       bool
 }
 
 func NewSession(up Upstream, r Rules, j *Journal, id string) *Session {
 	return &Session{upstream: up, rules: r, journal: j, id: id}
+}
+
+func NewPinnedSession(up Upstream, r Rules, j *Journal, id string, pins PinStore, server string) *Session {
+	return &Session{upstream: up, rules: r, journal: j, id: id, pins: pins, pinServer: server}
 }
 func (s *Session) Close() error { return s.upstream.Close() }
 func (s *Session) denied(m Message, reason string) []byte {
@@ -229,9 +235,14 @@ func (s *Session) filterList(m Message, kind string) (Message, error) {
 	if json.Unmarshal(result[kind], &items) != nil {
 		return m, fmt.Errorf("invalid items")
 	}
+	// Validate discovery before allowing it to update any persistent pins.
+	if len(result["nextCursor"]) > 0 && string(result["nextCursor"]) != "null" {
+		return m, fmt.Errorf("paginated discovery unsupported")
+	}
 	kept := []json.RawMessage{}
 	seen := map[string]bool{}
-	for _, item := range items {
+	keys := make([]string, len(items))
+	for i, item := range items {
 		var v struct {
 			Name string `json:"name"`
 			URI  string `json:"uri"`
@@ -247,28 +258,42 @@ func (s *Session) filterList(m Message, kind string) (Message, error) {
 			return m, fmt.Errorf("duplicate discovery item")
 		}
 		seen[key] = true
+		keys[i] = key
+	}
+	for i, item := range items {
+		key := keys[i]
 		allow := false
 		switch kind {
 		case "tools":
-			t, ok := s.rules.Tools[v.Name]
+			t, ok := s.rules.Tools[key]
 			allow = ok
-			if ok && t.DefinitionSHA256 != "" {
+			if ok && (t.DefinitionSHA256 != "" || s.pinServer != "") {
 				digest, e := DefinitionHash(item)
-				allow = e == nil && digest == t.DefinitionSHA256
+				if e != nil {
+					return m, e
+				}
+				accepted := t.DefinitionSHA256
+				if accepted == "" {
+					accepted, e = s.pins.Observe(s.pinServer, key, digest)
+					if e != nil {
+						return m, e
+					}
+				}
+				allow = digest == accepted
+				if !allow {
+					if e := s.journal.Record(s.id, "tools/list", "tool definition differs from pinned hash", false); e != nil {
+						return m, e
+					}
+				}
 			}
 		case "resources":
-			allow = contains(s.rules.Resources, v.URI)
+			allow = contains(s.rules.Resources, key)
 		case "prompts":
-			allow = contains(s.rules.Prompts, v.Name)
+			allow = contains(s.rules.Prompts, key)
 		}
 		if allow {
 			kept = append(kept, item)
 		}
-	}
-	// Pagination is not advertised: refuse paginated discovery rather than
-	// silently omit a page or accept a cursor with different permissions.
-	if len(result["nextCursor"]) > 0 && string(result["nextCursor"]) != "null" {
-		return m, fmt.Errorf("paginated discovery unsupported")
 	}
 	result[kind], _ = json.Marshal(kept)
 	m.Result, _ = json.Marshal(result)

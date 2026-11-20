@@ -3,6 +3,7 @@
 package windows
 
 import (
+	"errors"
 	"os"
 	"os/signal"
 	"sync/atomic"
@@ -214,6 +215,11 @@ func runWithApproval(cmd []string, p policy.Policy, logger *audit.Logger, approv
 		tree, _ := processTreePIDs(pi.dwProcessId)
 		trace.tree = tree
 		go trace.run()
+	}
+	if deadline := p.Limits.GrantDeadline; !deadline.IsZero() && !deadline.After(time.Now()) {
+		job.terminate()
+		trace.closeIfOpen()
+		return 0, errors.New("temporary grant expired during sandbox setup; retry with the remaining grants")
 	}
 	if _, err := windows.ResumeThread(pi.hThread); err != nil {
 		_ = windows.TerminateProcess(pi.hProcess, 1)

@@ -22,6 +22,11 @@ type Event struct {
 	Resource  string    `json:"resource"` // pathname or host[:port]
 	Allowed   bool      `json:"allowed"`
 	Reason    string    `json:"reason,omitempty"`
+	Cmd       string    `json:"cmd,omitempty"`
+	Tool      string    `json:"tool,omitempty"`
+	PID       int       `json:"pid,omitempty"`
+	Hash      string    `json:"hash,omitempty"`
+	Kind      string    `json:"kind,omitempty"`
 }
 
 // Logger serializes Events to a JSON Lines stream.  It is safe to share

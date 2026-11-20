@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/warden-sandbox/warden/internal/packs"
@@ -20,6 +23,10 @@ import (
 // scripts disabled, isolated HOME and npm configuration. It performs no
 // post-install validation; callers verify the installed identity.
 func prepareNPMRuntime(artifact, dest, backend string) error {
+	return installNPMRuntime(artifact, dest, backend, nil, "")
+}
+
+func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifest string) error {
 	if _, e := sandbox.Resolve(backend); e != nil {
 		return e
 	}
@@ -61,6 +68,22 @@ func prepareNPMRuntime(artifact, dest, backend string) error {
 	if e = privatefile.Protect(dest, true); e != nil {
 		return e
 	}
+	var archiveDir string
+	artifact := spec
+	if archive != nil {
+		archiveDir, e = os.MkdirTemp(filepath.Dir(dest), ".warden-archive-")
+		if e != nil {
+			return e
+		}
+		defer os.RemoveAll(archiveDir)
+		if e = privatefile.Protect(archiveDir, true); e != nil {
+			return e
+		}
+		artifact = filepath.Join(archiveDir, "reviewed.tgz")
+		if e = writeExclusive(artifact, archive); e != nil {
+			return e
+		}
+	}
 	config := filepath.Join(dest, ".npmrc")
 	if e = writeExclusive(config, []byte{}); e != nil {
 		return e
@@ -71,42 +94,126 @@ func prepareNPMRuntime(artifact, dest, backend string) error {
 	}
 	vars := map[string]string{"PATH": filepath.Dir(node) + string(os.PathListSeparator) + "/usr/bin", "NPM_CONFIG_CACHE": filepath.Join(dest, ".npm-cache"), "NPM_CONFIG_USERCONFIG": config, "NPM_CONFIG_GLOBALCONFIG": globalConfig}
 	vars["HOME"] = dest // an isolated installer home, never the user's home
-	// sandbox.Run uses the parent env; only these explicitly configured names
-	// are allowed through, with no HOME or user credential configuration.
-	restore := map[string]*string{}
-	for key, value := range vars {
-		if v, ok := os.LookupEnv(key); ok {
-			saved := v
-			restore[key] = &saved
-		} else {
-			restore[key] = nil
-		}
-		if e = os.Setenv(key, value); e != nil {
-			return e
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{filepath.Dir(node), filepath.Dir(filepath.Dir(realNPM))}, Write: []string{dest}},
+		Network:    policy.Network{Allow: []string{"registry.npmjs.org"}},
+		Limits:     policy.Limits{MemoryMB: 1024, TimeoutS: 600},
+	}
+	if archiveDir != "" {
+		p.Filesystem.Read = append(p.Filesystem.Read, archiveDir)
+	}
+	// Preparation can precede a stdio MCP session, which reserves stdout.
+	args := []string{node, realNPM, "install", "--silent", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest, "--", artifact}
+	if err := runInstallSandboxed(args, p, backend, vars); err != nil {
+		return err
+	}
+	if scriptManifest == "" {
+		return nil
+	}
+	commands, headers, err := reviewedNPMLifecycle(spec, dest, node, realNPM, scriptManifest)
+	if err != nil {
+		return err
+	}
+	p.Network.Allow = nil
+	if headers != "" {
+		p.Filesystem.Read = append(p.Filesystem.Read, headers)
+		if runtime.GOOS == "linux" {
+			// Make launches its recipe shell by absolute path.
+			p.Filesystem.Read = append(p.Filesystem.Read, "/bin/sh")
 		}
 	}
-	restoreEnvironment := func() {
-		for key, value := range restore {
-			if value == nil {
-				_ = os.Unsetenv(key)
-			} else {
-				_ = os.Setenv(key, *value)
+	for _, command := range commands {
+		// A previous hook may have rewritten the package manifest.
+		if _, err := readReviewedNPMManifest(spec, dest, scriptManifest); err != nil {
+			return err
+		}
+		if err := runInstallSandboxed(command, p, backend, vars); err != nil {
+			return fmt.Errorf("approved lifecycle step for %q: %w", spec, err)
+		}
+	}
+	return nil
+}
+
+func reviewedNPMLifecycle(spec, dest, node, npm, expectedManifest string) ([][]string, string, error) {
+	pkg, err := readReviewedNPMManifest(spec, dest, expectedManifest)
+	if err != nil {
+		return nil, "", err
+	}
+	var commands [][]string
+	var headers string
+	for _, hook := range []string{"preinstall", "install", "postinstall"} {
+		if pkg.Scripts[hook] != "" {
+			// An explicit run-script with --ignore-scripts runs the named hook only.
+			commands = append(commands, []string{node, npm, "run-script", "--ignore-scripts", "--workspaces=false", "--global=false", "--prefix", pkg.Dir, "--", hook})
+		} else if hook == "install" && pkg.Scripts["preinstall"] == "" && (pkg.GYPFile == nil || *pkg.GYPFile) {
+			binding, err := os.Lstat(filepath.Join(pkg.Dir, "binding.gyp"))
+			if err != nil && !os.IsNotExist(err) {
+				return nil, "", err
+			}
+			if err == nil {
+				if !binding.Mode().IsRegular() {
+					return nil, "", fmt.Errorf("approved binding.gyp is not a regular file")
+				}
+				realNode, err := filepath.EvalSymlinks(node)
+				if err != nil {
+					return nil, "", err
+				}
+				nodeRoot := filepath.Dir(filepath.Dir(realNode))
+				headers = filepath.Join(nodeRoot, "include", "node")
+				if _, err := os.Stat(filepath.Join(headers, "node.h")); err != nil {
+					return nil, "", fmt.Errorf("approved native build requires local headers for the selected Node.js installation")
+				}
+				gyp := filepath.Join(filepath.Dir(filepath.Dir(npm)), "node_modules", "node-gyp", "bin", "node-gyp.js")
+				commands = append(commands, []string{node, gyp, "--directory", pkg.Dir, "--nodedir", nodeRoot, "rebuild"})
 			}
 		}
 	}
-	defer restoreEnvironment()
-	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{filepath.Dir(node), filepath.Dir(filepath.Dir(realNPM))}, Write: []string{dest}}, Network: policy.Network{Allow: []string{"registry.npmjs.org"}}, Env: policy.Env{Allow: []string{"PATH", "HOME", "NPM_CONFIG_CACHE", "NPM_CONFIG_USERCONFIG", "NPM_CONFIG_GLOBALCONFIG"}}, Limits: policy.Limits{MemoryMB: 1024, TimeoutS: 600}}
-	p.Normalize()
-	if e = p.Validate(); e != nil {
-		return e
+	return commands, headers, nil
+}
+
+type npmLifecycleManifest struct {
+	Name, Version string
+	Scripts       map[string]string
+	GYPFile       *bool  `json:"gypfile"`
+	Dir           string `json:"-"`
+}
+
+func readReviewedNPMManifest(spec, dest, expectedManifest string) (npmLifecycleManifest, error) {
+	var pkg npmLifecycleManifest
+	name, version, ok := splitNPMSpec(spec)
+	if !ok || version == "" {
+		return pkg, fmt.Errorf("lifecycle approval requires an exact package version")
 	}
-	// Invoke the trusted npm JS entry point through the selected Node runtime;
-	// no shebang/PATH-dependent resolution of the installer is necessary.
-	code, e := sandbox.Run([]string{node, realNPM, "install", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest, artifact}, p, backend)
+	runtimeDir, err := filepath.EvalSymlinks(dest)
+	if err != nil {
+		return pkg, err
+	}
+	root := filepath.Join(runtimeDir, "node_modules", filepath.FromSlash(name))
+	resolved, err := filepath.EvalSymlinks(root)
+	if err != nil || !policy.Within(resolved, runtimeDir) {
+		return pkg, fmt.Errorf("approved package is outside its prepared runtime")
+	}
+	manifestPath := filepath.Join(root, "package.json")
+	info, err := os.Lstat(manifestPath)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > 1<<20 {
+		return pkg, fmt.Errorf("approved package manifest is not a bounded regular file")
+	}
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil || fmt.Sprintf("%x", sha256.Sum256(raw)) != expectedManifest {
+		return pkg, fmt.Errorf("installed manifest differs from the reviewed archive")
+	}
+	if err := json.Unmarshal(raw, &pkg); err != nil || pkg.Name != name || pkg.Version != version {
+		return pkg, fmt.Errorf("installed package does not match the approved name and version")
+	}
+	pkg.Dir = root
+	return pkg, nil
+}
+
+func runInstallSandboxed(args []string, p policy.Policy, backend string, vars map[string]string) error {
+	code, e := runSandboxWithEnv(args, p, backend, vars)
 	if e != nil || code != 0 {
 		return fmt.Errorf("isolated preparation failed (exit %d); incomplete output retained; no direct retry: %v", code, e)
 	}
-	restoreEnvironment()
 	return nil
 }
 
@@ -146,6 +253,6 @@ func cmdPackPrepare(args []string) error {
 	}()); e != nil {
 		return e
 	}
-	fmt.Fprintln(os.Stderr, "Prepared pinned npm package inside the sandbox; install scripts were disabled. Review the generated package-lock before runtime use. Profile remains candidate.")
+	fmt.Fprintln(os.Stderr, "Prepared pinned npm package inside the sandbox with install scripts disabled. Review the generated package-lock before runtime use.")
 	return nil
 }

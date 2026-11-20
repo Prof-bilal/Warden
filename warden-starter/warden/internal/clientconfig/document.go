@@ -3,6 +3,7 @@ package clientconfig
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
 )
+
+var ErrNoServers = errors.New("expected mcpServers or servers object")
 
 type span struct{ start, end int }
 type edit struct {
@@ -74,7 +77,10 @@ func Parse(data []byte, format string) (*Document, error) {
 	if section == nil {
 		section = root.members["servers"]
 	}
-	if section == nil || section.members == nil {
+	if section == nil {
+		return nil, ErrNoServers
+	}
+	if section.members == nil {
 		return nil, fmt.Errorf("expected mcpServers or servers object")
 	}
 	// Keep just the server section as the root for patching.
@@ -506,6 +512,9 @@ func (d *Document) parseTOML() error {
 	var root map[string]any
 	if err := toml.Unmarshal(d.data, &root); err != nil {
 		return fmt.Errorf("invalid configuration TOML")
+	}
+	if _, ok := root["mcp_servers"]; !ok {
+		return ErrNoServers
 	}
 	servers, ok := root["mcp_servers"].(map[string]any)
 	if !ok {

@@ -70,7 +70,10 @@ func TestHelpOutput(t *testing.T) {
 			exitCode: 0,
 			checks: []outputCheck{
 				{field: "stderr", contains: "WARDEN RUN"},
-				{field: "stderr", contains: "--policy"},
+				{field: "stderr", contains: "warden run [options] [--] <command...>"},
+				{field: "stderr", contains: "defaults to ./warden.yaml"},
+				{field: "stderr", contains: "--dry-run"},
+				{field: "stderr", contains: "warden run npx @modelcontextprotocol/server-filesystem"},
 			},
 		},
 		{
@@ -80,6 +83,16 @@ func TestHelpOutput(t *testing.T) {
 			checks: []outputCheck{
 				{field: "stderr", contains: "WARDEN RUN"},
 				{field: "stderr", contains: "--policy"},
+			},
+		},
+		{
+			name:     "warden help migrate",
+			args:     []string{"help", "migrate"},
+			exitCode: 0,
+			checks: []outputCheck{
+				{field: "stderr", contains: "warden migrate [--write]"},
+				{field: "stderr", contains: "Exit 3"},
+				{field: "stderr", contains: ".bak"},
 			},
 		},
 		{

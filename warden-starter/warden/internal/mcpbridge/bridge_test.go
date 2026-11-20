@@ -127,6 +127,47 @@ func TestFilteringAndDefinitionDrift(t *testing.T) {
 		t.Fatalf("changed schema reached call: %s", out)
 	}
 }
+func TestToolPinAcrossBridgeSessions(t *testing.T) {
+	store := PinStore{Dir: t.TempDir()}
+	rules := Rules{Version: 1, Tools: map[string]ToolRule{"read": {}}}
+	if err := rules.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	var journal bytes.Buffer
+	start := func(description string) *Session {
+		s := NewPinnedSession(&fakeUp{description: description}, rules, &Journal{Writer: &journal}, description, store, "fixture")
+		t.Cleanup(func() { _ = s.Close() })
+		ready(t, s)
+		return s
+	}
+	ctx := context.Background()
+	list := []byte(`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`)
+	call := []byte(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read"}}`)
+	if out := start("original").Handle(ctx, list); !bytes.Contains(out, []byte(`"name":"read"`)) {
+		t.Fatalf("first observation was not listed: %s", out)
+	}
+	changed := start("changed")
+	if out := changed.Handle(ctx, list); !bytes.Contains(out, []byte(`"tools":[]`)) {
+		t.Fatalf("changed tool was listed: %s", out)
+	}
+	if out := changed.Handle(ctx, call); !bytes.Contains(out, []byte("definition changed")) {
+		t.Fatalf("changed tool was callable: %s", out)
+	}
+	if !strings.Contains(journal.String(), "tool definition differs from pinned hash") {
+		t.Fatal("definition change was not audited")
+	}
+	pin, err := store.Status("fixture", "read")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Accept("fixture", "read", pin.Accepted, pin.Observed); err != nil {
+		t.Fatal(err)
+	}
+	if out := changed.Handle(ctx, call); !bytes.Contains(out, []byte("allowed fixture")) {
+		t.Fatalf("accepted definition was not allowed: %s", out)
+	}
+}
+
 func TestStrictJSONAndFailClosedAudit(t *testing.T) {
 	a, e := DefinitionHash([]byte(`{"name":"read","inputSchema":{"maximum":9007199254740992}}`))
 	if e != nil {

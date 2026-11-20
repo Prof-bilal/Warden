@@ -86,8 +86,13 @@ func TestEcosystemHelpAndCatalog(t *testing.T) {
 		t.Fatal("catalog output invalid")
 	}
 	for _, p := range packs {
-		if p["status"] != "candidate" {
-			t.Fatal("unverified profile promoted")
+		status := "candidate"
+		switch p["id"] {
+		case "filesystem", "git", "memory":
+			status = "reviewed"
+		}
+		if p["status"] != status {
+			t.Fatalf("pack %v status = %v, want %s", p["id"], p["status"], status)
 		}
 	}
 }

@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/approve"
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -27,6 +28,10 @@ func RunWithApproval(cmd []string, p policy.Policy, backend string, cfg *approve
 	}
 	name, err := Resolve(backend)
 	if err != nil {
+		return 0, err
+	}
+	p = p.WithActiveGrants(time.Now())
+	if err := checkGrantLifetime(p, name); err != nil {
 		return 0, err
 	}
 	switch name {
