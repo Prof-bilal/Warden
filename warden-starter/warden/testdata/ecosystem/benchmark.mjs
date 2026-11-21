@@ -107,7 +107,10 @@ function passed(result, context) {
 }
 function goEvidence(source, names) {
   const actions = source.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
-  for (const name of names) assert(actions.some(event => event.Test === name && event.Action === "pass"), `required Go test did not pass: ${name}`);
+  for (const name of names) {
+    const allowedWindowsSkip = process.platform === "win32" && name === "TestStdioBridgeFiltersToolAllowlist";
+    assert(actions.some(event => event.Test === name && (event.Action === "pass" || (allowedWindowsSkip && event.Action === "skip"))), `required Go test did not pass: ${name}`);
+  }
   assert(!actions.some(event => event.Action === "skip" && !(process.platform === "win32" && event.Test === "TestStdioBridgeFiltersToolAllowlist")), "required Go test skipped");
   return names;
 }
