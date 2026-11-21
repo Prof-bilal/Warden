@@ -39,6 +39,9 @@ npm install -g warden-sandbox-cli@beta
 warden doctor
 ```
 
+The current preview is `0.2.0-beta.6`. Pin that exact version when reproducing
+this release: `npm install -g warden-sandbox-cli@0.2.0-beta.6`.
+
 Use `warden doctor` before the first protected run. It checks whether the
 selected platform backend and its required primitives are ready. For release
 downloads, source builds, and platform prerequisites, see the
@@ -129,14 +132,18 @@ not a promise that every upstream service works without configuration.
 
 Native platform status and reproducible proof are documented separately:
 
-- **Linux:** bubblewrap namespaces and the native proof harness.
+- **Linux:** bubblewrap namespaces and the native proof harness, verified in
+  hosted CI.
 - **macOS:** Seatbelt with platform-specific limitations and fallback paths.
 - **Windows:** AppContainer/WFP/Job Objects; native sandbox, escape, lifecycle,
-  and audit tests are verified in the Windows CI job. Verify required elevation
+  audit, and cross-build tests are verified in the Windows CI job. Hosted CI
+  cannot provide every local WFP egress condition; verify required elevation
   and host prerequisites before production use.
 - **Docker:** explicit fallback backend with a larger trust surface.
 
-See [test evidence](https://warden.blog/docs/proof), the
+The current release proof also covers macOS and Windows native checks,
+cross-builds, docs, website, and attack-simulation jobs in hosted CI. See
+[test evidence](https://warden.blog/docs/proof), the
 [compatibility matrix](https://warden.blog/docs/compatibility), and the
 [security review](https://warden.blog/docs/security). Windows is verified in CI;
 that result does not remove the need to verify native enforcement and required
