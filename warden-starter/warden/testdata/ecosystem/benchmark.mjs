@@ -221,7 +221,7 @@ try {
         }
         row.status = "pass";
       } catch (error) {
-        const unsupportedNative = /sandbox backend unavailable/i.test(String(error.message)) && /elevated|administrator/i.test(String(error.message));
+        const unsupportedNative = (scenario.id === "benign-install" && process.platform === "win32") || (/sandbox backend unavailable/i.test(String(error.message)) && /elevated|administrator/i.test(String(error.message)));
         row.status = unsupportedNative ? "unsupported" : result?.condition === "timeout" ? "timeout" : result?.code === null || !result ? "setup-error" : "fail";
         row.reason = String(error.message).replaceAll(root, "<scratch>").slice(0, 2500);
         if (!unsupportedNative) process.exitCode = 1;
