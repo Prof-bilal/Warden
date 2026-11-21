@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -53,8 +54,13 @@ func TestRunDryRunPrintsPlan(t *testing.T) {
 	if plan.Backend != fmt.Sprint(backend) || plan.Digest != fmt.Sprintf("%x", sha256.Sum256(body)) {
 		t.Fatalf("incorrect backend or digest in %s", out)
 	}
+	expectedRead := filepath.Join(realDir, "data")
+	if runtime.GOOS == "windows" {
+		// Windows may expose the same temp tree through its 8.3 short alias.
+		expectedRead = filepath.Join(dir, "data")
+	}
 	if !reflect.DeepEqual(plan.Policy.Command, []string{bin, "version"}) ||
-		!reflect.DeepEqual(plan.Policy.Filesystem.Read, []string{filepath.Join(realDir, "data")}) {
+		!reflect.DeepEqual(plan.Policy.Filesystem.Read, []string{expectedRead}) {
 		t.Fatalf("incorrect effective policy in %s", out)
 	}
 }
