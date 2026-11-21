@@ -47,7 +47,7 @@ const nativeBackend = { linux: "linux", darwin: "seatbelt", win32: "windows" }[p
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");
 const sys = ["PATH", "PATHEXT", "SystemRoot", "WINDIR", "SystemDrive", "ComSpec", "ProgramFiles",
   "ProgramFiles(x86)", "ProgramData", "PROCESSOR_ARCHITECTURE", "GOROOT", "GOPATH", "GOMODCACHE",
-  "GOCACHE", "GOMAXPROCS", "CI", "WARDEN_DOCKER_IMAGE", "WARDEN_CODEX_BIN", "WARDEN_REVIEW_PYTHON", "WARDEN_CONFORMANCE_JS"];
+  "GOCACHE", "GOMAXPROCS", "CI", "WARDEN_DOCKER_IMAGE", "WARDEN_CODEX_BIN", "WARDEN_REVIEW_PYTHON", "WARDEN_CONFORMANCE_JS", "WARDEN_BENCH_HOST_HOME"];
 const cleanEnv = Object.fromEntries(sys.filter(key => process.env[key]).map(key => [key, process.env[key]]));
 const nativeSuffix = process.platform === "win32" ? ".exe" : "";
 const binary = options.binary ? resolve(options.binary) : join(root, "warden" + nativeSuffix);
