@@ -37,8 +37,10 @@ const workflows = {
     let output;
     try {
       const hostEnv = { ...process.env };
-      delete hostEnv.HOME;
-      delete hostEnv.USERPROFILE;
+      if (process.env.WARDEN_BENCH_HOST_HOME) {
+        hostEnv.HOME = process.env.WARDEN_BENCH_HOST_HOME;
+        hostEnv.USERPROFILE = process.env.WARDEN_BENCH_HOST_HOME;
+      }
       output = warden(["doctor", "--prove"], undefined, { env: hostEnv }).stdout;
     } catch (error) {
       if (/sandbox backend unavailable|sandbox-exec is not installed/i.test(error.message)) {
