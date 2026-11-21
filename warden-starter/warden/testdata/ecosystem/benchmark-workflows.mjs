@@ -11,7 +11,7 @@ import { terminal } from "./benchmark-terminal.mjs";
 
 const bin = process.env.WARDEN_BIN;
 const native = ["--backend", process.env.WARDEN_BENCH_BACKEND ?? "auto"];
-const workspace = join(homedir(), "project");
+const workspace = join(process.env.WARDEN_BENCH_WORKSPACE ?? homedir(), "project");
 mkdirSync(workspace, { recursive: true });
 process.chdir(workspace);
 const digest = bytes => createHash("sha256").update(bytes).digest("hex");

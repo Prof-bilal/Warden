@@ -170,7 +170,9 @@ try {
       report.scenarios.push(row);
       if (!scenario.platforms.includes(process.platform)) { row.status = "unsupported"; row.reason = `Only ${scenario.platforms.join(", ")}`; continue; }
       const working = join(root, `${attempt}-${scenario.id}`), env = {
-        ...caseEnv(working), WARDEN_BIN: binary, WARDEN_BENCH_SOURCE: source, WARDEN_BENCH_BACKEND: nativeBackend, ...scenario.env,
+        ...caseEnv(working), WARDEN_BIN: binary, WARDEN_BENCH_SOURCE: source, WARDEN_BENCH_BACKEND: nativeBackend,
+        WARDEN_BENCH_WORKSPACE: join(process.platform === "win32" ? tmpdir() : "/tmp", `warden-bench-${process.pid}-${attempt}-${scenario.id}`),
+        ...scenario.env,
       };
       const started = performance.now();
       let result;
@@ -216,9 +218,10 @@ try {
         }
         row.status = "pass";
       } catch (error) {
-        row.status = result?.condition === "timeout" ? "timeout" : result?.code === null || !result ? "setup-error" : "fail";
+        const unsupportedNative = /sandbox backend unavailable/i.test(String(error.message)) && /elevated|administrator/i.test(String(error.message));
+        row.status = unsupportedNative ? "unsupported" : result?.condition === "timeout" ? "timeout" : result?.code === null || !result ? "setup-error" : "fail";
         row.reason = String(error.message).replaceAll(root, "<scratch>").slice(0, 2500);
-        process.exitCode = 1;
+        if (!unsupportedNative) process.exitCode = 1;
       }
       row.durationMs = Math.round(performance.now() - started);
       console.log(`${attempt}/${repeat} ${scenario.id}: ${row.status}${row.reason ? " — " + row.reason.split("\n")[0] : ""}`);

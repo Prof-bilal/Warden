@@ -39,8 +39,8 @@ npm install -g warden-sandbox-cli@beta
 warden doctor
 ```
 
-The current preview is `0.2.0-beta.6`. Pin that exact version when reproducing
-this release: `npm install -g warden-sandbox-cli@0.2.0-beta.6`.
+The current preview is `0.2.0-beta.7`. Pin that exact version when reproducing
+this release: `npm install -g warden-sandbox-cli@0.2.0-beta.7`.
 
 Use `warden doctor` before the first protected run. It checks whether the
 selected platform backend and its required primitives are ready. For release
