@@ -199,7 +199,7 @@ jobs:
           go build -o "$RUNNER_TEMP/warden-pin-smoke" ./cmd/warden
           WARDEN_BIN="$RUNNER_TEMP/warden-pin-smoke" node testdata/ecosystem/smoke-mcp-tool-pins.mjs
       - name: End-to-end benchmark
-        run: WARDEN_BENCH_HOST_HOME="$HOME" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
+        run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
       - name: Docker fallback benchmark
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         run: |
@@ -293,7 +293,7 @@ jobs:
         run: go test -v -count=1 ./internal/agentworkspace
       - name: End-to-end benchmark
         shell: pwsh
-        run: $env:WARDEN_BENCH_HOST_HOME=$env:USERPROFILE; node testdata/ecosystem/benchmark.mjs --suite $env:WARDEN_BENCHMARK_SUITE --repeat $env:WARDEN_BENCHMARK_REPEAT --output "$env:RUNNER_TEMP/warden-bench"
+        run: $env:WARDEN_BENCH_HOST_HOME=$env:USERPROFILE; $env:WARDEN_BENCH_HOST_TEMP=$env:TEMP; node testdata/ecosystem/benchmark.mjs --suite $env:WARDEN_BENCHMARK_SUITE --repeat $env:WARDEN_BENCHMARK_REPEAT --output "$env:RUNNER_TEMP/warden-bench"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         with:
@@ -396,7 +396,7 @@ jobs:
       - name: Sanitized agent workspace projection and apply
         run: go test -v -count=1 ./internal/agentworkspace
       - name: End-to-end benchmark
-        run: WARDEN_BENCH_HOST_HOME="$HOME" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
+        run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         with:

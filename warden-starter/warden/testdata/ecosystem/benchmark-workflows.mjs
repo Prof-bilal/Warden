@@ -41,6 +41,11 @@ const workflows = {
         hostEnv.HOME = process.env.WARDEN_BENCH_HOST_HOME;
         hostEnv.USERPROFILE = process.env.WARDEN_BENCH_HOST_HOME;
       }
+      if (process.env.WARDEN_BENCH_HOST_TEMP) {
+        hostEnv.TMPDIR = process.env.WARDEN_BENCH_HOST_TEMP;
+        hostEnv.TMP = process.env.WARDEN_BENCH_HOST_TEMP;
+        hostEnv.TEMP = process.env.WARDEN_BENCH_HOST_TEMP;
+      }
       output = warden(["doctor", "--prove"], undefined, { env: hostEnv }).stdout;
     } catch (error) {
       if (/sandbox backend unavailable|sandbox-exec is not installed/i.test(error.message)) {
