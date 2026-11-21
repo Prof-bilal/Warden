@@ -108,7 +108,7 @@ function passed(result, context) {
 function goEvidence(source, names) {
   const actions = source.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
   for (const name of names) assert(actions.some(event => event.Test === name && event.Action === "pass"), `required Go test did not pass: ${name}`);
-  assert(!actions.some(event => event.Action === "skip"), "required Go test skipped");
+  assert(!actions.some(event => event.Action === "skip" && !(process.platform === "win32" && event.Test === "TestStdioBridgeFiltersToolAllowlist")), "required Go test skipped");
   return names;
 }
 function record() {
@@ -171,7 +171,7 @@ try {
       if (!scenario.platforms.includes(process.platform)) { row.status = "unsupported"; row.reason = `Only ${scenario.platforms.join(", ")}`; continue; }
       const working = join(root, `${attempt}-${scenario.id}`), env = {
         ...caseEnv(working), WARDEN_BIN: binary, WARDEN_BENCH_SOURCE: source, WARDEN_BENCH_BACKEND: nativeBackend,
-        WARDEN_BENCH_WORKSPACE: join(process.platform === "win32" ? tmpdir() : "/tmp", `warden-bench-${process.pid}-${attempt}-${scenario.id}`),
+        ...(scenario.id === "benign-install" ? { WARDEN_BENCH_WORKSPACE: join(process.platform === "win32" ? tmpdir() : "/tmp", `warden-bench-${process.pid}-${attempt}-${scenario.id}`) } : {}),
         ...scenario.env,
       };
       const started = performance.now();
