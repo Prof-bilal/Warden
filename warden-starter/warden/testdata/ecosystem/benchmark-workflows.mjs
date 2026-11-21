@@ -20,13 +20,13 @@ const file = (name, bytes) => {
   writeFileSync(path, bytes, { mode: 0o600, flag: "wx" });
   return path;
 };
-function run(command, args, code = 0) {
-  const result = spawnSync(command, args, { encoding: "utf8", timeout: 90000, windowsHide: true });
+function run(command, args, code = 0, options = {}) {
+  const result = spawnSync(command, args, { encoding: "utf8", timeout: 90000, windowsHide: true, ...options });
   assert.ifError(result.error);
   assert.equal(result.status, code, `${command} ${args[0]}: ${result.stderr}\n${result.stdout}`);
   return result;
 }
-const warden = (args, code) => run(bin, args, code);
+const warden = (args, code, options) => run(bin, args, code, options);
 const node = (args, code) => run(process.execPath, args, code);
 function fixtureSource() {
   return file("policy.go", readFileSync(join(process.env.WARDEN_BENCH_SOURCE, "policy.go")));
@@ -36,7 +36,10 @@ const workflows = {
   proof() {
     let output;
     try {
-      output = warden(["doctor", "--prove"]).stdout;
+      const hostEnv = { ...process.env };
+      delete hostEnv.HOME;
+      delete hostEnv.USERPROFILE;
+      output = warden(["doctor", "--prove"], undefined, { env: hostEnv }).stdout;
     } catch (error) {
       if (/sandbox backend unavailable|sandbox-exec is not installed/i.test(error.message)) {
         return { status: "unsupported", reason: error.message.split("\n")[0] };
