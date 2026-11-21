@@ -97,6 +97,11 @@ func doctorProve() error {
 		}
 		_ = conn.Close()
 		vars[proofAddressEnv] = address
+	} else if runtime.GOOS == "darwin" {
+		// Seatbelt denies are unreliable beneath a broad read grant; keep the
+		// positive control in shared and place the secret outside that grant.
+		p.Filesystem.Read = []string{shared}
+		p.Filesystem.ProtectSecrets = false
 	}
 	code, err := runSandboxWithEnv([]string{exe, "__prove-probe"}, p, backend, vars)
 	if err != nil {

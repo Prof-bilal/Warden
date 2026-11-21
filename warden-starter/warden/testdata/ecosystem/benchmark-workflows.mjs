@@ -34,7 +34,15 @@ function fixtureSource() {
 
 const workflows = {
   proof() {
-    const output = warden(["doctor", "--prove"]).stdout;
+    let output;
+    try {
+      output = warden(["doctor", "--prove"]).stdout;
+    } catch (error) {
+      if (/sandbox backend unavailable|sandbox-exec is not installed/i.test(error.message)) {
+        return { status: "unsupported", reason: error.message.split("\n")[0] };
+      }
+      throw error;
+    }
     const checks = ["secret-file read", "write outside grant", "blocked network host", "environment sentinel"];
     for (const check of checks) assert(output.split(/\r?\n/).includes(`PASS ${check}`), output);
     return checks;
@@ -45,7 +53,15 @@ const workflows = {
     const explicit = file("explicit.yaml", "version: 2\nfilesystem: {read: ['./policy.go']}\nlimits: {timeout_s: 30}\n");
     const read = 'process.stdout.write(require("node:fs").readFileSync(process.argv[1]))';
     const target = [process.execPath, "-e", read, source];
-    const launch = warden(["run", ...native, "--", ...target]);
+    let launch;
+    try {
+      launch = warden(["run", ...native, "--", ...target]);
+    } catch (error) {
+      if (/sandbox backend unavailable|sandbox-exec is not installed/i.test(error.message)) {
+        return { status: "unsupported", reason: error.message.split("\n")[0] };
+      }
+      throw error;
+    }
     assert.equal(digest(launch.stdout), digest(readFileSync(source)));
     const selected = warden(["run", "--dry-run", "--policy", explicit, "--", ...target]).stdout;
     assert.match(selected, new RegExp(digest(readFileSync(explicit))));
@@ -225,4 +241,7 @@ assert.throws(() => fs.writeFileSync(decoy, 'changed'), error => ['ENOENT', 'ERO
 
 const name = process.argv[2];
 assert(Object.hasOwn(workflows, name), `unknown driver ${name}`);
-console.log(JSON.stringify({ status: "pass", checks: await workflows[name]() }));
+const result = await workflows[name]();
+console.log(JSON.stringify(result?.status === "unsupported"
+  ? result
+  : { status: "pass", checks: result }));

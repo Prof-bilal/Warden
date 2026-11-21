@@ -200,6 +200,13 @@ try {
         if (scenario.package) row.checks = goEvidence(stdout, scenario.tests);
         else {
           const outcome = JSON.parse(stdout);
+          if (outcome.status === "unsupported") {
+            row.status = "unsupported";
+            row.reason = outcome.reason ?? "backend unavailable";
+            row.checks = [];
+            row.durationMs = Math.round(performance.now() - started);
+            continue;
+          }
           assert.equal(outcome.status, "pass", "no explicit end-to-end verdict");
           row.checks = outcome.checks ?? [`${outcome.pack}@${outcome.version}: assertions passed`];
           row.upstream = outcome.upstream;
