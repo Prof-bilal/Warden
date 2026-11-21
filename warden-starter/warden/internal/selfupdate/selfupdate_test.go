@@ -3,12 +3,121 @@ package selfupdate
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+func TestRunOptsAgainstControlledRelease(t *testing.T) {
+	const target = "2.0.0-rc.42"
+	if fixture := os.Getenv("WARDEN_TEST_UPDATE_FIXTURE"); fixture != "" {
+		npmLatestURL = fixture + "/latest"
+		apiURL = fixture + "/api/"
+		githubDLBase = fixture + "/assets/"
+		currentVersion = "0.2.0-beta.5"
+		ok, err := RunOpts(os.Stdout, os.Stderr, Options{Yes: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatal("expected to install the fixture release")
+		}
+		return
+	}
+
+	root := t.TempDir()
+	t.Setenv("HOME", root)
+	t.Setenv("USERPROFILE", root)
+	t.Setenv("LOCALAPPDATA", filepath.Join(root, "local"))
+	name, err := assetName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(root, "version.go")
+	program := fmt.Sprintf("package main\nimport \"fmt\"\nfunc main() { fmt.Println(%q) }\n", "warden version "+target)
+	if err := os.WriteFile(source, []byte(program), 0600); err != nil {
+		t.Fatal(err)
+	}
+	asset := filepath.Join(root, name)
+	if output, err := exec.Command("go", "build", "-o", asset, source).CombinedOutput(); err != nil {
+		t.Fatalf("build fixture: %v\n%s", err, output)
+	}
+	bytes, err := os.ReadFile(asset)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := fmt.Sprintf("%x  %s\n", sha256.Sum256(bytes), name)
+	startFixture := func(checksum string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/latest":
+				fmt.Fprintf(w, `{"version":%q}`, target)
+			case "/api/v" + target:
+				fmt.Fprint(w, `{"assets":[]}`)
+			case "/assets/v" + target + "/" + name:
+				_, _ = w.Write(bytes)
+			case "/assets/v" + target + "/SHA256SUMS":
+				fmt.Fprint(w, checksum)
+			default:
+				http.NotFound(w, r)
+			}
+		}))
+	}
+
+	// Start the update from a copy within the isolated version cache so the
+	// code's self-replacement branch can never target the Go test binary.
+	updater, err := InstallPath("0.2.0-beta.5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(self)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Replace(updater, original); err != nil {
+		t.Fatal(err)
+	}
+	run := func(url string) ([]byte, error) {
+		cmd := exec.Command(updater, "-test.run=^TestRunOptsAgainstControlledRelease$")
+		cmd.Env = append(os.Environ(), "WARDEN_TEST_UPDATE_FIXTURE="+url)
+		return cmd.CombinedOutput()
+	}
+	destination, err := InstallPath(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := startFixture(fmt.Sprintf("%s  %s\n", strings.Repeat("0", 64), name))
+	output, err := run(bad.URL)
+	bad.Close()
+	if err == nil || !strings.Contains(string(output), "checksum mismatch") {
+		t.Fatalf("bad checksum should fail: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatalf("failed update created a cache entry: %v", err)
+	}
+	good := startFixture(sum)
+	output, err = run(good.URL)
+	good.Close()
+	if err != nil {
+		t.Fatalf("verified update: %v\n%s", err, output)
+	}
+	if err := verifyInstalledBinary(destination, target); err != nil {
+		t.Fatal(err)
+	}
+	if saved, err := os.ReadFile(filepath.Join(filepath.Dir(destination), "SHA256SUMS")); err != nil || string(saved) != sum {
+		t.Fatalf("persisted manifest differs: %v", err)
+	}
+}
 
 func TestParseSums(t *testing.T) {
 	in := strings.Join([]string{

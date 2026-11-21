@@ -8,6 +8,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import readline from "node:readline";
 import assert from "node:assert/strict";
+import { testMCPConformance } from "./benchmark-conformance.mjs";
 if (!process.env.WARDEN_BIN) throw Error("WARDEN_BIN required");
 const bin = resolve(process.env.WARDEN_BIN), root = await mkdtemp(join(homedir(), ".warden-native-test-"));
 const runtime = join(root, "runtime"), data = join(root, "data"), priv = join(root, "private");
@@ -18,7 +19,8 @@ const policy = join(priv, "policy.yaml"), rules = join(priv, "rules.json"), jour
 await writeFile(policy, `filesystem:\n  read: ${JSON.stringify([runtime, data])}\nnetwork: {allow: []}\nenv: {allow: []}\nlimits: {memory_mb: 512, timeout_s: 60}\n`);
 await writeFile(rules, JSON.stringify({ version: 1, tools: { read: {}, write: {} }, resources: [], prompts: [], timeout_seconds: 15 }));
 const env = { ...process.env, HOME: priv, XDG_CONFIG_HOME: priv, XDG_STATE_HOME: priv, APPDATA: priv, LOCALAPPDATA: priv, WARDEN_NO_UPDATE_CHECK: "1", WARDEN_GATEWAY_TOKEN: "native-test-" + "x".repeat(48) };
-const args = ["--policy", policy, "--rules", rules, "--journal", journal, "--", process.execPath, fixture];
+const args = ["--policy", policy, "--rules", rules, "--journal", journal, "--backend",
+  process.env.WARDEN_BENCH_BACKEND ?? "auto", "--", process.execPath, fixture];
 const init = { protocolVersion: "2025-11-25", clientInfo: { name: "native-test", version: "1" }, capabilities: {} };
 const children = [];
 try {
@@ -43,10 +45,13 @@ try {
   const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: init }) }); assert.equal(response.status, 200, await response.clone().text()); assert((await response.json()).result);
   const session = response.headers.get("mcp-session-id");
   assert.equal((await fetch(endpoint, { method: "DELETE", headers: { ...headers, "mcp-session-id": session } })).status, 204);
+  const externalChecks = process.env.WARDEN_CONFORMANCE_JS
+    ? await testMCPConformance(endpoint, env.WARDEN_GATEWAY_TOKEN, priv)
+    : [];
   const exited = new Promise(r => http.once("exit", r)); const stop = spawnSync(bin, ["stop", "--control-file", control], { env, encoding: "utf8", timeout: 15000 }); assert.equal(stop.status, 0, stop.stderr);
   await Promise.race([exited, new Promise((_, reject) => setTimeout(() => reject(Error("native HTTP cleanup timeout")), 10000).unref())]);
   assert.equal(await readFile(allowed, "utf8"), "native-allowed-sentinel");
-  console.log(JSON.stringify({ status: "pass", platform: process.platform, arch: process.arch, checks: ["native sandboxed stdio startup", "allowed read", "OS-denied write/outside read", "MCP-denied tool", "stdin EOF cleanup", "HTTP native session creation/deletion", "authenticated stop cleanup"], fixture: "disposable trusted Node fixture; not a GUI-host or real npm-server claim" }));
+  console.log(JSON.stringify({ status: "pass", platform: process.platform, arch: process.arch, checks: ["native sandboxed stdio startup", "allowed read", "OS-denied write/outside read", "MCP-denied tool", "stdin EOF cleanup", "HTTP native session creation/deletion", "authenticated stop cleanup", ...externalChecks], fixture: "disposable trusted Node fixture" }));
 } finally {
   for (const child of children) if (child.exitCode === null) child.kill("SIGTERM");
   await rm(root, { recursive: true, force: true });

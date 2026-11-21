@@ -1,0 +1,46 @@
+name: Warden performance benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warden-dedicated-performance
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: [self-hosted, Linux, X64, warden-benchmark]
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: warden-starter/warden
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: warden-starter/warden/go.mod
+          cache-dependency-path: warden-starter/warden/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix mcp-test --ignore-scripts --no-audit --no-fund
+      - name: Build the beta reference and run the benchmark
+        run: |
+          set -euo pipefail
+          beta_ref="$(node -p "require('./testdata/ecosystem/benchmark-scenarios.json').baseline")"
+          beta_dir="$(mktemp -d "$RUNNER_TEMP/warden-benchmark-beta.XXXXXX")"
+          trap 'rm -rf -- "$beta_dir"' EXIT
+          git -C ../.. archive "$beta_ref" warden-starter/warden | tar -x -C "$beta_dir"
+          (cd "$beta_dir/warden-starter/warden" && go build -ldflags='-X github.com/warden-sandbox/warden/internal/version.Version=0.2.0-beta.5' -o "$beta_dir/warden" ./cmd/warden)
+          node testdata/ecosystem/benchmark.mjs --suite performance --baseline "$beta_dir/warden" --output "$RUNNER_TEMP/warden-performance"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warden-performance-linux
+          path: ${{ runner.temp }}/warden-performance

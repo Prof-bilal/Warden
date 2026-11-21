@@ -35,6 +35,7 @@ nav:
   - Evidence and operations:
     - End-to-end proof runbook: verification/e2e-proof-test.md
     - End-to-end proof results: verification/e2e-proof-results.md
+    - End-to-end benchmarks: verification/benchmarks.md
     - Release preview status: operations/release-preview-status.md
   - Reference:
     - Policy schema: schema.md

@@ -22,6 +22,10 @@ func TestRunDryRunPrintsPlan(t *testing.T) {
 	}
 	bin := buildWarden(t)
 	dir := t.TempDir()
+	realDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := []byte("filesystem: {read: [./data]}\n")
 	if err := os.WriteFile(filepath.Join(dir, "warden.yaml"), body, 0600); err != nil {
 		t.Fatal(err)
@@ -50,7 +54,7 @@ func TestRunDryRunPrintsPlan(t *testing.T) {
 		t.Fatalf("incorrect backend or digest in %s", out)
 	}
 	if !reflect.DeepEqual(plan.Policy.Command, []string{bin, "version"}) ||
-		!reflect.DeepEqual(plan.Policy.Filesystem.Read, []string{filepath.Join(dir, "data")}) {
+		!reflect.DeepEqual(plan.Policy.Filesystem.Read, []string{filepath.Join(realDir, "data")}) {
 		t.Fatalf("incorrect effective policy in %s", out)
 	}
 }

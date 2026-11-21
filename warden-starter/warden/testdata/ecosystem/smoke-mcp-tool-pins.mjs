@@ -6,6 +6,7 @@ import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
+import { terminal } from "./benchmark-terminal.mjs";
 
 assert(process.env.WARDEN_BIN, "WARDEN_BIN is required");
 const bin = resolve(process.env.WARDEN_BIN);
@@ -83,7 +84,17 @@ try {
   await session("Read a note and return its length.", async (request) => {
     assert.deepEqual((await request("tools/list")).result.tools, []);
   });
-  console.log(JSON.stringify({ ...evidence, audit: "tool definition differs from pinned hash", diff: diff.stdout.trim() }, null, 2));
+  const accept = ["mcp", "pin", "--server", "fixture", "--accept", "read"];
+  const prompt = "Type yes to approve [default: deny]: ";
+  await terminal(bin, accept, [[prompt, "yes"]], { env });
+  await session("Read a note and return its length.", async (request) => {
+    const list = await request("tools/list");
+    assert.deepEqual(list.result.tools.map(({ name }) => name), ["read"]);
+    assert.equal((await request("tools/call", call)).result.content[0].text, "fixture note");
+  });
+  console.log(JSON.stringify({ status: "pass", checks: ["initial pin", "changed tool hidden and blocked",
+    "change audited, diff is read-only", "explicit terminal acceptance restores the tool"],
+    ...evidence, audit: "tool definition differs from pinned hash", diff: diff.stdout.trim() }, null, 2));
 } finally {
   await rm(root, { recursive: true, force: true });
 }

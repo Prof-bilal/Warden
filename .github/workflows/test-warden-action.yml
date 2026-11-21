@@ -38,6 +38,7 @@ jobs:
           # file's directory, so template policies must be copied to the
           # workspace root before useusing them in place would grant the
           # templates/ directory instead of the workspace under test.
+          mkdir -p tmp
           cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
       
       - name: Install system dependencies
@@ -176,6 +177,7 @@ jobs:
         run: |
           (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
           "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          mkdir -p tmp
           cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
       
       - name: Install dependencies
@@ -278,14 +280,19 @@ jobs:
           # Workspace-root copies: policy-relative grants anchor at the policy
           # file's directory. tmp/ is pre-created because the sandboxed steps
           # below write only inside policy-granted paths.
-          mkdir -p tmp
+          mkdir -p tmp dist build out target node_modules vendor .next .cache coverage security-reports sarif-results
           cp .github/policies/build.yaml ./warden-build-policy.yaml
           cp .github/actions/warden-action/templates/security-scan.yaml ./warden-scan-policy.yaml
       
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
+
+      - name: Allow the selected Node runtime in the build fixture
+        run: |
+          runtime=$(node -p 'JSON.stringify(require("node:path").dirname(require("node:path").dirname(process.execPath)))')
+          sed -i "/^  read:$/a\    - $runtime" ./warden-build-policy.yaml
       
       - name: Test NPM build scenario
         uses: ./.github/actions/warden-action
@@ -397,6 +404,7 @@ jobs:
         run: |
           (cd warden-starter/warden && CGO_ENABLED=0 go build -o "$GITHUB_WORKSPACE/dist/warden-linux-amd64" ./cmd/warden)
           "$GITHUB_WORKSPACE/dist/warden-linux-amd64" version
+          mkdir -p tmp
           cp .github/actions/warden-action/templates/minimal.yaml ./warden-smoke-policy.yaml
       
       - name: Run with audit logging
