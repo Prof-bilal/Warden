@@ -12,6 +12,19 @@ use it as a specification.
 If a rule here conflicts with `ARCHITECTURE.md`, stop and open an issue. The
 conflict is a documentation bug, not permission to choose the weaker behavior.
 
+## How to read this document
+
+This document is a requirement for new or changed backends. It is not a claim
+that every current backend already meets every line.
+
+- **Guarantee today** means behavior implemented and documented in
+  `security.md` and `ARCHITECTURE.md` today.
+- **Requirement** means what a new or changed backend must satisfy. Where the
+  two differ, the current limitation is called out inline and in
+  [Current gaps](#15-current-gaps-in-this-repository).
+
+A new backend may not use an existing gap as precedent for a weaker guarantee.
+
 ---
 
 ## 1. Non-negotiables
@@ -185,8 +198,11 @@ boundary before they run anything.
 - `filesystem.deny` wins over `read` and `write`, including inside a granted
   tree. Deny must be resolved after paths are made absolute, and must survive
   symlinks, hardlinks, `..`, and case-insensitive aliases.
-- Symlink traversal must not escape a grant. Follow the same no-follow rules the
-  existing backends use; do not add a follow-everything shortcut.
+- Symlink traversal must not escape a grant. Resolve or no-follow on the host
+  before granting; do not add a follow-everything shortcut.
+- **Current limitation.** `security.md` records that the general run path does
+  not currently resolve or block symlinks inside a granted path. New backends
+  must close this gap, not inherit it.
 - A hardlink to a denied inode is a deny. Do not treat link identity as a
   separate namespace.
 - `protect_secrets` is deterministic filename protection. Do not replace it with
@@ -198,9 +214,10 @@ boundary before they run anything.
 
 - Default is no route: no direct DNS, no direct connect, no inbound listener
   reachable from the host.
-- The only egress path is the host-side proxy decision. A backend may implement
-  a different transport, but the decision point must stay on the host and must
-  consult `network.allow` before DNS or connect.
+- The only sanctioned egress is one that passes a host-side decision. No
+  workload-chosen route may bypass it. A backend may implement a different
+  transport, but the decision point must stay on the host and must consult
+  `network.allow` before DNS or connect.
 - `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` pointing at a loopback bridge is the
   current pattern; a new transport must preserve the same property: the
   sandboxed process cannot reach an address the host proxy did not allow.
@@ -208,6 +225,11 @@ boundary before they run anything.
   otherwise match. Treat loopback inside the guest as untrusted.
 - Do not add host networking, NAT, port forwarding, or inbound forwards without
   a schema change and an explicit deny-by-default rule.
+- **Current limitation.** The egress proxy mediates HTTP/HTTPS only. Raw TCP and
+  UDP are not covered by the hostname allowlist; the native backends block them
+  by removing the route, not by filtering. A backend that exposes a raw route
+  would bypass `network.allow`, so it must not, and must refuse network grants
+  if it cannot prevent one.
 
 ### Environment and secrets
 
@@ -238,6 +260,10 @@ boundary before they run anything.
 
 - `limits.memory_mb` and `limits.timeout_s` apply to the process tree, not only
   the root process.
+- **Current limitation.** Limit accounting covers the direct child process tree;
+  `security.md` records that grandchildren spawned via `fork()` + `exec()`
+  outside the tracked tree may escape limits. New backends must account for the
+  whole tree or refuse the limit.
 - A limit that the backend cannot enforce must refuse the run, not be ignored.
 - Report which limit fired as structured data, not just a non-zero exit.
 - CPU limits are not in the current schema. Until they are, do not claim CPU
@@ -250,6 +276,7 @@ boundary before they run anything.
 | Situation | Required behavior |
 | --- | --- |
 | Backend binary or host primitive missing | `sandboxerr.RefuseToRun`; no fallback to plain execution |
+| Required privilege unavailable (for example Windows WFP/ETW) | Refuse; do not run with the filter or audit session absent |
 | Probe inconclusive | Treat as unavailable |
 | Policy requests an unsupported capability | Refuse before spawn, name the capability |
 | Enforcement step fails mid-start | Tear down, return error, no partial run |
@@ -427,3 +454,14 @@ These are known and should be fixed before a new backend depends on them.
    `internal/sandbox/backend.go`), not a declared capability.
 10. Version 2 added `temporary_grants` and `guard`; `guard` is a package-review
     feature, not a sandbox feature, so backends must not try to enforce it.
+11. **Symlink handling.** `security.md` records that the general run path does
+    not currently resolve or block symlinks inside a granted path.
+12. **Limit accounting.** `security.md` records that limits cover the direct
+    child tree; grandchildren spawned via `fork()` + `exec()` outside the
+    tracked tree may escape limits.
+13. **Network protocol scope.** The egress proxy mediates HTTP/HTTPS only. Raw
+    TCP and UDP are not filtered by the allowlist; native backends rely on
+    having no route.
+14. **Windows privileges.** WFP and the ETW audit session require an elevated
+    (admin) process today. The no-elevation assumption holds for Linux and macOS
+    only. A second ETW controller can also force a closed failure.

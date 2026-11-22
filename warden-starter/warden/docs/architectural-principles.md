@@ -29,6 +29,11 @@ The system has one job:
 
 Everything else is subordinate to that.
 
+**Today vs. target.** This document defines the target every backend must
+satisfy. Current behavior, including known gaps, is documented in `security.md`
+and `ARCHITECTURE.md`. A documented current limitation is not precedent for a
+new backend; where the two differ, this document says so explicitly.
+
 ---
 
 ## 2. System model and trust boundaries
@@ -89,8 +94,11 @@ integrity of the host. Test fixtures use fake values only.
 
 - The host kernel, hypervisor, and the platform sandbox primitive are not
   already compromised.
-- Warden runs as the invoking user, not as root, and does not require elevated
-  privileges to enforce policy.
+- Warden runs as the invoking user. Linux and macOS native backends are
+  unprivileged; Windows AppContainer requires WFP and an ETW audit session,
+  which today need an elevated (admin) process, and Warden fails closed without
+  them. A backend must declare its privilege requirements and refuse when they
+  are absent.
 - The policy file and the Warden binary are trusted inputs. If they are
   attacker-controlled, the boundary is already lost.
 - The agent runtime may request anything and may lie about permissions. Warden
@@ -207,7 +215,16 @@ to every descendant.
   Protection is deterministic, not classifier-based.
 - **Process:** every descendant is contained. Executables come from granted
   paths. Escape primitives are blocked.
-- **Limits:** requested limits are enforced on the tree or the run is refused.
+- **Limits:** requested limits must be enforced on the tree, or the run refused.
+  Today limit accounting covers the direct child tree, and grandchildren spawned
+  via `fork()` + `exec()` outside it may escape limits (`security.md`); new
+  backends must close this gap.
+
+**Network, today vs. the requirement.** The current proxy mediates HTTP/HTTPS
+only. Raw TCP and UDP are not covered by the hostname allowlist; the native
+backends block them by removing the route, not by filtering. A new backend must
+preserve that property, and must refuse network grants if it cannot prevent a
+raw route.
 
 Transitivity is the hard part. A boundary that holds for the first process but
 not for `sh -c`, a language runtime's child, or a helper daemon is not a boundary.
@@ -267,6 +284,10 @@ Compatibility also means honest guarantees:
   audit on some backends).
 - Refuse policies that ask for guarantees the selected backend cannot provide.
 
+Published behavior today is in `security.md` and its Known Limitations table.
+This document's requirements are the target for new backends; a current
+limitation listed there is not precedent for a weaker new backend.
+
 ---
 
 ## 9. Workspace sharing and data flow
@@ -320,6 +341,11 @@ Requirements:
 - Loopback inside a guest or container is not a trust boundary. Do not expose
   host services on it.
 
+**Current limitation.** The proxy mediates HTTP/HTTPS only. Raw TCP and UDP
+cannot be filtered by it; the native backends prevent them by having no route.
+A backend that exposes a raw route bypasses `network.allow`, so it must refuse
+network grants unless it can prevent one.
+
 If a guest cannot be forced through the host decision point, the backend does
 not satisfy the network guarantee and must refuse network grants.
 
@@ -359,6 +385,9 @@ denial-of-service vector.
 
 - Enforce memory and wall-clock limits on the whole tree; report the limit that
   fired as structured data.
+- **Current gap.** Limit accounting covers the direct child tree; grandchildren
+  spawned via `fork()` + `exec()` outside the tracked tree may escape limits
+  (`security.md`). New backends must close this or refuse the limit.
 - Add CPU, process-count, and disk limits to the shared schema before any
   backend claims them. Until then, documentation and `doctor` must say they are
   unavailable.
@@ -408,8 +437,9 @@ New isolation mechanisms bring new trusted artifacts. Treat them like code.
 - **Update path.** Define how images are updated, how old images are retired,
   and how a compromised image is revoked.
 - **Host prerequisites.** Document required CPU features, kernel modules, device
-  access, entitlements, code signing, and nested-virtualization support.
-  `warden doctor` must check them and refuse when missing.
+  access, entitlements, code signing, nested-virtualization support, and any
+  elevated/admin requirement. Windows WFP and ETW need an elevated process
+  today; `warden doctor` must check prerequisites and refuse when missing.
 - **CI reality.** Some primitives are unavailable on hosted runners. Mark those
   tests as explicit skips with the required hardware, and run them in a
   scheduled or self-hosted job. A silent skip is a coverage lie.
@@ -436,6 +466,9 @@ on a platform users actually run. Before accepting one, answer:
 6. **What is the trusted computing base?** Count the new components and say why
    each must be trusted.
 7. **What is the performance cost?** Cold start and steady state, measured.
+8. **What privilege does it require?** Root, admin, entitlements, or device
+   access? Does it fail closed when the privilege is absent, and does `doctor`
+   explain the requirement?
 
 If the answers are "weaker audit, new supply chain, no CI, and a schema fork,"
 the correct decision is usually not to add the backend.
