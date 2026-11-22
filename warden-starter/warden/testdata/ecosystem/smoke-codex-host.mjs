@@ -54,7 +54,8 @@ try {
   const write = await call("write_file", { path: input.selected, content: "overwrite" }); assert(write.error || write.result.isError);
   const outside = await call("read_text_file", { path: input.outside }); assert(outside.error || outside.result.isError);
   assert.match(await readFile(input.selected, "utf8"), /release-test-sentinel/);
-  console.log(JSON.stringify({ status: "pass", host: version.stdout.trim(), backend: "linux", upstream: "@modelcontextprotocol/server-filesystem@2026.8.31", transport: "npm launcher + stdio", checks: ["actual app-server MCP startup/discovery", "allowed read", "OS-denied write", "OS-denied outside read", "discovery filtering", "no model turn or production credentials"], evidenceDirectory: root }));
+  const pkg = JSON.parse(await readFile(join(dirname(input.upstream), "..", "package.json"), "utf8"));
+  console.log(JSON.stringify({ status: "pass", host: version.stdout.trim(), backend: "linux", upstream: `${pkg.name}@${pkg.version}`, transport: "npm launcher + stdio", checks: ["actual app-server MCP startup/discovery", "allowed read", "OS-denied write", "OS-denied outside read", "discovery filtering", "no model turn or production credentials"], evidenceDirectory: root }));
 } finally {
   server.stdin.end();
   if (server.exitCode === null) server.kill("SIGTERM");

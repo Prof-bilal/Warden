@@ -229,7 +229,7 @@ func cmdGatewayRun(args []string) {
 		}
 		failGateway("run", err)
 	}
-	for _, advisory := range p.UnimplementedAdvisories() {
+	for _, advisory := range p.Advisories() {
 		fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
 	}
 
@@ -282,7 +282,7 @@ func cmdGatewayRunApproval(configPath, policiesDir string, entry gateway.ServerE
 			}
 			failGateway("run", err)
 		}
-		for _, advisory := range p.UnimplementedAdvisories() {
+		for _, advisory := range p.Advisories() {
 			fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
 		}
 		cmd := append(append([]string{}, entry.Command...), extra...)

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Warden 2.0 · Introduction</title>
+<!-- Copy the three named videos from ../../public/videos into assets before rendering. -->
+<style>
+  html, body { margin: 0; }
+  #warden-v2 { width: 1920px; height: 1080px; background: #111714; color: #f2f5ee; font-family: system-ui, sans-serif; }
+  .card { position: absolute; inset: 150px 192px auto; }
+  .label { margin: 0 0 30px; color: #bef488; font: 32px monospace; letter-spacing: .13em; }
+  h1, h2 { margin: 0; max-width: 1400px; font-size: 102px; line-height: 1.03; letter-spacing: -.042em; }
+  .summary { margin: 34px 0 0; max-width: 1120px; color: #c6d1c4; font-size: 43px; line-height: 1.32; }
+  .path { color: #bef488; font: 38px monospace; margin-top: 56px; }
+  .chapter { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: contain; }
+</style>
+<main id="warden-v2" data-composition-id="warden-v2" data-width="1920" data-height="1080" data-duration="70" data-fps="30">
+  <section id="title" class="card clip" data-start="0" data-duration="7" data-track-index="0">
+    <div>
+      <p class="label">WARDEN 2.0</p>
+      <h1>Install, run, and review MCP servers.</h1>
+      <p class="summary">Three demonstrations from Warden’s Linux test fixtures.</p>
+    </div>
+  </section>
+  <video id="filesystem-demo" class="chapter clip" data-start="7" data-duration="9" data-track-index="0" src="assets/warden-zero-config.mp4" muted playsinline></video>
+  <video id="guard-demo" class="chapter clip" data-start="16" data-duration="15" data-track-index="0" src="assets/warden-install-guard.mp4" muted playsinline></video>
+  <video id="pin-demo" class="chapter clip" data-start="31" data-duration="32" data-track-index="0" src="assets/warden-mcp-tool-pins.mp4" muted playsinline></video>
+  <section id="upgrade" class="card clip" data-start="63" data-duration="7" data-track-index="0">
+    <div>
+      <p class="label">WARDEN 2.0</p>
+      <h2>Review before upgrading.</h2>
+      <p class="summary">Preview your policy and launcher changes with <code>warden migrate</code>.</p>
+      <p class="path">warden.blog/v2</p>
+    </div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script>
+  const timeline = gsap.timeline({ paused: true });
+  timeline.from("#title .summary", { y: 12, opacity: 0, duration: .45 }, 1.2);
+  timeline.from("#upgrade .path", { y: 12, opacity: 0, duration: .45 }, 64);
+  window.__timelines = { "warden-v2": timeline };
+</script>
+</html>

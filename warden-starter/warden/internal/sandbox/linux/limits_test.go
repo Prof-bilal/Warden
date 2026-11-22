@@ -39,6 +39,13 @@ func TestWaitWithLimitsTimeout(t *testing.T) {
 	}
 }
 
+func TestWaitWithLimitsTemporaryGrantExpiry(t *testing.T) {
+	breach, err := runLimitHelper(t, "sleep", policy.Limits{GrantDeadline: time.Now().Add(150 * time.Millisecond)})
+	if breach == nil || breach.Kind != "temporary grant expired" {
+		t.Fatalf("breach = %#v, wait error = %v", breach, err)
+	}
+}
+
 func TestWaitWithLimitsMemory(t *testing.T) {
 	breach, err := runLimitHelper(t, "memory", policy.Limits{MemoryMB: 8})
 	if breach == nil || breach.Kind != "memory" {

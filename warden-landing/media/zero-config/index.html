@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Warden · Filesystem MCP</title>
+<style>
+  html, body { margin: 0; }
+  * { box-sizing: border-box; }
+  #zero-config {
+    width: 1920px; height: 1080px; padding: 112px 128px;
+    background: #111714; color: #eeefe9;
+    font-family: ui-monospace, "DejaVu Sans Mono", monospace;
+  }
+  .terminal { position: absolute; inset: 112px 128px; background: #161f19; border: 2px solid #455849; }
+  .title { margin: 0; padding: 39px 52px; border-bottom: 2px solid #455849; color: #bdc8b8; font-size: 32px; }
+  .shell { padding: 54px 52px; }
+  .command { color: #f2f5ee; font-size: 43px; letter-spacing: -1.4px; margin: 0 0 39px; }
+  .command span, .allowed { color: #bef488; }
+  .profile { color: #bdc8b8; font-size: 32px; margin: 0 0 30px; }
+  .check { padding: 23px 0; border-top: 2px solid #34443a; font-size: 37px; display: flex; justify-content: space-between; }
+  .denied { color: #ffd3a2; }
+</style>
+<div id="zero-config" data-composition-id="zero-config" data-width="1920" data-height="1080" data-duration="9" data-fps="30">
+  <div id="terminal-clip" class="terminal clip" data-start="0" data-duration="9" data-track-index="0">
+    <div class="title">WARDEN / FILESYSTEM MCP</div>
+    <div class="shell">
+      <div class="command"><span>$</span> warden run npx @modelcontextprotocol/server-filesystem</div>
+      <div class="profile">Linux stdio smoke test · Filesystem 2.3.0</div>
+      <div class="check"><span>Read the shared file</span><span class="allowed">ALLOWED</span></div>
+      <div class="check"><span>Write to the shared folder</span><span class="denied">BLOCKED</span></div>
+      <div class="check"><span>Read outside the shared folder</span><span class="denied">BLOCKED</span></div>
+      <div class="check"><span>Read the protected .env file</span><span class="denied">BLOCKED</span></div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script>
+  const timeline = gsap.timeline({ paused: true });
+  timeline.from(".profile", { opacity: 0, duration: 0.3 }, 1.2);
+  timeline.from(".check", { y: 10, opacity: 0, duration: 0.25, stagger: 0.4 }, 1.8);
+  window.__timelines = { "zero-config": timeline };
+</script>
+</html>

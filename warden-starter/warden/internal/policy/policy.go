@@ -28,7 +28,10 @@ import (
 // Fields correspond one-to-one with the schema documented in
 // ARCHITECTURE.md. All filesystem paths are absolute after ResolvePaths.
 type Policy struct {
-	Agent *Agent `yaml:"agent,omitempty"`
+	Version         int              `yaml:"version,omitempty"`
+	TemporaryGrants []TemporaryGrant `yaml:"temporary_grants,omitempty"`
+	Guard           *InstallGuard    `yaml:"guard,omitempty"`
+	Agent           *Agent           `yaml:"agent,omitempty"`
 	// ReadOnlyPaths are supervisor-owned overlays, never policy input.
 	ReadOnlyPaths []string `yaml:"-"`
 	// AgentSocket is a supervisor-owned credential broker endpoint. It is
@@ -56,6 +59,12 @@ type Policy struct {
 	// MCP contains configuration for MCP client proxy mode (optional).
 	// When present, enables MCP proxy functionality with specified settings.
 	MCP *MCP `yaml:"mcp,omitempty"`
+}
+
+// InstallGuard lets a version 2 policy require stricter package reviews.
+type InstallGuard struct {
+	MinimumReleaseAge time.Duration `yaml:"minimum_release_age,omitempty"`
+	Strict            bool          `yaml:"strict,omitempty"`
 }
 
 // Filesystem is the filesystem section of a policy.
@@ -89,8 +98,9 @@ type Env struct {
 // Limits is the resource-limits section of a policy. Parsed for schema
 // compatibility; enforcement is M3.
 type Limits struct {
-	MemoryMB int `yaml:"memory_mb,omitempty"`
-	TimeoutS int `yaml:"timeout_s,omitempty"`
+	MemoryMB      int       `yaml:"memory_mb,omitempty"`
+	TimeoutS      int       `yaml:"timeout_s,omitempty"`
+	GrantDeadline time.Time `yaml:"-" json:"-"`
 }
 
 // MCP is the MCP proxy section of a policy. When present, enables MCP
@@ -105,7 +115,7 @@ type MCP struct {
 	Transport string `yaml:"transport,omitempty"`
 
 	// AllowTools lists MCP tool names that are allowed to be called.
-	// Empty list means all tools are allowed. Deny-by-default when specified.
+	// An empty list denies all tool calls.
 	AllowTools []string `yaml:"allow_tools,omitempty"`
 
 	// DenyPatterns lists regex patterns that will block requests/responses
@@ -130,17 +140,39 @@ func Load(path string) (Policy, error) {
 // LoadVerified binds a reviewed configuration to the exact bytes being parsed.
 // An empty digest preserves the normal editable-policy workflow.
 func LoadVerified(path, expectedSHA256 string) (Policy, error) {
+	p, _, err := LoadVerifiedWithDigest(path, expectedSHA256)
+	return p, err
+}
+
+// LoadVerifiedWithDigest also returns the SHA-256 of the bytes used to load the policy.
+func LoadVerifiedWithDigest(path, expectedSHA256 string) (Policy, string, error) {
+	return loadVerifiedAt(path, expectedSHA256, time.Now())
+}
+
+func loadVerifiedAt(path, expectedSHA256 string, now time.Time) (Policy, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return Policy{}, fmt.Errorf("read policy %q: %w", path, err)
+		return Policy{}, "", fmt.Errorf("read policy %q: %w", path, err)
 	}
-	if expectedSHA256 != "" {
-		h := sha256.Sum256(data)
-		if hex.EncodeToString(h[:]) != expectedSHA256 {
-			return Policy{}, fmt.Errorf("policy changed since wrapping; undo and review before wrapping again")
-		}
+	hash := sha256.Sum256(data)
+	digest := hex.EncodeToString(hash[:])
+	if expectedSHA256 != "" && digest != expectedSHA256 {
+		return Policy{}, "", fmt.Errorf("policy changed since wrapping; undo and review before wrapping again")
 	}
 
+	p, err := parseAt(path, data, now)
+	if err != nil {
+		return Policy{}, "", err
+	}
+	return p, digest, nil
+}
+
+// Parse validates policy bytes and resolves relative paths against path's directory.
+func Parse(path string, data []byte) (Policy, error) {
+	return parseAt(path, data, time.Now())
+}
+
+func parseAt(path string, data []byte, now time.Time) (Policy, error) {
 	var p Policy
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true) // fail closed on unknown/typo'd keys
@@ -161,6 +193,7 @@ func LoadVerified(path, expectedSHA256 string) (Policy, error) {
 	if err := p.Validate(); err != nil {
 		return Policy{}, fmt.Errorf("policy %q: %w", path, err)
 	}
+	p.dropExpiredGrants(now)
 	return p, nil
 }
 
@@ -210,6 +243,16 @@ func (p *Policy) ResolvePaths(dir string) error {
 		}
 		p.Filesystem.Deny[i] = r
 	}
+	for i := range p.TemporaryGrants {
+		grant := &p.TemporaryGrants[i]
+		if grant.Path != "" {
+			r, err := resolve(absDir, grant.Path)
+			if err != nil {
+				return fmt.Errorf("temporary_grants[%d].path: %w", i, err)
+			}
+			grant.Path = r
+		}
+	}
 	return nil
 }
 
@@ -235,6 +278,17 @@ func resolve(dir, path string) (string, error) {
 // called after ResolvePaths (so grants are absolute) and before the policy
 // is handed to a sandbox backend.
 func (p *Policy) Validate() error {
+	if err := p.validateTemporaryGrants(); err != nil {
+		return err
+	}
+	if p.Guard != nil {
+		if p.Version != 2 {
+			return fmt.Errorf("guard requires policy version 2")
+		}
+		if p.Guard.MinimumReleaseAge < 0 {
+			return fmt.Errorf("guard.minimum_release_age must be nonnegative")
+		}
+	}
 	if p.Agent != nil {
 		if err := p.Agent.validate(*p); err != nil {
 			return err
@@ -309,9 +363,7 @@ func (p *Policy) Validate() error {
 func (p Policy) DeniedPaths() ([]string, error) {
 	patterns := append([]string(nil), p.Filesystem.Deny...)
 	if p.Filesystem.ProtectSecrets {
-		patterns = append(patterns,
-			".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "credentials*",
-			"secrets", ".ssh", ".aws", ".azure", ".kube", ".docker", ".npmrc", ".pypirc")
+		patterns = append(patterns, secretPathPatterns...)
 	}
 	if len(patterns) == 0 {
 		return nil, nil
@@ -323,9 +375,10 @@ func (p Policy) DeniedPaths() ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("inspect filesystem grant %q: %w", root, err)
 		}
-		if matchesAnyDeny(root, root, patterns) && !seen[root] {
+		if (matchesAnyDeny(root, root, patterns) || (p.Filesystem.ProtectSecrets && IsProtectedSecretPath(root))) && !seen[root] {
 			denied = append(denied, root)
 			seen[root] = true
+			continue
 		}
 		if !info.IsDir() {
 			continue
@@ -352,6 +405,21 @@ func (p Policy) DeniedPaths() ([]string, error) {
 	}
 	sort.Strings(denied)
 	return denied, nil
+}
+
+var secretPathPatterns = []string{".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "credentials*",
+	"secrets", ".ssh", ".aws", ".azure", ".kube", ".docker", ".npmrc", ".pypirc"}
+
+// IsProtectedSecretPath checks each path component for built-in secret masks.
+func IsProtectedSecretPath(path string) bool {
+	for _, part := range strings.Split(filepath.ToSlash(filepath.Clean(path)), "/") {
+		for _, pattern := range secretPathPatterns {
+			if matched, _ := filepath.Match(pattern, strings.ToLower(part)); matched {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func matchesAnyDeny(path, root string, patterns []string) bool {
@@ -506,9 +574,10 @@ func (p *Policy) EnvDenylist() []string {
 	return append([]string(nil), p.Env.Deny...)
 }
 
-// UnimplementedAdvisories returns human-readable warnings for policy
-// sections that are parsed but not yet enforced by this build.
-func (p *Policy) UnimplementedAdvisories() []string {
-	var out []string
-	return out
+// Advisories reports accepted policy features that need the operator's attention.
+func (p *Policy) Advisories() []string {
+	if p.Version == 1 {
+		return []string{"policy schema version 1 is deprecated; preview the upgrade with warden migrate"}
+	}
+	return nil
 }

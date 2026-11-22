@@ -5,6 +5,25 @@ import (
 	"testing"
 )
 
+func TestSplitRunCommand(t *testing.T) {
+	flags := []string{"--policy", "policy.yaml", "--approve-timeout", "5s"}
+	command := []string{"launcher", "--policy-sha256", "launcher-value", "--approve", "--dry-run"}
+	for _, separator := range [][]string{nil, {"--"}} {
+		args := append(append(append([]string{}, flags...), separator...), command...)
+		gotFlags, gotCommand := splitRunCommand(args)
+		if !reflect.DeepEqual(gotFlags, flags) || !reflect.DeepEqual(gotCommand, command) {
+			t.Fatalf("split %v into %v and %v", args, gotFlags, gotCommand)
+		}
+	}
+}
+
+func TestParseRunDryRun(t *testing.T) {
+	path, _, _, dryRun, err := parseRunArgs([]string{"--policy", "policy.yaml", "--dry-run"})
+	if err != nil || !dryRun || path != "policy.yaml" {
+		t.Fatalf("parse dry-run = %q, %t, %v", path, dryRun, err)
+	}
+}
+
 func TestParseRunArgs(t *testing.T) {
 	cases := []struct {
 		name        string
@@ -53,8 +72,13 @@ func TestParseRunArgs(t *testing.T) {
 			wantCmd:    nil,
 		},
 		{
-			name:    "missing policy",
+			name:    "implicit policy",
 			args:    []string{"/usr/bin/node"},
+			wantCmd: []string{"/usr/bin/node"},
+		},
+		{
+			name:    "empty policy",
+			args:    []string{"--policy="},
 			wantErr: true,
 		},
 		{
@@ -81,7 +105,7 @@ func TestParseRunArgs(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			gotPolicy, gotBackend, gotCmd, err := parseRunArgs(c.args)
+			gotPolicy, gotBackend, gotCmd, _, err := parseRunArgs(c.args)
 			if c.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got policy=%q backend=%q cmd=%v", gotPolicy, gotBackend, gotCmd)
@@ -109,11 +133,11 @@ func TestParseM3Args(t *testing.T) {
 	if err != nil || log != "trace.jsonl" || output != "starter.yaml" || !reflect.DeepEqual(cmd, []string{"/usr/bin/node", "server.js"}) {
 		t.Fatalf("parseInitArgs = %q, %q, %v, %v", log, output, cmd, err)
 	}
-	log, tail, follow, err := parseLogsArgs([]string{"--log", "audit.jsonl", "--tail", "10", "--follow"})
+	log, tail, follow, _, err := parseLogsArgs([]string{"--log", "audit.jsonl", "--tail", "10", "--follow"})
 	if err != nil || log != "audit.jsonl" || tail != 10 || !follow {
 		t.Fatalf("parseLogsArgs = %q, %d, %v, %v", log, tail, follow, err)
 	}
-	if _, _, _, err := parseLogsArgs([]string{"--tail", "nope"}); err == nil {
+	if _, _, _, _, err := parseLogsArgs([]string{"--tail", "nope"}); err == nil {
 		t.Fatal("expected invalid tail error")
 	}
 }

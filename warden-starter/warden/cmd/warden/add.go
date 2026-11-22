@@ -255,9 +255,9 @@ func preparedEntry(runtimeDir, pkgRoot string) (string, bool) {
 // generic npm package.
 type addSource struct {
 	policyBody []byte
-	upstream   []string
 	envNames   []string
 	label      string
+	provenance string
 }
 
 // resolveAddSource turns the requested server into a policy body, upstream
@@ -266,43 +266,7 @@ type addSource struct {
 // policy extended by the --allow-* flags.
 func resolveAddSource(o addOptions) (src addSource, runtimeDir string, err error) {
 	if pack, err := packs.Find(o.server); err == nil {
-		if !strings.HasPrefix(pack.Artifact, "@") {
-			return src, "", fmt.Errorf("pack %q needs a manually prepared runtime; see warden packs prepare", pack.ID)
-		}
-		runtimeDir := o.runtime
-		if runtimeDir == "" {
-			runtimeDir = defaultRuntimeDir(pack.ID, "default")
-		}
-		if _, ok := preparedEntry(runtimeDir, filepath.Join(runtimeDir, "node_modules", filepath.FromSlash(pack.Artifact))); !ok {
-			if _, err := os.Lstat(runtimeDir); err == nil {
-				return src, "", fmt.Errorf("runtime directory %s exists but is not a prepared %s@%s install; remove it or pass --runtime", runtimeDir, pack.Artifact, pack.Version)
-			}
-			fmt.Fprintf(os.Stderr, "Preparing %s@%s inside the sandbox (install scripts disabled)...\n", pack.Artifact, pack.Version)
-			if err := prepareNPMRuntime(pack.Artifact+"@"+pack.Version, runtimeDir, o.backend); err != nil {
-				return src, "", err
-			}
-		}
-		dataPath := o.data
-		if pack.PathMode != "none" && dataPath == "" {
-			dataPath = filepath.Join(wardenDataHome(), "warden", "data", pack.ID)
-			if err := os.MkdirAll(dataPath, 0700); err != nil {
-				return src, "", err
-			}
-		}
-		argv, err := packs.PreparedCommand(pack.ID, runtimeDir, dataPath)
-		if err != nil {
-			return src, "", err
-		}
-		body, err := packs.Generate(pack.ID, dataPath, runtimeDir)
-		if err != nil {
-			return src, "", err
-		}
-		encoded, _ := json.Marshal(argv)
-		src.policyBody = append([]byte("command: "+string(encoded)+"\n"), body...)
-		src.upstream = argv
-		src.envNames = pack.Env
-		src.label = fmt.Sprintf("%s (%s@%s)", pack.Name, pack.Artifact, pack.Version)
-		return src, runtimeDir, nil
+		return resolveFromPack(pack, o.runtime, o.data, o.backend)
 	}
 	name, version, ok := splitNPMSpec(o.server)
 	if !ok {
@@ -376,23 +340,53 @@ func resolveAddSource(o addOptions) (src addSource, runtimeDir string, err error
 	argv := []string{node, entry}
 	encoded, _ := json.Marshal(argv)
 	src.policyBody = append([]byte("command: "+string(encoded)+"\n"), body...)
-	src.upstream = argv
 	src.envNames = o.allowEnv
 	src.label = spec + " (deny-by-default starter grants)"
 	return src, runtimeDir, nil
 }
 
-// resolveBYOPolicy handles --policy: the caller's reviewed policy replaces
-// the generated one, and its command becomes the upstream.
-func resolveBYOPolicy(o addOptions) (string, []string, error) {
-	p, err := policy.Load(o.policyPath)
+func resolveFromPack(pack packs.Pack, runtimeDir, dataPath, backend string) (addSource, string, error) {
+	var src addSource
+	if !strings.HasPrefix(pack.Artifact, "@") {
+		return src, "", fmt.Errorf("pack %q needs a manually prepared runtime; see warden packs prepare", pack.ID)
+	}
+	if runtimeDir == "" {
+		runtimeDir = defaultRuntimeDir(pack.ID, "default")
+	}
+	if _, ok := preparedEntry(runtimeDir, filepath.Join(runtimeDir, "node_modules", filepath.FromSlash(pack.Artifact))); !ok {
+		if _, err := os.Lstat(runtimeDir); err == nil {
+			return src, "", fmt.Errorf("runtime directory %s exists but is not a prepared %s@%s install; remove it or pass --runtime", runtimeDir, pack.Artifact, pack.Version)
+		}
+		if runtimeDir == defaultRuntimeDir(pack.ID, "default") {
+			if err := os.MkdirAll(filepath.Dir(runtimeDir), 0700); err != nil {
+				return src, "", err
+			}
+		}
+		fmt.Fprintf(os.Stderr, "Preparing %s@%s inside the sandbox (install scripts disabled)...\n", pack.Artifact, pack.Version)
+		if err := prepareNPMRuntime(pack.Artifact+"@"+pack.Version, runtimeDir, backend); err != nil {
+			return src, "", err
+		}
+	}
+	if pack.PathMode != "none" && dataPath == "" {
+		dataPath = filepath.Join(wardenDataHome(), "warden", "data", pack.ID)
+		if err := os.MkdirAll(dataPath, 0700); err != nil {
+			return src, "", err
+		}
+	}
+	argv, err := packs.PreparedCommand(pack.ID, runtimeDir, dataPath)
 	if err != nil {
-		return "", nil, err
+		return src, "", err
 	}
-	if len(p.Command) == 0 {
-		return "", nil, fmt.Errorf("--policy must include a command; it becomes the sandboxed launcher")
+	body, err := packs.Generate(pack.ID, dataPath, runtimeDir)
+	if err != nil {
+		return src, "", err
 	}
-	return o.policyPath, p.Command, nil
+	encoded, _ := json.Marshal(argv)
+	src.policyBody = append([]byte("command: "+string(encoded)+"\n"), body...)
+	src.envNames = pack.Env
+	src.label = fmt.Sprintf("%s (%s@%s)", pack.Name, pack.Artifact, pack.Version)
+	src.provenance = "pack"
+	return src, runtimeDir, nil
 }
 
 // writeAddPolicy persists the generated policy, refusing to silently replace
@@ -458,15 +452,10 @@ func cmdAdd(args []string) error {
 		return err
 	}
 
-	var policyPath string
-	var upstream []string
+	source := policySource{path: o.policyPath}
 	var label string
 	var envNames []string
 	if o.policyPath != "" {
-		policyPath, upstream, err = resolveBYOPolicy(o)
-		if err != nil {
-			return err
-		}
 		label = o.server + " (own policy)"
 	} else {
 		var src addSource
@@ -475,11 +464,12 @@ func cmdAdd(args []string) error {
 		if err != nil {
 			return err
 		}
-		policyPath = filepath.Join(runtimeDir, "policy.yaml")
-		if err := writeAddPolicy(policyPath, src.policyBody); err != nil {
+		source.path = filepath.Join(runtimeDir, "policy.yaml")
+		source.generated = src.policyBody
+		source.provenance = src.provenance
+		if err := writeAddPolicy(source.path, src.policyBody); err != nil {
 			return err
 		}
-		upstream = src.upstream
 		label = src.label
 		envNames = src.envNames
 	}
@@ -498,13 +488,12 @@ func cmdAdd(args []string) error {
 		return fmt.Errorf("--name: %v", err)
 	}
 
-	policyBytes, err := os.ReadFile(policyPath)
+	p, digest, provenance, err := resolvePolicy(source)
 	if err != nil {
 		return fmt.Errorf("policy failed validation: %v", err)
 	}
-	p, err := policy.LoadVerified(policyPath, clientconfig.Hash(policyBytes))
-	if err != nil {
-		return fmt.Errorf("policy failed validation: %v", err)
+	if len(p.Command) == 0 {
+		return fmt.Errorf("--policy must include a command; it becomes the sandboxed launcher")
 	}
 
 	wardenBin, err := os.Executable()
@@ -516,9 +505,12 @@ func cmdAdd(args []string) error {
 			return err
 		}
 	}
-	plan, err := clientconfig.PrepareCreate(configPath, c.Format, entryName, policyPath, wardenBin, o.backend, upstream)
+	plan, err := clientconfig.PrepareCreate(configPath, c.Format, entryName, source.path, wardenBin, o.backend, p.Command)
 	if err != nil {
 		return err
+	}
+	if plan.PolicyHash != digest {
+		return fmt.Errorf("policy changed during setup; no client changes applied")
 	}
 
 	// Preview: grants and paths only, never command arguments or secrets.
@@ -530,7 +522,7 @@ func cmdAdd(args []string) error {
 	fmt.Fprintf(os.Stderr, "  Client:  %s\n", c.Name)
 	fmt.Fprintf(os.Stderr, "  Config:  %s (%s)\n", plan.Config, state)
 	fmt.Fprintf(os.Stderr, "  Entry:   %s\n", entryName)
-	fmt.Fprintf(os.Stderr, "  Policy:  %s (sha256 %s)\n", plan.Policy, shortHash(plan.PolicyHash))
+	fmt.Fprintf(os.Stderr, "  Policy:  %s (%s, sha256 %s)\n", plan.Policy, provenance, shortHash(digest))
 	fmt.Fprintf(os.Stderr, "  Sandbox: warden run --policy ... --backend %s -- <upstream>\n", o.backend)
 	grants, _ := json.Marshal(struct {
 		Read     []string `json:"read"`

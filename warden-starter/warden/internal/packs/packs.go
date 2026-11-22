@@ -1,4 +1,4 @@
-// Package packs supplies reviewed candidate profiles without broad default grants.
+// Package packs supplies versioned policy profiles without broad default grants.
 package packs
 
 import (
@@ -52,6 +52,19 @@ func Find(id string) (Pack, error) {
 	return Pack{}, fmt.Errorf("unknown pack %q; use warden packs list", id)
 }
 
+// FindByArtifact selects only reviewed profiles for an exact artifact and version.
+func FindByArtifact(name, version string) (Pack, bool) {
+	if name == "" || version == "" {
+		return Pack{}, false
+	}
+	for _, p := range List() {
+		if p.Status == "reviewed" && p.Artifact == name && p.Version == version {
+			return p, true
+		}
+	}
+	return Pack{}, false
+}
+
 // Generate grants only user-selected data and prepared runtime directories.
 // It never installs or launches an upstream, and never copies credential values.
 func Generate(id, dataPath, runtimePath string) ([]byte, error) {
@@ -63,7 +76,7 @@ func Generate(id, dataPath, runtimePath string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("runtime: %w", err)
 	}
-	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{runtimePath}}, Network: policy.Network{Allow: pack.Hosts}, Env: policy.Env{Allow: pack.Env}, Limits: policy.Limits{MemoryMB: 512, TimeoutS: 3600}}
+	p := policy.Policy{Filesystem: policy.Filesystem{Read: []string{runtimePath}, ProtectSecrets: pack.Status == "reviewed"}, Network: policy.Network{Allow: pack.Hosts}, Env: policy.Env{Allow: pack.Env}, Limits: policy.Limits{MemoryMB: 512, TimeoutS: 3600}}
 	if pack.PathMode != "none" {
 		dataPath, err = narrowDirectory(dataPath)
 		if err != nil {
@@ -92,7 +105,7 @@ func Generate(id, dataPath, runtimePath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	header := fmt.Sprintf("# Warden candidate pack: %s (%s@%s)\n# Reviewed: %s; upstream/runtime workflow not certified.\n# %s\n# Runtime must be prepared separately; no dependency download grants.\n", pack.ID, pack.Artifact, pack.Version, pack.Reviewed, pack.Note)
+	header := fmt.Sprintf("# Warden %s pack: %s (%s@%s)\n# Profile date: %s\n# %s\n# Runtime must be prepared separately; no dependency download grants.\n", pack.Status, pack.ID, pack.Artifact, pack.Version, pack.Reviewed, pack.Note)
 	return append([]byte(header), b...), nil
 }
 

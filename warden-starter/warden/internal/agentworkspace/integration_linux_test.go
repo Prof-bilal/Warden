@@ -15,6 +15,9 @@ import (
 func TestLinuxProjectionBoundary(t *testing.T) {
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
+		if os.Getenv("WARDEN_REQUIRE_AGENT_E2E") == "1" {
+			t.Fatal("bubblewrap is required for the Linux agent workspace integration test")
+		}
 		t.Skip("bubblewrap unavailable")
 	}
 	probe := exec.Command(bwrap, "--unshare-user", "--unshare-net", "--ro-bind", "/usr", "/usr", "--ro-bind", "/lib", "/lib", "--ro-bind", "/lib64", "/lib64", "/usr/bin/true")

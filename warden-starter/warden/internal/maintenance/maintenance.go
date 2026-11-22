@@ -19,10 +19,15 @@ type Change struct {
 	Removed []string `json:"removed"`
 }
 type Diff struct {
-	Changes        []Change `json:"changes"`
-	CommandChanged bool     `json:"command_changed"`
-	LimitsExpanded bool     `json:"limits_expanded"`
-	ReviewRequired bool     `json:"review_required"`
+	Changes                   []Change `json:"changes"`
+	CommandChanged            bool     `json:"command_changed"`
+	LimitsExpanded            bool     `json:"limits_expanded"`
+	AgentChanged              bool     `json:"agent_changed"`
+	MCPChanged                bool     `json:"mcp_changed"`
+	TemporaryGrantsExpanded   bool     `json:"temporary_grants_expanded"`
+	InstallGuardWeakened      bool     `json:"install_guard_weakened"`
+	SecretsProtectionDisabled bool     `json:"secrets_protection_disabled"`
+	ReviewRequired            bool     `json:"review_required"`
 }
 
 func Compare(a, b policy.Policy) Diff {
@@ -30,7 +35,15 @@ func Compare(a, b policy.Policy) Diff {
 	for _, pair := range []struct {
 		name string
 		a, b []string
-	}{{"read", a.Filesystem.Read, b.Filesystem.Read}, {"write", a.Filesystem.Write, b.Filesystem.Write}, {"network", a.Network.Allow, b.Network.Allow}, {"env_names", a.Env.Allow, b.Env.Allow}} {
+		deny bool
+	}{
+		{"read", a.Filesystem.Read, b.Filesystem.Read, false},
+		{"write", a.Filesystem.Write, b.Filesystem.Write, false},
+		{"network", a.Network.Allow, b.Network.Allow, false},
+		{"env_names", a.Env.Allow, b.Env.Allow, false},
+		{"filesystem_deny", a.Filesystem.Deny, b.Filesystem.Deny, true},
+		{"env_deny", a.Env.Deny, b.Env.Deny, true},
+	} {
 		old, new := map[string]bool{}, map[string]bool{}
 		for _, v := range pair.a {
 			old[v] = true
@@ -52,7 +65,7 @@ func Compare(a, b policy.Policy) Diff {
 		sort.Strings(c.Added)
 		sort.Strings(c.Removed)
 		d.Changes = append(d.Changes, c)
-		if len(c.Added) > 0 {
+		if (!pair.deny && len(c.Added) > 0) || (pair.deny && len(c.Removed) > 0) {
 			d.ReviewRequired = true
 		}
 	}
@@ -60,14 +73,37 @@ func Compare(a, b policy.Policy) Diff {
 	bc, _ := json.Marshal(b.Command)
 	d.CommandChanged = string(ac) != string(bc)
 	d.LimitsExpanded = (a.Limits.MemoryMB > 0 && (b.Limits.MemoryMB == 0 || b.Limits.MemoryMB > a.Limits.MemoryMB)) || (a.Limits.TimeoutS > 0 && (b.Limits.TimeoutS == 0 || b.Limits.TimeoutS > a.Limits.TimeoutS))
-	d.ReviewRequired = d.ReviewRequired || d.CommandChanged || d.LimitsExpanded
+	d.SecretsProtectionDisabled = a.Filesystem.ProtectSecrets && !b.Filesystem.ProtectSecrets
 	// Existing MCP proxy policies may change authorization independently of
 	// process grants. Mark every MCP change for review without printing bodies.
 	am, _ := json.Marshal(a.MCP)
 	bm, _ := json.Marshal(b.MCP)
-	if string(am) != string(bm) {
-		d.ReviewRequired = true
+	d.MCPChanged = string(am) != string(bm)
+	aa, _ := json.Marshal(a.Agent)
+	ba, _ := json.Marshal(b.Agent)
+	d.AgentChanged = string(aa) != string(ba)
+	if a.Guard != nil {
+		var next policy.InstallGuard
+		if b.Guard != nil {
+			next = *b.Guard
+		}
+		d.InstallGuardWeakened = next.MinimumReleaseAge < a.Guard.MinimumReleaseAge ||
+			(a.Guard.Strict && !next.Strict)
 	}
+	oldTemporary := make(map[[2]string]time.Time)
+	for _, grant := range a.TemporaryGrants {
+		key := [2]string{grant.Host, grant.Path}
+		if grant.Expires.After(oldTemporary[key]) {
+			oldTemporary[key] = grant.Expires
+		}
+	}
+	for _, grant := range b.TemporaryGrants {
+		if grant.Expires.After(oldTemporary[[2]string{grant.Host, grant.Path}]) {
+			d.TemporaryGrantsExpanded = true
+		}
+	}
+	d.ReviewRequired = d.ReviewRequired || d.CommandChanged || d.LimitsExpanded ||
+		d.SecretsProtectionDisabled || d.MCPChanged || d.AgentChanged || d.TemporaryGrantsExpanded || d.InstallGuardWeakened
 	return d
 }
 

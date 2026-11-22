@@ -8,7 +8,10 @@ Every subcommand, flag, and exit behavior below matches the CLI source
 | Command | What it does |
 |---|---|
 | `warden doctor` | Checks whether this machine can run programs in the sandbox |
-| `warden run --policy <file>` | Runs a program inside the sandbox |
+| `warden run` | Runs a program inside the sandbox |
+| `warden learn` | Observes a Linux sandbox and reviews a starter policy |
+| `warden grant` | Reviews a single host or filesystem read grant |
+| `warden guard` | Reviews and installs an npm or PyPI release in a sandbox |
 | `warden trace -- <command>` | Runs a program once without the sandbox and records what it touches |
 | `warden init` | Writes a draft `policy.yaml` from a trace |
 | `warden logs` | Shows allowed and blocked accesses |
@@ -25,11 +28,17 @@ Every subcommand, flag, and exit behavior below matches the CLI source
 | `trace` | Record access attempts for policy generation (unsandboxed) |
 | `logs` | Inspect the audit log |
 | `doctor` | Check sandbox readiness |
+| `grant` | Review and add a host or filesystem read grant |
+| `guard` | Review and install an npm package or PyPI wheel |
+| `hook` | Check or configure the advisory Claude Code hook |
+| `learn` | Observe a Linux sandbox and review a starter policy |
+| `migrate` | Preview or apply a version 2 policy migration |
+| `validate` | Check policy files without running a command |
 | `add` | Connect an MCP server to a client, sandboxed |
 | `wrap` / `unwrap` | Preview or apply a client launcher wrapper, and undo it |
 | `clients` | List supported client configuration adapters |
 | `inventory` | Inspect configured stdio connections and drift |
-| `packs` | Browse and generate candidate policy packs |
+| `packs` | Browse and generate policy packs |
 | `gateway` | Wrap servers registered in a gateway file |
 | `stop` | Stop managed gateway connections |
 | `proxy` | Run an MCP client proxy with filtering |
@@ -51,18 +60,27 @@ Run `warden help <command>` for the flags of any command. The sections below cov
 Run a server under a policy. The sandbox backend is auto-detected (native
 first, Docker fallback, fail-closed when nothing is available).
 
+See the [zero-config quickstart](zero-config.md) for the reviewed Filesystem launcher.
+
 ```bash
-warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker]
-           [--approve] [--approve-timeout <dur>] -- <command...>
+warden run [--policy <file>] [--backend auto|linux|seatbelt|windows|docker]
+           [--dry-run] [--approve] [--approve-timeout <dur>] -- <command...>
 ```
 
 | Flag | Meaning |
 |---|---|
-| `--policy <file>` | **Required.** Policy YAML. Relative `filesystem` grants resolve against this file's directory. |
+| `--policy <file>` | Select a policy YAML file explicitly. Relative filesystem grants resolve against the policy file’s directory. |
+| `--dry-run` | Print the effective policy, its SHA-256, and the selected backend without launching the command. Use an explicit policy or a local `warden.yaml`. |
 | `--backend <name>` | Force a backend. Default `auto`. Aliases: `bwrap` → linux; `macos`, `darwin`, `sandbox-exec` → seatbelt; `appcontainer`, `lowbox` → windows. Unknown or unavailable backends fail closed. |
 | `--approve` | Interactive approval: prompt on first out-of-policy access instead of hard-failing. Network approvals apply live; filesystem approvals are saved to the policy and the server restarts. Requires a terminalfails closed without one. |
 | `--approve-timeout <dur>` | Per-prompt timeout (e.g. `30s`, `2m`). Zero waits indefinitely; expiry denies. Requires `--approve`. |
 | `-- <command...>` | Command to sandbox. Optional separatoreverything after the flags is the command anyway; `--` lets the command itself start with a flag-like token. |
+
+Warden checks the explicit policy, then `warden.yaml` in the working directory,
+then a reviewed pack for the exact artifact version. The bare Filesystem
+launcher selects the bundled version. For other commands, an interactive
+terminal can review a starter policy. Without a matching policy or a terminal,
+the command exits before launching.
 
 Command resolution: the CLI tail wins, otherwise the policy's `command:` is
 used, otherwise the run fails with a usage error. Bare executable names
@@ -149,7 +167,49 @@ warden logs [--log <file>] [--tail <n> | -n <n>] [--follow | -f]
 `--tail 0` prints nothing; `--follow` polls for appended events (survives
 truncation). Prints "no audit events recorded yet" when the log doesn't exist.
 
+## `warden learn`
+
+```bash
+warden learn --output ./warden.learned.yaml -- ./my-command
+```
+
+Run from the project directory on Linux. The observation uses a scratch home,
+views the project read-only with secret-file protection, and blocks egress.
+Review proposed file reads one at a time. Requested hosts appear in the report
+for separate review. On confirmation, Warden writes the policy, a report and
+the policy digest. Pass that digest to `warden run --policy-sha256`.
+
+## `warden guard`
+
+```bash
+warden guard npm install is-number@7.0.0 --output ./reviewed-npm
+warden guard pip install idna==3.10 --output ./reviewed-wheel
+```
+
+Use `--strict` to block missing release metadata. A version 2 policy selected
+with `--policy <file>` can extend the cooldown or require strict checks.
+See the [Install Guard guide](install-guard.md) for configuration and review
+steps.
+
+## `warden grant`
+
+```bash
+warden grant host docs.example.org --policy warden.yaml
+warden grant path ./data/report.json --policy warden.yaml
+```
+
+Warden previews one exact host or read grant and prompts for approval. Run
+`warden logs --tail 50 --explain` to identify a denied resource before editing
+the policy. [Some grants require direct policy review.](security.md)
+
 ## `warden doctor`
+
+On Linux, macOS, and Windows, `warden doctor --prove` checks that the native
+sandbox allows its fixture reads and writes and blocks an SSH decoy, an outside
+write, a network destination, and an environment sentinel. Linux and macOS
+check a proxy denial for a reserved hostname. Windows uses a live host
+loopback endpoint and places the decoy outside the read grant. Any failure
+exits with status 1.
 
 Check that the host can actually enforce a sandbox. It probes the real
 backends (bubblewrap/Seatbelt/AppContainer/Docker), `strace` availability on

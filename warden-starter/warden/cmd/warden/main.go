@@ -40,7 +40,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"agent", "run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp"}
+var allCommands = []string{"agent", "run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp", "validate", "guard", "grant", "hook", "learn", "migrate"}
 
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
@@ -48,7 +48,7 @@ func main() {
 	// bridge or update itself. The check is cached (24h) and has a 0.8s
 	// timeout so it never blocks the CLI noticeably. Warning goes to
 	// stderr so `warden --version` stays script-friendly on stdout.
-	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "__setup-probe" && os.Args[1] != "update")
+	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "__setup-probe" && os.Args[1] != "__prove-probe" && os.Args[1] != "update" && os.Args[1] != "hook")
 	if shouldWarn {
 		func() {
 			defer func() { _ = recover() }()
@@ -61,6 +61,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(os.Args) > 2 && os.Args[1] == "mcp" && os.Args[2] == "pin" {
+		if err := cmdMCPPin(os.Args[3:]); err != nil {
+			fmt.Fprintf(os.Stderr, "warden mcp pin: %v\n", err)
+			os.Exit(2)
+		}
+		return
+	}
 	switch os.Args[1] {
 	case "agent":
 		if hasHelpFlag(os.Args[2:]) {
@@ -91,15 +98,21 @@ func main() {
 		}
 		if err := cmdGrowth(os.Args[1], os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "warden", os.Args[1]+":", err)
+			if errors.Is(err, errPolicyReviewRequired) {
+				os.Exit(3)
+			}
 			os.Exit(1)
 		}
 	case "__setup-probe":
 		os.Exit(0)
+	case "__prove-probe":
+		os.Exit(doctorProbe())
 	case "add":
 		if hasHelpFlag(os.Args[2:]) {
 			printAddHelp()
 			return
 		}
+		fmt.Fprintln(os.Stderr, "warden warning: warden add is deprecated and scheduled for removal in 2.2; use warden run or warden wrap")
 		if err := cmdAdd(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "warden add:", err)
 			os.Exit(1)
@@ -132,6 +145,57 @@ func main() {
 			os.Exit(0)
 		}
 		cmdRun(os.Args[2:])
+	case "validate":
+		if err := cmdValidate(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "warden validate: %v\n", err)
+			os.Exit(2)
+		}
+	case "guard":
+		if hasHelpFlag(os.Args[2:]) {
+			printGuardHelp()
+			return
+		}
+		if err := cmdGuard(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden guard:", err)
+			os.Exit(1)
+		}
+	case "hook":
+		if hasHelpFlag(os.Args[2:]) {
+			printHookHelp()
+			return
+		}
+		if err := cmdHook(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden hook:", err)
+			os.Exit(2)
+		}
+	case "grant":
+		if hasHelpFlag(os.Args[2:]) {
+			printGrantHelp()
+			return
+		}
+		if err := cmdGrant(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden grant:", err)
+			os.Exit(1)
+		}
+	case "migrate":
+		if hasHelpFlag(os.Args[2:]) {
+			printMigrateHelp()
+			return
+		}
+		code, err := cmdMigrate(os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "warden migrate:", err)
+		}
+		os.Exit(code)
+	case "learn":
+		if hasHelpFlag(os.Args[2:]) {
+			printLearnHelp()
+			return
+		}
+		if err := cmdLearn(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "warden learn:", err)
+			os.Exit(1)
+		}
 	case "trace":
 		if hasHelpFlag(os.Args[2:]) {
 			printTraceHelp()
@@ -255,7 +319,11 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  init       Create a security policy")
 	fmt.Fprintln(os.Stderr, "  run        Run an MCP server in the sandbox")
 	fmt.Fprintln(os.Stderr, "  trace      Record access attempts for policy generation")
+	fmt.Fprintln(os.Stderr, "  migrate    Preview or apply a policy schema migration")
+	fmt.Fprintln(os.Stderr, "  learn      Observe a sandboxed command and review a starter policy")
 	fmt.Fprintln(os.Stderr, "  logs       Inspect the audit log")
+	fmt.Fprintln(os.Stderr, "  grant      Review and approve one host or path")
+	fmt.Fprintln(os.Stderr, "  hook       Manage Claude Code PreToolUse checks")
 	fmt.Fprintln(os.Stderr, "  doctor     Check sandbox readiness")
 	fmt.Fprintln(os.Stderr, "  gateway    Wrap gateway-registered servers")
 	fmt.Fprintln(os.Stderr, "  packs      Browse and generate candidate policy packs")
@@ -313,8 +381,20 @@ func printCommandHelp(cmd string) {
 		printAddHelp()
 	case "run":
 		printRunHelp()
+	case "validate":
+		printValidateHelp()
+	case "guard":
+		printGuardHelp()
+	case "grant":
+		printGrantHelp()
+	case "hook":
+		printHookHelp()
 	case "trace":
 		printTraceHelp()
+	case "migrate":
+		printMigrateHelp()
+	case "learn":
+		printLearnHelp()
 	case "init":
 		printInitHelp()
 	case "logs":
@@ -453,36 +533,6 @@ func printAddHelp() {
 	fmt.Fprintln(os.Stderr, "  Undo: warden unwrap --client <client> --server <entry>.")
 }
 
-func printRunHelp() {
-	title := "WARDEN RUN"
-	if ui.ColorEnabled() {
-		title = ui.Bold(ui.Cyan(title))
-	}
-	fmt.Fprintln(os.Stderr, title)
-	fmt.Fprintln(os.Stderr, "Run an MCP server inside the Warden sandbox.")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
-	fmt.Fprintln(os.Stderr, "  warden run --policy <file> [options] -- <command...>")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
-	fmt.Fprintln(os.Stderr, "  --policy <file>            Security policy to enforce (required)")
-	fmt.Fprintln(os.Stderr, "  --policy-sha256 <digest>   Refuse a policy changed since review (used by wrap)")
-	fmt.Fprintln(os.Stderr, "  --backend <name>           Backend: auto (default), linux, seatbelt, windows, docker")
-	fmt.Fprintln(os.Stderr, "  --approve                  Prompt on first out-of-policy access")
-	fmt.Fprintln(os.Stderr, "  --approve-timeout <dur>    Per-prompt timeout (e.g. 30s, 2m); requires --approve")
-	fmt.Fprintln(os.Stderr, "  --help                     Show this help")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Examples:"))
-	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml -- /usr/bin/node server.js")
-	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml --backend docker -- python app.py")
-	fmt.Fprintln(os.Stderr, "  warden run --policy policy.yaml --approve -- npx @modelcontextprotocol/server")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, ui.Bold("Security:"))
-	fmt.Fprintln(os.Stderr, "  The server runs with only the permissions explicitly")
-	fmt.Fprintln(os.Stderr, "  granted by the policy. If the sandbox cannot be")
-	fmt.Fprintln(os.Stderr, "  initialized, Warden refuses to run the server.")
-}
-
 func printTraceHelp() {
 	title := "WARDEN TRACE"
 	if ui.ColorEnabled() {
@@ -547,6 +597,7 @@ func printLogsHelp() {
 	fmt.Fprintln(os.Stderr, ui.Bold("Options:"))
 	fmt.Fprintln(os.Stderr, "  --log <file>     Audit log path (default: ~/.local/state/warden/audit.jsonl)")
 	fmt.Fprintln(os.Stderr, "  --tail <n>       Show last N lines")
+	fmt.Fprintln(os.Stderr, "  --explain        Explain denied events in the selected entries")
 	fmt.Fprintln(os.Stderr, "  --follow, -f     Follow/tail the log (polls every 250ms)")
 	fmt.Fprintln(os.Stderr, "  --help           Show this help")
 }
@@ -560,7 +611,8 @@ func printDoctorHelp() {
 	fmt.Fprintln(os.Stderr, "Check whether this system is ready to run Warden sandboxes.")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Usage:"))
-	fmt.Fprintln(os.Stderr, "  warden doctor")
+	fmt.Fprintln(os.Stderr, "  warden doctor [--prove]")
+	fmt.Fprintln(os.Stderr, "  --prove  Run disposable containment checks on native Linux, macOS, or Windows")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Checks may include:"))
 	fmt.Fprintln(os.Stderr, "  Sandbox backend")
@@ -771,83 +823,6 @@ func cmdVersion() {
 	fmt.Println("warden version", v)
 }
 
-func cmdRun(args []string) {
-	expectedDigest, args, digestErr := parsePolicyDigest(args)
-	if digestErr != nil {
-		fmt.Fprintln(os.Stderr, "warden run:", digestErr)
-		os.Exit(2)
-	}
-	approveEnabled, approveTimeout, rest, err := parseApproveFlags(args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		printRunHelp()
-		os.Exit(2)
-	}
-	policyPath, backend, cmdTail, err := parseRunArgs(rest)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		printRunHelp()
-		os.Exit(2)
-	}
-
-	if approveEnabled {
-		if expectedDigest != "" {
-			fmt.Fprintln(os.Stderr, "warden run: digest-pinned policies require explicit review instead of automatic approval mutations")
-			os.Exit(2)
-		}
-		cmdRunWithApproval(policyPath, backend, cmdTail, approveTimeout)
-		return // unreachable: cmdRunWithApproval always exits
-	}
-
-	p, err := policy.LoadVerified(policyPath, expectedDigest)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		os.Exit(2)
-	}
-
-	for _, advisory := range p.UnimplementedAdvisories() {
-		fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
-	}
-
-	cmd, err := p.ResolveCommand(cmdTail)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		os.Exit(2)
-	}
-
-	// Most public MCP servers launch via a bare launcher (npx/uvx/node on
-	// PATH). Resolve it to an absolute path like the gateway backend does,
-	// so the sandbox can bind-mount the executable's parent directory.
-	// Still fail-closed when the name is not on PATH.
-	cmd, err = policy.ResolveExecutable(cmd)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		os.Exit(2)
-	}
-
-	if err := checkSandboxCommand(cmd); err != nil {
-		fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		os.Exit(2)
-	}
-
-	maybePrintRunSummary(policyPath, backend, p, cmd)
-
-	exitCode, err := sandbox.Run(cmd, p, backend)
-	if err != nil {
-		if handled, code := offerElevation(err); handled {
-			os.Exit(code)
-		}
-		var ref sandboxerr.RefuseToRun
-		if errors.As(err, &ref) {
-			fmt.Fprintln(os.Stderr, err)
-		} else {
-			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
-		}
-		os.Exit(1)
-	}
-	os.Exit(exitCode)
-}
-
 // maxApprovalRestarts caps the approve-mode respawn loop: every restart
 // needs a fresh user approval, so hitting the cap means something is
 // approving in a tight loop rather than a human deciding.
@@ -873,7 +848,7 @@ func cmdRunWithApproval(policyPath, backend string, cmdTail []string, timeout ti
 			fmt.Fprintf(os.Stderr, "warden run: %v\n", err)
 			os.Exit(2)
 		}
-		for _, advisory := range p.UnimplementedAdvisories() {
+		for _, advisory := range p.Advisories() {
 			fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
 		}
 		cmd, err := p.ResolveCommand(cmdTail)
@@ -970,64 +945,6 @@ func parseApproveFlags(args []string) (enabled bool, timeout time.Duration, rest
 		return false, 0, nil, fmt.Errorf("--approve-timeout requires --approve")
 	}
 	return enabled, timeout, rest, nil
-}
-
-// parseRunArgs splits run flags into the policy path, optional backend, and
-// command tail. A `--` separator is optional but supported: it lets the
-// command start with a flag named like a warden option.
-func parseRunArgs(args []string) (policyPath, backend string, cmd []string, err error) {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "--policy" || arg == "-policy":
-			if i+1 >= len(args) {
-				return "", "", nil, fmt.Errorf("flag %s requires a value", arg)
-			}
-			if policyPath != "" {
-				return "", "", nil, fmt.Errorf("--policy specified twice")
-			}
-			policyPath = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--policy="):
-			if policyPath != "" {
-				return "", "", nil, fmt.Errorf("--policy specified twice")
-			}
-			policyPath = strings.TrimPrefix(arg, "--policy=")
-		case arg == "--backend" || arg == "-backend":
-			if i+1 >= len(args) {
-				return "", "", nil, fmt.Errorf("flag %s requires a value", arg)
-			}
-			if backend != "" {
-				return "", "", nil, fmt.Errorf("--backend specified twice")
-			}
-			backend = args[i+1]
-			i++
-		case strings.HasPrefix(arg, "--backend="):
-			if backend != "" {
-				return "", "", nil, fmt.Errorf("--backend specified twice")
-			}
-			backend = strings.TrimPrefix(arg, "--backend=")
-		case arg == "--":
-			cmd = args[i+1:]
-			if policyPath == "" {
-				return "", "", nil, fmt.Errorf("missing required flag --policy")
-			}
-			return policyPath, backend, cmd, nil
-		case strings.HasPrefix(arg, "-"):
-			return "", "", nil, fmt.Errorf("unknown flag %q (want --policy or --backend)", arg)
-		default:
-			// First non-flag argument: everything from here is the command.
-			cmd = args[i:]
-			if policyPath == "" {
-				return "", "", nil, fmt.Errorf("missing required flag --policy")
-			}
-			return policyPath, backend, cmd, nil
-		}
-	}
-	if policyPath == "" {
-		return "", "", nil, fmt.Errorf("missing required flag --policy")
-	}
-	return policyPath, backend, nil, nil
 }
 
 func cmdTrace(args []string) {
@@ -1177,7 +1094,7 @@ func cmdInit(args []string) {
 }
 
 func cmdLogs(args []string) {
-	logPath, tail, follow, err := parseLogsArgs(args)
+	logPath, tail, follow, explain, err := parseLogsArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden logs: %v\n", err)
 		os.Exit(2)
@@ -1209,6 +1126,17 @@ func cmdLogs(args []string) {
 	followOffset := int64(len(data))
 	if tail > 0 {
 		data = lastLines(data, tail)
+	}
+	if explain {
+		events, err := audit.ReadEvents(bytes.NewReader(data))
+		if err == nil {
+			err = explainDeniedEvents(os.Stdout, events)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warden logs: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if _, err := os.Stdout.Write(data); err != nil {
 		fmt.Fprintf(os.Stderr, "warden logs: %v\n", err)
@@ -1253,30 +1181,35 @@ func parseInitArgs(args []string) (logPath, outputPath string, cmd []string, err
 	return logPath, outputPath, nil, nil
 }
 
-func parseLogsArgs(args []string) (logPath string, tail int, follow bool, err error) {
+func parseLogsArgs(args []string) (logPath string, tail int, follow, explain bool, err error) {
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--log":
 			if i+1 >= len(args) {
-				return "", 0, false, fmt.Errorf("--log requires a value")
+				return "", 0, false, false, fmt.Errorf("--log requires a value")
 			}
 			logPath, i = args[i+1], i+1
 		case "--tail", "-n":
 			if i+1 >= len(args) {
-				return "", 0, false, fmt.Errorf("%s requires a value", args[i])
+				return "", 0, false, false, fmt.Errorf("%s requires a value", args[i])
 			}
 			tail, err = strconv.Atoi(args[i+1])
 			if err != nil || tail < 0 {
-				return "", 0, false, fmt.Errorf("%s must be a non-negative integer", args[i])
+				return "", 0, false, false, fmt.Errorf("%s must be a non-negative integer", args[i])
 			}
 			i++
 		case "--follow", "-f":
 			follow = true
+		case "--explain":
+			explain = true
 		default:
-			return "", 0, false, fmt.Errorf("unknown flag %q", args[i])
+			return "", 0, false, false, fmt.Errorf("unknown flag %q", args[i])
 		}
 	}
-	return logPath, tail, follow, nil
+	if explain && follow {
+		return "", 0, false, false, fmt.Errorf("--explain and --follow cannot be combined")
+	}
+	return logPath, tail, follow, explain, nil
 }
 
 func lastLines(data []byte, n int) []byte {
@@ -1396,6 +1329,9 @@ func cmdProxy(args []string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warden proxy: %v\n", err)
 		os.Exit(2)
+	}
+	for _, advisory := range p.Advisories() {
+		fmt.Fprintf(os.Stderr, "warden warning: %s\n", advisory)
 	}
 
 	if p.MCP == nil {

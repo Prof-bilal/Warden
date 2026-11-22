@@ -21,7 +21,11 @@ func TestPreparedCommandRequiresRecordedVersion(t *testing.T) {
 	if _, e := PreparedCommand("filesystem", dir, dir); e == nil {
 		t.Fatal("wrong installed version accepted")
 	}
-	_ = os.WriteFile(metadata, []byte(`{"name":"@modelcontextprotocol/server-filesystem","version":"2026.8.31"}`), 0600)
+	pack, e := Find("filesystem")
+	if e != nil {
+		t.Fatal(e)
+	}
+	_ = os.WriteFile(metadata, []byte(`{"name":"@modelcontextprotocol/server-filesystem","version":"`+pack.Version+`"}`), 0600)
 	argv, e := PreparedCommand("filesystem", dir, dir)
 	if e != nil {
 		t.Fatal(e)

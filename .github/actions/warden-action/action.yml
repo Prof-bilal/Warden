@@ -21,13 +21,17 @@ inputs:
     required: false
     default: 'false'
   warden-version:
-    description: 'Warden release tag to download from GitHub Releases (default: latest). A checked-in dist/warden-linux-amd64 binary takes precedence when present; otherwise the latest release is used.'
+    description: 'Warden release tag to download (must support warden validate). Without a tag, use a workspace dist binary when present or the latest release.'
     required: false
     default: ''
   working-directory:
     description: 'Working directory for the command'
     required: false
     default: '.'
+  fail-on:
+    description: 'Set to widen to fail a pull request job when the policy diff requires review.'
+    required: false
+    default: ''
 
 outputs:
   exit-code:
@@ -57,19 +61,20 @@ runs:
 
     - name: Install Warden
       shell: bash
+      env:
+        WARDEN_VERSION: ${{ inputs.warden-version }}
       run: |
         # Install the Warden binary. Order of preference:
-        # 1) Checked-in dist binary (matches this commit).
+        # 1) Workspace dist binary when no version was requested.
         # 2) Release binary from GitHub Releases.
         # 3) Build from source (requires Go).
-        WARDEN_VERSION="${{ inputs.warden-version }}"
         BIN_NAME="warden-linux-amd64"
         TARGET="/usr/local/bin/warden"
 
         # 1) Repo-local dist binary. dist/ is no longer committed to the repo
         #    (built binaries are not tracked); the file is only present if a
         #    workflow artifact or a local build placed it there.
-        if [[ -x "dist/$BIN_NAME" ]]; then
+        if [[ -z "$WARDEN_VERSION" && -x "dist/$BIN_NAME" ]]; then
           echo "::notice::Using checked-in dist/$BIN_NAME"
           sudo install -m 0755 "dist/$BIN_NAME" "$TARGET"
           warden version
@@ -77,7 +82,7 @@ runs:
         fi
 
         # 2) Download a release binary from GitHub Releases.
-        REPO="${{ github.repository }}"
+        REPO="Prof-bilal/Warden"
         if [[ -z "$WARDEN_VERSION" || "$WARDEN_VERSION" == "latest" ]]; then
           RELEASE_URL="https://github.com/${REPO}/releases/latest/download/${BIN_NAME}"
         else
@@ -93,6 +98,10 @@ runs:
           exit 0
         fi
         rm -f "$TMP"
+        if [[ -n "$WARDEN_VERSION" && "$WARDEN_VERSION" != latest ]]; then
+          echo "::error::Could not download the pinned Warden release."
+          exit 1
+        fi
         echo "::warning::Could not download release binary, falling back to build from source"
 
         # 3) Build from source (Go is available on GitHub Actions runners).
@@ -173,14 +182,12 @@ runs:
 
     - name: Validate policy file
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         # Pass policy via env so multiline inline YAML is not re-parsed by the
         # shell as code (same transport pattern as the run step below).
         WARDEN_POLICY_INPUT: ${{ inputs.policy }}
       run: |
-        WORKING_DIR="${{ inputs.working-directory }}"
-        cd "$WORKING_DIR"
-
         if [[ "$WARDEN_POLICY_INPUT" == *$'\n'* ]]; then
           # Write inline policies into the working directory, not RUNNER_TEMP:
           # warden resolves a policy's relative filesystem grants against the
@@ -203,13 +210,69 @@ runs:
         fi
         echo "WARDEN_POLICY_PATH=$POLICY_PATH" >> "$GITHUB_ENV"
 
-        # Validate policy syntax (dry run)
         echo "::group::Policy validation"
-        if ! warden run --policy "$POLICY_PATH" --help > /dev/null 2>&1; then
+        if ! warden validate -- "$POLICY_PATH"; then
           echo "::error::Policy file validation failed"
           exit 1
         fi
         echo "::endgroup::"
+
+    - name: Review pull request policy changes
+      if: github.event_name == 'pull_request'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        WARDEN_FAIL_ON: ${{ inputs.fail-on }}
+        WARDEN_PR_BASE: ${{ github.event.pull_request.base.sha }}
+        WARDEN_PR_NUMBER: ${{ github.event.pull_request.number }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if [[ -n "$WARDEN_FAIL_ON" && "$WARDEN_FAIL_ON" != widen ]]; then
+          echo "::error::fail-on must be empty or widen"
+          exit 1
+        fi
+        if [[ "$WARDEN_POLICY_INLINE" == true ]]; then
+          if [[ "$WARDEN_FAIL_ON" == widen ]]; then
+            echo "::error::fail-on: widen requires a policy file in the repository."
+            exit 1
+          fi
+          exit 0
+        fi
+        root="$(git rev-parse --show-toplevel)"
+        policy="$(realpath -e -- "$WARDEN_POLICY_PATH")"
+        if [[ "$policy" != "$root/"* || "$policy" != "$(realpath -s -- "$WARDEN_POLICY_PATH")" ]]; then
+          echo "::error::Pull request policy review requires a policy file inside the repository without symlink aliases."
+          exit 1
+        fi
+        relative="${policy#"$root/"}"
+        if ! git -C "$root" cat-file -e "${WARDEN_PR_BASE}^{commit}" 2>/dev/null; then
+          git -C "$root" fetch --no-tags origin "$WARDEN_PR_BASE"
+        fi
+        # Place the baseline beside the current policy so relative grants
+        # resolve against the same directory.
+        before="$(mktemp --tmpdir="$(dirname -- "$policy")" .warden-before.XXXXXXXX)"
+        trap 'rm -f -- "$before"' EXIT
+        report="$(mktemp)"
+        trap 'rm -f -- "$before" "$report"' EXIT
+        if git -C "$root" cat-file -e "$WARDEN_PR_BASE:$relative" 2>/dev/null; then
+          git -C "$root" show "$WARDEN_PR_BASE:$relative" > "$before"
+        else
+          printf '{}\n' > "$before"
+        fi
+        args=(policy-diff --before "$before" --after "$policy" --format markdown)
+        if [[ "$WARDEN_FAIL_ON" == widen ]]; then
+          args+=(--fail-on widen)
+        fi
+        result=0
+        warden "${args[@]}" > "$report" || result=$?
+        if [[ "$result" != 0 && "$result" != 3 ]]; then
+          exit "$result"
+        fi
+        cat "$report" >> "$GITHUB_STEP_SUMMARY"
+        if ! gh pr comment "$WARDEN_PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$report"; then
+          echo "::warning::Could not post a PR comment. The policy review is in the job summary."
+        fi
+        exit "$result"
 
     - name: Run command in sandbox
       shell: bash

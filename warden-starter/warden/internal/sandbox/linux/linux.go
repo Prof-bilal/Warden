@@ -255,7 +255,7 @@ func Run(cmd []string, p policy.Policy) (int, error) {
 		return 0, fmt.Errorf("open audit log: %w", err)
 	}
 	defer logFile.Close()
-	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), nil)
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), nil, "")
 }
 
 // RunWithApproval spawns the command like Run but with interactive approval
@@ -275,10 +275,18 @@ func RunWithApproval(cmd []string, p policy.Policy, cfg *approve.Config) (int, e
 		return 0, fmt.Errorf("open audit log: %w", err)
 	}
 	defer logFile.Close()
-	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), cfg)
+	return runWithEnvAndAudit(cmd, p, os.Environ(), audit.New(logFile), cfg, "")
 }
 
-func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config) (int, error) {
+// Observe runs a learning session with caller-provided fixtures and no egress.
+func Observe(cmd []string, p policy.Policy, env []string, logger *audit.Logger, directory string) (int, error) {
+	if logger == nil || !filepath.IsAbs(directory) || len(p.Network.Allow) != 0 {
+		return 0, fmt.Errorf("observation requires an audit log, a workspace, and denied egress")
+	}
+	return runWithEnvAndAudit(cmd, p, env, logger, nil, directory)
+}
+
+func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logger *audit.Logger, approval *approve.Config, observeDir string) (int, error) {
 	bwrap, err := exec.LookPath("bwrap")
 	if err != nil {
 		return 0, sandboxerr.RefuseToRun{Reason: "bubblewrap (bwrap) is not installed on this Linux host"}
@@ -311,6 +319,14 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	if approval != nil && approval.Enabled {
 		prompter = approve.NewPrompter(approval.PolicyPath, approval.Timeout, logger)
 		eg.SetApprover(prompter.NetworkApprover())
+	}
+	if observeDir != "" {
+		eg.SetApprover(func(host, port string) proxy.Decision {
+			_ = logger.Log(audit.Event{Type: "network", Kind: "learn-egress", Action: "connect", Resource: host,
+				Reason: "learning records requests without granting egress"})
+			return proxy.Deny
+		})
+		args = append(args, "--chdir", observeDir)
 	}
 	bridgeExe, err := os.Executable()
 	if err != nil {
@@ -349,10 +365,16 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 		}
 		defer os.Remove(tracePath)
 		program = strace
-		runArgs = append([]string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath, setpriv}, runArgs...)
+		traceArgs := []string{"-f", "-qq", "-s", "4096", "-e", "trace=%file,%network", "-o", tracePath}
+		if observeDir != "" {
+			traceArgs = append(traceArgs, "-y")
+		}
+		runArgs = append(append(traceArgs, setpriv), runArgs...)
 	}
 	sub := exec.Command(program, runArgs...) // #nosec G204 -- user-specified program argv; no shell, the program is what Warden sandboxes
-	sub.Stdin = os.Stdin
+	if observeDir == "" {
+		sub.Stdin = os.Stdin
+	}
 	sub.Stdout = os.Stdout
 	sub.Stderr = os.Stderr
 	// A dedicated group lets M3 cleanly terminate all descendants when a
@@ -375,6 +397,9 @@ func runWithEnvAndAudit(cmd []string, p policy.Policy, parentEnv []string, logge
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(sigs)
 
+	if deadline := p.Limits.GrantDeadline; !deadline.IsZero() && !deadline.After(time.Now()) {
+		return 0, fmt.Errorf("temporary grant expired during sandbox setup; retry with the remaining grants")
+	}
 	if err := sub.Start(); err != nil {
 		return 0, fmt.Errorf("start sandboxed process: %w", err)
 	}

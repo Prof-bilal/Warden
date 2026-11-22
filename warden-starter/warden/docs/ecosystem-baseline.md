@@ -23,7 +23,7 @@ raw PostgreSQL TCP requires separate transport work. Provider privileges constra
 allowed API mutations. Local policy configuration is trusted authority.
 Managed launchers pin the reviewed policy digest. A changed policy fails before
 launch instead of silently taking effect. Local runtime/dependency identities
-are still not bound by this digest; profiles stay candidates.
+are still not bound by this digest.
 
 The proxy's stdio subprocess uses its own execution path, not sandbox.Run. Standard
 downstream Streamable HTTP, sandboxing under the MCP filter, structured proxy argv,
@@ -34,7 +34,7 @@ endpoint now has real raw/official-SDK transport evidence and OAuth fixture test
 
 Apply probes the real backend with an inert Warden process. Fixture tests cover
 six named adapters and generic JSON, preservation/idempotence/undo/conflicts and
-policy generation. Profiles remain candidates, and wrapped entries remain
+policy generation. Wrapped entries remain
 workflow-unverified. Neither a fixture nor readiness probe is a client/server task.
 
 Four npm profiles now have sandboxed, registry-only preparation with install
@@ -42,6 +42,16 @@ scripts disabled and isolated credential configuration. A real pinned filesystem
 server passed initialization, discovery, an allowed read, denied write/outside
 read, repeated setup and exact undo using a simulated stdio host on native Linux.
 This does not certify a GUI client or promote all profiles to verified.
+
+The Filesystem 2.3.0 profile is reviewed for native Linux stdio. The
+[no-flags smoke test](https://github.com/Prof-bilal/Warden/blob/81277afd94c15c5a70c69f8d27d3be4043df1da7/warden-starter/warden/testdata/ecosystem/smoke-filesystem.mjs) uses a fresh
+home and verifies pinned preparation, clean MCP stdout, an allowed read,
+and blocked writes, outside reads and protected files.
+
+The Git and Memory profiles were also exercised on native Linux with explicit
+policies. [The pack smoke test](https://github.com/Prof-bilal/Warden/blob/81277afd94c15c5a70c69f8d27d3be4043df1da7/warden-starter/warden/testdata/ecosystem/smoke-phase1-packs.mjs)
+checks Git status with staging and outside-repository access blocked. It
+checks that Memory writes inside the chosen storage and fails outside it.
 
 Release work still required: per-platform pinned upstream allowed/blocked tests,
 measured runtime/trace overhead with methodology, audit-gap review, dependency

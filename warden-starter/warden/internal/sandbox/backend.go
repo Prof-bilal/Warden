@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/policy"
 	"github.com/warden-sandbox/warden/internal/sandbox/docker"
@@ -139,6 +140,10 @@ func Run(cmd []string, p policy.Policy, backend string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	p = p.WithActiveGrants(time.Now())
+	if err := checkGrantLifetime(p, name); err != nil {
+		return 0, err
+	}
 	switch name {
 	case BackendLinux:
 		return runLinux(cmd, p)
@@ -151,4 +156,11 @@ func Run(cmd []string, p policy.Policy, backend string) (int, error) {
 	default:
 		return 0, fmt.Errorf("internal error: unresolved backend %q", name)
 	}
+}
+
+func checkGrantLifetime(p policy.Policy, backend string) error {
+	if !p.Limits.GrantDeadline.IsZero() && backend != BackendLinux && backend != BackendWindows {
+		return fmt.Errorf("active temporary grants require the Linux or Windows native sandbox")
+	}
+	return nil
 }

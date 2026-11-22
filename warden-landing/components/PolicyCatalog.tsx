@@ -17,10 +17,8 @@ export default function PolicyCatalog() {
   return (
     <>
       <div className="mb-8 rounded-xl border border-progress/30 bg-progress-subtle p-5 text-sm leading-relaxed text-muted">
-        <span className="font-semibold text-progress">Candidate profiles.</span>{" "}
-        Upstream identity and version metadata are recorded. Runtime preparation
-        and allowed/blocked workflow checks are still required before a profile
-        can be called verified.{" "}
+        Reviewed profiles report the scope of their checks. Candidate profiles
+        still need an upstream workflow check.{" "}
         <Link
           href="/protection"
           className="text-blueprint underline underline-offset-4"
@@ -57,7 +55,7 @@ export default function PolicyCatalog() {
         </label>
       </div>
       <p role="status" className="mb-4 text-xs text-muted">
-        {visible.length} profiles · metadata reviewed September 30, 2026
+        {visible.length} profiles
       </p>
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {visible.map((p) => (
@@ -68,7 +66,7 @@ export default function PolicyCatalog() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted">{p.category}</span>
               <span className="rounded-full border border-progress/30 px-2.5 py-1 text-[10px] uppercase tracking-wide text-progress">
-                Candidate
+                {p.status}
               </span>
             </div>
             <h2 className="mt-6 font-mono text-[1.35rem] font-semibold text-offwhite">{p.name}</h2>

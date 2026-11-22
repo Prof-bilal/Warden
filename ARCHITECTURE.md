@@ -154,6 +154,16 @@ if necessary; the breach is a structured audit event.
 
 ## Policy schema (draft)
 
+Version 2 process policies may include `temporary_grants`. Each entry names one
+exact host or read path and an RFC 3339 expiration. The loader drops expired
+entries and the runtime applies active grants separately from permanent grants.
+The Linux and Windows native backends terminate a run when its first effective
+temporary grant expires.
+
+Version 2 also supports an optional `guard` section. Pass the policy with
+`warden guard ... --policy` to require a longer release cooldown or strict
+registry metadata checks.
+
 ```yaml
 command: ["/usr/bin/node", "server.js"] # required: absolute path, or a bare name on PATH (npx/uvx/node) resolved via LookPath at launch
 

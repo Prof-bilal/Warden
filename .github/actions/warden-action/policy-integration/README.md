@@ -40,9 +40,15 @@ The action enforces strict secrets hygiene:
 ```yaml
 - name: Validate policy security
   run: |
-    # Check for potential secret exposures
-    python3 .github/actions/warden-action/scripts/validate-policy.py ci-policy.yaml
+    warden validate ci-policy.yaml
 ```
+
+For pull requests, the action compares the repository policy file against the
+base commit. Set `fail-on: widen` to fail the job when the diff requires review.
+Grant `contents: read` and `pull-requests: write` to post the report as a PR
+comment. The job summary also contains the report when the token is read-only,
+as it typically is for fork pull requests. Use a Warden release that includes
+`validate` and Markdown policy diffs.
 
 ## Best Practices
 
@@ -53,6 +59,5 @@ The action enforces strict secrets hygiene:
 
 ## Files
 
-- `scripts/validate-policy.py` - Policy security validation
 - `scripts/generate-ci-policy.sh` - CI-specific policy generation
 - `templates/` - Common policy templates for CI use cases

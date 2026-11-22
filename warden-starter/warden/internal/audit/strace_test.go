@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func TestObservationUsesOpenedFilePath(t *testing.T) {
+	const line = `123 openat(AT_FDCWD</workspace/subdir>, "config.txt", O_RDONLY) = 4</workspace/subdir/config.txt>`
+	event, ok := ParseStraceLine(line)
+	if !ok || !event.Allowed || event.Resource != "/workspace/subdir/config.txt" {
+		t.Fatalf("observed open = %+v, %t", event, ok)
+	}
+}
+
 func TestImportStraceRecordsAllowedAndBlockedAccesses(t *testing.T) {
 	trace := strings.NewReader(`[pid 12] openat(AT_FDCWD, "/allowed/file", O_RDONLY) = 3
 [pid 12] openat(AT_FDCWD, "/hidden/file", O_RDONLY) = -1 ENOENT (No such file or directory)

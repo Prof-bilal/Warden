@@ -228,7 +228,7 @@ export default function SetupWizard({
                 </select>
               </label>
               <div className="mt-5 rounded-lg border border-progress/30 bg-progress-subtle p-4 text-xs leading-relaxed text-muted">
-                <span className="text-progress">Candidate · </span>
+                <span className="capitalize text-progress">{pack.status} · </span>
                 {pack.note}
                 <span className="mt-2 block break-all font-mono">
                   {pack.artifact}@{pack.version}
@@ -369,7 +369,7 @@ export default function SetupWizard({
                 )}
                 <div>
                   <h3 className="mb-3 text-sm font-medium">
-                    1. Generate the candidate policy
+                    1. Generate the policy
                   </h3>
                   <CodeBlock>{generate}</CodeBlock>
                   <p className="mt-2 text-xs text-muted">

@@ -8,6 +8,10 @@ Every subcommand, flag, and exit behavior below matches the CLI source
 | Command | What it does |
 |---|---|
 | `warden doctor` | Checks whether this machine can run programs in the sandbox |
+| `warden grant` | Reviews and adds one host or filesystem read grant |
+| `warden guard` | Reviews and installs an npm or PyPI release in a sandbox |
+| `warden hook` | Checks Claude Code shell and file tool requests against a policy |
+| `warden learn` | Observes a Linux sandbox and reviews a starter policy |
 | `warden run --policy <file>` | Runs a program inside the sandbox |
 | `warden trace -- <command>` | Runs a program once without the sandbox and records what it touches |
 | `warden init` | Writes a draft `policy.yaml` from a trace |
@@ -25,11 +29,17 @@ Every subcommand, flag, and exit behavior below matches the CLI source
 | `trace` | Record access attempts for policy generation (unsandboxed) |
 | `logs` | Inspect the audit log |
 | `doctor` | Check sandbox readiness |
+| `grant` | Review and add a host or filesystem read grant |
+| `guard` | Review and install an npm package or PyPI wheel |
+| `hook` | Check or configure the advisory Claude Code hook |
+| `learn` | Observe a Linux sandbox and review a starter policy |
+| `migrate` | Preview or apply a version 2 policy migration |
+| `validate` | Check policy files without running a command |
 | `add` | Connect an MCP server to a client, sandboxed |
 | `wrap` / `unwrap` | Preview or apply a client launcher wrapper, and undo it |
 | `clients` | List supported client configuration adapters |
 | `inventory` | Inspect configured stdio connections and drift |
-| `packs` | Browse and generate candidate policy packs |
+| `packs` | Browse and generate policy packs |
 | `gateway` | Wrap servers registered in a gateway file |
 | `stop` | Stop managed gateway connections |
 | `proxy` | Run an MCP client proxy with filtering |
@@ -52,17 +62,24 @@ Run a server under a policy. The sandbox backend is auto-detected (native
 first, Docker fallback, fail-closed when nothing is available).
 
 ```bash
-warden run --policy <file> [--backend auto|linux|seatbelt|windows|docker]
-           [--approve] [--approve-timeout <dur>] -- <command...>
+warden run [--policy <file>] [--backend auto|linux|seatbelt|windows|docker]
+           [--dry-run] [--approve] [--approve-timeout <dur>] -- <command...>
 ```
 
 | Flag | Meaning |
 |---|---|
-| `--policy <file>` | **Required.** Policy YAML. Relative `filesystem` grants resolve against this file's directory. |
+| `--policy <file>` | Select a policy YAML file explicitly. Relative filesystem grants resolve against the policy file’s directory. |
+| `--dry-run` | Print the effective policy, its SHA-256, and the selected backend without launching the command. Use an explicit policy or a local `warden.yaml`. |
 | `--backend <name>` | Force a backend. Default `auto`. Aliases: `bwrap` → linux; `macos`, `darwin`, `sandbox-exec` → seatbelt; `appcontainer`, `lowbox` → windows. Unknown or unavailable backends fail closed. |
 | `--approve` | Interactive approval: prompt on first out-of-policy access instead of hard-failing. Network approvals apply live; filesystem approvals are saved to the policy and the server restarts. Requires a terminalfails closed without one. |
 | `--approve-timeout <dur>` | Per-prompt timeout (e.g. `30s`, `2m`). Zero waits indefinitely; expiry denies. Requires `--approve`. |
 | `-- <command...>` | Command to sandbox. Optional separatoreverything after the flags is the command anyway; `--` lets the command itself start with a flag-like token. |
+
+Warden checks the explicit policy, then `warden.yaml` in the working directory,
+then a reviewed pack for the exact artifact version. The bare Filesystem
+launcher selects the bundled version. For other commands, an interactive
+terminal can review a starter policy. Without a matching policy or a terminal,
+the command exits before launching.
 
 Command resolution: the CLI tail wins, otherwise the policy's `command:` is
 used, otherwise the run fails with a usage error. Bare executable names
@@ -149,6 +166,85 @@ warden logs [--log <file>] [--tail <n> | -n <n>] [--follow | -f]
 `--tail 0` prints nothing; `--follow` polls for appended events (survives
 truncation). Prints "no audit events recorded yet" when the log doesn't exist.
 
+Use `warden logs --tail 50 --explain` to see reasons for denied or failed
+accesses in the selected entries and which policy section to check.
+
+## `warden learn`
+
+```bash
+warden learn --output ./warden.learned.yaml -- ./my-command
+```
+
+Run this from the project directory on Linux. The observation reads the project
+through a read-only mount with secret-file protection, uses a disposable
+`HOME`, and blocks egress. The observation runs for up to 30 seconds. Warden
+offers exact observed files as read grants for individual approval and lists
+requested hosts in the report for separate review.
+
+The final confirmation saves the policy and its `.report.json` sidecar,
+including the SHA-256 digest. Run with that policy and pass the printed digest
+to `warden run --policy-sha256` to pin the reviewed bytes.
+
+## `warden guard`
+
+```bash
+warden guard npm install is-number@7.0.0 --output ./reviewed-npm
+warden guard pip install idna==3.10 --output ./reviewed-wheel
+```
+
+Choose a new output directory with an existing parent. The default release
+cooldown is 48 hours. User settings come from
+`$XDG_CONFIG_HOME/warden/guard.yaml` or `~/.config/warden/guard.yaml`.
+Use `--strict` to block missing release metadata, or pass
+`--policy ./warden.yaml` to apply the additional restrictions from a
+[version 2 guard section](schema.md#guard).
+An explicit `--override-age` applies to one invocation and is audited.
+The pip command installs a verified binary wheel. Review its dependencies
+individually.
+
+## `warden grant`
+
+```bash
+warden grant host docs.example.org --policy warden.yaml
+warden grant path ./data/report.json --policy warden.yaml
+warden grant host docs.example.org --policy warden.yaml --for 30m
+```
+
+The command previews one exact host or read grant and waits for `y` at the
+terminal. The default policy is `./warden.yaml`. Write grants, recognized
+credential hosts, and protected secret paths require direct policy review.
+Restart the sandbox after saving. Regenerate any policy pin that’s meant to
+reference the updated policy.
+
+`--for` saves an expiry instead of permanent access. The native Linux and
+Windows backends end the sandbox when its first active temporary permission
+expires. Start it again to use the remaining grants.
+
+## `warden hook`
+
+Install an advisory PreToolUse hook in Claude Code 2.1.295 or later.
+
+```bash
+warden hook install --policy ./warden.yaml
+warden hook uninstall
+```
+
+The default scope is the current project's `.claude/settings.local.json`.
+Use `--scope user` for `~/.claude/settings.json`, or `--config <file>` for
+an explicit settings path. Use the same scope and settings path for uninstall.
+
+The hook checks Bash and PowerShell invocations against the exact literal words
+in `command` and applies read, write, and deny rules to the matched file tools.
+Use a dedicated policy with the shell command and paths you want to grant.
+The check returns exit 2 on a denial or invalid input, leaving Claude Code's
+permissions in effect on success. Use `warden run` for OS-level containment
+of processes launched outside these advisory checks.
+
+Undo restores the original settings bytes when the installed settings still
+match the saved snapshot. If you have since edited the settings, review the
+`PreToolUse` groups in the file and remove the entry calling `warden hook check`.
+See the [Claude Code hooks reference](https://code.claude.com/docs/en/hooks).
+
 ## `warden doctor`
 
 Check that the host can actually enforce a sandbox. It probes the real
@@ -159,6 +255,14 @@ security-oriented report:
 ```bash
 warden doctor
 ```
+
+Run `warden doctor --prove` on Linux, macOS, or Windows to exercise the native
+sandbox with disposable fixtures. It verifies granted reads and writes, then
+checks that the sandbox blocks an SSH decoy, an outside write, a network
+destination, and an environment sentinel. Linux and macOS check a denial
+from the egress proxy for a reserved hostname. Windows checks access to a
+live host loopback endpoint and keeps the SSH decoy outside the read grant.
+Any failed check or unavailable native backend exits with code 1.
 
 Example output (TTY):
 
@@ -192,6 +296,28 @@ and CI can gate on it:
 - `0`ready to run
 - `1`NOT READY (sandbox backend or a required tool such as `strace` is missing)
 - `2`usage error (unexpected arguments)
+
+## `warden migrate`
+
+```bash
+warden migrate ./warden.yaml
+warden migrate --write ./warden.yaml
+warden migrate --client cursor --config ./.cursor/mcp.json ./warden.yaml
+```
+
+Preview shows the schema-version and SHA-256 changes and reports MCP launchers
+that need review. With no policy paths, Warden checks `./warden.yaml` if it exists.
+It scans existing client configs in known user and project locations. Use
+`--client` and `--config` together to inspect an explicit config instead.
+
+Apply verifies that the effective policy is identical across the schema change.
+It updates inspected `warden run` digest pins that match the original bytes,
+including the corresponding undo records. Each changed file gets an owner-only
+`.bak` next to it. Keep backups private because they can contain credentials.
+
+Stale pins, unknown fields, and launcher policies whose paths depend on the client
+working directory need manual review. An empty MCP allowlist denies every tool.
+Legacy stdio proxies require separate review before changing their launcher.
 
 ## `warden version`
 
@@ -288,6 +414,7 @@ MikkoParkkola/mcp-gateway).
 | other | For `run`/`trace`: the sandboxed/traced process's own exit code |
 | `1` | Runtime failure (backend unavailable, enforcement error, approval restarts exhausted) |
 | `2` | Usage or policy error (bad flags, unreadable/invalid policy, no command) |
+| `3` | For `migrate`, pending changes or findings requiring manual review |
 
 ## Terminal output
 

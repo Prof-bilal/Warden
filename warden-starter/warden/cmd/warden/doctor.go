@@ -14,9 +14,16 @@ import (
 )
 
 func cmdDoctor(args []string) {
+	if len(args) == 1 && args[0] == "--prove" {
+		if err := doctorProve(); err != nil {
+			fmt.Fprintln(os.Stderr, "warden doctor --prove:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(args) != 0 {
 		fmt.Fprintf(os.Stderr, "warden doctor: unexpected arguments %v\n", args)
-		fmt.Fprintln(os.Stderr, "usage: warden doctor")
+		fmt.Fprintln(os.Stderr, "usage: warden doctor [--prove]")
 		os.Exit(2)
 	}
 

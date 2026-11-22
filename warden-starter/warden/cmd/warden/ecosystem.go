@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/warden-sandbox/warden/internal/clientconfig"
 	"github.com/warden-sandbox/warden/internal/packs"
@@ -16,36 +16,6 @@ import (
 	"github.com/warden-sandbox/warden/internal/privatefile"
 	"github.com/warden-sandbox/warden/internal/sandbox"
 )
-
-func parsePolicyDigest(args []string) (string, []string, error) {
-	var digest string
-	out := []string{}
-	for i := 0; i < len(args); i++ {
-		if args[i] == "--" {
-			out = append(out, args[i:]...)
-			break
-		}
-		value := ""
-		if args[i] == "--policy-sha256" {
-			if i+1 >= len(args) {
-				return "", nil, fmt.Errorf("--policy-sha256 requires a digest")
-			}
-			i++
-			value = args[i]
-		} else if strings.HasPrefix(args[i], "--policy-sha256=") {
-			value = strings.TrimPrefix(args[i], "--policy-sha256=")
-		} else {
-			out = append(out, args[i])
-			continue
-		}
-		raw, e := hex.DecodeString(value)
-		if e != nil || len(raw) != 32 || digest != "" {
-			return "", nil, fmt.Errorf("policy digest must be one SHA-256 value")
-		}
-		digest = strings.ToLower(value)
-	}
-	return digest, out, nil
-}
 
 func printEcosystemHelp(cmd string) {
 	fmt.Fprintf(os.Stderr, "WARDEN %s\n\n", strings.ToUpper(cmd))
@@ -57,7 +27,7 @@ func printEcosystemHelp(cmd string) {
   warden packs prepare <npm-pack> --output <new-runtime-directory> [--backend auto]
   warden packs generate <pack> --runtime <prepared-directory> [--path <data-directory>] --output <policy.yaml>
 
-Profiles are candidates. prepare installs pinned npm releases inside the sandbox,
+List shows which profiles are reviewed. prepare installs pinned npm releases inside the sandbox,
 with install scripts disabled and registry-only egress. generate starts no servers.
 The command writes a policy plus a metadata sidecar with its SHA-256 hash.`)
 	case "clients":
@@ -173,13 +143,13 @@ func cmdPacks(args []string) error {
 			Pack         packs.Pack `json:"pack"`
 			PolicySHA256 string     `json:"policy_sha256"`
 			Evidence     string     `json:"evidence"`
-		}{p, packs.Digest(b), "candidate; upstream workflow not verified; local runtime identity not attested"}
+		}{p, packs.Digest(b), "catalog profile and policy digest; verify the local upstream workflow independently"}
 		mb, _ := json.MarshalIndent(metadata, "", "  ")
 		if e = writeExclusive(abs+".pack.json", mb); e != nil {
 			_ = os.Remove(abs)
 			return fmt.Errorf("metadata write failed; policy creation rolled back")
 		}
-		fmt.Fprintln(os.Stderr, "Created candidate policy and metadata. Review grants and test the prepared upstream before use.")
+		fmt.Fprintln(os.Stderr, "Created policy and metadata. Review grants and test the prepared upstream before use.")
 		return nil
 	default:
 		return fmt.Errorf("unknown packs subcommand")
@@ -309,6 +279,7 @@ func cmdClientConfig(cmd string, args []string) error {
 		return nil
 	}
 	storage := clientconfig.StateDirectory(plan.Config)
+	p = p.WithActiveGrants(time.Now())
 	for _, grant := range append(append([]string{}, p.Filesystem.Read...), p.Filesystem.Write...) {
 		if policy.Within(storage, grant) || policy.Within(grant, storage) {
 			return fmt.Errorf("private backup storage overlaps a policy grant; choose a separate WARDEN_SETUP_STATE_DIR or narrower data/runtime grant")

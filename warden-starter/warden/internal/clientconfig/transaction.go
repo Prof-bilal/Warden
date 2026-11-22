@@ -46,7 +46,8 @@ type Plan struct {
 
 func Hash(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h[:]) }
 
-func readRegular(path string) ([]byte, error) {
+// ReadRegular reads a bounded regular file and rejects direct symlinks.
+func ReadRegular(path string) ([]byte, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return nil, err
@@ -126,11 +127,11 @@ func PrepareWithCommand(config, format, server, policy, warden, backend string, 
 	if err != nil {
 		return Plan{}, err
 	}
-	pb, err := readRegular(policy)
+	pb, err := ReadRegular(policy)
 	if err != nil {
 		return Plan{}, err
 	}
-	b, err := readRegular(config)
+	b, err := ReadRegular(config)
 	if err != nil {
 		return Plan{}, err
 	}
@@ -199,7 +200,7 @@ func PrepareCreate(config, format, server, policyPath, warden, backend string, u
 	if err != nil {
 		return Plan{}, err
 	}
-	pb, err := readRegular(policyPath)
+	pb, err := ReadRegular(policyPath)
 	if err != nil {
 		return Plan{}, err
 	}
@@ -267,6 +268,12 @@ func Apply(p Plan) (string, error) {
 		return "", nil
 	}
 	if p.EntryCreated && p.ConfigMissing {
+		if p.Format == hookFormat {
+			pb, err := ReadRegular(p.Policy)
+			if err != nil || Hash(pb) != p.PolicyHash {
+				return "", fmt.Errorf("policy changed since preview; no changes applied")
+			}
+		}
 		if _, err = os.Lstat(p.Config); err == nil {
 			return "", fmt.Errorf("config appeared since preview; no changes applied")
 		} else if !os.IsNotExist(err) {
@@ -295,14 +302,14 @@ func Apply(p Plan) (string, error) {
 		}
 		return "", nil
 	}
-	current, err := readRegular(p.Config)
+	current, err := ReadRegular(p.Config)
 	if err != nil {
 		return "", err
 	}
 	if !bytes.Equal(current, p.Before) {
 		return "", fmt.Errorf("config changed since preview; no changes applied")
 	}
-	pb, err := readRegular(p.Policy)
+	pb, err := ReadRegular(p.Policy)
 	if err != nil || Hash(pb) != p.PolicyHash {
 		return "", fmt.Errorf("policy changed since preview; no changes applied")
 	}
@@ -319,7 +326,7 @@ func Apply(p Plan) (string, error) {
 	if err := AtomicWrite(statePath(p.Config, p.Server), rb); err != nil {
 		return "", err
 	}
-	current, err = readRegular(p.Config)
+	current, err = ReadRegular(p.Config)
 	if err != nil || !bytes.Equal(current, p.Before) {
 		r.Active = false
 		rb, _ = json.MarshalIndent(r, "", "  ")
@@ -360,10 +367,13 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 	if !r.Active {
 		return false, nil
 	}
+	if r.Format == hookFormat {
+		return undoHookSettings(config, r, dryRun)
+	}
 	if r.EntryCreated {
 		return undoCreated(config, r, dryRun)
 	}
-	current, err := readRegular(config)
+	current, err := ReadRegular(config)
 	if err != nil {
 		return false, err
 	}
@@ -388,7 +398,7 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 	}
 	var out []byte
 	if Hash(current) == r.AfterHash {
-		out, err = readRegular(r.Backup)
+		out, err = ReadRegular(r.Backup)
 		if err != nil || Hash(out) != r.BeforeHash {
 			return false, fmt.Errorf("backup missing or modified")
 		}
@@ -401,7 +411,7 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 	if dryRun {
 		return true, nil
 	}
-	latest, err := readRegular(config)
+	latest, err := ReadRegular(config)
 	if err != nil || !bytes.Equal(latest, current) {
 		return false, fmt.Errorf("config changed during undo")
 	}
@@ -420,7 +430,7 @@ func Undo(config, server string, dryRun bool) (bool, error) {
 // existing config, or delete the whole file when Warden created it. Drift is
 // refused; a missing entry is treated as already undone.
 func undoCreated(config string, r Record, dryRun bool) (bool, error) {
-	current, err := readRegular(config)
+	current, err := ReadRegular(config)
 	if err != nil {
 		if r.ConfigMissing && os.IsNotExist(err) {
 			if !dryRun {
@@ -470,7 +480,7 @@ func undoCreated(config string, r Record, dryRun bool) (bool, error) {
 	if out, err = d.Remove(r.Server); err != nil {
 		return false, err
 	}
-	latest, err := readRegular(config)
+	latest, err := ReadRegular(config)
 	if err != nil || !bytes.Equal(latest, current) {
 		return false, fmt.Errorf("config changed during undo")
 	}
@@ -490,19 +500,27 @@ func markRecordInactive(config string, r Record) error {
 }
 
 func loadRecord(config, server string) (Record, error) {
+	r, _, err := loadRecordSnapshot(config, server)
+	return r, err
+}
+
+func loadRecordSnapshot(config, server string) (Record, []byte, error) {
+	if stateDir(config) == "" {
+		return Record{}, nil, fmt.Errorf("private Warden undo storage unavailable")
+	}
 	path := statePath(config, server)
 	if info, err := os.Lstat(stateDir(config)); err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-		return Record{}, fmt.Errorf("invalid Warden state directory")
+		return Record{}, nil, fmt.Errorf("invalid Warden state directory")
 	}
-	b, err := readRegular(path)
+	b, err := ReadRegular(path)
 	if err != nil {
-		return Record{}, err
+		return Record{}, nil, err
 	}
 	var r Record
 	if json.Unmarshal(b, &r) != nil || r.Config != config || r.Server != server {
-		return Record{}, fmt.Errorf("invalid undo record")
+		return Record{}, nil, fmt.Errorf("invalid undo record")
 	}
-	return r, nil
+	return r, b, nil
 }
 
 func privateDir(dir string) error {
@@ -594,7 +612,7 @@ func Inventory(config, format string) ([]InventoryEntry, error) {
 		return nil, err
 	}
 	config = filepath.Join(parent, filepath.Base(config))
-	b, err := readRegular(config)
+	b, err := ReadRegular(config)
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +627,7 @@ func Inventory(config, format string) ([]InventoryEntry, error) {
 		r, e := loadRecord(config, name)
 		if e == nil && r.Active {
 			if Equal(l, r.Wrapped) {
-				pb, e := readRegular(r.Policy)
+				pb, e := ReadRegular(r.Policy)
 				if e != nil || Hash(pb) != r.PolicyHash {
 					status = "policy drift"
 				} else {

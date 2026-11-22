@@ -11,18 +11,19 @@ import (
 type Client struct {
 	ID, Name, Format string
 	Scopes           []string
+	HookSettings     string `json:"HookSettings,omitempty"`
 }
 
 var Clients = []Client{
-	{"claude-desktop", "Claude Desktop", "json", []string{"user"}},
-	{"claude-code", "Claude Code", "json", []string{"project", "user"}},
-	{"cursor", "Cursor", "json", []string{"project", "user"}},
-	{"codex", "Codex", "toml", []string{"project", "user"}},
-	{"vscode", "VS Code", "jsonc", []string{"project"}},
-	{"gemini", "Gemini CLI", "json", []string{"project", "user"}},
-	{"cline", "Cline CLI / extension", "json", []string{"user", "explicit"}},
-	{"cascade", "Legacy Cascade", "json", []string{"explicit"}},
-	{"generic", "Other MCP host", "json", []string{"explicit"}},
+	{"claude-desktop", "Claude Desktop", "json", []string{"user"}, ""},
+	{"claude-code", "Claude Code", "json", []string{"project", "user"}, ".claude/settings.json"},
+	{"cursor", "Cursor", "json", []string{"project", "user"}, ""},
+	{"codex", "Codex", "toml", []string{"project", "user"}, ""},
+	{"vscode", "VS Code", "jsonc", []string{"project"}, ""},
+	{"gemini", "Gemini CLI", "json", []string{"project", "user"}, ""},
+	{"cline", "Cline CLI / extension", "json", []string{"user", "explicit"}, ""},
+	{"cascade", "Legacy Cascade", "json", []string{"explicit"}, ""},
+	{"generic", "Other MCP host", "json", []string{"explicit"}, ""},
 }
 
 func Get(id string) (Client, error) {

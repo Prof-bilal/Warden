@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -85,6 +86,13 @@ func TestToolRunSandboxExecutesRealWardenRun(t *testing.T) {
 		t.Skip("/bin/sh not available")
 	}
 	dir := t.TempDir()
+	// This test binary cannot dispatch the Warden run subcommand.
+	bin := filepath.Join(dir, "warden")
+	if out, err := exec.Command("go", "build", "-o", bin, "../../cmd/warden").CombinedOutput(); err != nil {
+		t.Fatalf("build Warden CLI: %v\n%s", err, out)
+	}
+	t.Setenv("WARDEN_MCP_BIN", bin)
+	t.Setenv("XDG_STATE_HOME", filepath.Join(dir, "state"))
 	// Policy grants nothing; the workload only echoes. Must still be blocked
 	// from running without a backend if none is available, but with a real
 	// backend present the run completes. Either way, the result must come

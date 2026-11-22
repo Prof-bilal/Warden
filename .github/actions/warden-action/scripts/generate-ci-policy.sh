@@ -47,7 +47,7 @@ generate_policy_header() {
 EOF
 }
 
-generate_base_policy() {
+generate_policy_command() {
     local cmd_array=""
     if [ -n "$COMMAND" ]; then
         cmd_array="command: [\"bash\", \"-c\", \"$COMMAND\"]"
@@ -55,9 +55,11 @@ generate_base_policy() {
         cmd_array="# command: [\"your-command-here\"]"
     fi
     
-    cat << EOF
-$cmd_array
+    printf '%s\n' "$cmd_array"
+}
 
+generate_base_policy() {
+    cat << EOF
 filesystem:
   read:
     - "."                    # Repository root
@@ -228,11 +230,7 @@ validate_policy() {
     local policy_file="$1"
     echo "🔍 Validating generated policy..."
     
-    if [ -f "$SCRIPT_DIR/validate-policy.py" ]; then
-        python3 "$SCRIPT_DIR/validate-policy.py" "$policy_file"
-    else
-        echo "⚠️  Policy validator not found, skipping validation"
-    fi
+    warden validate -- "$policy_file"
 }
 
 # Parse command line arguments
@@ -279,17 +277,18 @@ echo "Output: $OUTPUT_FILE"
     generate_policy_header
     
     if [ -n "$TRACE_FILE" ] && [ -f "$TRACE_FILE" ]; then
-        echo "📊 Generating from trace file: $TRACE_FILE"
+        echo "📊 Generating from trace file: $TRACE_FILE" >&2
         # Use warden init if available, otherwise fall back to template
         if command -v warden &> /dev/null; then
             echo "# Generated from trace: $TRACE_FILE"
             warden init --log "$TRACE_FILE" --output /dev/stdout 2>/dev/null | tail -n +2
         else
-            echo "⚠️  Warden not found, using template instead"
+            echo "⚠️  Warden not found, using template instead" >&2
+            generate_policy_command
             generate_base_policy
         fi
     else
-        generate_base_policy
+        generate_policy_command
         
         case "$POLICY_TYPE" in
             "ai-review")
@@ -302,8 +301,12 @@ echo "Output: $OUTPUT_FILE"
                 enhance_for_test
                 ;;
             "deploy")
+                generate_base_policy
                 echo "# Deploy policies require manual customization"
                 echo "# Add specific deployment endpoints and credentials"
+                ;;
+            *)
+                generate_base_policy
                 ;;
         esac
     fi

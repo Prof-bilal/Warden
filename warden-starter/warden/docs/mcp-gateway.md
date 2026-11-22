@@ -47,7 +47,15 @@ object and run `warden creator definition-hash --manifest tool-definition.json`.
 This hashes sorted object keys while preserving JSON number precision. Use the
 printed SHA-256 in the rules file.
 Warden refreshes discovery immediately before calls and rejects changed pinned
-definitions. Unpinned definitions remain an explicit review limitation.
+definitions. Use `--pin-server <name>` with `warden connect` or `warden serve`
+to pin the first definition Warden sees for each allowed tool. Use a distinct
+name for each upstream. A subsequent change hides the tool from discovery,
+blocks calls, and records a denial in the bridge journal.
+
+Run `warden mcp pin --server <name> --diff <tool>` to inspect the hashes, or
+`warden mcp pin --server <name> --accept <tool>` to approve the observed hash
+at the terminal. Definitions pinned explicitly in the rules file require a
+rules update. Persistent pins apply to the MCP bridge.
 
 ```bash
 warden connect --rules /absolute/rules.json --policy /absolute/policy.yaml -- /absolute/node /prepared/server/dist/index.js

@@ -1,7 +1,35 @@
 # Changelog
 
-All notable Warden changes are recorded here. Warden is pre-1.0 security
-software; platform behavior and verification scope are documented separately.
+All notable Warden changes are recorded here. Platform behavior and verification
+scope are documented separately.
+
+## Warden 2.0 (unreleased)
+
+### Added
+
+- `warden run` resolves local policies and reviewed launchers. The Filesystem
+  launcher uses the bundled exact release.
+- `warden learn` reviews starter grants on Linux. `warden doctor --prove`
+  exercises the native sandbox on Linux, macOS, and Windows using disposable
+  fixtures.
+- `warden guard` checks package metadata before an isolated install, and CI
+  policy reviews use the native validator and policy diff.
+- Bridge-mode MCP tool pins hide changed definitions until explicitly accepted.
+  The Claude Code hook provides advisory screening of tool requests.
+- `warden migrate` previews and applies schema-version updates and matching
+  client pins, with backups and reports for policies requiring manual review.
+
+### Upgrade notes
+
+- Explicit schema v1 policies remain accepted with a migration warning.
+- `warden add` is a deprecated compatibility command scheduled for removal in
+  2.2. Use `warden run` or `warden wrap` for new setups.
+
+- Use `warden migrate` to preview a v2 policy. Inspect permission changes with
+  `warden policy-diff` before deploying a new policy.
+- Proxies require a numeric loopback listener. Empty tool allowlists deny every
+  tool call, and upstream sessions are kept per downstream client. Direct stdio
+  proxy upstreams require the explicit `--unsafe-unconfined` flag.
 
 ## 0.2.0-beta.5
 

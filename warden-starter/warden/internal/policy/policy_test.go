@@ -244,15 +244,15 @@ func TestValidateRejectsBadEnvNames(t *testing.T) {
 	}
 }
 
-func TestUnimplementedAdvisories(t *testing.T) {
+func TestAdvisories(t *testing.T) {
 	p := Policy{Network: Network{Allow: []string{"api.github.com"}}, Limits: Limits{MemoryMB: 512}}
-	advisories := p.UnimplementedAdvisories()
+	advisories := p.Advisories()
 	if len(advisories) != 0 {
-		t.Fatalf("UnimplementedAdvisories() = %v, want none", advisories)
+		t.Fatalf("Advisories() = %v, want none", advisories)
 	}
 
 	none := Policy{}
-	if got := none.UnimplementedAdvisories(); len(got) != 0 {
+	if got := none.Advisories(); len(got) != 0 {
 		t.Errorf("expected no advisories, got %v", got)
 	}
 }

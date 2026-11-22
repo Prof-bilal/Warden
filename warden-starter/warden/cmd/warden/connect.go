@@ -37,6 +37,7 @@ not process-sandboxed. Rules deny tools/resources/prompts unless listed.
 Protocol: 2025-11-25, bounded request/response subset. No MRTR, tasks,
 subscriptions, pagination, roots, sampling or elicitation. Unsupported paths
 return correlated errors. HTTP disconnect kills a pending local connection.
+Use --pin-server <name> to persist tool definition pins for this upstream.
 
 serve options: --public-url https://your-host/mcp --origins https://your-host
   --issuer https://trusted-issuer --jwks-file trusted-local-jwks.json (RS256,
@@ -56,6 +57,7 @@ type connectionOptions struct {
 	protectedEnv                                        []string
 	controlPath                                         string
 	expectedPolicyHash, expectedRulesHash               string
+	pinServer                                           string
 }
 
 func connectionFactory(ctx context.Context, o connectionOptions) (mcpbridge.Factory, mcpbridge.Rules, error) {
@@ -125,6 +127,22 @@ func connectionFactory(ctx context.Context, o connectionOptions) (mcpbridge.Fact
 			return nil, r, e
 		}
 	}
+	var pins mcpbridge.PinStore
+	if o.pinServer != "" {
+		pins, e = mcpbridge.DefaultPinStore()
+		if e != nil {
+			return nil, r, e
+		}
+		path, e := pins.FilePath(o.pinServer)
+		if e != nil {
+			return nil, r, e
+		}
+		for _, state := range []string{pins.Dir, path, path + ".lock"} {
+			if e := outsideUpstream(state, p, o.command, o.backend); e != nil {
+				return nil, r, fmt.Errorf("MCP pin store: %w", e)
+			}
+		}
+	}
 	if o.journal == "" {
 		dir, e := os.UserConfigDir()
 		if e != nil {
@@ -173,6 +191,9 @@ func connectionFactory(ctx context.Context, o connectionOptions) (mcpbridge.Fact
 		if e != nil {
 			return nil, e
 		}
+		if o.pinServer != "" {
+			return mcpbridge.NewPinnedSession(up, r, j, id, pins, o.pinServer), nil
+		}
 		return mcpbridge.NewSession(up, r, j, id), nil
 	}, r, nil
 }
@@ -190,6 +211,7 @@ func cmdConnect(cmd string, args []string) error {
 	remoteEnv := fs.String("upstream-token-env", "", "upstream credential env name")
 	loop := fs.Bool("allow-loopback-upstream", false, "test upstream")
 	journal := fs.String("journal", "", "private decision journal")
+	pinServer := fs.String("pin-server", "", "persist tool definition pins under a stable server name")
 	listen := fs.String("listen", "127.0.0.1:8788", "numeric loopback")
 	public := fs.String("public-url", "", "TLS proxy endpoint")
 	tokenEnv := fs.String("token-env", "", "downstream bearer env name")
@@ -236,7 +258,7 @@ func cmdConnect(cmd string, args []string) error {
 			return e
 		}
 	}
-	factory, r, e := connectionFactory(ctx, connectionOptions{policyPath: *pp, rulesPath: *rp, backend: *backend, remote: *remote, remoteToken: os.Getenv(*remoteEnv), loopback: *loop, command: fs.Args(), journal: *journal, controlPath: *control, protectedEnv: []string{*tokenEnv, *remoteEnv}})
+	factory, r, e := connectionFactory(ctx, connectionOptions{policyPath: *pp, rulesPath: *rp, backend: *backend, remote: *remote, remoteToken: os.Getenv(*remoteEnv), loopback: *loop, command: fs.Args(), journal: *journal, controlPath: *control, protectedEnv: []string{*tokenEnv, *remoteEnv}, pinServer: *pinServer})
 	if e != nil {
 		return e
 	}

@@ -1,5 +1,7 @@
 # Quickstart: run a program in a sandbox
 
+To start the reviewed Filesystem MCP server without writing YAML, follow the [zero-config quickstart](zero-config.md).
+
 This takes about five minutes. You will write a small policy, run a program inside Warden, and see a blocked access in the audit log.
 
 **Before you start:** install Warden and make sure `warden doctor` says **READY** (see [Install](install.md)).

@@ -10,6 +10,20 @@ the agent edits a temporary copy, and why host changes still require review.
 
 ## Threat Model
 
+### Grants that require policy review
+
+Automatic pack selection uses the exact version in the reviewed catalog. The
+starter wizard enables secret-file protection and asks before saving a pinned
+policy. The following changes require direct policy review:
+
+- Hosts outside the reviewed profile and credential hosts.
+- Filesystem writes and protected secret files.
+- Environment names containing `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, or `CRED`.
+- Disabling secret-file protection or widening grants for a new release.
+
+Warden stops if the backend cannot enforce the sandbox. Use `warden policy-diff`
+to review an upgrade before selecting the new policy.
+
 ### 1. Sandbox escape: access outside the granted boundary
 
 **Threat.** A compromised or buggy sandboxed process attempts to read files,

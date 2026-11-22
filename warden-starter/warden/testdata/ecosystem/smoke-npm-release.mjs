@@ -5,7 +5,8 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, readFile, rm, stat, cp, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve, dirname } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import https from "node:https";
 import assert from "node:assert/strict";
@@ -50,10 +51,10 @@ const fixtureURL = `https://127.0.0.1:${server.address().port}`;
 const preload = join(priv, "fixture-transport.cjs");
 await writeFile(preload, `const https = require('node:https'); const get = https.get; https.get = function(url, options, callback) { const original = new URL(url); if (original.hostname === 'github.com' && original.pathname.startsWith('/Prof-bilal/Warden/releases/download/')) url = new URL(original.pathname + original.search, ${JSON.stringify(fixtureURL)}); return get.call(this, url, options, callback); };\n`);
 env.NODE_OPTIONS = `--require=${preload}`; env.NODE_EXTRA_CA_CERTS = certFile;
-const sdk = join(runtime, "node_modules/@modelcontextprotocol/sdk");
-const { Client } = await import(pathToFileURL(join(sdk, "dist/esm/client/index.js")));
-const { StdioClientTransport } = await import(pathToFileURL(join(sdk, "dist/esm/client/stdio.js")));
-const { StreamableHTTPClientTransport } = await import(pathToFileURL(join(sdk, "dist/esm/client/streamableHttp.js")));
+const load = createRequire(new URL("../../mcp-test/package.json", import.meta.url));
+const { Client } = load("@modelcontextprotocol/sdk/client/index.js");
+const { StdioClientTransport } = load("@modelcontextprotocol/sdk/client/stdio.js");
+const { StreamableHTTPClientTransport } = load("@modelcontextprotocol/sdk/client/streamableHttp.js");
 const installed = join(prefix, "bin/warden"), cache = join(home, ".cache/warden", metadata.version), cacheFile = join(cache, asset);
 try {
   const pack = await success("npm", ["pack", wrapper, "--pack-destination", priv, "--json"]);
@@ -130,5 +131,6 @@ try {
   await success(installed, ["unwrap", "--client", "cursor", "--config", config, "--server", "filesystem", "--yes"]); assert.equal(await readFile(config, "utf8"), original);
   checks.push("npm preview/apply/idempotence/policy-drift refusal/exact rollback with disposable host config");
   await writeFile(join(priv, "scenario-inputs.json"), JSON.stringify({ installed, policy, rules, upstream, project, data, selected, outside, runtime, privateDirectory: priv, env: { HOME: home, XDG_CONFIG_HOME: env.XDG_CONFIG_HOME, XDG_STATE_HOME: env.XDG_STATE_HOME } }, null, 2));
-  console.log(JSON.stringify({ status: "pass", version: metadata.version, backend: "linux", upstream: "@modelcontextprotocol/server-filesystem@2026.8.31", releaseOrigin: "local HTTPS fixture, candidate not published", checks, evidenceDirectory: root }));
+  const pkg = JSON.parse(await readFile(join(runtime, "node_modules/@modelcontextprotocol/server-filesystem/package.json"), "utf8"));
+  console.log(JSON.stringify({ status: "pass", version: metadata.version, backend: "linux", upstream: `${pkg.name}@${pkg.version}`, releaseOrigin: "local HTTPS fixture, candidate not published", checks, evidenceDirectory: root }));
 } finally { await new Promise(r => server.close(r)); }
