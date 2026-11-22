@@ -91,6 +91,12 @@ The proof harness is the fastest way to check that sandbox semantics still hold 
 2. **Platform verification** is always valuable: run the proof harness on macOS (native + Docker fallback) and Windows, and open an issue with your `evidence/` summary.
 3. **Bigger changes** (backend work, schema changes, new subcommands): open an issue or discussion first so we can agree on the approach before you invest time. The [architecture doc](ARCHITECTURE.md) and [design notes](warden-starter/warden/docs/design.md) explain the constraints.
 
+Adding or changing an isolation backend? Read the
+[isolation backend contract](warden-starter/warden/docs/isolation-backend-contract.md)
+first - it is the review checklist - then the
+[architectural principles](warden-starter/warden/docs/architectural-principles.md)
+for the reasoning behind it.
+
 ### The rules that keep Warden safe
 
 These are non-negotiable in review:

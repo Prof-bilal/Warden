@@ -30,6 +30,7 @@ nav:
     - Security review: security.md
     - Test evidence: proof.md
     - Architecture: architecture.md
+    - Architectural principles: architectural-principles.md
     - Linux local testing: platforms/linux-local-setup.md
     - Windows testing: platforms/windows-testing.md
   - Evidence and operations:
@@ -43,6 +44,7 @@ nav:
     - Example policies: examples.md
   - Project and contribution:
     - Contributing: contributing.md
+    - Isolation backend contract: isolation-backend-contract.md
     - Testing Guide: testing.md
     - Testing Platforms: testing-platforms.md
     - Code Style: codestyle.md
