@@ -80,13 +80,13 @@ export default function Contact() {
                 <h2 className="mt-3 font-mono text-[15px] font-semibold text-offwhite">
                   {channel.name}
                 </h2>
-                <p className="mt-1.5 flex-1 font-sans text-[12.5px] leading-[1.7] text-offwhite/45">
+                <p className="mt-1.5 flex-1 font-sans text-[12.5px] leading-[1.7] text-muted">
                   {channel.description}
                 </p>
-                <p className="mt-4 truncate font-mono text-[11px] text-offwhite/35">
+                <p className="mt-4 truncate font-mono text-[11px] text-muted">
                   {channel.label}
                 </p>
-                <span className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11.5px] font-semibold text-offwhite/80 transition-colors group-hover:text-acid">
+                <span className="mt-3 inline-flex items-center gap-1.5 font-mono text-[11.5px] font-semibold text-paper transition-colors group-hover:text-acid">
                   {channel.cta} <span aria-hidden>→</span>
                 </span>
               </a>
@@ -99,7 +99,7 @@ export default function Contact() {
       <section>
         <div className="px-6 py-14 md:py-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 border border-hair bg-cell px-6 py-8 text-center">
-            <p className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+            <p className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
               Reach Abdullah directly
             </p>
             <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ export default function Contact() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abdullah Bilal on LinkedIn"
-                className="flex h-11 w-11 items-center justify-center rounded-md border border-hair bg-void text-offwhite/45 transition-colors hover:border-acid/50 hover:text-acid"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-hair bg-void text-muted transition-colors hover:border-acid/50 hover:text-acid"
               >
                 <Linkedin size={18} />
               </a>
@@ -117,12 +117,12 @@ export default function Contact() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Abdullah Bilal on X"
-                className="flex h-11 w-11 items-center justify-center rounded-md border border-hair bg-void text-offwhite/45 transition-colors hover:border-acid/50 hover:text-acid"
+                className="flex h-11 w-11 items-center justify-center rounded-md border border-hair bg-void text-muted transition-colors hover:border-acid/50 hover:text-acid"
               >
                 <XIcon size={16} />
               </a>
             </div>
-            <p className="font-mono text-[11px] text-offwhite/35">
+            <p className="font-mono text-[11px] text-muted">
               Founder & Maintainer, fastest replies on X
             </p>
           </div>

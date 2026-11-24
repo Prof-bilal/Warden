@@ -169,7 +169,7 @@ export default function IntegrationBuilder() {
             </CodeBlock>
             <button
               onClick={download}
-              className="mt-4 rounded-lg bg-blueprint px-4 py-3 text-sm font-semibold text-ink-950"
+              className="mt-4 rounded-lg site-cta px-4 py-3 text-sm font-semibold"
             >
               Download rules
             </button>

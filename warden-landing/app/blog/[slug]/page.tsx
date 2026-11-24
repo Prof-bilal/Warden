@@ -79,18 +79,18 @@ export default async function ArticlePage({
         <div className="mx-auto max-w-[48rem]">
           <nav
             aria-label="Breadcrumb"
-            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           >
             <Link href="/" className="transition-colors hover:text-offwhite">
               Home
             </Link>
-            <span className="text-offwhite/20">/</span>
+            <span className="text-muted">/</span>
             <Link href="/blog" className="transition-colors hover:text-offwhite">
               Blog
             </Link>
             {category && (
               <>
-                <span className="text-offwhite/20">/</span>
+                <span className="text-muted">/</span>
                 <Link
                   href={`/blog/category/${category.slug}`}
                   className="transition-colors hover:text-offwhite"
@@ -101,15 +101,15 @@ export default async function ArticlePage({
             )}
           </nav>
 
-          <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
+          <h1 className="accent-heading font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
             {article.title}
           </h1>
 
-          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-micro text-offwhite/35">
+          <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-micro text-muted">
             {author && (
               <Link
                 href={`/author/${author.slug}`}
-                className="text-offwhite/70 transition-colors hover:text-acid"
+                className="text-paper transition-colors hover:text-acid"
               >
                 {author.name}
               </Link>
@@ -129,7 +129,7 @@ export default async function ArticlePage({
               <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-acid">
                 Answer in short
               </h2>
-              <ul className="mt-3 list-disc space-y-1.5 pl-5 font-sans text-[14px] leading-[1.65] text-offwhite/50">
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 font-sans text-[14px] leading-[1.65] text-muted">
                 {article.tldr.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
@@ -153,11 +153,11 @@ export default async function ArticlePage({
 
           {author && (
             <div className="mt-14 border-t border-hair pt-6">
-              <p className="font-sans text-[14px] leading-[1.7] text-offwhite/45">
+              <p className="font-sans text-[14px] leading-[1.7] text-muted">
                 Written by{" "}
                 <Link
                   href={`/author/${author.slug}`}
-                  className="text-offwhite/80 transition-colors hover:text-acid"
+                  className="text-paper transition-colors hover:text-acid"
                 >
                   {author.name}
                 </Link>
@@ -168,7 +168,7 @@ export default async function ArticlePage({
 
           {related.length > 0 && (
             <section className="mt-14 border-t border-hair pt-8">
-              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
                 Related articles
               </h2>
               <ul className="mt-4 space-y-3">

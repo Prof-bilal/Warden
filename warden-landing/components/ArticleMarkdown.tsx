@@ -6,6 +6,9 @@ import type { Components } from "react-markdown";
 // Server component: article content is rendered to static HTML so it is
 // fully available to search engines without client-side JavaScript.
 const components: Components = {
+  pre({ node: _node, ...props }) {
+    return <pre {...props} tabIndex={0} />;
+  },
   img({ node, src, alt }) {
     if (typeof src !== "string") return null;
     return (

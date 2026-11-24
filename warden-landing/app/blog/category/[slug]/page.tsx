@@ -70,17 +70,17 @@ export default async function CategoryPage({
         <div className="mx-auto max-w-[48rem]">
           <nav
             aria-label="Breadcrumb"
-            className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+            className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           >
             <Link href="/" className="transition-colors hover:text-offwhite">
               Home
             </Link>
-            <span className="text-offwhite/20">/</span>
+            <span className="text-muted">/</span>
             <Link href="/blog" className="transition-colors hover:text-offwhite">
               Blog
             </Link>
-            <span className="text-offwhite/20">/</span>
-            <span className="text-offwhite/70">{category.name}</span>
+            <span className="text-muted">/</span>
+            <span className="text-paper">{category.name}</span>
           </nav>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default async function CategoryPage({
         <div className="mx-auto max-w-[48rem]">
           <div className="border-t border-hair">
             {articles.length === 0 ? (
-              <p className="py-12 font-sans text-offwhite/45">
+              <p className="py-12 font-sans text-muted">
                 No articles in this category yet.
               </p>
             ) : (

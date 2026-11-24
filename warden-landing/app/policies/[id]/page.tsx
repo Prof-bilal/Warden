@@ -92,7 +92,7 @@ export default async function Page({
           </a>
           <Link
             href={`/setup?pack=${p.id}`}
-            className="mt-8 block rounded-xl bg-blueprint px-5 py-3 text-center text-sm font-semibold text-ink-950"
+            className="mt-8 block rounded-xl site-cta px-5 py-3 text-center text-sm font-semibold"
           >
             Set up this profile →
           </Link>

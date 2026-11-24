@@ -128,7 +128,7 @@ export default function EvidenceInspector() {
       <button
         disabled={!text || busy}
         onClick={check}
-        className="mt-6 rounded-lg bg-blueprint px-5 py-3 text-sm font-semibold text-ink-950 disabled:opacity-40"
+        className="mt-6 rounded-lg site-cta px-5 py-3 text-sm font-semibold disabled:opacity-40"
       >
         {busy ? "Checking…" : "Inspect signature"}
       </button>

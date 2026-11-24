@@ -37,10 +37,10 @@ export default function FeatureNav() {
   const activeIndex = FEATURES.findIndex((f) => f.id === active);
 
   return (
-    <div className="sticky top-[64px] z-30 border-y border-hair bg-void/95 backdrop-blur">
+    <div className="sticky top-14 z-30 border-y border-hair bg-void">
       <div className="flex items-center gap-5 px-6 py-3">
         {/* Label */}
-        <span className="hidden shrink-0 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35 sm:block">
+        <span className="hidden shrink-0 font-mono text-[9.5px] uppercase tracking-micro text-muted sm:block">
           Features
         </span>
 
@@ -53,11 +53,12 @@ export default function FeatureNav() {
             <a
               key={f.id}
               href={`#${f.id}`}
+              aria-current={active === f.id ? "location" : undefined}
               className={
                 "shrink-0 rounded border px-3 py-1 font-mono text-[10.5px] uppercase tracking-micro transition-colors " +
                 (active === f.id
                   ? "border-acid/40 bg-acid/10 text-acid"
-                  : "border-hair text-offwhite/40 hover:border-offwhite/20 hover:text-offwhite")
+                  : "border-hair text-muted hover:border-offwhite/20 hover:text-offwhite")
               }
             >
               {f.label}
@@ -78,7 +79,7 @@ export default function FeatureNav() {
               />
             ))}
           </div>
-          <span className="font-mono text-[9.5px] tabular-nums text-offwhite/35">
+          <span className="font-mono text-[9.5px] tabular-nums text-muted">
             {String(activeIndex + 1).padStart(2, "0")}/
             {String(FEATURES.length).padStart(2, "0")}
           </span>

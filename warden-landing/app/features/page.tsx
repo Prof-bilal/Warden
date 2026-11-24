@@ -47,7 +47,7 @@ function Flag({ name, desc }: { name: string; desc: string }) {
       <span className="shrink-0 sm:w-56">
         <CopyableCode text={name} />
       </span>
-      <span className="font-sans text-[13px] leading-[1.65] text-offwhite/45">{desc}</span>
+      <span className="font-sans text-[13px] leading-[1.65] text-muted">{desc}</span>
     </div>
   );
 }
@@ -69,7 +69,7 @@ function Note({
   return (
     <div className={`border px-4 py-3 font-sans text-[13px] leading-[1.7] ${styles}`}>
       <span className="font-semibold">{title}</span>{" "}
-      <span className="text-offwhite/45">{children}</span>
+      <span className="text-muted">{children}</span>
     </div>
   );
 }
@@ -348,7 +348,7 @@ export default function FeaturesPage() {
       />
 
       <PageHeader eyebrow="Feature Reference" title="Every Warden feature, explained in depth.">
-        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
+        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-muted">
           Warden is a local sandbox runtime for MCP servers and AI tools. Its CLI
           has about two dozen commands. The core ones cover the full flow, from
           sandboxing a single server to wrapping a whole MCP client config. Everything below ships today and is backed by the test
@@ -373,21 +373,21 @@ export default function FeaturesPage() {
             className="scroll-mt-32 border-b border-hair px-6 py-14 last:border-b-0"
           >
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[11px] text-offwhite/35">
+              <span className="font-mono text-[11px] text-muted">
                 {String(idx + 1).padStart(2, "0")}
               </span>
               <h2 className="font-mono text-[1.35rem] font-semibold tracking-[-0.01em] text-offwhite">
                 {f.name}
               </h2>
-              <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
+              <span className="rounded-full border border-hair bg-ink-900 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-offwhite">
                 {f.badge}
               </span>
             </div>
-            <p className="mt-2 font-sans text-[14px] text-offwhite/50">{f.tagline}</p>
+            <p className="mt-2 font-sans text-[14px] text-muted">{f.tagline}</p>
 
             <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_22rem]">
               <div className="min-w-0">
-                <p className="max-w-2xl font-sans text-[14px] leading-[1.75] text-offwhite/45">
+                <p className="max-w-2xl font-sans text-[14px] leading-[1.75] text-muted">
                   {f.body}
                 </p>
 
@@ -396,7 +396,7 @@ export default function FeaturesPage() {
                     {f.bullets.map((b) => (
                       <li
                         key={b}
-                        className="flex gap-2.5 font-sans text-[13.5px] leading-[1.7] text-offwhite/45"
+                        className="flex gap-2.5 font-sans text-[13.5px] leading-[1.7] text-muted"
                       >
                         <svg
                           width="14"
@@ -420,7 +420,7 @@ export default function FeaturesPage() {
                 )}
 
                 <div className="mt-7">
-                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
                     Usage
                   </span>
                   <div className="mt-2">
@@ -430,7 +430,7 @@ export default function FeaturesPage() {
 
                 {f.flags.length > 0 && (
                   <div className="mt-6">
-                    <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+                    <span className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
                       Flags
                     </span>
                     <div className="mt-2">
@@ -442,7 +442,7 @@ export default function FeaturesPage() {
                 )}
 
                 <div className="mt-6">
-                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+                  <span className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
                     Examples
                   </span>
                   <div className="mt-2">
@@ -474,20 +474,20 @@ export default function FeaturesPage() {
           <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
             Ready to sandbox your first server?
           </h2>
-          <p className="mx-auto mt-2 max-w-md font-sans text-[13.5px] leading-[1.7] text-offwhite/45">
+          <p className="mx-auto mt-2 max-w-md font-sans text-[13.5px] leading-[1.7] text-muted">
             Install the CLI, trace once, and run under a policy, in about two
             minutes.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/docs/install"
-              className="rounded-md bg-acid px-5 py-2.5 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
+              className="rounded-md site-cta px-5 py-2.5 font-sans text-[13px] font-semibold transition-colors"
             >
               Install Warden
             </Link>
             <Link
               href="/docs/quickstart"
-              className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
+              className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-paper transition-colors hover:border-offwhite/20"
             >
               Read the quickstart
             </Link>

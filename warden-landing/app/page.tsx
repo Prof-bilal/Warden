@@ -1,31 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_URL } from "@/lib/seo";
-import Nav from "@/components/Nav";
 import Hero from "@/components/Hero";
-import { PanelRowA, PanelRowB } from "@/components/BlueprintGrid";
 import BoundaryExample from "@/components/BoundaryExample";
 import AgentWorkspace from "@/components/AgentWorkspace";
-import EcosystemFeatures from "@/components/EcosystemFeatures";
 import RunAnywhere from "@/components/RunAnywhere";
-import Cta from "@/components/Cta";
-import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
-import SectionMarker from "@/components/bp/SectionMarker";
-import Reveal from "@/components/bp/Reveal";
-import StatRow from "@/components/bp/StatRow";
+
+import "./home.css";
+
+const description =
+  "Use Warden to review npm and PyPI releases, sandbox local AI tools and MCP servers, and block changes to pinned MCP tool definitions.";
 
 export const metadata: Metadata = {
   title: { absolute: "Warden | Permissions for Local AI Tools" },
-  description:
-    "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
+  description,
   alternates: {
     canonical: SITE_URL,
   },
   openGraph: {
     title: "Warden | Permissions for Local AI Tools",
-    description:
-      "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
+    description,
     url: SITE_URL,
     images: [
       {
@@ -39,31 +34,45 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Warden | Permissions for Local AI Tools",
-    description:
-      "Give local AI tools and MCP servers only the access they need, with explicit permissions.",
+    description,
     images: [`${SITE_URL}/og-image.png`],
   },
 };
 
-const problemCards = [
+const workflows = [
   {
-    tag: "Files",
-    body: "Keep project access separate from credentials, home directories, and unrelated folders.",
+    title: "Check package releases",
+    body: "Install Guard checks npm and PyPI releases before installation. Its default 48-hour cooldown gives new releases time to be reviewed.",
+    href: "#install-guard",
+    link: "See the npm workflow",
   },
   {
-    tag: "Secrets",
-    body: "Pass only the environment names a tool actually needs, never the whole shell.",
+    title: "Run a reviewed MCP server",
+    body: "The bundled Filesystem pack selects an exact release and gives the server read-only access to a chosen data directory. Start without writing YAML.",
+    href: "/docs/zero-config",
+    link: "Run the Filesystem quickstart",
   },
   {
-    tag: "Network",
-    body: "Allow specific APIs and block undeclared destinations before a connection opens.",
+    title: "Pin MCP tool definitions",
+    body: "Enable pinning on the bridge to record each allowed tool’s first observed definition. A change hides the tool, denies calls, and leaves a journal entry for review.",
+    href: "/docs/mcp-tool-pins",
+    link: "Set up tool pins",
   },
 ];
 
-const proofStats: [string, string][] = [
+const guardCommand = "warden guard npm install is-number@7.0.0 --output ./reviewed-npm --strict";
+
+const permissions = [
+  ["Filesystem", "Share specific paths for reading or writing and keep the rest of your files private."],
+  ["Network", "Allow the destinations a tool needs and block connections to other hosts."],
+  ["Environment", "Pass selected environment variables without exposing the whole shell."],
+  ["Runtime limits", "Set resource limits and timeouts for sandboxed processes."],
+];
+
+const proofStats = [
   ["18", "MCP fixtures"],
   ["8/8", "Linux proof checks"],
-  ["7/7", "attack simulations"],
+  ["7/7", "Attack simulations contained"],
 ];
 
 export default function Home() {
@@ -97,7 +106,7 @@ export default function Home() {
   };
 
   return (
-    <main className="relative min-h-screen bg-void text-offwhite">
+    <main id="main-content" className="home home-shell">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
@@ -109,97 +118,147 @@ export default function Home() {
           "@id": `${SITE_URL}/#webpage`,
           url: SITE_URL,
           name: "Warden | Permissions for Local AI Tools",
-          description:
-            "Run local AI tools and MCP servers with explicit file, network, environment, and resource permissions. Open source, local, and fail-closed.",
+          description,
           isPartOf: { "@type": "WebSite", name: "Warden", url: SITE_URL },
           mainEntity: { "@id": `${SITE_URL}/#software` },
         }}
       />
 
-      <div className="bp-grid-bg pointer-events-none absolute inset-0" aria-hidden />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(94,240,138,0.07),transparent_70%)]"
-        aria-hidden
-      />
-      <Nav />
+      <Hero />
 
-      <div className="bp-shell relative z-10">
-        <Hero />
-
-        <PanelRowA />
-        <PanelRowB />
-
-        <section className="border-b border-hair">
-          <div className="grid lg:grid-cols-[0.85fr_1.15fr]">
-            <div className="border-b border-hair p-6 sm:p-9 lg:border-b-0 lg:border-r">
-              <SectionMarker index="02" />
-              <h2 className="mt-4 max-w-xl font-mono text-[1.55rem] font-semibold leading-[1.18] tracking-[-0.01em] text-offwhite md:text-[1.95rem]">
-                AI tools run with your permissions.
-              </h2>
-              <p className="mt-4 max-w-xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
-                A local agent or MCP server can inherit access to files,
-                environment values, and network destinations available to the user
-                who started it. Warden turns that implicit access into explicit
-                policy.
-              </p>
-            </div>
-
-            <Reveal className="grid gap-px bg-hair sm:grid-cols-3">
-              {problemCards.map((card) => (
-                <div key={card.tag} className="bg-cell p-5">
-                  <p className="font-mono text-[9px] uppercase tracking-micro text-acid/80">
-                    {card.tag}
-                  </p>
-                  <p className="mt-3 font-sans text-[12px] leading-[1.7] text-offwhite/40">
-                    {card.body}
-                  </p>
-                </div>
-              ))}
-            </Reveal>
-          </div>
-        </section>
-
-        <BoundaryExample />
-        <AgentWorkspace />
-
-        <section className="border-b border-hair">
-          <div className="px-6 py-16 md:py-20">
-            <div className="max-w-2xl">
-              <SectionMarker index="06" />
-              <h2 className="mt-4 font-mono text-[1.55rem] font-semibold leading-[1.18] tracking-[-0.01em] text-offwhite md:text-[1.95rem]">
-                See how Warden is verified.
-              </h2>
-              <p className="mt-4 font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
-                The project publishes compatibility fixtures, sandbox proof
-                harnesses, and platform-specific limitations. Verification maturity
-                differs by operating system.
-              </p>
-            </div>
-
-            <Reveal className="mt-10">
-              <StatRow stats={proofStats} className="grid-cols-3 border border-hair sm:grid-cols-3" />
-            </Reveal>
-
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-[560px] font-mono text-[10px] leading-[1.7] text-offwhite/25">
-                MCP compatibility fixtures are tracked against the published test
-                matrix, the boundary is only as good as what is measured.
-              </p>
-              <Link
-                href="/docs/proof"
-                className="shrink-0 font-sans text-[12.5px] font-semibold text-acid transition-colors hover:text-acid-bright"
-              >
-                Read the verification notes →
+      <section id="warden-2" className="home-section" aria-labelledby="warden-2-title">
+        <h2 id="warden-2-title" className="accent-heading">What’s new in Warden 2.0</h2>
+        <p className="home-intro">
+          Check the package you install, control what the server can access, and review
+          changes to the tools it exposes.
+        </p>
+        <div className="home-grid home-workflows">
+          {workflows.map(({ title, body, href, link }) => (
+            <article key={href}>
+              <h3>{title}</h3>
+              <p className="mt-2">{body}</p>
+              <Link className="home-section-link" href={href}>
+                {link} <span aria-hidden="true">→</span>
               </Link>
-            </div>
-          </div>
-        </section>
+            </article>
+          ))}
+        </div>
+        <div className="home-actions">
+          <Link href="/v2">Explore the Warden 2.0 preview <span aria-hidden="true">→</span></Link>
+          <Link href="#autopilot">See the Autopilot benchmark <span aria-hidden="true">→</span></Link>
+          <Link href="/docs/migration">Preview your migration <span aria-hidden="true">→</span></Link>
+        </div>
+      </section>
 
-        <EcosystemFeatures />
-        <RunAnywhere />
-        <Cta />
-        <Footer />
-      </div>
+      <section id="install-guard" className="home-section home-workspace" aria-labelledby="install-guard-title">
+        <div>
+          <h2 id="install-guard-title" className="accent-heading">Review npm packages before installing</h2>
+          <p className="home-intro">
+            Install Guard checks the release age and looks for install hooks and native build
+            metadata. With <code>--strict</code>, missing age metadata blocks the install too.
+          </p>
+          <p className="home-intro">
+            Dependency scripts stay disabled. An exact <code>name@version</code> allowlist entry
+            can authorize a reviewed package’s hooks in a separate sandbox with network access denied.
+          </p>
+          <Link className="home-section-link" href="/docs/install-guard">
+            Read the Install Guard guide <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <div className="home-terminal">
+          <div className="home-terminal-label">
+            <span>Install Guard</span>
+            <span>Strict npm example</span>
+          </div>
+          <pre><code>{guardCommand}</code></pre>
+          <div className="home-terminal-command">
+            <p className="mb-2 text-muted">Use a new output directory and a build that includes Install Guard.</p>
+            <Link href="/videos/warden-install-guard.mp4">
+              Watch a two-hour-old release get blocked <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="autopilot" className="home-section" aria-labelledby="autopilot-title">
+        <h2 id="autopilot-title" className="accent-heading">Warden Autopilot preview</h2>
+        <p className="home-intro">
+          The Linux development preview detects project markers and installed tools.
+          Approve an installed program for a project and Warden generates a read-only,
+          offline policy without a YAML file. You choose when to run it and which arguments
+          to pass. Edit mode previews changes and asks again before applying them to the
+          original project.
+        </p>
+        <dl className="home-grid home-metrics">
+          <div><dt>Onboarding and native checks, each</dt><dd>5/5</dd></div>
+          <div><dt>Project detection</dt><dd>6.7 ms</dd></div>
+          <div><dt>Protected file read</dt><dd>79.5 ms</dd></div>
+        </dl>
+        <p className="mt-4 text-sm text-muted">
+          Tested with a development build on Linux amd64 with a Ryzen 5 7430U on
+          November 24, 2026. Timings are medians of 10 fixture runs. The same read took
+          0.9 ms directly. Discovery ran no project scripts.
+        </p>
+        <p className="home-intro">
+          Claude Code and the direct Codex binary passed offline version checks. The
+          Codex and OpenCode shell wrappers failed to launch, and the direct OpenCode
+          binary could not resolve a home directory. Cloud-backed coding sessions were
+          outside the benchmark.
+        </p>
+      </section>
+
+      <section id="how-it-works" className="home-section">
+        <h2 className="accent-heading">Define what tools can access</h2>
+        <p className="home-intro">
+          Local agents and MCP servers inherit the permissions of the user who starts them.
+          With Warden, you declare access in a policy and review decisions in the audit log.
+        </p>
+        <dl className="home-grid home-permissions">
+          {permissions.map(([name, detail]) => (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd>{detail}</dd>
+            </div>
+          ))}
+        </dl>
+        <Link className="home-section-link" href="/docs/quickstart">
+          Walk through your first policy <span aria-hidden="true">→</span>
+        </Link>
+      </section>
+
+      <BoundaryExample />
+      <AgentWorkspace />
+
+      <section className="home-section">
+        <h2 className="accent-heading">See how Warden is verified</h2>
+        <p className="home-intro">
+          Warden publishes compatibility fixtures, sandbox proof harnesses, and platform
+          limitations. Verification maturity varies by operating system.
+        </p>
+        <dl className="home-grid home-metrics">
+          {proofStats.map(([value, label]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <Link className="home-section-link" href="/docs/proof">
+          Read the verification notes <span aria-hidden="true">→</span>
+        </Link>
+      </section>
+
+      <RunAnywhere />
+
+      <section id="how-to-use" className="home-section">
+        <h2 className="accent-heading">Start with one local tool</h2>
+        <p className="home-intro">
+          Choose your client, install Warden, and give your tool only the access it needs.
+        </p>
+        <Link className="home-section-link" href="/setup">
+          Find your setup guide <span aria-hidden="true">→</span>
+        </Link>
+      </section>
     </main>
   );
 }

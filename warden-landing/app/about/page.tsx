@@ -128,7 +128,7 @@ export default function About() {
             <h2 className="mt-3 font-mono text-[1.35rem] font-semibold leading-[1.2] text-offwhite">
               Third-party code, first-party trust.
             </h2>
-            <p className="mt-3 max-w-xl font-sans text-[14px] leading-[1.75] text-offwhite/45">
+            <p className="mt-3 max-w-xl font-sans text-[14px] leading-[1.75] text-muted">
               Every MCP server you install runs with your full permissions, your
               SSH keys, your cloud credentials, your entire filesystem. One
               malicious or compromised package is all it takes.
@@ -141,7 +141,7 @@ export default function About() {
             <h2 className="mt-3 font-mono text-[1.35rem] font-semibold leading-[1.2] text-offwhite">
               Too heavy for one script.
             </h2>
-            <p className="mt-3 max-w-xl font-sans text-[14px] leading-[1.75] text-offwhite/45">
+            <p className="mt-3 max-w-xl font-sans text-[14px] leading-[1.75] text-muted">
               Docker works, Warden uses it as a fallback. But slow cold starts, a
               daemon dependency, and a far bigger trust boundary than a namespace
               sandbox needs. Warden is a single static binary over OS-native
@@ -167,7 +167,7 @@ export default function About() {
                 <h3 className="mt-3 font-mono text-[14px] font-semibold text-offwhite">
                   {p.title}
                 </h3>
-                <p className="mt-1.5 font-sans text-[12.5px] leading-[1.7] text-offwhite/45">
+                <p className="mt-1.5 font-sans text-[12.5px] leading-[1.7] text-muted">
                   {p.body}
                 </p>
               </div>
@@ -192,17 +192,17 @@ export default function About() {
                 rel="noopener noreferrer"
                 className="group flex items-center gap-4 bg-cell p-5 transition-colors hover:bg-offwhite/[0.03]"
               >
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-acid/40 bg-acid/10 font-mono text-[15px] font-semibold text-acid">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-hair bg-ink-900 font-mono text-[15px] font-semibold text-offwhite">
                   {m.initials}
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate font-mono text-[15px] font-semibold text-offwhite">
                     {m.name}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35">
+                  <span className="mt-0.5 block font-mono text-[10.5px] uppercase tracking-micro text-muted">
                     {m.role}
                   </span>
-                  <span className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-offwhite/40 transition-colors group-hover:text-acid">
+                  <span className="mt-2 flex items-center gap-1.5 font-mono text-[11px] text-muted transition-colors group-hover:text-acid">
                     <Github size={12} />
                     GitHub →
                   </span>
@@ -229,12 +229,12 @@ export default function About() {
               {ROWS.map((r) => (
                 <li
                   key={r.area}
-                  className="flex items-baseline justify-between gap-6 border-b border-hair bg-cell px-5 py-3.5 last:border-b-0"
+                  className="flex flex-col gap-1 border-b border-hair bg-cell px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
                 >
-                  <span className="font-mono text-[12.5px] text-offwhite/80">
+                  <span className="font-mono text-[12.5px] text-paper">
                     {r.area}
                   </span>
-                  <span className="shrink-0 text-right font-mono text-[11px] text-offwhite/40">
+                  <span className="font-mono text-[11px] text-muted sm:text-right">
                     {r.state}
                   </span>
                 </li>
@@ -251,7 +251,7 @@ export default function About() {
             <h2 className="font-mono text-[1.35rem] font-semibold text-offwhite">
               Security posture
             </h2>
-            <p className="mx-auto mt-3 max-w-xl font-sans text-[13.5px] leading-[1.75] text-offwhite/45">
+            <p className="mx-auto mt-3 max-w-xl font-sans text-[13.5px] leading-[1.75] text-muted">
               Deny-by-default on filesystem, network, and environment. No silent
               fallback to unsandboxed runs, a missing backend fails loudly. Every
               blocked access is logged. Known limitations (no CPU throttling, no
@@ -260,24 +260,24 @@ export default function About() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <a
                 href={REPO}
-                className="rounded-md bg-acid px-5 py-2.5 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
+                className="rounded-md site-cta px-5 py-2.5 font-sans text-[13px] font-semibold transition-colors"
               >
                 Repository →
               </a>
               <Link
                 href="/docs/security"
-                className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
+                className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-paper transition-colors hover:border-offwhite/20"
               >
                 Security review →
               </Link>
               <Link
                 href="/docs"
-                className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
+                className="rounded-md border border-hair bg-void px-5 py-2.5 font-sans text-[13px] font-semibold text-paper transition-colors hover:border-offwhite/20"
               >
                 Docs →
               </Link>
             </div>
-            <p className="mt-6 font-mono text-[10px] uppercase tracking-micro text-offwhite/30">
+            <p className="mt-6 font-mono text-[10px] uppercase tracking-micro text-muted">
               warden · MIT licensed
             </p>
           </div>

@@ -36,10 +36,10 @@ export default function EcosystemShell({
               key={href}
               href={href}
               aria-current={active === href ? "page" : undefined}
-              className={`rounded-md px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-micro transition-colors ${
+              className={`rounded-md px-3 py-1.5 font-mono text-sm transition-colors ${
                 active === href
                   ? "bg-acid/10 text-acid"
-                  : "text-offwhite/45 hover:text-offwhite"
+                  : "text-muted hover:text-offwhite"
               }`}
             >
               {label}
@@ -47,7 +47,7 @@ export default function EcosystemShell({
           ))}
           <Link
             href="/docs/ecosystem-setup"
-            className="ml-auto hidden items-center gap-1.5 px-3 py-1.5 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35 transition-colors hover:text-offwhite sm:inline-flex"
+            className="ml-auto hidden items-center gap-1.5 px-3 py-1.5 font-mono text-sm text-muted transition-colors hover:text-offwhite sm:inline-flex"
           >
             CLI guide <ArrowUpRight size={12} />
           </Link>

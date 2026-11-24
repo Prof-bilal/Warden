@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export default function CopyChip({
@@ -11,12 +11,16 @@ export default function CopyChip({
   value: string;
   className?: string;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"copied" | "failed" | null>(null);
 
-  function copy() {
-    navigator.clipboard.writeText(value).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+    setTimeout(() => setStatus(null), 1600);
   }
 
   return (
@@ -26,17 +30,23 @@ export default function CopyChip({
         className,
       )}
     >
-      <code className="min-w-0 truncate font-mono text-[11.5px] text-offwhite/80">
+      <code className="min-w-0 truncate font-mono text-[11.5px] text-paper">
         <span className="text-acid">&gt;</span> {value}
       </code>
       <button
         type="button"
         onClick={copy}
         aria-label="Copy command"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-hair text-offwhite/40 transition-colors hover:border-acid/40 hover:text-acid"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-hair text-muted transition-colors hover:border-acid/40 hover:text-acid"
       >
-        {copied ? <Check size={12} className="text-acid" /> : <Copy size={12} />}
+        {status === "copied" && <Check size={14} aria-hidden="true" />}
+        {status === "failed" && <X size={14} aria-hidden="true" />}
+        {status === null && <Copy size={14} aria-hidden="true" />}
       </button>
+      <span className="sr-only" role="status">
+        {status === "copied" && "Command copied"}
+        {status === "failed" && "Copy failed. Select the command to copy it manually."}
+      </span>
     </div>
   );
 }

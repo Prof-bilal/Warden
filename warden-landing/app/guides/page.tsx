@@ -65,7 +65,7 @@ export default function GuidesIndex() {
                 <h2 className="mt-3 font-mono text-[1.35rem] font-semibold text-offwhite">
                   {group.heading}
                 </h2>
-                <p className="mt-2 font-sans text-[13.5px] leading-[1.7] text-offwhite/45">
+                <p className="mt-2 font-sans text-[13.5px] leading-[1.7] text-muted">
                   {group.lede}
                 </p>
                 <ul className="mt-5 divide-y divide-hair border-y border-hair">
@@ -77,7 +77,7 @@ export default function GuidesIndex() {
                       >
                         {topic.title}
                       </Link>
-                      <p className="mt-1.5 font-sans text-[13px] leading-[1.7] text-offwhite/45">
+                      <p className="mt-1.5 font-sans text-[13px] leading-[1.7] text-muted">
                         {topic.description}
                       </p>
                     </li>

@@ -19,7 +19,7 @@ import {
 } from "@/lib/ecosystem";
 
 const inputClass =
-  "mt-2 w-full rounded-lg border border-ink-700 bg-ink-950 px-4 py-3 text-sm text-paper placeholder:text-muted/60";
+  "mt-2 w-full rounded-lg border border-ink-700 bg-ink-950 px-4 py-3 text-sm text-paper placeholder:text-muted";
 export default function SetupWizard({
   initialClient = "",
   initialPack = "filesystem",
@@ -129,7 +129,7 @@ export default function SetupWizard({
     setReviewed(false);
   };
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[1fr_300px]">
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
       <section className="min-w-0 rounded-2xl border border-ink-700 bg-ink-900">
         <ol
           aria-label="Setup progress"
@@ -139,7 +139,7 @@ export default function SetupWizard({
             (label, i) => (
               <li
                 key={label}
-                className={`flex items-center gap-2 border-r border-ink-700 px-3 py-5 text-xs last:border-r-0 sm:px-5 ${step === i ? "text-blueprint" : "text-muted"}`}
+                className={`flex flex-col items-center gap-2 border-r border-ink-700 px-1 py-3 text-center text-xs last:border-r-0 sm:flex-row sm:px-5 sm:py-5 sm:text-left ${step === i ? "text-blueprint" : "text-muted"}`}
                 aria-current={step === i ? "step" : undefined}
               >
                 <span
@@ -447,7 +447,7 @@ export default function SetupWizard({
               <button
                 disabled={step === 1 && !valid}
                 onClick={() => setStep(step + 1)}
-                className="flex items-center gap-2 rounded-lg bg-blueprint px-5 py-3 text-sm font-semibold text-ink-950 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex items-center gap-2 rounded-lg site-cta px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {step === 0 ? "Choose access" : "Review setup"}
                 <ArrowRight size={16} />
@@ -506,7 +506,7 @@ export default function SetupWizard({
         </div>
         <div className="rounded-2xl bg-ink-900 p-6">
           <Terminal size={18} className="text-blueprint" />
-          <p className="mt-4 text-xs leading-relaxed text-muted">
+          <p className="mt-4 break-words text-xs leading-relaxed text-muted">
             {client.config}
           </p>
           <a

@@ -19,7 +19,7 @@ export default function StatRow({
           <p className="font-mono text-[1.5rem] font-semibold leading-none tracking-[-0.02em] text-offwhite">
             {value}
           </p>
-          <p className="mt-2 font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+          <p className="mt-2 font-mono text-[9px] uppercase tracking-micro text-muted">
             {label}
           </p>
         </div>

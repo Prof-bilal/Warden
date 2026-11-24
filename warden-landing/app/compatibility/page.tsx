@@ -28,7 +28,7 @@ export default function Page() {
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-ink-700">
+      <div tabIndex={0} className="overflow-x-auto rounded-2xl border border-ink-700">
         <table className="w-full min-w-[700px] text-left text-sm">
           <caption className="sr-only">
             Local configuration adapters and scoped host workflow evidence

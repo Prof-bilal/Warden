@@ -45,7 +45,7 @@ export default function BlogIndex() {
       <div className="px-6 py-12 md:py-16">
         <div className="mx-auto max-w-[48rem]">
           <nav aria-label="Topic guides">
-            <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+            <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
               Start with a question
             </h2>
             <ul className="mt-4 divide-y divide-hair border-y border-hair">
@@ -68,7 +68,7 @@ export default function BlogIndex() {
                 <li key={href}>
                   <Link
                     href={href}
-                    className="block py-2.5 font-mono text-[14px] text-offwhite/80 transition-colors hover:text-acid"
+                    className="block py-2.5 font-mono text-[14px] text-paper transition-colors hover:text-acid"
                   >
                     {label}
                   </Link>
@@ -82,7 +82,7 @@ export default function BlogIndex() {
               <Link
                 key={category.slug}
                 href={`/blog/category/${category.slug}`}
-                className="border border-hair px-3 py-1 font-mono text-[11px] uppercase tracking-micro text-offwhite/45 transition-colors hover:border-acid/40 hover:text-acid"
+                className="border border-hair px-3 py-1 font-mono text-[11px] uppercase tracking-micro text-muted transition-colors hover:border-acid/40 hover:text-acid"
               >
                 {category.name}
               </Link>
@@ -91,7 +91,7 @@ export default function BlogIndex() {
 
           <div className="mt-12 border-t border-hair">
             {articles.length === 0 ? (
-              <p className="py-12 font-sans text-offwhite/45">
+              <p className="py-12 font-sans text-muted">
                 No articles published yet.
               </p>
             ) : (

@@ -78,7 +78,7 @@ const CARDS = [
 function Sidebar({ mobile = false }: { mobile?: boolean }) {
   return mobile ? (
     <details className="border border-hair bg-cell p-4 lg:hidden">
-      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-offwhite/70">
+      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-paper">
         Browse documentation
       </summary>
       <div className="mt-5">
@@ -101,14 +101,14 @@ export default function Docs() {
       />
       <div className="px-6 pb-20 pt-8 md:pt-12">
         <nav
-          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           aria-label="Breadcrumb"
         >
           <Link href="/" className="transition-colors hover:text-offwhite">
             Warden
           </Link>
-          <span className="text-offwhite/20">/</span>
-          <span className="text-offwhite/70">Docs</span>
+          <span className="text-muted">/</span>
+          <span className="text-paper">Docs</span>
         </nav>
 
         <div className="mb-8 lg:hidden">
@@ -123,10 +123,10 @@ export default function Docs() {
           </aside>
 
           <article className="min-w-0 flex-1">
-            <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.1] tracking-[-0.02em] text-offwhite sm:text-[2.4rem]">
+            <h1 className="accent-heading font-mono text-[1.9rem] font-semibold leading-[1.1] tracking-[-0.02em] text-offwhite sm:text-[2.4rem]">
               Warden documentation
             </h1>
-            <p className="mt-5 max-w-[42rem] font-sans text-[15px] leading-[1.75] text-offwhite/45">
+            <p className="mt-5 max-w-[42rem] font-sans text-[15px] leading-[1.75] text-muted">
               Run local tools with only the files, network destinations, environment
               variables, and resources they need. Start with the quickstart or protect
               an AI coding agent with a sanitized workspace.
@@ -148,7 +148,7 @@ export default function Docs() {
                       →
                     </span>
                   </h2>
-                  <p className="mt-2 font-sans text-[13px] leading-[1.7] text-offwhite/45">
+                  <p className="mt-2 font-sans text-[13px] leading-[1.7] text-muted">
                     {card.body}
                   </p>
                 </Link>
