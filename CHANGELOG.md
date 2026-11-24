@@ -3,7 +3,7 @@
 All notable Warden changes are recorded here. Platform behavior and verification
 scope are documented separately.
 
-## 0.2.0-beta.11
+## 0.2.0-beta.12
 
 - Add the Linux Autopilot preview for approved offline local programs. Warden
   detects project markers and generates the policy without a YAML file.

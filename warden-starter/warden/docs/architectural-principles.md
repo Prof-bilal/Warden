@@ -513,7 +513,7 @@ before the code depends on an answer.
 
 ## Related documents
 
-- [Architecture](../ARCHITECTURE.md) - current components, policy schema,
+- [Architecture](https://github.com/Prof-bilal/Warden/blob/main/ARCHITECTURE.md) - current components, policy schema,
   backend behavior.
 - [Isolation backend contract](isolation-backend-contract.md) - contributor
   checklist.

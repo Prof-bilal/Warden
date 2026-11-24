@@ -5,9 +5,9 @@ npm wrapper for the [Warden](https://warden.blog/) sandbox runtime.
 Warden runs AI agents, MCP servers, and local tools with explicit filesystem,
 network, and environment grants.
 
-## 0.2.0-beta.11 preview
+## 0.2.0-beta.12 preview
 
-This checkout prepares `0.2.0-beta.11`. It is published by the tagged release workflow.
+This checkout prepares `0.2.0-beta.12`. It is published by the tagged release workflow.
 After the preview has been published, install it explicitly:
 
 ```bash
@@ -19,7 +19,7 @@ This beta includes the Linux Autopilot preview. It detects project markers and
 installed tools, then generates an offline policy from a terminal-approved
 enrollment. Read-only access is the default. Edit mode requires separate
 approval before applying changes to the original workspace. See the
-[Autopilot guide](https://github.com/Prof-bilal/Warden/blob/v0.2.0-beta.11/warden-starter/warden/docs/autopilot.md)
+[Autopilot guide](https://github.com/Prof-bilal/Warden/blob/v0.2.0-beta.12/warden-starter/warden/docs/autopilot.md)
 for setup and the current agent startup limits.
 
 The preview adds candidate policy packs, reversible MCP host configuration,
@@ -117,7 +117,7 @@ Preview packages use their exact version. Stable packages can use a newer cached
 stable binary, including one installed by `warden update`, but never select a
 cached preview. For an exact package-version pin or rollback, set
 `WARDEN_PIN_VERSION=1`. `warden update` follows stable by default; an explicit
-preview update requires `--version 0.2.0-beta.11` after that release exists.
+preview update requires `--version 0.2.0-beta.12` after that release exists.
 
 ### Supported platforms
 
