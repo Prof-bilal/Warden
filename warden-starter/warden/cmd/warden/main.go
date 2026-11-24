@@ -40,7 +40,7 @@ import (
 
 // allCommands lists every user-facing command name for help discovery and
 // suggestion matching. Internal commands (like __proxy-bridge) are excluded.
-var allCommands = []string{"agent", "run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp", "validate", "guard", "grant", "hook", "learn", "migrate"}
+var allCommands = []string{"agent", "autopilot", "run", "trace", "init", "logs", "doctor", "gateway", "proxy", "k8s", "version", "update", "help", "packs", "clients", "add", "wrap", "unwrap", "inventory", "connect", "serve", "stop", "creator", "policy-diff", "report", "mcp", "validate", "guard", "grant", "hook", "learn", "migrate"}
 
 func main() {
 	selfupdate.SetCurrentVersion(version.Version)
@@ -48,7 +48,7 @@ func main() {
 	// bridge or update itself. The check is cached (24h) and has a 0.8s
 	// timeout so it never blocks the CLI noticeably. Warning goes to
 	// stderr so `warden --version` stays script-friendly on stdout.
-	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "__setup-probe" && os.Args[1] != "__prove-probe" && os.Args[1] != "update" && os.Args[1] != "hook")
+	shouldWarn := len(os.Args) < 2 || (os.Args[1] != "__proxy-bridge" && os.Args[1] != "__setup-probe" && os.Args[1] != "__prove-probe" && os.Args[1] != "update" && os.Args[1] != "hook" && os.Args[1] != "autopilot")
 	if shouldWarn {
 		func() {
 			defer func() { _ = recover() }()
@@ -69,6 +69,19 @@ func main() {
 		return
 	}
 	switch os.Args[1] {
+	case "autopilot":
+		if hasHelpFlag(os.Args[2:]) {
+			printAutopilotHelp(os.Stdout)
+			return
+		}
+		code, err := cmdAutopilot(os.Args[2:])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "warden autopilot:", err)
+			if code == 0 {
+				code = 1
+			}
+		}
+		os.Exit(code)
 	case "agent":
 		if hasHelpFlag(os.Args[2:]) {
 			fmt.Fprintln(os.Stdout, "warden agent --policy policy.yaml [--backend auto|linux|seatbelt|windows] -- <agent command>\nwarden agent exec --profile NAME\nSanitized workspace; declared secret fields are hidden; review required before host changes.\nSupported natively on Linux, macOS and Windows. See docs/agent-workspace.md for limits.")
@@ -315,6 +328,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  warden <command> [options]")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
+	fmt.Fprintln(os.Stderr, "  autopilot  Enroll and launch a protected project agent on Linux")
 	fmt.Fprintln(os.Stderr, "  agent      Edit a sanitized workspace with protected secret fields")
 	fmt.Fprintln(os.Stderr, "  init       Create a security policy")
 	fmt.Fprintln(os.Stderr, "  run        Run an MCP server in the sandbox")
@@ -369,6 +383,8 @@ func printUsage() {
 // printCommandHelp dispatches to the right help function for "warden help <cmd>".
 func printCommandHelp(cmd string) {
 	switch cmd {
+	case "autopilot":
+		printAutopilotHelp(os.Stderr)
 	case "agent":
 		fmt.Fprintln(os.Stderr, "warden agent --policy policy.yaml -- <agent command>\nwarden agent exec --profile NAME\nSanitized workspace with reviewed apply. See docs/agent-workspace.md.")
 	case "connect", "serve", "stop":

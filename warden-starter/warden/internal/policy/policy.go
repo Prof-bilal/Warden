@@ -361,11 +361,7 @@ func (p *Policy) Validate() error {
 // symlink entries are returned as mask targets when they match. A walk error
 // is returned rather than silently weakening the sandbox.
 func (p Policy) DeniedPaths() ([]string, error) {
-	patterns := append([]string(nil), p.Filesystem.Deny...)
-	if p.Filesystem.ProtectSecrets {
-		patterns = append(patterns, secretPathPatterns...)
-	}
-	if len(patterns) == 0 {
+	if len(p.Filesystem.Deny) == 0 && !p.Filesystem.ProtectSecrets {
 		return nil, nil
 	}
 	var denied []string
@@ -375,7 +371,7 @@ func (p Policy) DeniedPaths() ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("inspect filesystem grant %q: %w", root, err)
 		}
-		if (matchesAnyDeny(root, root, patterns) || (p.Filesystem.ProtectSecrets && IsProtectedSecretPath(root))) && !seen[root] {
+		if p.MasksPath(root, root) && !seen[root] {
 			denied = append(denied, root)
 			seen[root] = true
 			continue
@@ -390,7 +386,7 @@ func (p Policy) DeniedPaths() ([]string, error) {
 			if path == root {
 				return nil
 			}
-			if matchesAnyDeny(path, root, patterns) && !seen[path] {
+			if p.MasksPath(path, root) && !seen[path] {
 				denied = append(denied, path)
 				seen[path] = true
 				if entry.IsDir() {
@@ -405,6 +401,12 @@ func (p Policy) DeniedPaths() ([]string, error) {
 	}
 	sort.Strings(denied)
 	return denied, nil
+}
+
+// MasksPath reports whether a path in a filesystem grant is explicitly
+// denied or matches the enabled built-in secret filename rules.
+func (p Policy) MasksPath(path, root string) bool {
+	return matchesAnyDeny(path, root, p.Filesystem.Deny) || (p.Filesystem.ProtectSecrets && IsProtectedSecretPath(path))
 }
 
 var secretPathPatterns = []string{".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "credentials*",

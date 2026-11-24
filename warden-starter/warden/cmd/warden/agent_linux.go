@@ -53,7 +53,11 @@ func cmdAgent(args []string) (int, error) {
 	if err != nil {
 		return 2, err
 	}
-	cmd, err = policy.ResolveExecutable(cmd)
+	return runLinuxAgent(p, cmd)
+}
+
+func runLinuxAgent(p policy.Policy, cmd []string) (int, error) {
+	cmd, err := policy.ResolveExecutable(cmd)
 	if err != nil {
 		return 2, err
 	}

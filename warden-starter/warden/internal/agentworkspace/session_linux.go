@@ -38,6 +38,7 @@ type Session struct {
 	writable     bool
 	rootFD       int
 	instructions map[string][]byte
+	masked       func(string) bool
 }
 type Change struct {
 	Path          string
@@ -54,6 +55,10 @@ func Prepare(p policy.Policy) (s *Session, err error) {
 		return nil, fmt.Errorf("agent policy required")
 	}
 	root := p.Agent.Workspace
+	masked := func(path string) bool { return p.MasksPath(path, root) }
+	if masked(root) {
+		return nil, fmt.Errorf("workspace root is denied by policy")
+	}
 	resolved, err := filepath.EvalSymlinks(root)
 	if err != nil || resolved != root {
 		return nil, fmt.Errorf("workspace must exist and contain no symlink ancestors")
@@ -62,21 +67,22 @@ func Prepare(p policy.Policy) (s *Session, err error) {
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", "warden-agent-")
+	tempBase, err := filepath.EvalSymlinks(os.TempDir())
+	if err != nil || !filepath.IsAbs(tempBase) || policy.Within(tempBase, root) {
+		unix.Close(fd)
+		return nil, fmt.Errorf("agent projection requires an absolute temporary directory outside the workspace")
+	}
+	dir, err := os.MkdirTemp(tempBase, "warden-agent-")
 	if err != nil {
 		unix.Close(fd)
 		return nil, err
 	}
-	s = &Session{Dir: dir, original: root, files: map[string]*fileState{}, rootFD: fd, writable: len(p.Filesystem.Write) > 0}
-	defer func() {
+	s = &Session{Dir: dir, original: root, files: map[string]*fileState{}, rootFD: fd, writable: len(p.Filesystem.Write) > 0, masked: masked}
+	defer func(session *Session) {
 		if err != nil {
-			s.Close()
+			session.Close()
 		}
-	}()
-	denied, err := p.DeniedPaths()
-	if err != nil {
-		return nil, err
-	}
+	}(s)
 	specs := map[string]policy.RedactedFile{}
 	for _, f := range p.Agent.Redaction.Files {
 		specs[f.Path] = f
@@ -100,13 +106,11 @@ func Prepare(p policy.Policy) (s *Session, err error) {
 			}
 			return nil
 		}
-		for _, d := range denied {
-			if path == d || policy.Within(path, d) {
-				if entry.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
+		if masked(path) {
+			if entry.IsDir() {
+				return filepath.SkipDir
 			}
+			return nil
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
 			return fmt.Errorf("workspace symlinks are unsupported: %s", safeName(rel))
@@ -272,8 +276,8 @@ func (s *Session) Changes() ([]Change, error) {
 			}
 			return fmt.Errorf("invalid notice directory")
 		}
-		if hasGitComponent(rel) {
-			return fmt.Errorf("git metadata cannot be applied")
+		if hasGitComponent(rel) || s.masked(filepath.Join(s.original, rel)) {
+			return fmt.Errorf("excluded workspace path cannot be applied: %s", safeName(rel))
 		}
 		if e.Type()&os.ModeSymlink != 0 {
 			return fmt.Errorf("projection contains a symlink")

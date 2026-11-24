@@ -23,6 +23,7 @@ nav:
   - Protect a tool:
     - Files and policies: examples.md
     - AI agent workspace: agent-workspace.md
+    - Autopilot preview: autopilot.md
     - MCP gateway: mcp-gateway.md
     - Client proxy: client-proxy.md
   - Platforms and security:

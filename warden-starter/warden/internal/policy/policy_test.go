@@ -75,7 +75,7 @@ func TestDeniedPathsProtectSecretsInsideGrant(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "allowed.txt"), []byte("ok"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("fake"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, ".ENV"), []byte("fake"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	p := Policy{Filesystem: Filesystem{Read: []string{dir}, ProtectSecrets: true}}
@@ -83,8 +83,8 @@ func TestDeniedPathsProtectSecretsInsideGrant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DeniedPaths: %v", err)
 	}
-	if len(got) != 1 || got[0] != filepath.Join(dir, ".env") {
-		t.Fatalf("DeniedPaths = %v, want .env only", got)
+	if len(got) != 1 || got[0] != filepath.Join(dir, ".ENV") {
+		t.Fatalf("DeniedPaths = %v, want .ENV only", got)
 	}
 }
 

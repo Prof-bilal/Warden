@@ -161,6 +161,30 @@ func TestProjectionExclusionsAndEnvironment(t *testing.T) {
 		t.Fatal("notice not read-only")
 	}
 }
+func TestProjectionRejectsSymlinkAndCleansUp(t *testing.T) {
+	project, scratch := t.TempDir(), t.TempDir()
+	t.Setenv("TMPDIR", scratch)
+	target := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(target, []byte("disposable fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(project, "link")); err != nil {
+		t.Fatal(err)
+	}
+	p := policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{project}},
+		Agent:      &policy.Agent{Workspace: project},
+	}
+	if s, err := Prepare(p); err == nil {
+		s.Close()
+		t.Fatal("projection accepted a symlink")
+	}
+	entries, err := os.ReadDir(scratch)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("failed projection left scratch files: %v, %v", entries, err)
+	}
+}
+
 func TestAmbiguousFormatsRejected(t *testing.T) {
 	for _, tc := range []struct{ format, data string }{
 		{"json", `{"key":"a","key":"b"}`},

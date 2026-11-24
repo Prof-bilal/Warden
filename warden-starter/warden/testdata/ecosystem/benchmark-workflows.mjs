@@ -184,6 +184,43 @@ const workflows = {
     assert(existsSync(join(pip, "idna-3.10.dist-info")));
     return ["is-number@7.0.0 installed and called", "idna==3.10 wheel installed and called"];
   },
+  async autopilot() {
+    const runAutopilot = (...args) => promisify(execFile)(bin, ["autopilot", ...args], { timeout: 30000 });
+    const noEnrollment = error => error.code === 1 && error.stderr.includes("no enrollment");
+    file("go.mod", "module example.invalid/fixture\n");
+    file("package.json", '{"scripts":{"build":"touch DISCOVERY_RAN_SCRIPT"}}');
+    file(".ENV", "TOKEN=synthetic\n");
+    const plan = JSON.parse((await runAutopilot("plan")).stdout);
+    assert.equal(plan.root, realpathSync(workspace));
+    assert(plan.hints.some(hint => hint.marker === "go.mod"));
+    assert.equal(plan.default_mode, "read-only");
+    assert(!existsSync(join(workspace, "DISCOVERY_RAN_SCRIPT")));
+    const requireNative = process.env.WARDEN_BENCH_AUTOPILOT_NATIVE === "1";
+    const program = requireNative ? "/usr/bin/cat" : process.execPath;
+    const approval = ["autopilot", "approve", "--", program];
+    const prompt = "Type yes to approve";
+    await terminal(bin, approval, [[prompt, "no"]], { expectedExit: 1 });
+    await assert.rejects(runAutopilot("status"), noEnrollment);
+    await assert.rejects(runAutopilot("run"), noEnrollment);
+    await terminal(bin, approval, [[prompt, "yes"]]);
+    const status = JSON.parse((await runAutopilot("status")).stdout);
+    assert.equal(status.mode, "read-only");
+    assert.equal(status.program, realpathSync(program));
+    assert.match(status.policy_yaml, /protect_secrets: true/);
+    assert.match(status.policy_yaml, /network: \{\}/);
+    assert.match(status.policy_yaml, /env: \{\}/);
+    const checks = ["inert project discovery", "TTY decline and approval", "persisted offline policy"];
+    if (requireNative) {
+      await runAutopilot("setup");
+      assert.equal((await runAutopilot("run", "--", "go.mod")).stdout.trim(), "module example.invalid/fixture");
+      await assert.rejects(runAutopilot("run", "--", ".ENV"), error =>
+        error.code === 1 && error.stderr.includes(".ENV") && !error.stdout.includes("TOKEN="));
+      checks.push("native enrolled command read control", "project secret omitted from native projection");
+    }
+    await runAutopilot("revoke");
+    await assert.rejects(runAutopilot("status"), noEnrollment);
+    return [...checks, "revocation"];
+  },
   async workspace() {
     const source = fixtureSource();
     const secret = "WARDEN_BENCHMARK_SYNTHETIC";

@@ -16,6 +16,7 @@ Every subcommand, flag, and exit behavior below matches the CLI source
 | `warden trace -- <command>` | Runs a program once without the sandbox and records what it touches |
 | `warden init` | Writes a draft `policy.yaml` from a trace |
 | `warden logs` | Shows allowed and blocked accesses |
+| `warden autopilot plan` | Inspect a project before enrolling a Linux agent ([guide](autopilot.md)) |
 | `warden agent --policy <file> -- <agent>` | Lets a coding agent work on a sanitized copy of your project ([guide](agent-workspace.md)) |
 | `warden add <server> to <client>` | Connects a catalog server to an MCP client through the sandbox |
 

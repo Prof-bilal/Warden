@@ -3,6 +3,13 @@
 All notable Warden changes are recorded here. Platform behavior and verification
 scope are documented separately.
 
+## 0.2.0-beta.11
+
+- Add the Linux Autopilot preview for approved offline local programs. Warden
+  detects project markers and generates the policy without a YAML file.
+  Project changes require explicit approval in edit mode.
+- Document the current agent startup limits in the [Autopilot guide](warden-starter/warden/docs/autopilot.md).
+
 ## Warden 2.0 (unreleased)
 
 ### Added
