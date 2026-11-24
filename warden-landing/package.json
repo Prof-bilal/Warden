@@ -13,7 +13,7 @@
     "geist": "^1.5.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.545.0",
-    "next": "^16.0.0",
+    "next": "^16.4.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.7.0",

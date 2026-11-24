@@ -53,7 +53,7 @@ export function generateStaticParams() {
 function MobileDocsNav() {
   return (
     <details className="border border-hair bg-cell p-4 lg:hidden">
-      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-offwhite/70">
+      <summary className="cursor-pointer list-none font-mono text-[12px] uppercase tracking-micro text-paper">
         Browse documentation
       </summary>
       <div className="mt-5">
@@ -175,18 +175,18 @@ export default async function DocPage({
       />
       <div className="px-6 pb-20 pt-8 md:pt-12">
         <nav
-          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+          className="mb-6 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           aria-label="Breadcrumb"
         >
           <Link href="/" className="transition-colors hover:text-offwhite">
             Warden
           </Link>
-          <span className="text-offwhite/20">/</span>
+          <span className="text-muted">/</span>
           <Link href="/docs" className="transition-colors hover:text-offwhite">
             Docs
           </Link>
-          <span className="text-offwhite/20">/</span>
-          <span className="text-offwhite/70">{slugToTitle(slug)}</span>
+          <span className="text-muted">/</span>
+          <span className="text-paper">{slugToTitle(slug)}</span>
         </nav>
 
         <div className="mb-8 lg:hidden">
@@ -201,7 +201,7 @@ export default async function DocPage({
           </aside>
 
           <article className="min-w-0 flex-1">
-            <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.03em] text-offwhite sm:text-[2.5rem]">
+            <h1 className="accent-heading font-mono text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.03em] text-offwhite sm:text-[2.5rem]">
               {title}
             </h1>
 
@@ -214,7 +214,7 @@ export default async function DocPage({
               {prevSlug ? (
                 <Link
                   href={`/docs/${prevSlug}`}
-                  className="font-mono text-[11.5px] uppercase tracking-micro text-offwhite/40 transition-colors hover:text-acid"
+                  className="font-mono text-[11.5px] uppercase tracking-micro text-muted transition-colors hover:text-acid"
                 >
                   ← {slugToTitle(prevSlug)}
                 </Link>
@@ -224,7 +224,7 @@ export default async function DocPage({
               {nextSlug ? (
                 <Link
                   href={`/docs/${nextSlug}`}
-                  className="font-mono text-[11.5px] uppercase tracking-micro text-offwhite/40 transition-colors hover:text-acid"
+                  className="font-mono text-[11.5px] uppercase tracking-micro text-muted transition-colors hover:text-acid"
                 >
                   {slugToTitle(nextSlug)} →
                 </Link>

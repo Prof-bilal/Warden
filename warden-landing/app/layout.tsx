@@ -1,36 +1,12 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import Script from "next/script";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-import { Newsreader, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import Link from "next/link";
+import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 import { SITE_URL } from "@/lib/seo";
 import { organizationSchema, websiteSchema } from "@/lib/schema";
+import { themeStorageKey } from "@/lib/theme";
 import "./globals.css";
-
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-  weight: ["400", "500"],
-});
-
-const heroMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-hero-mono",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const wordmark = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-wordmark",
-  display: "swap",
-  weight: ["500", "600", "700"],
-});
-
-export const viewport: Viewport = {
-  themeColor: "#0b0d0c",
-};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -100,11 +76,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${newsreader.variable} ${heroMono.variable} ${wordmark.variable}`}
-    >
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try { if (localStorage.getItem(${JSON.stringify(themeStorageKey)}) === "dark") document.documentElement.dataset.theme = "dark"; } catch {}`,
+          }}
+        />
         {/* Google Tag Manager */}
         <script
           id="gtm-script"
@@ -132,7 +110,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema()) }}
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className="antialiased">
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe
@@ -157,7 +135,17 @@ export default function RootLayout({
           `}
         </Script>
         {/* End Google tag (gtag.js) */}
+        <a className="site-skip-link sr-only focus:not-sr-only" href="#main-content">
+          Skip to content
+        </a>
+        <div className="site-announcement">
+          <Link href="/v2">
+            <span>Warden 2.0</span> Explore the preview <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <Nav />
         {children}
+        <Footer />
       </body>
     </html>
   );

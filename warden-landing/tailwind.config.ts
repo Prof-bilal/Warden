@@ -1,68 +1,57 @@
 import type { Config } from "tailwindcss";
 
+const color = (name: string) =>
+  `color-mix(in srgb, var(--${name}) calc(<alpha-value> * 100%), transparent)`;
+
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         ink: {
-          950: "#0B0D0C",
-          900: "#0E100F",
-          800: "#1A1D1C",
-          700: "#23262A",
-          600: "#34383C",
+          950: color("canvas"),
+          900: color("surface"),
+          800: color("surface-raised"),
+          700: color("rule"),
+          600: color("graphite"),
+          500: color("graphite"),
         },
-        paper: "#E8E8E3",
-        muted: "#8B908A",
-        grant: {
-          DEFAULT: "#5EF08A",
-          subtle: "rgba(94, 240, 138, 0.10)",
-        },
-        deny: {
-          DEFAULT: "#E2604F",
-          subtle: "rgba(226, 96, 79, 0.12)",
-        },
-        progress: {
-          DEFAULT: "#D6A24A",
-          subtle: "rgba(214, 162, 74, 0.12)",
-        },
-        blueprint: "#5EF08A",
+        paper: color("charcoal"),
+        muted: color("graphite"),
+        grant: { DEFAULT: color("charcoal"), subtle: color("surface") },
+        deny: { DEFAULT: color("ink"), subtle: color("surface-raised") },
+        progress: { DEFAULT: color("charcoal"), subtle: color("surface") },
+        blueprint: color("link"),
         night: {
-          950: "#050907",
-          900: "#080D0A",
-          800: "#0C1310",
-          700: "#142019",
-          600: "#1D2E24",
+          950: color("canvas"),
+          900: color("surface"),
+          800: color("surface-raised"),
+          700: color("surface-strong"),
+          600: color("rule"),
         },
-        mint: {
-          DEFAULT: "#3BF0A0",
-          bright: "#6BFFC0",
-          subtle: "rgba(59, 240, 160, 0.10)",
-        },
-        acid: {
-          DEFAULT: "#5EF08A",
-          bright: "#8CFFB0",
-          deep: "#39D353",
-          subtle: "rgba(94, 240, 138, 0.10)",
-        },
-        void: "#0B0D0C",
-        cell: "#0E100F",
-        hair: "#23262A",
-        "hair-soft": "rgba(232, 235, 239, 0.06)",
-        offwhite: "#E8E8E3",
+        mint: { DEFAULT: color("charcoal"), bright: color("ink"), subtle: color("surface") },
+        acid: { DEFAULT: color("link"), bright: color("link"), deep: color("link"), subtle: color("surface") },
+        void: color("canvas"),
+        cell: color("canvas"),
+        hair: color("rule"),
+        "hair-soft": color("rule-soft"),
+        offwhite: color("ink"),
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
-        display: ["var(--font-display)", "Newsreader", "GT Sectra", "Tiempos Text", "serif"],
-        hero: ["var(--font-hero-mono)", "JetBrains Mono", "Fira Code", "var(--font-geist-mono)", "ui-monospace", "monospace"],
-        wordmark: ["var(--font-wordmark)", "Space Grotesk", "system-ui", "sans-serif"],
+        sans: ["var(--site-mono)"],
+        mono: ["var(--site-mono)"],
+        display: ["var(--site-mono)"],
+        hero: ["var(--site-mono)"],
+        wordmark: ["var(--site-mono)"],
       },
       borderRadius: {
-        lg: "3px",
-        xl: "2px",
-        "2xl": "2px",
-        "3xl": "3px",
+        DEFAULT: "0px",
+        sm: "0px",
+        md: "0px",
+        lg: "0px",
+        xl: "0px",
+        "2xl": "0px",
+        "3xl": "0px",
       },
       maxWidth: {
         content: "80rem",
@@ -74,7 +63,7 @@ const config: Config = {
         tightLg: "-0.018em", // 48px
         eyebrow: "0.12em",
         eyebrowLg: "0.14em",
-        // blueprint micro-labels
+        // Small interface labels
         micro: "0.16em",
       },
       backgroundImage: {

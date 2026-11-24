@@ -39,12 +39,12 @@ export default function WardenTwoPage() {
           <h1 id="release-title" className="mt-4 max-w-lg text-4xl font-semibold leading-[1.05] tracking-tight md:text-5xl">
             Install, run, and review MCP servers.
           </h1>
-          <p className="mt-5 max-w-lg leading-7 text-offwhite/70">
+          <p className="mt-5 max-w-lg leading-7 text-paper">
             Check a release before installation. Give the local process only the access it needs.
             Review tool-definition changes at the bridge.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/docs/zero-config" className="inline-flex items-center gap-2 rounded-md bg-acid px-4 py-3 text-sm font-semibold text-void focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acid">
+            <Link href="/docs/zero-config" className="inline-flex items-center gap-2 rounded-md site-cta px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acid">
               Start with Filesystem <ArrowRight size={15} aria-hidden="true" />
             </Link>
             <Link href="/docs/migration" className="rounded-md border border-hair px-4 py-3 text-sm font-semibold text-offwhite focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-acid">
@@ -64,7 +64,7 @@ export default function WardenTwoPage() {
           >
             <source src="/videos/warden-v2-intro.mp4" type="video/mp4" />
           </video>
-          <figcaption className="mt-3 text-xs text-offwhite/70">
+          <figcaption className="mt-3 text-xs text-paper">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               <span>70-second walkthrough · Linux fixtures</span>
               <a href="/videos/warden-v2-intro.mp4" className="text-acid underline underline-offset-4">Open the MP4</a>
@@ -88,12 +88,12 @@ export default function WardenTwoPage() {
           {workflows.map(({ title, description, href, link }) => (
             <article key={href} className="flex min-w-0 flex-col rounded-lg border border-hair bg-cell p-5">
               <h3 className="text-lg font-semibold">{title}</h3>
-              <p className="mb-5 mt-3 flex-1 text-sm leading-6 text-offwhite/70">{description}</p>
+              <p className="mb-5 mt-3 flex-1 text-sm leading-6 text-paper">{description}</p>
               <Link href={href} className="text-sm font-medium text-acid underline underline-offset-4">{link}</Link>
             </article>
           ))}
         </div>
-        <p className="mt-6 max-w-3xl text-sm leading-6 text-offwhite/70">
+        <p className="mt-6 max-w-3xl text-sm leading-6 text-paper">
           The <Link href="/docs/claude-code-hook" className="text-acid underline underline-offset-4">Claude Code hook</Link> screens supported requests as an advisory check.{" "}
           Use the native sandbox when you need OS-level enforcement.
         </p>

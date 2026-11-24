@@ -47,18 +47,25 @@ function rewriteHref(href: string): string {
 function CodeBlock({ children }: { children: React.ReactNode }) {
   const preRef = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  function handleCopy() {
+  async function handleCopy() {
     const text = preRef.current?.textContent ?? "";
     if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setFailed(false);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+      setFailed(true);
+    }
   }
 
   return (
     <div className="group relative">
-      <pre ref={preRef}>{children}</pre>
+      <pre ref={preRef} tabIndex={0}>{children}</pre>
       <button
         onClick={handleCopy}
         aria-label="Copy code"
@@ -76,12 +83,13 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
           </>
         )}
       </button>
+      {failed && <p role="status">Copy unavailable. Select the code to copy it manually.</p>}
     </div>
   );
 }
 
 const components: Components = {
-  a({ href, children, ...props }) {
+  a({ href, children, node: _node, ...props }) {
     const rewritten = rewriteHref(href ?? "");
     return (
       <a href={rewritten} {...props}>
@@ -89,7 +97,7 @@ const components: Components = {
       </a>
     );
   },
-  pre({ children, ...props }) {
+  pre({ children }) {
     return (
       <CodeBlock>{children}</CodeBlock>
     );

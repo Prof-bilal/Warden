@@ -100,29 +100,29 @@ const PLATFORMS: {
 
 const STATUS_STYLE: Record<Status, { box: string; dot: string }> = {
   Verified: {
-    box: "border-acid/30 bg-acid/10 text-acid",
-    dot: "bg-acid",
+    box: "border-hair bg-ink-900 text-offwhite",
+    dot: "bg-offwhite",
   },
   "Partially verified": {
     box: "border-progress/30 bg-progress-subtle text-progress",
     dot: "bg-progress",
   },
   "Not yet run": {
-    box: "border-hair bg-void text-offwhite/35",
+    box: "border-hair bg-void text-muted",
     dot: "bg-offwhite/20",
   },
 };
 
 const TH =
-  "px-4 py-3 text-left font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35";
-const TD = "px-4 py-2.5 text-[12.5px] text-offwhite/75";
+  "px-4 py-3 text-left font-mono text-[9.5px] uppercase tracking-micro text-muted";
+const TD = "px-4 py-2.5 text-[12.5px] text-paper";
 
 function Badge({ children, tone }: { children: ReactNode; tone: "pass" | "block" }) {
   return (
     <span
       className={
         "inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-micro " +
-        (tone === "pass" ? "bg-acid text-void" : "bg-deny text-void")
+        (tone === "pass" ? "bg-offwhite text-void" : "border border-hair bg-cell text-offwhite")
       }
     >
       {children}
@@ -146,20 +146,20 @@ export default function TestingPage() {
       />
 
       <PageHeader eyebrow="Test proof" title="Warden test proof, by platform.">
-        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-offwhite/45">
+        <p className="mt-4 max-w-2xl font-sans text-[14.5px] leading-[1.75] text-muted">
           Each result below comes from a recorded run. Platforms without a
           recorded run are marked as not yet run.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/docs/testing-platforms"
-            className="rounded-md bg-acid px-5 py-2.5 font-sans text-[13px] font-semibold text-void transition-colors hover:bg-acid-bright"
+            className="rounded-md site-cta px-5 py-2.5 font-sans text-[13px] font-semibold transition-colors"
           >
             Full testing guide
           </Link>
           <Link
             href="/docs/quickstart"
-            className="rounded-md border border-hair bg-cell px-5 py-2.5 font-sans text-[13px] font-semibold text-offwhite/85 transition-colors hover:border-offwhite/20"
+            className="rounded-md border border-hair bg-cell px-5 py-2.5 font-sans text-[13px] font-semibold text-paper transition-colors hover:border-offwhite/20"
           >
             Quickstart
           </Link>
@@ -168,10 +168,10 @@ export default function TestingPage() {
 
       {/* platforms */}
       <section className="border-b border-hair px-6 py-12 md:py-14">
-        <div className="grid gap-px border border-hair bg-hair md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-px border border-hair bg-hair md:grid-cols-2">
           {PLATFORMS.map((p) => (
             <div key={p.name} className="bg-cell p-5 md:p-6">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-mono text-[15px] font-semibold text-offwhite">
                   {p.name}
                 </h3>
@@ -185,19 +185,19 @@ export default function TestingPage() {
                   {p.status}
                 </span>
               </div>
-              <p className="mt-2 inline-block border border-hair bg-void px-2 py-0.5 font-mono text-[11px] text-offwhite/70">
+              <p className="mt-2 inline-block border border-hair bg-void px-2 py-0.5 font-mono text-[11px] text-paper">
                 {p.backend}
               </p>
-              <p className="mt-3 font-sans text-[12.5px] leading-[1.7] text-offwhite/45">
+              <p className="mt-3 font-sans text-[12.5px] leading-[1.7] text-muted">
                 {p.note}
               </p>
               <div className="mt-4 space-y-2">
                 {p.commands.map((c) => (
                   <div key={c.label} className="flex items-start gap-3">
-                    <span className="mt-0.5 w-20 shrink-0 font-mono text-[9px] uppercase tracking-micro text-offwhite/30">
+                    <span className="mt-0.5 w-20 shrink-0 font-mono text-[9px] uppercase tracking-micro text-muted">
                       {c.label}
                     </span>
-                    <code className="block min-w-0 flex-1 overflow-x-auto bg-void px-2.5 py-1.5 font-mono text-[11.5px] text-acid">
+                    <code className="block min-w-0 flex-1 break-words bg-void px-2.5 py-1.5 font-mono text-[11.5px] text-acid">
                       {c.cmd}
                     </code>
                   </div>
@@ -215,17 +215,17 @@ export default function TestingPage() {
             <h2 className="font-mono text-[14px] font-semibold text-offwhite">
               Linux proof harness
             </h2>
-            <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
+            <span className="rounded-full border border-hair bg-ink-900 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-offwhite">
               {stepsPass}/{HARNESS.stepsPassed + HARNESS.stepsFailed} steps pass
             </span>
           </div>
-          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
-            Run <span className="text-offwhite/80">{HARNESS.runId}</span> on {HARNESS.platform} (
+          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-muted">
+            Run <span className="text-paper">{HARNESS.runId}</span> on {HARNESS.platform} (
             {HARNESS.backend}). The positive control (the target process starts) is{" "}
             {HARNESS.positiveControl}, and the run exited with code {HARNESS.runExit}. Each
             step&apos;s observed result is compared with its expected result.
           </p>
-          <div className="overflow-x-auto">
+          <div tabIndex={0} className="overflow-x-auto">
             <table className="w-full min-w-[36rem] border-collapse text-left">
               <thead>
                 <tr className="border-b border-hair bg-void/60">
@@ -246,8 +246,8 @@ export default function TestingPage() {
                     >
                       <td className={TD + " font-mono text-[11.5px]"}>{s.step}</td>
                       <td className={TD}>{s.what}</td>
-                      <td className={TD + " text-offwhite/45"}>{s.expected}</td>
-                      <td className={TD + " text-offwhite/45"}>{s.observed}</td>
+                      <td className={TD + " text-muted"}>{s.expected}</td>
+                      <td className={TD + " text-muted"}>{s.observed}</td>
                       <td className="px-4 py-2.5 text-center">
                         <Badge tone={ok ? "pass" : "block"}>{ok ? "PASS" : "FAIL"}</Badge>
                       </td>
@@ -267,16 +267,16 @@ export default function TestingPage() {
             <h2 className="font-mono text-[14px] font-semibold text-offwhite">
               Go build, vet and test
             </h2>
-            <span className="border border-acid/30 bg-acid/10 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-acid">
+            <span className="rounded-full border border-hair bg-ink-900 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-micro text-offwhite">
               {TEST_FUNCTION_COUNT} test functions
             </span>
           </div>
-          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
+          <p className="border-b border-hair px-5 py-4 font-sans text-[12.5px] leading-[1.75] text-muted">
             Project checks from AGENTS.md, run on {RUN_DATE} on Linux. The suite runs
             serially (<code className="text-acid">-p 1</code>); parallel runs can exhaust
             the process limit and fail for reasons unrelated to Warden.
           </p>
-          <div className="overflow-x-auto">
+          <div tabIndex={0} className="overflow-x-auto">
             <table className="w-full min-w-[36rem] border-collapse text-left">
               <thead>
                 <tr className="border-b border-hair bg-void/60">
@@ -297,7 +297,7 @@ export default function TestingPage() {
                         {g.exit === 0 ? "0 PASS" : `${g.exit} FAIL`}
                       </Badge>
                     </td>
-                    <td className={TD + " text-offwhite/45"}>{g.result}</td>
+                    <td className={TD + " text-muted"}>{g.result}</td>
                   </tr>
                 ))}
               </tbody>
@@ -312,13 +312,13 @@ export default function TestingPage() {
           <h2 className="font-mono text-[14px] font-semibold text-offwhite">
             Audit log from the proof run
           </h2>
-          <p className="mt-2 font-sans text-[12.5px] leading-[1.75] text-offwhite/45">
+          <p className="mt-2 font-sans text-[12.5px] leading-[1.75] text-muted">
             The run wrote {AUDIT_SUMMARY.total} audit entries. Every blocked access is
             logged, not silently dropped.
           </p>
           <div className="mt-5 grid gap-px border border-hair bg-hair sm:grid-cols-3">
             <div className="bg-void p-4">
-              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-muted">
                 Allowed
               </p>
               <p className="mt-1 font-mono text-[22px] font-semibold text-acid">
@@ -326,7 +326,7 @@ export default function TestingPage() {
               </p>
             </div>
             <div className="bg-void p-4">
-              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-muted">
                 Blocked
               </p>
               <p className="mt-1 font-mono text-[22px] font-semibold text-deny">
@@ -334,13 +334,13 @@ export default function TestingPage() {
               </p>
             </div>
             <div className="bg-void p-4">
-              <p className="font-mono text-[9px] uppercase tracking-micro text-offwhite/35">
+              <p className="font-mono text-[9px] uppercase tracking-micro text-muted">
                 File / network
               </p>
-              <p className="mt-1 font-mono text-[12px] text-offwhite/70">
+              <p className="mt-1 font-mono text-[12px] text-paper">
                 File {AUDIT_SUMMARY.file.allowed} allowed · {AUDIT_SUMMARY.file.blocked} blocked
               </p>
-              <p className="font-mono text-[12px] text-offwhite/70">
+              <p className="font-mono text-[12px] text-paper">
                 Network {AUDIT_SUMMARY.network.allowed} allowed ·{" "}
                 {AUDIT_SUMMARY.network.blocked} blocked
               </p>

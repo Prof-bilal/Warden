@@ -46,31 +46,31 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
         <div className="mx-auto max-w-[48rem]">
           <nav
             aria-label="Breadcrumb"
-            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           >
             <Link href="/" className="transition-colors hover:text-offwhite">
               Home
             </Link>
-            <span className="text-offwhite/20">/</span>
+            <span className="text-muted">/</span>
             <Link href="/guides" className="transition-colors hover:text-offwhite">
               Guides
             </Link>
           </nav>
 
-          <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
+          <h1 className="accent-heading font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
             {topic.title}
           </h1>
-          <p className="mt-5 font-sans text-[15px] leading-[1.75] text-offwhite/50">
+          <p className="mt-5 font-sans text-[15px] leading-[1.75] text-muted">
             {topic.answer}
           </p>
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-micro text-offwhite/35">
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-micro text-muted">
             <Link
               href="/author/prof-bilal"
-              className="text-offwhite/70 transition-colors hover:text-acid"
+              className="text-paper transition-colors hover:text-acid"
             >
               Abdullah Bilal
             </Link>
-            <span className="mx-2 text-offwhite/20">·</span>
+            <span className="mx-2 text-muted">·</span>
             <time dateTime={topic.date}>Published {formatDate(topic.date)}</time>
           </p>
 
@@ -79,7 +79,7 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
               <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-acid">
                 Answer in short
               </h2>
-              <ul className="mt-3 list-disc space-y-1.5 pl-5 font-sans text-[14px] leading-[1.65] text-offwhite/50">
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 font-sans text-[14px] leading-[1.65] text-muted">
                 {topic.tldr.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
@@ -102,7 +102,7 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
                     <dt className="font-mono text-[15px] font-semibold text-offwhite">
                       {item.question}
                     </dt>
-                    <dd className="mt-2 font-sans text-[14px] leading-[1.7] text-offwhite/50">
+                    <dd className="mt-2 font-sans text-[14px] leading-[1.7] text-muted">
                       {item.answer}
                     </dd>
                   </div>
@@ -113,7 +113,7 @@ export default function TopicArticle({ topic }: { topic: Topic }) {
 
           {topic.related.length > 0 && (
             <section className="mt-12 border-t border-hair pt-8">
-              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+              <h2 className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
                 Keep reading
               </h2>
               <ul className="mt-4 space-y-3">

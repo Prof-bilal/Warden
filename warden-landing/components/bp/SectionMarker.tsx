@@ -10,7 +10,7 @@ export default function SectionMarker({
       <span className="font-mono text-[10px] text-acid">{index}</span>
       <span className="h-px w-8 bg-acid/40" aria-hidden />
       {label && (
-        <span className="font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+        <span className="font-mono text-[9.5px] uppercase tracking-micro text-muted">
           {label}
         </span>
       )}

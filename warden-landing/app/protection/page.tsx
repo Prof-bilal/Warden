@@ -53,7 +53,7 @@ export default function Page() {
       title="Know what your connection protects."
       description="Protection follows the managed process and the routed connection. Warden does not cover unrelated shell tools, direct connections, or a remote provider’s machine."
     >
-      <div className="overflow-x-auto rounded-2xl border border-ink-700">
+      <div tabIndex={0} className="overflow-x-auto rounded-2xl border border-ink-700">
         <table className="w-full min-w-[780px] text-left text-sm">
           <caption className="sr-only">
             Warden mode capabilities and limitations

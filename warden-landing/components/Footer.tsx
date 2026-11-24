@@ -35,129 +35,39 @@ const columns = [
   },
 ] as const;
 
-export default function Footer({ variant = "dark" }: { variant?: "light" | "dark" }) {
-  const light = variant === "light";
-
+export default function Footer() {
   return (
-    <footer
-      className={
-        light
-          ? "border-t border-[#E9E7E0] bg-[#FAFAF7]"
-          : "border-t border-hair bg-void"
-      }
-    >
-      <div className="mx-auto max-w-[1280px] px-6 py-14 md:py-16">
-        <div className="grid gap-12 md:grid-cols-[1.3fr_2fr] md:gap-20">
-          <div className="max-w-xs">
-            <Link
-              href="/"
-              className={`inline-flex items-center gap-2.5 font-mono text-[15px] font-semibold ${
-                light ? "text-[#14171A]" : "text-offwhite"
-              }`}
-            >
-              <Image
-                src="/warden-mark.png"
-                alt=""
-                width={22}
-                height={22}
-                className="h-[22px] w-[22px] shrink-0"
-              />
-              <span className="lowercase">warden</span>
-            </Link>
-            <p
-              className={`mt-4 font-sans text-sm leading-6 ${
-                light ? "text-[#616761]" : "text-offwhite/45"
-              }`}
-            >
-              A permission layer for local AI tools and MCP servers.
-            </p>
-            <p
-              className={`mt-5 font-mono text-[10.5px] uppercase tracking-micro ${
-                light ? "text-[#8A908A]" : "text-offwhite/30"
-              }`}
-            >
-              Open source · MIT licensed
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3">
-            {columns.map((column) => (
-              <div key={column.title}>
-                <h2
-                  className={`font-mono text-[9.5px] font-medium uppercase tracking-micro ${
-                    light ? "text-[#8A908A]" : "text-offwhite/40"
-                  }`}
-                >
-                  {column.title}
-                </h2>
-                <nav
-                  aria-label={`${column.title} links`}
-                  className="mt-4 flex flex-col items-start gap-3"
-                >
-                  {column.links.map(([label, href]) =>
-                    href.startsWith("http") ? (
-                      <a
-                        key={label}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`font-mono text-[12.5px] transition-colors ${
-                          light
-                            ? "text-[#5A615B] hover:text-[#14171A]"
-                            : "text-offwhite/50 hover:text-offwhite"
-                        }`}
-                      >
-                        {label}
-                      </a>
-                    ) : (
-                      <Link
-                        key={label}
-                        href={href}
-                        className={`font-mono text-[12.5px] transition-colors ${
-                          light
-                            ? "text-[#5A615B] hover:text-[#14171A]"
-                            : "text-offwhite/50 hover:text-offwhite"
-                        }`}
-                      >
-                        {label}
-                      </Link>
-                    ),
-                  )}
-                </nav>
-              </div>
-            ))}
-          </div>
+    <footer className="site-footer">
+      <div className="grid gap-10 py-14 md:grid-cols-[1fr_2fr] md:gap-16">
+        <div>
+          <Link href="/" className="site-brand" aria-label="Warden home">
+            <Image src="/warden-mark.png" alt="" width={22} height={22} />
+            warden
+          </Link>
+          <p className="mt-4 max-w-[28ch]">
+            A permission layer for local AI tools and MCP servers.
+          </p>
+          <p className="mt-4 text-muted">Open source · MIT licensed</p>
         </div>
-
-        <div
-          className={`mt-12 flex flex-col gap-4 border-t pt-5 font-mono text-[11px] sm:flex-row sm:items-center sm:justify-between ${
-            light
-              ? "border-[#E9E7E0] text-[#8A908A]"
-              : "border-hair text-offwhite/35"
-          }`}
-        >
-          <span>Built for safer local development.</span>
-          <div className="flex gap-5">
-            <Link
-              href="/privacy"
-              className={light ? "transition-colors hover:text-[#14171A]" : "transition-colors hover:text-offwhite"}
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/terms"
-              className={light ? "transition-colors hover:text-[#14171A]" : "transition-colors hover:text-offwhite"}
-            >
-              Terms
-            </Link>
-            <Link
-              href="/contact"
-              className={light ? "transition-colors hover:text-[#14171A]" : "transition-colors hover:text-offwhite"}
-            >
-              Contact
-            </Link>
-          </div>
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+          {columns.map(({ title, links }) => (
+            <nav key={title} aria-label={`${title} links`}>
+              <h2 className="font-semibold text-offwhite">{title}</h2>
+              <ul className="mt-4 space-y-2">
+                {links.map(([label, href]) => (
+                  <li key={href}>
+                    <Link href={href}>{label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
+      </div>
+      <div className="flex flex-wrap gap-5 border-t border-hair py-5">
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/contact">Contact</Link>
       </div>
     </footer>
   );

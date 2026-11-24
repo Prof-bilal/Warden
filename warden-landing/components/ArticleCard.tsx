@@ -11,7 +11,7 @@ interface Props {
 export default function ArticleCard({ article, category, author }: Props) {
   return (
     <article className="border-b border-hair py-8 first:pt-0 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9.5px] uppercase tracking-micro text-muted">
         {category && (
           <Link
             href={`/blog/category/${category.slug}`}
@@ -32,16 +32,16 @@ export default function ArticleCard({ article, category, author }: Props) {
         </Link>
       </h3>
 
-      <p className="mt-2 font-sans text-[14px] leading-[1.7] text-offwhite/45">
+      <p className="mt-2 font-sans text-[14px] leading-[1.7] text-muted">
         {article.description}
       </p>
 
       {author && (
-        <p className="mt-3 font-mono text-[11px] text-offwhite/35">
+        <p className="mt-3 font-mono text-[11px] text-muted">
           By{" "}
           <Link
             href={`/author/${author.slug}`}
-            className="text-offwhite/70 transition-colors hover:text-acid"
+            className="text-paper transition-colors hover:text-acid"
           >
             {author.name}
           </Link>

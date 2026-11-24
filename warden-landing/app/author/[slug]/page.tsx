@@ -59,26 +59,26 @@ export default async function AuthorPage({
         <div className="mx-auto max-w-[48rem]">
           <nav
             aria-label="Breadcrumb"
-            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-offwhite/35"
+            className="mb-8 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-micro text-muted"
           >
             <Link href="/" className="transition-colors hover:text-offwhite">
               Home
             </Link>
-            <span className="text-offwhite/20">/</span>
+            <span className="text-muted">/</span>
             <Link href="/blog" className="transition-colors hover:text-offwhite">
               Blog
             </Link>
-            <span className="text-offwhite/20">/</span>
-            <span className="text-offwhite/70">{author.name}</span>
+            <span className="text-muted">/</span>
+            <span className="text-paper">{author.name}</span>
           </nav>
 
-          <h1 className="font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
+          <h1 className="accent-heading font-mono text-[1.9rem] font-semibold leading-[1.12] tracking-[-0.02em] text-offwhite sm:text-[2.25rem]">
             Articles by {author.name}
           </h1>
           <p className="mt-2 font-mono text-[11px] uppercase tracking-micro text-acid">
             {author.role}
           </p>
-          <p className="mt-4 font-sans text-[15px] leading-[1.75] text-offwhite/50">
+          <p className="mt-4 font-sans text-[15px] leading-[1.75] text-muted">
             {author.bio}
           </p>
           <p className="mt-4 font-mono text-[12px]">
@@ -86,18 +86,18 @@ export default async function AuthorPage({
               href={author.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-offwhite/70 transition-colors hover:text-acid"
+              className="text-paper transition-colors hover:text-acid"
             >
               {author.url.replace("https://", "")}
             </a>
           </p>
 
-          <h2 className="mt-14 border-t border-hair pt-8 font-mono text-[9.5px] uppercase tracking-micro text-offwhite/35">
+          <h2 className="mt-14 border-t border-hair pt-8 font-mono text-[9.5px] uppercase tracking-micro text-muted">
             Articles
           </h2>
           <div className="mt-4">
             {articles.length === 0 ? (
-              <p className="py-12 font-sans text-offwhite/45">
+              <p className="py-12 font-sans text-muted">
                 No articles published yet.
               </p>
             ) : (
