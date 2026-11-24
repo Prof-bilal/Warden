@@ -29,8 +29,13 @@ export const metadata: Metadata = {
 
 const CARDS = [
   {
-    title: "Start here",
-    body: "Install Warden, write a small policy, and run your first protected local command.",
+    title: "Start with Autopilot",
+    body: "Run an approved offline tool on Linux and review workspace changes without writing YAML.",
+    href: "/docs/autopilot",
+  },
+  {
+    title: "Manual policy quickstart",
+    body: "Write a small policy when you need explicit grants or are using another supported platform.",
     href: "/docs/quickstart",
   },
   {
@@ -127,9 +132,8 @@ export default function Docs() {
               Warden documentation
             </h1>
             <p className="mt-5 max-w-[42rem] font-sans text-[15px] leading-[1.75] text-muted">
-              Run local tools with only the files, network destinations, environment
-              variables, and resources they need. Start with the quickstart or protect
-              an AI coding agent with a sanitized workspace.
+              Start with Autopilot for approved offline tasks on Linux. Use a manual
+              policy when you need custom grants or a different supported platform.
             </p>
 
             <div className="mt-12 grid gap-px border border-hair bg-hair md:grid-cols-2">

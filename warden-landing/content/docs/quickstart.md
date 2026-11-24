@@ -1,6 +1,6 @@
-# Quickstart: run a program in a sandbox
+# Manual policy quickstart
 
-To start the reviewed Filesystem MCP server without writing YAML, follow the [zero-config quickstart](zero-config.md).
+Use this guide when you want to define the sandbox permissions yourself. For approved offline tasks on Linux, start with the [Autopilot quickstart](autopilot.md). To start the reviewed Filesystem MCP server without writing YAML, follow the [zero-config quickstart](zero-config.md).
 
 This takes about five minutes. You will write a small policy, run a program inside Warden, and see a blocked access in the audit log.
 
