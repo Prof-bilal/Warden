@@ -18,7 +18,8 @@ const sections: Section[] = [
     items: [
       { slug: "index", label: "What Warden is" },
       { slug: "install", label: "Install" },
-      { slug: "quickstart", label: "Quickstart" },
+      { slug: "autopilot", label: "Autopilot quickstart" },
+      { slug: "quickstart", label: "Manual policy quickstart" },
       { slug: "migration", label: "Migrate to Warden 2.0" },
     ],
   },

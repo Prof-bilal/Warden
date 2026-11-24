@@ -205,6 +205,9 @@ export default function Home() {
           binary could not resolve a home directory. Cloud-backed coding sessions were
           outside the benchmark.
         </p>
+        <Link className="home-section-link" href="/docs/autopilot">
+          Try the Autopilot quickstart <span aria-hidden="true">→</span>
+        </Link>
       </section>
 
       <section id="how-it-works" className="home-section">
