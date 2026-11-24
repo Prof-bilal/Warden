@@ -145,6 +145,7 @@ export default function Home() {
         </div>
         <div className="home-actions">
           <Link href="/v2">Explore the Warden 2.0 preview <span aria-hidden="true">→</span></Link>
+          <Link href="#autopilot">See the Autopilot benchmark <span aria-hidden="true">→</span></Link>
           <Link href="/docs/migration">Preview your migration <span aria-hidden="true">→</span></Link>
         </div>
       </section>
@@ -177,6 +178,33 @@ export default function Home() {
             </Link>
           </div>
         </div>
+      </section>
+
+      <section id="autopilot" className="home-section" aria-labelledby="autopilot-title">
+        <h2 id="autopilot-title" className="accent-heading">Warden Autopilot preview</h2>
+        <p className="home-intro">
+          The Linux development preview detects project markers and installed tools.
+          Approve an installed program for a project and Warden generates a read-only,
+          offline policy without a YAML file. You choose when to run it and which arguments
+          to pass. Edit mode previews changes and asks again before applying them to the
+          original project.
+        </p>
+        <dl className="home-grid home-metrics">
+          <div><dt>Onboarding and native checks, each</dt><dd>5/5</dd></div>
+          <div><dt>Project detection</dt><dd>6.7 ms</dd></div>
+          <div><dt>Protected file read</dt><dd>79.5 ms</dd></div>
+        </dl>
+        <p className="mt-4 text-sm text-muted">
+          Tested with a development build on Linux amd64 with a Ryzen 5 7430U on
+          November 24, 2026. Timings are medians of 10 fixture runs. The same read took
+          0.9 ms directly. Discovery ran no project scripts.
+        </p>
+        <p className="home-intro">
+          Claude Code and the direct Codex binary passed offline version checks. The
+          Codex and OpenCode shell wrappers failed to launch, and the direct OpenCode
+          binary could not resolve a home directory. Cloud-backed coding sessions were
+          outside the benchmark.
+        </p>
       </section>
 
       <section id="how-it-works" className="home-section">

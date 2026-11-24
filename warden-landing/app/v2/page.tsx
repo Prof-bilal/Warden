@@ -97,6 +97,10 @@ export default function WardenTwoPage() {
           The <Link href="/docs/claude-code-hook" className="text-acid underline underline-offset-4">Claude Code hook</Link> screens supported requests as an advisory check.{" "}
           Use the native sandbox when you need OS-level enforcement.
         </p>
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-paper">
+          See the <Link href="/#autopilot">Autopilot development preview</Link> for the
+          Linux benchmark and offline agent startup results.
+        </p>
       </section>
     </PageShell>
   );

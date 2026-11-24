@@ -20,16 +20,18 @@ try {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;
-  async function page(path, pattern) {
+  async function page(path, ...patterns) {
     const response = await fetch(base + path, { signal: AbortSignal.timeout(15000) });
     assert.equal(response.status, 200, path);
-    assert.match(await response.text(), pattern);
+    const html = await response.text();
+    for (const pattern of patterns) assert.match(html, pattern);
     evidence.checks.push(path);
   }
+  await page("/", /id="autopilot"/, /Warden Autopilot preview/, /Linux development preview/);
   await page("/docs/install", /warden-sandbox-cli@beta/);
   await page("/setup/codex", /Warden setup for (?:OpenAI )?Codex/i);
   await page("/setup/claude-code", /Warden setup for Claude Code/i);
-  await page("/v2", /warden-v2-intro\.mp4/);
+  await page("/v2", /warden-v2-intro\.mp4/, /href="\/#autopilot"/);
   const bad = await fetch(base + "/api/install", { method: "POST", body: "invalid fixture JSON", signal: AbortSignal.timeout(15000) });
   assert.equal(bad.status, 400);
   assert.deepEqual(await bad.json(), { ok: false, error: "invalid JSON" });
