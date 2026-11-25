@@ -124,6 +124,7 @@ try {
   assert.ok(outside.result?.isError || outside.error, "out-of-profile path must be denied");
   const secret = await request("tools/call", { name: "read_text_file", arguments: { path: join(data, ".env") } });
   assert.ok(secret.result?.isError || secret.error, "protected file within the readable directory must be denied");
+  assert(!JSON.stringify(secret).includes("warden-protected-fixture"), "protected file bytes reached the client");
   child.stdin.end();
   await Promise.race([exited, new Promise((_, reject) => setTimeout(() => reject(new Error("server did not exit after stdin closed")), 10000))]);
   assert.deepEqual(otherOutput, [], "stdout must carry only MCP messages");

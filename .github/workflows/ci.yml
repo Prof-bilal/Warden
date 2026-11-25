@@ -324,6 +324,10 @@ jobs:
         if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
         shell: pwsh
         run: go test -v -count=1 -run '^Test(Migrate|MCPPin|ChangedPinnedPolicy|GuardNPM)' ./cmd/warden
+      - name: Native Windows file mask and ACL restoration
+        if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
+        shell: pwsh
+        run: go test -v -count=1 -run '^TestWindowsMaskProtectsFileBeforeParentGrant$' ./internal/sandbox/windows
       - name: Native Windows pinned Filesystem on a staged fixture
         if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
         shell: pwsh

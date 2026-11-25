@@ -185,13 +185,16 @@ func TestReadOnlyPlanFilesystemMasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grants, err = appendFilesystemMasks(grants, []string{mask}, maskAllFileAccess)
+	grants = append(grants, pathGrant{Path: mask, AccessMode: grantAccess, AccessMask: accessRead})
+	grants, err = protectMaskedPaths(grants, []string{mask})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := pathGrant{Path: mask, AccessMode: denyAccess, AccessMask: maskAllFileAccess}
-	if len(grants) != 3 || grants[1] != (pathGrant{Path: project, AccessMode: denyAccess, AccessMask: denyWrite}) || grants[2] != want {
-		t.Fatalf("expected final mask %+v, got %+v", want, grants)
+	if len(grants) != 3 || grants[0] != want ||
+		grants[1] != (pathGrant{Path: project, AccessMode: grantAccess, AccessMask: accessRead}) ||
+		grants[2] != (pathGrant{Path: project, AccessMode: denyAccess, AccessMask: denyWrite}) {
+		t.Fatalf("expected protected path mask before parent grants, got %+v", grants)
 	}
 	if _, err := appendFilesystemMasks(nil, []string{`C:\Windows\System32\fixture`}, denyWrite); err == nil {
 		t.Fatal("accepted a system-path mask")

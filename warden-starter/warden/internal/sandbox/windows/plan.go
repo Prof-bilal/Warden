@@ -31,6 +31,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -227,7 +228,7 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 		if err != nil {
 			return nil, err
 		}
-		grants, err = appendFilesystemMasks(grants, denied, maskAllFileAccess)
+		grants, err = protectMaskedPaths(grants, denied)
 		if err != nil {
 			return nil, err
 		}
@@ -373,7 +374,6 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 	return grants, nil
 }
 
-// Apply masks after inherited grants so the explicit denies take precedence.
 func appendFilesystemMasks(grants []pathGrant, paths []string, mask uint32) ([]pathGrant, error) {
 	for _, path := range paths {
 		clean := cleanWinPath(path)
@@ -383,6 +383,23 @@ func appendFilesystemMasks(grants []pathGrant, paths []string, mask uint32) ([]p
 		grants = append(grants, pathGrant{Path: clean, AccessMask: mask, AccessMode: denyAccess})
 	}
 	return grants, nil
+}
+
+// Protect the masked DACLs before a parent grant can propagate an inherited ACE.
+func protectMaskedPaths(grants []pathGrant, paths []string) ([]pathGrant, error) {
+	masks, err := appendFilesystemMasks(nil, paths, maskAllFileAccess)
+	if err != nil {
+		return nil, err
+	}
+	for _, grant := range grants {
+		if slices.ContainsFunc(paths, func(path string) bool {
+			return strings.EqualFold(grant.Path, path) || isUnder(grant.Path, path)
+		}) {
+			continue
+		}
+		masks = append(masks, grant)
+	}
+	return masks, nil
 }
 
 // appContainerSID derives the AppContainer package SID for a moniker in
