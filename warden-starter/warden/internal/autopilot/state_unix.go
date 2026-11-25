@@ -3,6 +3,7 @@
 package autopilot
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 
@@ -17,8 +18,11 @@ func validStateEntry(info os.FileInfo) bool {
 	return ownedPrivate(info, 0700)
 }
 
-func privateStateDirectory(_ *os.Root, info os.FileInfo) bool {
-	return ownedPrivate(info, 0700)
+func verifyStateDirectory(_ *os.Root, info os.FileInfo) error {
+	if !ownedPrivate(info, 0700) {
+		return fmt.Errorf("mode 0700 and current-user ownership are required")
+	}
+	return nil
 }
 
 func openEnrollment(state *os.Root, name string) (*os.File, error) {

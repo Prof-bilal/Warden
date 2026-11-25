@@ -96,6 +96,25 @@ try {
   const names = discovery.result.tools.map(t => t.name);
   assert.ok(names.includes("read_text_file") && names.includes("write_file"), "expected filesystem tools must be discoverable");
   const read = await request("tools/call", { name: "read_text_file", arguments: { path: join(data, "allowed.txt") } });
+  if (backend === "windows" && read.result?.isError) {
+    const probe = `
+      const fs = require("node:fs");
+      const target = process.argv[1];
+      const checks = {
+        stat: () => fs.statSync(target),
+        read: () => fs.readFileSync(target),
+        realpath: () => fs.realpathSync(target),
+        realpathNative: () => fs.realpathSync.native(target),
+      };
+      for (const [name, check] of Object.entries(checks)) {
+        try { check(); console.log(name + ": ok"); }
+        catch (error) { console.log(name + ": " + error.code); }
+      }
+    `;
+    const diagnostic = cli(["run", "--policy", policy, "--backend", backend, "--",
+      process.execPath, "-e", probe, join(data, "allowed.txt")]);
+    process.stderr.write(diagnostic.stdout + diagnostic.stderr);
+  }
   assert.ok(!read.result?.isError && JSON.stringify(read.result ?? {}).includes("warden-allowed-fixture"),
     `allowed read must succeed: ${JSON.stringify(read)}\n${stderr}`);
   const write = await request("tools/call", { name: "write_file", arguments: { path: join(data, "forbidden-write.txt"), content: "blocked" } });

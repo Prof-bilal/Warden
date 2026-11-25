@@ -46,9 +46,13 @@ func OpenState(dir, project string, create bool) (*os.Root, error) {
 		return nil, err
 	}
 	info, err := state.Stat(".")
-	if err != nil || !os.SameFile(before, info) || !privateStateDirectory(state, info) {
+	if err != nil || !os.SameFile(before, info) {
 		state.Close()
-		return nil, fmt.Errorf("Autopilot state directory must be private and owned by the current user")
+		return nil, fmt.Errorf("Autopilot state directory changed during open")
+	}
+	if err := verifyStateDirectory(state, info); err != nil {
+		state.Close()
+		return nil, fmt.Errorf("Autopilot state directory must be private and owned by the current user: %w", err)
 	}
 	return state, nil
 }

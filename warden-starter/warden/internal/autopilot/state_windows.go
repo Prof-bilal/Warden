@@ -44,13 +44,17 @@ func validStateEntry(info os.FileInfo) bool {
 	return ok && attrs.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT == 0
 }
 
-func privateStateDirectory(state *os.Root, _ os.FileInfo) bool {
-	dir, err := state.Open(".")
+func verifyStateDirectory(state *os.Root, info os.FileInfo) error {
+	dir, err := os.Open(state.Name())
 	if err != nil {
-		return false
+		return err
 	}
 	defer dir.Close()
-	return privateStateHandle(dir, true)
+	opened, err := dir.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return fmt.Errorf("state directory changed before ACL verification")
+	}
+	return verifyStateHandle(dir, true)
 }
 
 func openEnrollment(state *os.Root, name string) (*os.File, error) {
@@ -74,40 +78,53 @@ func openEnrollment(state *os.Root, name string) (*os.File, error) {
 }
 
 func privateEnrollment(f *os.File, _ os.FileInfo) bool {
-	return privateStateHandle(f, false)
+	return verifyStateHandle(f, false) == nil
 }
 
-func privateStateHandle(f *os.File, directory bool) bool {
+func verifyStateHandle(f *os.File, directory bool) error {
 	handle := windows.Handle(f.Fd())
 	var info windows.ByHandleFileInformation
-	if err := windows.GetFileInformationByHandle(handle, &info); err != nil || info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-		return false
+	if err := windows.GetFileInformationByHandle(handle, &info); err != nil {
+		return err
+	}
+	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+		return fmt.Errorf("reparse points are refused")
 	}
 	sd, err := windows.GetSecurityInfo(handle, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return false
+		return fmt.Errorf("read owner and DACL: %w", err)
 	}
 	owner, _, err := sd.Owner()
 	if err != nil || owner == nil {
-		return false
+		return fmt.Errorf("state owner is unavailable")
 	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	if err != nil || !owner.Equals(user.User.Sid) && (directory || !owner.IsWellKnown(windows.WinBuiltinAdministratorsSid)) {
-		return false
+	if err != nil {
+		return err
+	}
+	if !owner.Equals(user.User.Sid) && (directory || !owner.IsWellKnown(windows.WinBuiltinAdministratorsSid)) {
+		return fmt.Errorf("unexpected state owner")
 	}
 	_, dacl, ok := strings.Cut(sd.String(), "D:")
 	if !ok {
-		return false
+		return fmt.Errorf("owner-only DACL required")
 	}
 	_, ace, ok := strings.Cut(dacl, "(")
 	if !ok {
-		return false
+		return fmt.Errorf("owner-only DACL required")
 	}
 	// Comparing the single ACE also rejects additional allow or inherited ACEs.
 	sid := user.User.Sid.String()
 	if directory {
 		control, _, err := sd.Control()
-		return err == nil && control&windows.SE_DACL_PROTECTED != 0 && ace == "A;OICI;FA;;;"+sid+")"
+		if err != nil || control&windows.SE_DACL_PROTECTED == 0 {
+			return fmt.Errorf("state directory requires an inheritance-protected DACL")
+		}
+		if ace == "A;OICI;FA;;;"+sid+")" {
+			return nil
+		}
+	} else if ace == "A;ID;FA;;;"+sid+")" || ace == "A;;FA;;;"+sid+")" {
+		return nil
 	}
-	return ace == "A;ID;FA;;;"+sid+")" || ace == "A;;FA;;;"+sid+")"
+	return fmt.Errorf("unexpected state DACL shape: %s", strings.ReplaceAll(dacl, sid, "<current-user>"))
 }

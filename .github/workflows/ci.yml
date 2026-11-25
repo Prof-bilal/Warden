@@ -299,6 +299,10 @@ jobs:
       - name: Sanitized agent workspace projection and apply
         shell: pwsh
         run: go test -v -count=1 ./internal/agentworkspace
+      - name: Native Windows console approval
+        if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
+        shell: pwsh
+        run: go test -v -count=1 -run '^TestWindowsConsoleApproval$' ./internal/approve
       - name: Native Autopilot enrollment and workspace review
         if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
         shell: pwsh

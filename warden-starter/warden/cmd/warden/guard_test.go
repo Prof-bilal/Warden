@@ -334,6 +334,11 @@ func TestGuardNPMOfflineReviewedArchiveNative(t *testing.T) {
 	backend := map[string]string{"linux": "linux", "darwin": "seatbelt", "windows": "windows"}[runtime.GOOS]
 	err = guardNPMInstall(context.Background(), server.URL, "warden-offline-fixture", "1.0.0", dest, backend, now, guard.ReleaseRules{}, installNPMRuntime)
 	if err != nil {
+		logs, _ := filepath.Glob(filepath.Join(dest, ".npm-cache", "_logs", "*.log"))
+		for _, log := range logs {
+			data, _ := os.ReadFile(log)
+			t.Logf("npm fixture log:\n%s", data)
+		}
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(dest, "node_modules", "warden-offline-fixture", "evidence.txt"))
