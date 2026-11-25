@@ -49,12 +49,11 @@ if (!zeroConfig) {
   } else if (prepare === "fixture") {
     // This stages a test dependency. The protocol session itself uses Warden.
     await mkdir(runtime, { recursive: true });
-    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-    const result = spawnSync(npm, ["install", "--ignore-scripts", "--no-audit", "--no-fund",
-      "--save-exact", `${artifact}@${version}`], {
-      cwd: runtime, stdio: ["ignore", "ignore", "inherit"], timeout: 180000,
-      shell: process.platform === "win32",
-    });
+    const args = ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--save-exact", `${artifact}@${version}`];
+    const windows = process.platform === "win32";
+    const result = spawnSync(windows ? process.env.ComSpec : "npm",
+      windows ? ["/d", "/c", "npm.cmd", ...args] : args,
+      { cwd: runtime, stdio: ["ignore", "ignore", "inherit"], timeout: 180000 });
     assert.equal(result.status, 0, result.error?.message ?? "could not stage pinned Filesystem fixture");
   }
   const pkg = JSON.parse(await readFile(join(runtime, "node_modules", artifact, "package.json"), "utf8"));
@@ -97,7 +96,8 @@ try {
   const names = discovery.result.tools.map(t => t.name);
   assert.ok(names.includes("read_text_file") && names.includes("write_file"), "expected filesystem tools must be discoverable");
   const read = await request("tools/call", { name: "read_text_file", arguments: { path: join(data, "allowed.txt") } });
-  assert.ok(!read.result.isError && JSON.stringify(read.result).includes("warden-allowed-fixture"), "allowed read must succeed");
+  assert.ok(!read.result?.isError && JSON.stringify(read.result ?? {}).includes("warden-allowed-fixture"),
+    `allowed read must succeed: ${JSON.stringify(read)}\n${stderr}`);
   const write = await request("tools/call", { name: "write_file", arguments: { path: join(data, "forbidden-write.txt"), content: "blocked" } });
   assert.ok(write.result?.isError || write.error, "read-only policy must block a write within the server's allowed directory");
   await assert.rejects(readFile(join(data, "forbidden-write.txt")), { code: "ENOENT" });

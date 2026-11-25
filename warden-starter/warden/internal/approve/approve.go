@@ -24,6 +24,7 @@ package approve
 
 import (
 	"errors"
+	"os"
 	"time"
 )
 
@@ -60,14 +61,26 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+type console struct {
+	input, output *os.File
+}
+
+func (c console) close() error {
+	err := c.input.Close()
+	if c.output != c.input {
+		err = errors.Join(err, c.output.Close())
+	}
+	return err
+}
+
 // CheckTTY fails closed when there is no interactive terminal to prompt on:
 // without a human at a controlling terminal, approval mode could never
 // approve anything, so refusing to start is louder and safer than silently
 // denying every request for the whole run.
 func CheckTTY() error {
-	f, err := openConsole()
+	tty, err := openConsole()
 	if err != nil {
-		return errors.New("approval mode needs an interactive terminal (/dev/tty) to prompt on; run without --approve or from a terminal")
+		return errors.New("approval mode needs an interactive terminal; run without --approve or from a terminal")
 	}
-	return f.Close()
+	return tty.close()
 }

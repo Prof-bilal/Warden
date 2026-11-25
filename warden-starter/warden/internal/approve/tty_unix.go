@@ -7,6 +7,7 @@ import "os"
 // openConsole opens the controlling terminal for prompting. Using /dev/tty
 // (instead of stdin/stdout/stderr) keeps the MCP stdio channel
 // protocol-clean: the client never sees approval chatter.
-func openConsole() (*os.File, error) {
-	return os.OpenFile("/dev/tty", os.O_RDWR, 0)
+func openConsole() (console, error) {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	return console{input: tty, output: tty}, err
 }

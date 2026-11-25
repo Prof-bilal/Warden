@@ -193,8 +193,8 @@ func (p *Prompter) askLocked(question, options string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("no interactive terminal: %w", err)
 	}
-	defer tty.Close()
-	if _, err := fmt.Fprint(tty, "\n"+question+options); err != nil {
+	defer tty.close()
+	if _, err := fmt.Fprint(tty.output, "\n"+question+options); err != nil {
 		return "", fmt.Errorf("write prompt: %w", err)
 	}
 
@@ -204,7 +204,7 @@ func (p *Prompter) askLocked(question, options string) (string, error) {
 	}
 	answer := make(chan result, 1)
 	go func() {
-		line, err := bufio.NewReader(tty).ReadString('\n')
+		line, err := bufio.NewReader(tty.input).ReadString('\n')
 		answer <- result{line, err}
 	}()
 
@@ -218,8 +218,7 @@ func (p *Prompter) askLocked(question, options string) (string, error) {
 		case <-time.After(p.timeout):
 			// Closing the descriptor unblocks the reader instead of leaving a
 			// goroutine parked on an abandoned terminal read.
-			_ = tty.Close()
-			fmt.Fprintln(tty, "\nwarden approval: timed out waiting for an answer")
+			fmt.Fprintln(tty.output, "\nwarden approval: timed out waiting for an answer")
 			return "", fmt.Errorf("timed out after %s", p.timeout)
 		}
 	}
