@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/warden-sandbox/warden/internal/policy"
+	"golang.org/x/sys/windows"
 )
 
 func TestWindowsMaskProtectsFileBeforeParentGrant(t *testing.T) {
@@ -20,7 +21,8 @@ func TestWindowsMaskProtectsFileBeforeParentGrant(t *testing.T) {
 	if err := os.WriteFile(file, []byte("disposable"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	before, err := snapshotDACL(longPath(file))
+	const descriptorParts = windows.OWNER_SECURITY_INFORMATION | windows.GROUP_SECURITY_INFORMATION | windows.DACL_SECURITY_INFORMATION
+	before, err := windows.GetNamedSecurityInfo(longPath(file), windows.SE_FILE_OBJECT, descriptorParts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,11 +62,11 @@ func TestWindowsMaskProtectsFileBeforeParentGrant(t *testing.T) {
 	}
 	restore()
 	restore = func() {}
-	after, err := snapshotDACL(longPath(file))
+	after, err := windows.GetNamedSecurityInfo(longPath(file), windows.SE_FILE_OBJECT, descriptorParts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.sd.String() != after.sd.String() {
-		t.Fatalf("mask cleanup changed the original DACL: before %s, after %s", before.sd.String(), after.sd.String())
+	if before.String() != after.String() {
+		t.Fatalf("mask cleanup changed the original DACL: before %s, after %s", before.String(), after.String())
 	}
 }
