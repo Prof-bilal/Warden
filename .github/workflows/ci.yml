@@ -201,7 +201,6 @@ jobs:
       - name: End-to-end benchmark
         run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
       - name: Autopilot setup and launch timings
-        if: env.WARDEN_BENCHMARK_SUITE == 'full'
         run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - name: Docker fallback benchmark
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
@@ -323,7 +322,6 @@ jobs:
         shell: pwsh
         run: $env:WARDEN_BENCH_HOST_HOME=$env:USERPROFILE; $env:WARDEN_BENCH_HOST_TEMP=$env:TEMP; node testdata/ecosystem/benchmark.mjs --suite $env:WARDEN_BENCHMARK_SUITE --repeat $env:WARDEN_BENCHMARK_REPEAT --output "$env:RUNNER_TEMP/warden-bench"
       - name: Autopilot setup and launch timings
-        if: env.WARDEN_BENCHMARK_SUITE == 'full'
         shell: pwsh
         run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$env:RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - uses: actions/setup-python@v5
@@ -436,7 +434,6 @@ jobs:
       - name: End-to-end benchmark
         run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
       - name: Autopilot setup and launch timings
-        if: env.WARDEN_BENCHMARK_SUITE == 'full'
         run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'

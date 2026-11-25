@@ -113,18 +113,22 @@ func verifyStateHandle(f *os.File, directory bool) error {
 	if !ok {
 		return fmt.Errorf("owner-only DACL required")
 	}
-	// Comparing the single ACE also rejects additional allow or inherited ACEs.
-	sid := user.User.Sid.String()
+	// SDDL may encode the current user as an alias such as LA.
+	fields := strings.Split(strings.TrimSuffix(ace, ")"), ";")
+	if len(fields) != 6 || fields[0] != "A" || fields[2] != "FA" || fields[3] != "" || fields[4] != "" {
+		return fmt.Errorf("expected one full-access ACE for the current user")
+	}
+	trustee, err := windows.StringToSid(fields[5])
+	if err != nil || !trustee.Equals(user.User.Sid) {
+		return fmt.Errorf("state DACL does not grant access exclusively to the current user")
+	}
 	if directory {
 		control, _, err := sd.Control()
-		if err != nil || control&windows.SE_DACL_PROTECTED == 0 {
-			return fmt.Errorf("state directory requires an inheritance-protected DACL")
+		if err != nil || control&windows.SE_DACL_PROTECTED == 0 || fields[1] != "OICI" {
+			return fmt.Errorf("state directory requires an inheritance-protected DACL with an inheritable user ACE")
 		}
-		if ace == "A;OICI;FA;;;"+sid+")" {
-			return nil
-		}
-	} else if ace == "A;ID;FA;;;"+sid+")" || ace == "A;;FA;;;"+sid+")" {
-		return nil
+	} else if fields[1] != "ID" && fields[1] != "" {
+		return fmt.Errorf("invalid enrollment ACE flags")
 	}
-	return fmt.Errorf("unexpected state DACL shape: %s", strings.ReplaceAll(dacl, sid, "<current-user>"))
+	return nil
 }

@@ -109,7 +109,13 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 		Network:    policy.Network{Allow: []string{"registry.npmjs.org"}},
 		Limits:     policy.Limits{MemoryMB: 1024, TimeoutS: 600},
 	}
-	if archiveDir != "" {
+	if runtime.GOOS == "windows" {
+		// These protected file ACLs do not inherit grants on their parent.
+		p.Filesystem.Read = append(p.Filesystem.Read, config, globalConfig)
+		if archiveDir != "" {
+			p.Filesystem.Read = append(p.Filesystem.Read, artifact)
+		}
+	} else if archiveDir != "" {
 		p.Filesystem.Read = append(p.Filesystem.Read, archiveDir)
 	}
 	// Preparation can precede a stdio MCP session, which reserves stdout.

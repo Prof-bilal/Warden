@@ -77,7 +77,7 @@ proof. Launch measures the enrolled run through process exit, including
 workspace projection and audit writes. The times exclude compilation, human
 approval, and fixture provisioning. Each sample checks the projected read,
 blocked writes and offline behavior before the harness accepts its timings.
-Full CI runs retain the JSON alongside the platform benchmark report.
+CI retains the JSON alongside the platform benchmark report.
 
 ## Performance
 

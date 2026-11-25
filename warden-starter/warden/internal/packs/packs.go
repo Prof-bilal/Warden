@@ -4,12 +4,14 @@ package packs
 import (
 	"crypto/sha256"
 	_ "embed"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -202,6 +204,24 @@ func ResolveEntry(root string) (string, error) {
 	return entry, nil
 }
 
+// AppContainer can refuse libuv's native Windows path lookup even when ordinary
+// file reads are allowed. Use Node's component-by-component resolver in that case.
+const windowsFilesystemRealpath = `
+import fs from 'node:fs';
+import { promisify } from 'node:util';
+import { syncBuiltinESMExports } from 'node:module';
+const native = fs.promises.realpath;
+const resolveComponents = promisify(fs.realpath);
+fs.promises.realpath = async (...args) => {
+  try { return await native(...args); }
+  catch (error) {
+    if (error.code !== 'EPERM') throw error;
+    return resolveComponents(...args);
+  }
+};
+syncBuiltinESMExports();
+`
+
 // PreparedCommand validates the local npm package manifest and selects its
 // installed entry point. Dependency preparation writes a package-lock; no npx
 // cache or online package resolution is needed for execution.
@@ -241,7 +261,11 @@ func PreparedCommand(id, runtimePath, dataPath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	argv := []string{node, entry}
+	argv := []string{node}
+	if id == "filesystem" && runtime.GOOS == "windows" {
+		argv = append(argv, "--import", "data:text/javascript;base64,"+base64.StdEncoding.EncodeToString([]byte(windowsFilesystemRealpath)))
+	}
+	argv = append(argv, entry)
 	if id == "filesystem" {
 		dataPath, err = narrowDirectory(dataPath)
 		if err != nil {

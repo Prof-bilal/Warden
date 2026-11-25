@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -30,7 +31,14 @@ func TestPreparedCommandRequiresRecordedVersion(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if !filepath.IsAbs(argv[0]) || len(argv) != 3 || !strings.HasSuffix(argv[1], "index.js") {
+	if !filepath.IsAbs(argv[0]) || len(argv) < 3 || !strings.HasSuffix(argv[len(argv)-2], "index.js") {
+		t.Fatalf("invalid prepared argv: %v", argv)
+	}
+	if runtime.GOOS == "windows" {
+		if len(argv) != 5 || argv[1] != "--import" || !strings.HasPrefix(argv[2], "data:text/javascript;base64,") {
+			t.Fatalf("Windows prepared command lacks the realpath compatibility preload: %v", argv)
+		}
+	} else if len(argv) != 3 {
 		t.Fatalf("invalid prepared argv: %v", argv)
 	}
 }
