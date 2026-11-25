@@ -61,7 +61,10 @@ func TestWindowsMaskProtectsFileBeforeParentGrant(t *testing.T) {
 	restore()
 	restore = func() {}
 	after, err := snapshotDACL(longPath(file))
-	if err != nil || before.sd.String() != after.sd.String() {
-		t.Fatalf("mask cleanup changed the original DACL: %v", err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.sd.String() != after.sd.String() {
+		t.Fatalf("mask cleanup changed the original DACL: before %s, after %s", before.sd.String(), after.sd.String())
 	}
 }
