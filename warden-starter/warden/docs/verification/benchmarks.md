@@ -63,6 +63,14 @@ policy tests use controlled metadata, checksums, and benign lifecycle fixtures.
 Each security result needs a working positive control and the expected negative
 result. Support and audit coverage are backend-specific.
 
+## Native npm candidate installation
+
+The macOS and Windows jobs pack the npm launcher, install it into a fresh
+prefix, stage the matching native binary with its checksum, and compare the
+wrapper's version output with the binary's output. This checks the native
+package layout and execution before publication. The Linux release smoke
+also tests first download against a disposable HTTPS fixture.
+
 ## Autopilot setup and launch
 
 Run the same read-only fixture on each native host:

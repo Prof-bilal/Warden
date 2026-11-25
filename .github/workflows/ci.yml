@@ -269,7 +269,14 @@ jobs:
       - name: Build native CLI
         id: windows_cli
         shell: pwsh
-        run: go build -o "$env:RUNNER_TEMP/warden-native.exe" ./cmd/warden
+        run: |
+          $version = node -p "require('./build/npm-wrapper/package.json').version"
+          go build -ldflags "-X github.com/warden-sandbox/warden/internal/version.Version=$version" -o "$env:RUNNER_TEMP/warden-native.exe" ./cmd/warden
+      - name: Native Windows npm candidate installation
+        shell: pwsh
+        run: |
+          $env:WARDEN_BIN = "$env:RUNNER_TEMP/warden-native.exe"
+          node testdata/ecosystem/smoke-native-release.mjs
       - name: Native Windows containment proof
         shell: pwsh
         run: '& "$env:RUNNER_TEMP/warden-native.exe" doctor --prove'
@@ -303,9 +310,16 @@ jobs:
         shell: pwsh
         run: go test -v -count=1 -run '^TestWindowsConsoleApproval$' ./internal/approve
       - name: Native Autopilot enrollment and workspace review
+        id: windows_autopilot
         if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
         shell: pwsh
         run: go test -v -count=1 -timeout=3m -run "^TestAutopilot(EnrollmentLifecycle|NativeReadOnly|NativeReviewedEdits|RejectsSharedEnrollmentACL)$" ./internal/autopilot ./cmd/warden
+      - name: Autopilot setup and launch timings
+        if: ${{ !cancelled() && steps.windows_autopilot.conclusion == 'success' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/warden-bench" | Out-Null
+          node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$env:RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - name: Warden 2.0 policy pins, migration, and npm archive verification
         if: ${{ !cancelled() && steps.windows_cli.conclusion == 'success' }}
         shell: pwsh
@@ -321,9 +335,6 @@ jobs:
       - name: End-to-end benchmark
         shell: pwsh
         run: $env:WARDEN_BENCH_HOST_HOME=$env:USERPROFILE; $env:WARDEN_BENCH_HOST_TEMP=$env:TEMP; node testdata/ecosystem/benchmark.mjs --suite $env:WARDEN_BENCHMARK_SUITE --repeat $env:WARDEN_BENCHMARK_REPEAT --output "$env:RUNNER_TEMP/warden-bench"
-      - name: Autopilot setup and launch timings
-        shell: pwsh
-        run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$env:RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         with:
@@ -402,7 +413,11 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - name: Build native CLI
-        run: go build -o "$RUNNER_TEMP/warden-native" ./cmd/warden
+        run: |
+          version=$(node -p "require('./build/npm-wrapper/package.json').version")
+          go build -ldflags "-X github.com/warden-sandbox/warden/internal/version.Version=$version" -o "$RUNNER_TEMP/warden-native" ./cmd/warden
+      - name: Native macOS npm candidate installation
+        run: WARDEN_BIN="$RUNNER_TEMP/warden-native" node testdata/ecosystem/smoke-native-release.mjs
       - name: Native macOS containment proof
         run: '"$RUNNER_TEMP/warden-native" doctor --prove'
       - name: Native macOS MCP gateway lifecycle

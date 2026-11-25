@@ -193,6 +193,11 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 	if err != nil {
 		return func() {}, err
 	}
+	packageSID, err := windows.StringToSid(plan.PackageSID)
+	if err != nil {
+		return func() {}, err
+	}
+	denySIDs := append(append([]*windows.SID{}, caps...), packageSID)
 	var snaps []daclSnapshot
 	restore = func() {
 		for i := len(snaps) - 1; i >= 0; i-- {
@@ -210,7 +215,11 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
 		snaps = append(snaps, snap)
-		if err := grantPathACE(g.Path, g.AccessMask, g.AccessMode, caps); err != nil {
+		trustees := caps
+		if g.AccessMode == denyAccess {
+			trustees = denySIDs
+		}
+		if err := grantPathACE(g.Path, g.AccessMask, g.AccessMode, trustees); err != nil {
 			if g.AccessMode == grantAccess && IsRuntimeReadPath(g.Path) {
 				continue
 			}

@@ -88,17 +88,18 @@ func IsRuntimeReadPath(path string) bool {
 // Access masks for file grants (GENERIC_* values, which the object manager
 // maps to FILE_GENERIC_* on files and directories).
 const (
-	accessRead  uint32 = 0x80000000 // GENERIC_READ
-	accessWrite uint32 = 0x40000000 // GENERIC_WRITE
-	accessExec  uint32 = 0x20000000 // GENERIC_EXECUTE
-	denyAccess  uint32 = 3          // DENY_ACCESS
+	accessRead        uint32 = 0x80000000          // GENERIC_READ
+	accessWrite       uint32 = 0x40000000          // GENERIC_WRITE
+	accessExec        uint32 = 0x20000000          // GENERIC_EXECUTE
+	denyAccess        uint32 = 3                   // DENY_ACCESS
+	deleteAccess      uint32 = 0x00010000 | 0x0040 // DELETE and FILE_DELETE_CHILD
+	maskAllFileAccess uint32 = 0x001F01FF          // FILE_ALL_ACCESS
 	// A generic write denial also denies rights required by ordinary reads.
 	denyWrite uint32 = 0x0002 | // FILE_WRITE_DATA / FILE_ADD_FILE
 		0x0004 | // FILE_APPEND_DATA / FILE_ADD_SUBDIRECTORY
 		0x0010 | // FILE_WRITE_EA
-		0x0040 | // FILE_DELETE_CHILD
 		0x0100 | // FILE_WRITE_ATTRIBUTES
-		0x00010000 | // DELETE
+		deleteAccess |
 		0x00040000 | // WRITE_DAC
 		0x00080000 // WRITE_OWNER
 )
@@ -226,7 +227,7 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 		if err != nil {
 			return nil, err
 		}
-		grants, err = appendFilesystemMasks(grants, denied, accessRead|accessExec|denyWrite)
+		grants, err = appendFilesystemMasks(grants, denied, maskAllFileAccess)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +351,7 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 		}
 	}
 	for _, path := range p.Filesystem.Write {
-		if err := add(path, accessRead|accessWrite|accessExec); err != nil {
+		if err := add(path, accessRead|accessWrite|accessExec|deleteAccess); err != nil {
 			return nil, err
 		}
 	}

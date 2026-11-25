@@ -54,7 +54,7 @@ func TestDeriveFilesystemGrantsPolicyPaths(t *testing.T) {
 	if m := mask[`c:\data\in`]; m&accessRead == 0 || m&accessWrite != 0 {
 		t.Fatalf("read grant wrong: %x", m)
 	}
-	if m := mask[`c:\data\out`]; m&accessWrite == 0 {
+	if m := mask[`c:\data\out`]; m&accessWrite == 0 || m&deleteAccess != deleteAccess {
 		t.Fatalf("write grant missing write bit: %x", m)
 	}
 }
@@ -185,11 +185,11 @@ func TestReadOnlyPlanFilesystemMasks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	grants, err = appendFilesystemMasks(grants, []string{mask}, accessRead|accessExec|denyWrite)
+	grants, err = appendFilesystemMasks(grants, []string{mask}, maskAllFileAccess)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := pathGrant{Path: mask, AccessMode: denyAccess, AccessMask: accessRead | accessExec | denyWrite}
+	want := pathGrant{Path: mask, AccessMode: denyAccess, AccessMask: maskAllFileAccess}
 	if len(grants) != 3 || grants[1] != (pathGrant{Path: project, AccessMode: denyAccess, AccessMask: denyWrite}) || grants[2] != want {
 		t.Fatalf("expected final mask %+v, got %+v", want, grants)
 	}

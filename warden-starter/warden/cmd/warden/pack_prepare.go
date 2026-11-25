@@ -70,7 +70,7 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 	}
 	var archiveDir string
 	artifact := spec
-	if archive != nil {
+	if archive != nil || runtime.GOOS == "windows" {
 		archiveDir, e = os.MkdirTemp(filepath.Dir(dest), ".warden-archive-")
 		if e != nil {
 			return e
@@ -79,16 +79,23 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 		if e = privatefile.Protect(archiveDir, true); e != nil {
 			return e
 		}
+	}
+	if archive != nil {
 		artifact = filepath.Join(archiveDir, "reviewed.tgz")
 		if e = writeExclusive(artifact, archive); e != nil {
 			return e
 		}
 	}
-	config := filepath.Join(dest, ".npmrc")
+	configDir := dest
+	if runtime.GOOS == "windows" {
+		// Keep these private files outside dest so normalization retains their explicit read grants.
+		configDir = archiveDir
+	}
+	config := filepath.Join(configDir, ".npmrc")
 	if e = writeExclusive(config, []byte{}); e != nil {
 		return e
 	}
-	globalConfig := filepath.Join(dest, "global.npmrc")
+	globalConfig := filepath.Join(configDir, "global.npmrc")
 	if e = writeExclusive(globalConfig, []byte{}); e != nil {
 		return e
 	}
@@ -112,7 +119,7 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 	if runtime.GOOS == "windows" {
 		// These protected file ACLs do not inherit grants on their parent.
 		p.Filesystem.Read = append(p.Filesystem.Read, config, globalConfig)
-		if archiveDir != "" {
+		if archive != nil {
 			p.Filesystem.Read = append(p.Filesystem.Read, artifact)
 		}
 	} else if archiveDir != "" {
