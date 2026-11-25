@@ -27,9 +27,11 @@ for a full matrix run. Each run writes JSON, Markdown, and per-case logs under
   exercise containment and policy behavior. The full Windows gateway case
   requires a host that can open WFP engine sessions. Set
   `WARDEN_WFP_RUNNER_ENABLED=true` as a repository variable after providing a
-  private self-hosted Windows x64 runner labeled `warden-wfp`. A full run
-  without the necessary capability records the gateway failure. Keep this
-  runner off untrusted PRs. Cross-builds count as compile evidence.
+  private self-hosted Windows x64 runner labeled `warden-wfp`. Release tags
+  and manual CI runs with `full_benchmark` require a successful WFP probe,
+  native gateway and registry preparation checks, and passing WFP/ETW tests.
+  A skipped test fails that validation. Keep this runner off untrusted PRs.
+  Cross-builds count as compile evidence.
 - **Docker** uses the actual container backend on Linux. Pull the pinned image
   first. The case verifies a positive startup control and a denied read.
 - **Registry** uses exact public package versions from the manifest and real npm,

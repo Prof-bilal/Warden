@@ -234,25 +234,15 @@ jobs:
       - name: Full Go test suite (bounded parallelism)
         run: GOMAXPROCS=2 go test -p 1 -count=1 ./...
 
-  # DIAGNOSIS COMPLETE (removed): six probe rounds across windows-2022 and
-  # windows-latest showed the hosted images ship fwpuclnt.dll but refuse
-  # FwpmEngineOpen0 with ERROR_NOT_SUPPORTED for every authnService, elevated
-  # or not, even from a SYSTEM scheduled task, with BFE healthy and NTLM
-  # policy permissive. Hosted Windows runners cannot open WFP engine
-  # sessions; wfpSupported() now probes a real session so the backend
-  # reports unavailable and the sandbox tests skip (asserted below).
-
-  # The Windows job verifies build/vet plus the backend-independent tests,
-  # and runs the ETW/escape tests only where the host actually permits WFP
-  # engine sessions (self-hosted Windows). On hosted runners wfpSupported()
-  # detects the refusal (see wfp.go) and the sandbox tests skip, which the
-  # assertion step below accepts; a real Windows escape regression requires
-  # self-hosted hardware, like the Linux bwrap job's runner requirements.
+  # Hosted Windows runners exercise offline AppContainer. Release tags and
+  # explicitly requested full runs also require a working WFP/ETW host.
   windows:
     # Pin the native security job to a stable x64 image. `windows-latest` is
     # intentionally mutable and has already changed WFP/AppContainer
     # behavior across image revisions.
     runs-on: ${{ fromJSON((vars.WARDEN_WFP_RUNNER_ENABLED == 'true' && (github.event_name == 'schedule' || github.ref_type == 'tag' || inputs.full_benchmark)) && '["self-hosted","Windows","X64","warden-wfp"]' || '["windows-2022"]') }}
+    env:
+      WARDEN_REQUIRE_WINDOWS_WFP: ${{ (github.ref_type == 'tag' || inputs.full_benchmark) && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -283,13 +273,13 @@ jobs:
       - name: Native Windows MCP gateway lifecycle
         shell: pwsh
         run: |
-          # The native gateway needs a working sandbox, so run the regression
-          # only where the host permits WFP engine sessions; otherwise skip
-          # with a warning rather than report a known environmental refusal.
           Add-Type -TypeDefinition 'using System;using System.Runtime.InteropServices;public static class WfpGate{[DllImport("fwpuclnt.dll",CharSet=CharSet.Unicode,SetLastError=true)]public static extern uint FwpmEngineOpen0(string serverName,uint authnService,IntPtr authIdentity,IntPtr session,out IntPtr engine);[DllImport("fwpuclnt.dll",SetLastError=true)]public static extern uint FwpmEngineClose0(IntPtr engine);}'
           $h = [IntPtr]::Zero
           $r = [WfpGate]::FwpmEngineOpen0($null, [uint32]10, [IntPtr]::Zero, [IntPtr]::Zero, [ref]$h)
           if ($r -ne 0) {
+            if ($env:WARDEN_REQUIRE_WINDOWS_WFP -eq "1") {
+              throw ("WFP engine unavailable (code 0x{0:X}). Release validation requires the warden-wfp runner." -f $r)
+            }
             Write-Host ("::warning::WFP engine unavailable on this hosted runner (code 0x{0:X}); native gateway smoke requires self-hosted Windows hardware. Skipping." -f $r)
             exit 0
           }
@@ -354,46 +344,20 @@ jobs:
           path: ${{ runner.temp }}/warden-bench
       - shell: pwsh
         run: go test -v ./...
-        id: test
-      - name: Assert ETW and escape tests actually ran
-        # Run even when the test step panics or fails (e.g. missing DLL
-        # export causing a process exit) so the assertion is never silenced.
-        if: always() && steps.test.outcome != 'skipped'
+      - name: Require native Windows WFP and ETW test results
+        if: env.WARDEN_REQUIRE_WINDOWS_WFP == '1'
         shell: pwsh
         run: |
-          $out = go test -v -count=1 -run 'TestEtw|TestEscape|TestAppContainer|TestWFP' ./internal/sandbox/windows/ 2>&1 | Out-String
-          Write-Host $out
-          # Tests must have been discovered (RUN line present). If none were
-          # found, the package didn't compile the test filefail loudly.
-          if ($out -notmatch '=== RUN') { throw "no ETW/escape/AppContainer/WFP tests discovered; output above" }
-          # If tests ran but panicked (missing DLL export), the process would
-          # have exited non-zero before the assertioncaught by the step
-          # itself. Here we check for the case where tests were found but all
-          # skipped: that is acceptable only when Supported() returns false
-          # (AppContainer API not available on this runner). If any test
-          # panicked instead of skipping, the output contains "panic:" which
-          # we flag.
-          if ($out -match '(?m)^\s*--- SKIP:') {
-            if ($out -match 'panic:') { throw "ETW/escape tests panicked instead of skippinginvestigate" }
-            Write-Host "ETW/escape tests skipped (AppContainer not available on this runner)acceptable"
-            exit 0
-          }
-          # If tests actually ran, they must pass.
-          if ($out -match '(?m)^\s*--- PASS:') {
-            if ($out -notmatch '(?m)^ok\s') { throw "targeted Windows test run did not pass" }
-            exit 0
-          }
-          # If tests failed due to WFP/sandbox backend unavailability, that's acceptable on this runner.
-          if ($out -match 'sandbox backend unavailable') {
-            Write-Host "WFP sandbox backend unavailable on this runnerETW/escape tests cannot run; acceptable"
-            exit 0
-          }
-          throw "targeted Windows test run did not pass"
-          # PowerShell preserves a native command's non-zero exit code in
-          # $LASTEXITCODE without automatically failing this script. Do not
-          # let a run where every discovered test failed pass the assertion.
-          if ($out -notmatch '(?m)^\s*--- PASS:' -and $out -notmatch '(?m)^\s*--- SKIP:') {
-            throw "all targeted Windows tests failed; output above"
+          $required = @('TestEscapeNetworkBlockedAudited', 'TestEtwSessionLifecycle', 'TestEtwFileActivityAudited')
+          $pattern = '^(' + ($required -join '|') + ')$'
+          $out = go test -v -count=1 -run $pattern ./internal/sandbox/windows/
+          $code = $LASTEXITCODE
+          $out | Write-Host
+          if ($code -ne 0) { throw "Native Windows WFP/ETW tests failed (exit $code)" }
+          foreach ($test in $required) {
+            if (-not ($out -cmatch ("^--- PASS: " + [regex]::Escape($test) + " \("))) {
+              throw "$test did not pass on the native Windows runner"
+            }
           }
 
   # GitHub-hosted macOS runners include sandbox-exec, so the Seatbelt
