@@ -193,13 +193,16 @@ jobs:
       - name: Native containment and npm guard proofs (must actually run)
         env:
           WARDEN_REQUIRE_AGENT_E2E: "1"
-        run: go test -v -count=1 ./cmd/warden -run '^(TestDoctorProve|TestGuardApprovedLifecycleRunsOnlyReviewedHooks)$'
+        run: go test -v -count=1 ./cmd/warden -run '^(TestDoctorProve|TestAutopilotNativeReadOnly|TestGuardNPMOfflineReviewedArchiveNative|TestGuardApprovedLifecycleRunsOnlyReviewedHooks)$'
       - name: MCP definition pin across real bridge sessions
         run: |
           go build -o "$RUNNER_TEMP/warden-pin-smoke" ./cmd/warden
           WARDEN_BIN="$RUNNER_TEMP/warden-pin-smoke" node testdata/ecosystem/smoke-mcp-tool-pins.mjs
       - name: End-to-end benchmark
         run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
+      - name: Autopilot setup and launch timings
+        if: env.WARDEN_BENCHMARK_SUITE == 'full'
+        run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - name: Docker fallback benchmark
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         run: |
@@ -287,13 +290,34 @@ jobs:
           $env:WARDEN_BIN = "$env:RUNNER_TEMP/warden-native.exe"
           node testdata/ecosystem/smoke-native-gateway.mjs
           if ($LASTEXITCODE -ne 0) { throw "native gateway regression failed" }
+          if ($env:WARDEN_BENCHMARK_SUITE -eq "full") {
+            $env:WARDEN_SMOKE_PREPARE = "sandbox"
+            node testdata/ecosystem/smoke-filesystem.mjs
+            if ($LASTEXITCODE -ne 0) { throw "native Filesystem preparation or launch failed" }
+          }
+      - name: Native Windows pinned Filesystem on a staged fixture
+        shell: pwsh
+        run: |
+          $env:WARDEN_BIN = "$env:RUNNER_TEMP/warden-native.exe"
+          $env:WARDEN_SMOKE_PREPARE = "fixture"
+          node testdata/ecosystem/smoke-filesystem.mjs
 
       - name: Sanitized agent workspace projection and apply
         shell: pwsh
         run: go test -v -count=1 ./internal/agentworkspace
+      - name: Native Autopilot enrollment and workspace review
+        shell: pwsh
+        run: go test -v -count=1 -timeout=3m -run "^TestAutopilot(EnrollmentLifecycle|NativeReadOnly|NativeReviewedEdits|RejectsSharedEnrollmentACL)$" ./internal/autopilot ./cmd/warden
+      - name: Warden 2.0 policy pins, migration, and npm archive verification
+        shell: pwsh
+        run: go test -v -count=1 -run '^Test(Migrate|MCPPin|ChangedPinnedPolicy|GuardNPM)' ./cmd/warden
       - name: End-to-end benchmark
         shell: pwsh
         run: $env:WARDEN_BENCH_HOST_HOME=$env:USERPROFILE; $env:WARDEN_BENCH_HOST_TEMP=$env:TEMP; node testdata/ecosystem/benchmark.mjs --suite $env:WARDEN_BENCHMARK_SUITE --repeat $env:WARDEN_BENCHMARK_REPEAT --output "$env:RUNNER_TEMP/warden-bench"
+      - name: Autopilot setup and launch timings
+        if: env.WARDEN_BENCHMARK_SUITE == 'full'
+        shell: pwsh
+        run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$env:RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         with:
@@ -377,6 +401,8 @@ jobs:
         run: '"$RUNNER_TEMP/warden-native" doctor --prove'
       - name: Native macOS MCP gateway lifecycle
         run: WARDEN_BIN="$RUNNER_TEMP/warden-native" node testdata/ecosystem/smoke-native-gateway.mjs
+      - name: Native macOS pinned Filesystem preparation and launch
+        run: WARDEN_BIN="$RUNNER_TEMP/warden-native" WARDEN_SMOKE_PREPARE=sandbox node testdata/ecosystem/smoke-filesystem.mjs
       - name: Seatbelt integration tests (must actually run)
         id: darwin
         shell: bash
@@ -395,8 +421,15 @@ jobs:
           fi
       - name: Sanitized agent workspace projection and apply
         run: go test -v -count=1 ./internal/agentworkspace
+      - name: Native Autopilot enrollment and workspace review
+        run: go test -v -count=1 -timeout=3m -run "^TestAutopilot(EnrollmentLifecycle|NativeReadOnly|NativeReviewedEdits|RejectsSharedEnrollmentACL)$" ./internal/autopilot ./cmd/warden
+      - name: Warden 2.0 policy pins, migration, and npm archive verification
+        run: go test -v -count=1 -run '^Test(Migrate|MCPPin|ChangedPinnedPolicy|GuardNPM)' ./cmd/warden
       - name: End-to-end benchmark
         run: WARDEN_BENCH_HOST_HOME="$HOME" WARDEN_BENCH_HOST_TEMP="${TMPDIR:-/tmp}" node testdata/ecosystem/benchmark.mjs --suite "$WARDEN_BENCHMARK_SUITE" --repeat "$WARDEN_BENCHMARK_REPEAT" --output "$RUNNER_TEMP/warden-bench"
+      - name: Autopilot setup and launch timings
+        if: env.WARDEN_BENCHMARK_SUITE == 'full'
+        run: node testdata/ecosystem/benchmark-autopilot.mjs 20 > "$RUNNER_TEMP/warden-bench/autopilot-timing.json"
       - uses: actions/setup-python@v5
         if: env.WARDEN_BENCHMARK_SUITE == 'full'
         with:

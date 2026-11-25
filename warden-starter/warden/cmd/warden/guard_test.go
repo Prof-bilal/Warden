@@ -21,11 +21,16 @@ import (
 	"github.com/warden-sandbox/warden/internal/guard"
 )
 
-// The Linux sandbox re-executes the test binary as its proxy bridge.
+// Native containment tests re-execute the test binary for CLI helpers.
 func TestMain(m *testing.M) {
-	if len(os.Args) > 1 && os.Args[1] == "__proxy-bridge" {
-		cmdProxyBridge(os.Args[2:])
-		return
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "__proxy-bridge":
+			cmdProxyBridge(os.Args[2:])
+			return
+		case "__prove-probe":
+			os.Exit(doctorProbe())
+		}
 	}
 	os.Exit(m.Run())
 }
@@ -110,9 +115,9 @@ func TestGuardNPMInstallsOnlyReviewedArchive(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "new")
 	calls := 0
 	wantSpec, wantManifest, wantArchive := "example@1.0.0", "", ordinary
-	install := func(spec, output, backend string, data []byte, manifest string) error {
+	install := func(spec, output, backend string, data []byte, manifest string, offline bool) error {
 		calls++
-		if spec != wantSpec || output != dir || backend != "auto" || manifest != wantManifest || !bytes.Equal(data, wantArchive) {
+		if spec != wantSpec || output != dir || backend != "auto" || manifest != wantManifest || !offline || !bytes.Equal(data, wantArchive) {
 			t.Fatalf("unexpected installer input %q %q %q", spec, output, backend)
 		}
 		return nil
@@ -210,7 +215,7 @@ if (stamp !== "install") {
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "state"))
 	dest := filepath.Join(base, "runtime")
 	pin := fmt.Sprintf("%x", sha256.Sum256([]byte(manifest)))
-	if err := installNPMRuntime("warden-hook-fixture@1.0.0", dest, "linux", archive, pin); err != nil {
+	if err := installNPMRuntime("warden-hook-fixture@1.0.0", dest, "linux", archive, pin, false); err != nil {
 		t.Fatal(err)
 	}
 	pkgDir := filepath.Join(dest, "node_modules", "warden-hook-fixture")
@@ -280,11 +285,59 @@ func TestGuardApprovedBindingGYP(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "state"))
 	dest := filepath.Join(base, "runtime")
 	pin := fmt.Sprintf("%x", sha256.Sum256([]byte(manifest)))
-	if err := installNPMRuntime("warden-gyp-fixture@1.0.0", dest, "linux", archive, pin); err != nil {
+	if err := installNPMRuntime("warden-gyp-fixture@1.0.0", dest, "linux", archive, pin, false); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(dest, "node_modules", "warden-gyp-fixture", "approved.stamp"))
 	if err != nil || string(data) != "fixture" {
 		t.Fatalf("approved binding.gyp did not run: %q, %v", data, err)
+	}
+}
+
+func TestGuardNPMOfflineReviewedArchiveNative(t *testing.T) {
+	if runtime.GOOS == "linux" {
+		requireGuardSandbox(t)
+	} else if runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+		t.Skip("requires a native Warden sandbox")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.MkdirTemp(home, "warden-guard-offline-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(root) })
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_STATE_HOME", filepath.Join(root, "audit"))
+	archive := guardFixtureArchive(t, map[string]string{
+		"package/package.json": `{"name":"warden-offline-fixture","version":"1.0.0"}`,
+		"package/evidence.txt": "inspected bytes",
+	})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/warden-offline-fixture":
+			fmt.Fprintf(w, `{"name":"warden-offline-fixture","time":{"1.0.0":"2026-10-01T00:00:00Z"},"versions":{"1.0.0":{"name":"warden-offline-fixture","version":"1.0.0","dist":{"tarball":%q}}}}`, "http://"+r.Host+"/archive.tgz")
+		case "/archive.tgz":
+			_, _ = w.Write(archive)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	dest := filepath.Join(root, "runtime with spaces")
+	now := time.Date(2026, 11, 19, 0, 0, 0, 0, time.UTC)
+	backend := map[string]string{"linux": "linux", "darwin": "seatbelt", "windows": "windows"}[runtime.GOOS]
+	err = guardNPMInstall(context.Background(), server.URL, "warden-offline-fixture", "1.0.0", dest, backend, now, guard.ReleaseRules{}, installNPMRuntime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(dest, "node_modules", "warden-offline-fixture", "evidence.txt"))
+	if err != nil || string(data) != "inspected bytes" {
+		t.Fatalf("installed file = %q, error %v", data, err)
 	}
 }

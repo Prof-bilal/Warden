@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin || windows
 
 package autopilot
 
@@ -11,10 +11,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/warden-sandbox/warden/internal/policy"
-	"golang.org/x/sys/unix"
 )
 
 // OpenState opens the canonical, owner-only state directory outside the
@@ -32,7 +30,7 @@ func OpenState(dir, project string, create bool) (*os.Root, error) {
 		return nil, fmt.Errorf("project must be separate from Warden state, home root and protected paths")
 	}
 	if create {
-		if err := os.MkdirAll(dir, 0700); err != nil {
+		if err := createStateDirectory(dir); err != nil {
 			return nil, err
 		}
 	}
@@ -40,27 +38,19 @@ func OpenState(dir, project string, create bool) (*os.Root, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !before.IsDir() || !ownedPrivate(before, 0700) {
-		return nil, fmt.Errorf("Autopilot state directory must be owned by the current user with mode 0700")
+	if !before.IsDir() || !validStateEntry(before) {
+		return nil, fmt.Errorf("Autopilot state directory must be private and owned by the current user")
 	}
 	state, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, err
 	}
 	info, err := state.Stat(".")
-	if err != nil || !os.SameFile(before, info) || !ownedPrivate(info, 0700) {
+	if err != nil || !os.SameFile(before, info) || !privateStateDirectory(state, info) {
 		state.Close()
-		return nil, fmt.Errorf("Autopilot state directory must be owned by the current user with mode 0700")
+		return nil, fmt.Errorf("Autopilot state directory must be private and owned by the current user")
 	}
 	return state, nil
-}
-
-func ownedPrivate(info os.FileInfo, mode os.FileMode) bool {
-	if info == nil || info.Mode().Perm() != mode {
-		return false
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	return ok && stat.Uid == uint32(os.Geteuid())
 }
 
 func enrollmentName(project string) string {
@@ -82,6 +72,10 @@ func Save(state *os.Root, e Enrollment) error {
 		return err
 	}
 	defer state.Remove(tmp)
+	if err := checkNewEnrollment(state, tmp); err != nil {
+		f.Close()
+		return err
+	}
 	_, writeErr := f.Write(body)
 	if writeErr == nil {
 		writeErr = f.Sync()
@@ -98,14 +92,14 @@ func Save(state *os.Root, e Enrollment) error {
 
 func Load(state *os.Root, project string) (Enrollment, error) {
 	var e Enrollment
-	f, err := state.OpenFile(enrollmentName(project), os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	f, err := openEnrollment(state, enrollmentName(project))
 	if err != nil {
 		return e, err
 	}
 	defer f.Close()
 	info, err := f.Stat()
 	const maxEnrollment = 32 << 10
-	if err != nil || !info.Mode().IsRegular() || !ownedPrivate(info, 0600) || info.Size() > maxEnrollment {
+	if err != nil || !info.Mode().IsRegular() || !privateEnrollment(f, info) || info.Size() > maxEnrollment {
 		return e, fmt.Errorf("invalid Autopilot enrollment file")
 	}
 	raw, err := io.ReadAll(io.LimitReader(f, maxEnrollment+1))
@@ -125,4 +119,17 @@ func Load(state *os.Root, project string) (Enrollment, error) {
 
 func Revoke(state *os.Root, project string) error {
 	return state.Remove(enrollmentName(project))
+}
+
+func checkNewEnrollment(state *os.Root, name string) error {
+	f, err := openEnrollment(state, name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || !privateEnrollment(f, info) {
+		return fmt.Errorf("new Autopilot enrollment must be private and owned by the current user")
+	}
+	return nil
 }

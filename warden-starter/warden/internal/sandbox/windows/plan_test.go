@@ -172,6 +172,36 @@ func TestBuildPlanAgentBrokerAndReadOnlyOverlays(t *testing.T) {
 	}
 }
 
+func TestReadOnlyPlanFilesystemMasks(t *testing.T) {
+	const genericRead uint32 = 0x00120089 // FILE_GENERIC_READ after mapping.
+	if denyWrite&genericRead != 0 || denyWrite&accessWrite != 0 {
+		t.Fatal("a read-only ACL must not deny access required to read")
+	}
+	project := `C:\work\fixture`
+	mask := project + `\.env`
+	grants, err := appendFilesystemMasks([]pathGrant{
+		{Path: project, AccessMode: grantAccess, AccessMask: accessRead},
+	}, []string{project}, denyWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grants, err = appendFilesystemMasks(grants, []string{mask}, accessRead|accessExec|denyWrite)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := pathGrant{Path: mask, AccessMode: denyAccess, AccessMask: accessRead | accessExec | denyWrite}
+	if len(grants) != 3 || grants[1] != (pathGrant{Path: project, AccessMode: denyAccess, AccessMask: denyWrite}) || grants[2] != want {
+		t.Fatalf("expected final mask %+v, got %+v", want, grants)
+	}
+	if _, err := appendFilesystemMasks(nil, []string{`C:\Windows\System32\fixture`}, denyWrite); err == nil {
+		t.Fatal("accepted a system-path mask")
+	}
+	p := policy.Policy{Filesystem: policy.Filesystem{ProtectSecrets: true, Write: []string{project}}}
+	if _, err := BuildPlan([]string{`C:\tools\worker.exe`}, p, "fixture", "127.0.0.1:1234"); err == nil {
+		t.Fatal("accepted masks in an unprojected writable policy")
+	}
+}
+
 func TestQuoteArg(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{`server.js`, `server.js`},

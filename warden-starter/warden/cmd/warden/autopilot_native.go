@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin || windows
 
 package main
 
@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/warden-sandbox/warden/internal/approve"
@@ -45,7 +46,7 @@ func cmdAutopilot(args []string) (int, error) {
 		return 2, fmt.Errorf("unknown subcommand %q", op)
 	}
 	if op == "setup" {
-		fmt.Fprintf(os.Stderr, "Autopilot host %s/%s · native Linux probe\n", runtime.GOOS, runtime.GOARCH)
+		fmt.Fprintf(os.Stderr, "Autopilot host %s/%s · native sandbox probe\n", runtime.GOOS, runtime.GOARCH)
 		if err := autopilotDependencies(); err != nil {
 			return 1, err
 		}
@@ -100,7 +101,7 @@ func cmdAutopilot(args []string) (int, error) {
 
 	switch op {
 	case "approve":
-		return 0, approveAutopilot(tail, project, state, stateDir)
+		return 0, approveAutopilot(tail, project, state, stateDir, auditPath)
 	case "revoke":
 		return 0, autopilotStateError(autopilot.Revoke(state, project.Root))
 	}
@@ -112,7 +113,7 @@ func cmdAutopilot(args []string) (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	dependencyErr := errors.Join(autopilotDependencies(), e.VerifyProgram())
+	dependencyErr := errors.Join(autopilotDependencies(), e.VerifyProgram(), checkAutopilotBoundary(e, stateDir, auditPath))
 	if op == "status" {
 		readiness := "tools available. Run setup to check containment"
 		if dependencyErr != nil {
@@ -135,10 +136,10 @@ func cmdAutopilot(args []string) (int, error) {
 	if err := recordAutopilot("launch", e); err != nil {
 		return 1, err
 	}
-	return runLinuxAgent(p, append(p.Command, tail...))
+	return runNativeAgent(p, append(p.Command, tail...))
 }
 
-func approveAutopilot(args []string, project autopilot.Project, state *os.Root, stateDir string) error {
+func approveAutopilot(args []string, project autopilot.Project, state *os.Root, stateDir, auditPath string) error {
 	fs := flag.NewFlagSet("autopilot approve", flag.ContinueOnError)
 	edit := fs.Bool("edit", false, "propose a writable copy with reviewed host apply")
 	useAdvisor := fs.Bool("advisor", false, "ask the configured provider for a mode suggestion")
@@ -184,6 +185,9 @@ func approveAutopilot(args []string, project autopilot.Project, state *os.Root, 
 	if err != nil {
 		return err
 	}
+	if err := checkAutopilotBoundary(e, stateDir, auditPath); err != nil {
+		return err
+	}
 	body, err := p.Marshal()
 	if err != nil {
 		return err
@@ -214,7 +218,7 @@ func approveAutopilot(args []string, project autopilot.Project, state *os.Root, 
 }
 
 func autopilotDependencies() error {
-	if _, err := sandbox.Resolve(sandbox.BackendLinux); err != nil {
+	if _, err := sandbox.Resolve(nativeAgentBackend()); err != nil || runtime.GOOS != "linux" {
 		return err
 	}
 	for _, tool := range []string{"setpriv", "strace"} {
@@ -245,4 +249,30 @@ func recordAutopilot(action string, e autopilot.Enrollment) error {
 	}
 	defer file.Close()
 	return audit.New(file).Log(audit.Event{Type: "autopilot", Action: action, Resource: e.Project, Allowed: true, Reason: e.Mode})
+}
+
+func checkAutopilotBoundary(e autopilot.Enrollment, stateDir, auditPath string) error {
+	if runtime.GOOS == "linux" {
+		return nil
+	}
+	if runtime.GOOS == "windows" && !strings.EqualFold(filepath.Ext(e.Program), ".exe") {
+		return fmt.Errorf("Autopilot on Windows requires an installed .exe")
+	}
+	command := []string{e.Program}
+	backend := nativeAgentBackend()
+	if err := outsideUpstream(e.Project, policy.Policy{}, command, backend); err != nil {
+		return fmt.Errorf("project overlaps native sandbox runtime permissions: %w", err)
+	}
+	temp, err := canonicalOutput(os.TempDir())
+	if err != nil {
+		return err
+	}
+	if policy.Within(temp, e.Project) ||
+		(runtime.GOOS == "darwin" && policy.Within(strings.ToLower(temp), strings.ToLower(e.Project))) {
+		return fmt.Errorf("project must not contain the host temporary directory")
+	}
+	if err := outsideUpstream(auditPath, policy.Policy{}, command, backend); err != nil {
+		return fmt.Errorf("audit storage overlaps native sandbox runtime permissions: %w", err)
+	}
+	return outsideUpstream(stateDir, policy.Policy{}, command, backend)
 }

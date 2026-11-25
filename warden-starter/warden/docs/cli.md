@@ -200,6 +200,10 @@ Use `--strict` to block missing release metadata, or pass
 `--policy ./warden.yaml` to apply the additional restrictions from a
 [version 2 guard section](schema.md#guard).
 An explicit `--override-age` applies to one invocation and is audited.
+For a reviewed npm archive without runtime dependencies or a published
+shrinkwrap, Warden downloads and verifies the archive first, then runs npm
+offline inside the sandbox. On Windows, installs that require sandboxed
+registry access depend on Windows Filtering Platform (WFP).
 The pip command installs a verified binary wheel. Review its dependencies
 individually.
 

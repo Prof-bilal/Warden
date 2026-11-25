@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/warden-sandbox/warden/internal/policy"
@@ -68,7 +69,8 @@ func outsideUpstream(path string, p policy.Policy, command []string, backend str
 		if e != nil {
 			return fmt.Errorf("cannot resolve private-state boundary: %w", e)
 		}
-		if policy.Within(real, resolved) {
+		if policy.Within(real, resolved) ||
+			(backend == "seatbelt" && policy.Within(strings.ToLower(real), strings.ToLower(resolved))) {
 			return fmt.Errorf("private state must be outside upstream grants, executable directory and runtime paths")
 		}
 	}

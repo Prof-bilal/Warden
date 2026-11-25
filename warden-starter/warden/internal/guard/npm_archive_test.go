@@ -134,3 +134,31 @@ func TestNPMIntegrityPrefersStrongestDigest(t *testing.T) {
 		t.Fatal("expected mismatched SHA-512 to take precedence over matching SHA-256")
 	}
 }
+
+func TestNPMArchiveOfflineEligibility(t *testing.T) {
+	release := NPMRelease{Facts: ReleaseFacts{Name: "fixture", Version: "1.0.0"}}
+	for _, tc := range []struct {
+		name, declaration string
+		shrinkwrap        bool
+		offline           bool
+	}{
+		{name: "standalone", offline: true},
+		{name: "empty dependencies", declaration: `,"dependencies":{}`, offline: true},
+		{name: "regular", declaration: `,"dependencies":{"other":"1.0.0"}`},
+		{name: "optional", declaration: `,"optionalDependencies":{"other":"1.0.0"}`},
+		{name: "peer", declaration: `,"peerDependencies":{"other":"1.0.0"}`},
+		{name: "bundled", declaration: `,"bundleDependencies":["other"]`},
+		{name: "shrinkwrap", shrinkwrap: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := []npmArchiveFile{{"package/package.json", `{"name":"fixture","version":"1.0.0"` + tc.declaration + "}"}}
+			if tc.shrinkwrap {
+				files = append(files, npmArchiveFile{"package/npm-shrinkwrap.json", "{}"})
+			}
+			facts, err := InspectNPMArchive(release, createNPMGuardArchive(t, files...))
+			if err != nil || facts.NPMCanInstallOffline != tc.offline {
+				t.Fatalf("offline = %v, error %v", facts.NPMCanInstallOffline, err)
+			}
+		})
+	}
+}

@@ -86,7 +86,7 @@ func applyInstallGuardPolicy(rules *guard.ReleaseRules, path string) error {
 }
 
 func guardNPMInstall(ctx context.Context, registry, name, version, output, backend string, now time.Time, rules guard.ReleaseRules,
-	install func(string, string, string, []byte, string) error) error {
+	install func(string, string, string, []byte, string, bool) error) error {
 	release, archive, decision, err := guard.ReviewNPMInstall(ctx, nil, registry, name, version, now, rules)
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func guardNPMInstall(ctx context.Context, registry, name, version, output, backe
 			return fmt.Errorf("reviewed lifecycle manifest is missing")
 		}
 	}
-	if err := install(spec, output, backend, archive, scriptManifest); err != nil {
+	if err := install(spec, output, backend, archive, scriptManifest, release.Facts.NPMCanInstallOffline); err != nil {
 		return err
 	}
 	if scriptManifest != "" {

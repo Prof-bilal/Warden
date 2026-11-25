@@ -7,6 +7,7 @@
 package darwin
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -43,6 +44,27 @@ func TestBuildSeatbeltProfileReadOnlyOverlay(t *testing.T) {
 	want := `(deny file-write* (literal "` + file + `"))`
 	if !strings.Contains(profile, want) {
 		t.Fatalf("profile missing read-only overlay deny %q\n%s", want, profile)
+	}
+}
+
+func TestBuildSeatbeltReviewedReadMasksFollowRuntimeGrants(t *testing.T) {
+	skipOnWindows(t)
+	dir := t.TempDir()
+	secret := filepath.Join(dir, ".env")
+	if err := os.WriteFile(secret, []byte("disposable"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	profile, err := BuildSeatbeltProfile([]string{filepath.Join(dir, "fixture")}, policy.Policy{
+		Filesystem: policy.Filesystem{Read: []string{dir}, ProtectSecrets: true},
+	}, filepath.Join(dir, "bridge", "socket"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow := strings.LastIndex(profile, "(allow file-read*")
+	mask := strings.Index(profile, fmt.Sprintf("(deny file-read* file-map-executable file-write* (literal %q))", secret))
+	readOnly := strings.Index(profile, fmt.Sprintf("(deny file-write* (subpath %q))", dir))
+	if allow < 0 || mask < allow || readOnly < allow {
+		t.Fatalf("expected final secret and read-only masks: %s", profile)
 	}
 }
 

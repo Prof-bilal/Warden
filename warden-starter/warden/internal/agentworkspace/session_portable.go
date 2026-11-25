@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -229,6 +230,10 @@ func Prepare(p policy.Policy) (s *Session, err error) {
 		projected.Filesystem.Read = []string{dir}
 	}
 	projected.ReadOnlyPaths = []string{noticeDir}
+	if !s.writable && runtime.GOOS == "darwin" {
+		// Seatbelt otherwise allows writes under the host temp directory.
+		projected.ReadOnlyPaths = append(projected.ReadOnlyPaths, dir)
+	}
 	for name := range s.instructions {
 		projected.ReadOnlyPaths = append(projected.ReadOnlyPaths, filepath.Join(dir, name))
 	}

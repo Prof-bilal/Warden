@@ -1,8 +1,8 @@
 # Warden Autopilot
 
-Autopilot is a Linux preview for enrolling an installed agent or local development program and launching it in a Warden workspace projection. It uses Warden's per-session supervisor. The preview is designed for offline project tasks.
+Autopilot enrolls an installed agent or local development program and launches it in a Warden workspace projection. It uses Warden's per-session supervisor. The preview is designed for offline project tasks.
 
-## Set up and enroll
+## Set up and enroll on Linux
 
 Install Warden using the [existing installation guide](install.md), or build the CLI from this checkout:
 
@@ -32,6 +32,39 @@ warden autopilot revoke
 ```
 
 Revocation removes the saved authorization for future launches. Stop an active run separately. Use the original installation method to remove Warden itself.
+
+## Try a native development build
+
+The macOS and Windows paths in this checkout are under native verification. Build a local binary to try them with a disposable project. Keep the checkout and Warden's state outside the enrolled executable's directory. On macOS, keep the project and state outside the host temporary directories.
+
+**macOS (Seatbelt)**
+
+```sh
+cd warden-starter/warden
+go build -o "$HOME/warden-dev" ./cmd/warden
+"$HOME/warden-dev" autopilot setup
+cd /path/to/disposable/project
+"$HOME/warden-dev" autopilot plan
+"$HOME/warden-dev" autopilot approve -- /bin/cat
+"$HOME/warden-dev" autopilot run -- README.md
+```
+
+**Windows (AppContainer)**
+
+In PowerShell, run the commands from the repository root. This example uses a trusted `node.exe` installed in a directory you own as an offline file reader.
+
+```powershell
+Set-Location warden-starter/warden
+go build -o "$env:LOCALAPPDATA\warden-dev.exe" ./cmd/warden
+$warden = "$env:LOCALAPPDATA\warden-dev.exe"
+& $warden autopilot setup
+Set-Location C:\path\to\disposable\project
+& $warden autopilot plan
+& $warden autopilot approve -- (Get-Command node.exe).Source
+& $warden autopilot run -- -e "process.stdout.write(require('node:fs').readFileSync('README.md'))"
+```
+
+Both examples expect a `README.md` in the disposable project and require confirming enrollment in the terminal. Run `warden autopilot revoke` from the project root when finished. Windows enrollment accepts installed `.exe` programs. Run the native setup proof before enrolling and resolve any containment error before continuing.
 
 ## Optional AI advice
 

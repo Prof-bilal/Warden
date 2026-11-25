@@ -328,7 +328,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  warden <command> [options]")
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, ui.Bold("Commands:"))
-	fmt.Fprintln(os.Stderr, "  autopilot  Enroll and launch a protected project agent on Linux")
+	fmt.Fprintln(os.Stderr, "  autopilot  Enroll and launch a protected project agent")
 	fmt.Fprintln(os.Stderr, "  agent      Edit a sanitized workspace with protected secret fields")
 	fmt.Fprintln(os.Stderr, "  init       Create a security policy")
 	fmt.Fprintln(os.Stderr, "  run        Run an MCP server in the sandbox")

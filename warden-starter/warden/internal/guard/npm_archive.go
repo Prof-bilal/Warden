@@ -95,6 +95,7 @@ func InspectNPMArchive(release NPMRelease, archive []byte) (ReleaseFacts, error)
 	facts := release.Facts
 	var manifest *npmVersion
 	bindingSeen := false
+	var noDependencies, shrinkwrapSeen bool
 	for {
 		entry, err := reader.Next()
 		if err == io.EOF {
@@ -123,6 +124,9 @@ func InspectNPMArchive(release NPMRelease, archive []byte) (ReleaseFacts, error)
 			(lower == "package/package.json" || lower == "package/binding.gyp") {
 			return ReleaseFacts{}, fmt.Errorf("unexpected spelling of npm archive entry %q", entry.Name)
 		}
+		if strings.EqualFold(name, "package/npm-shrinkwrap.json") {
+			shrinkwrapSeen = true
+		}
 		switch name {
 		case "package/package.json":
 			if manifest != nil || entry.Typeflag != tar.TypeReg || entry.Size > npmManifestLimit {
@@ -136,6 +140,7 @@ func InspectNPMArchive(release NPMRelease, archive []byte) (ReleaseFacts, error)
 			if err := json.Unmarshal(data, manifest); err != nil {
 				return ReleaseFacts{}, fmt.Errorf("parse npm archive package.json: %w", err)
 			}
+			noDependencies = npmManifestHasNoDependencies(data)
 			facts.NPMManifestSHA256 = fmt.Sprintf("%x", sha256.Sum256(data))
 		case "package/binding.gyp":
 			if bindingSeen || entry.Typeflag != tar.TypeReg {
@@ -160,7 +165,24 @@ func InspectNPMArchive(release NPMRelease, archive []byte) (ReleaseFacts, error)
 		}
 	}
 	facts.HasBindingGYP = facts.HasBindingGYP || manifest.GYPFile || bindingSeen
+	facts.NPMCanInstallOffline = noDependencies && !shrinkwrapSeen
 	return facts, nil
+}
+
+func npmManifestHasNoDependencies(data []byte) bool {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return false
+	}
+	for _, key := range []string{"dependencies", "optionalDependencies", "peerDependencies", "bundleDependencies", "bundledDependencies"} {
+		if raw, present := fields[key]; present {
+			var entries map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &entries); err != nil || len(entries) != 0 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // tarPadding accepts zero-filled blocks after the end of the tar stream.

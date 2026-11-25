@@ -41,7 +41,7 @@ func cmdAgent(args []string) (int, error) {
 	if err := fs.Parse(args); err != nil {
 		return 2, err
 	}
-	wantBackend := platformAgentBackend()
+	wantBackend := nativeAgentBackend()
 	if *backend != "auto" && *backend != wantBackend {
 		return 2, fmt.Errorf("agent projection on %s requires backend %q", runtime.GOOS, wantBackend)
 	}
@@ -56,7 +56,46 @@ func cmdAgent(args []string) (int, error) {
 	if err != nil {
 		return 2, err
 	}
-	cmd, err = policy.ResolveExecutable(cmd)
+	return runNativeAgent(p, cmd)
+}
+
+func runNativeAgent(p policy.Policy, cmd []string) (int, error) {
+	var input, output *os.File
+	var reader *bufio.Reader
+	defer func() {
+		if reader != nil {
+			input.Close()
+			output.Close()
+		}
+	}()
+	approve := func(prompt, answer string) bool {
+		if reader == nil {
+			var err error
+			input, err = openAgentInput()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warden: agent review requires a controlling terminal: %v\n", err)
+				return false
+			}
+			output, err = openAgentOutput()
+			if err != nil {
+				input.Close()
+				fmt.Fprintf(os.Stderr, "Warden: agent review requires a controlling terminal: %v\n", err)
+				return false
+			}
+			reader = bufio.NewReader(input)
+		}
+		if _, err := fmt.Fprintln(output, prompt); err != nil {
+			return false
+		}
+		line, err := reader.ReadString('\n')
+		return err == nil && strings.TrimSpace(line) == answer
+	}
+
+	return runAgentWithReview(p, cmd, approve)
+}
+
+func runAgentWithReview(p policy.Policy, cmd []string, approve func(prompt, answer string) bool) (int, error) {
+	cmd, err := policy.ResolveExecutable(cmd)
 	if err != nil {
 		return 2, err
 	}
@@ -83,18 +122,6 @@ func cmdAgent(args []string) (int, error) {
 		return 1, err
 	}
 
-	tty, err := openAgentTTY()
-	if err != nil {
-		return 1, fmt.Errorf("agent review requires a controlling terminal: %w", err)
-	}
-	defer tty.Close()
-	reader := bufio.NewReader(tty)
-	approve := func(prompt, answer string) bool {
-		fmt.Fprintln(tty, prompt)
-		line, readErr := reader.ReadString('\n')
-		return readErr == nil && strings.TrimSpace(line) == answer
-	}
-
 	profiles := map[string]policy.SecretProfile{}
 	names := make([]string, 0, len(p.Agent.SecretExec.Profiles))
 	for name := range p.Agent.SecretExec.Profiles {
@@ -111,12 +138,16 @@ func cmdAgent(args []string) (int, error) {
 			profiles[name] = profile
 		}
 	}
-	closeBroker, brokerEndpoint, err := agentworkspace.StartBroker(session.Dir, profiles, logger)
-	if err != nil {
-		return 1, err
+	closeBroker := func() {}
+	if len(profiles) != 0 {
+		stop, endpoint, err := agentworkspace.StartBroker(session.Dir, profiles, logger)
+		if err != nil {
+			return 1, err
+		}
+		closeBroker = stop
+		defer closeBroker()
+		session.Policy.AgentSocket = endpoint
 	}
-	defer closeBroker()
-	session.Policy.AgentSocket = brokerEndpoint
 
 	restore := map[string]*string{}
 	set := func(name, value string) {
@@ -146,7 +177,7 @@ func cmdAgent(args []string) (int, error) {
 		set(profile.Env, "__WARDEN_REDACTED_ENV__")
 	}
 	set("WARDEN_AGENT_NOTICE", filepath.Join(session.Dir, ".warden", "NOTICE.md"))
-	set("WARDEN_AGENT_SOCKET", brokerEndpoint)
+	set("WARDEN_AGENT_SOCKET", session.Policy.AgentSocket)
 
 	oldCwd, err := os.Getwd()
 	if err != nil {
@@ -157,7 +188,7 @@ func cmdAgent(args []string) (int, error) {
 	}
 	defer os.Chdir(oldCwd)
 	fmt.Fprintln(os.Stderr, "Warden: declared secrets are hidden. Read .warden/NOTICE.md. Host changes require review after exit.")
-	code, err := sandbox.Run(cmd, session.Policy, wantBackend)
+	code, err := sandbox.Run(cmd, session.Policy, nativeAgentBackend())
 	closeBroker()
 	if err != nil {
 		return code, err
@@ -196,11 +227,11 @@ func cmdAgent(args []string) (int, error) {
 	return code, nil
 }
 
-func platformAgentBackend() string {
+func nativeAgentBackend() string {
 	if runtime.GOOS == "windows" {
-		return "windows"
+		return sandbox.BackendWindows
 	}
-	return "seatbelt"
+	return sandbox.BackendSeatbelt
 }
 
 func sameAgentPath(a, b string) bool {
@@ -210,9 +241,16 @@ func sameAgentPath(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-func openAgentTTY() (*os.File, error) {
+func openAgentInput() (*os.File, error) {
 	if runtime.GOOS == "windows" {
-		return os.OpenFile("CONIN$", os.O_RDWR, 0)
+		return os.Open("CONIN$")
 	}
-	return os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	return os.Open("/dev/tty")
+}
+
+func openAgentOutput() (*os.File, error) {
+	if runtime.GOOS == "windows" {
+		return os.OpenFile("CONOUT$", os.O_WRONLY, 0)
+	}
+	return os.OpenFile("/dev/tty", os.O_WRONLY, 0)
 }

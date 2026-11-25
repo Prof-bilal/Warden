@@ -204,14 +204,14 @@ func grantFilesystemAccess(plan *Plan) (restore func(), err error) {
 		// leave a permanent ACE (and a protected DACL) behind.
 		snap, serr := snapshotDACL(longPath(g.Path))
 		if serr != nil {
-			if IsRuntimeReadPath(g.Path) {
+			if g.AccessMode == grantAccess && IsRuntimeReadPath(g.Path) {
 				continue
 			}
 			return restore, fmt.Errorf("snapshot DACL of %q: %w", g.Path, serr)
 		}
 		snaps = append(snaps, snap)
 		if err := grantPathACE(g.Path, g.AccessMask, g.AccessMode, caps); err != nil {
-			if IsRuntimeReadPath(g.Path) {
+			if g.AccessMode == grantAccess && IsRuntimeReadPath(g.Path) {
 				continue
 			}
 			return restore, fmt.Errorf("grant filesystem access to %q: %w", g.Path, err)

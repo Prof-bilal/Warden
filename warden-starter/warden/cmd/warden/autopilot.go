@@ -14,6 +14,6 @@ func printAutopilotHelp(w io.Writer) {
   warden autopilot run [-- <agent arguments>]
   warden autopilot revoke
 
-Enroll from the project root. Launch requires the Linux native backend.
+Enroll from the project root. Launch requires the platform's native sandbox backend.
 The default policy is read-only, offline, and excludes known secret paths.`)
 }

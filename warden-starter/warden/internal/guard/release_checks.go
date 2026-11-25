@@ -12,14 +12,15 @@ const DefaultReleaseAge = 48 * time.Hour
 // ReleaseFacts describes an exact registry release. Nil maintainer slices
 // indicate that the registry lacked one side of the comparison.
 type ReleaseFacts struct {
-	Name                string
-	Version             string
-	PublishedAt         time.Time
-	InstallScripts      []string
-	HasBindingGYP       bool
-	NPMManifestSHA256   string
-	Maintainers         []string
-	PreviousMaintainers []string
+	Name                 string
+	Version              string
+	PublishedAt          time.Time
+	InstallScripts       []string
+	HasBindingGYP        bool
+	NPMManifestSHA256    string
+	NPMCanInstallOffline bool
+	Maintainers          []string
+	PreviousMaintainers  []string
 }
 
 type ReleaseRules struct {

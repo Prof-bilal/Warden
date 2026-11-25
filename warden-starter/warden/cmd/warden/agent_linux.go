@@ -53,10 +53,10 @@ func cmdAgent(args []string) (int, error) {
 	if err != nil {
 		return 2, err
 	}
-	return runLinuxAgent(p, cmd)
+	return runNativeAgent(p, cmd)
 }
 
-func runLinuxAgent(p policy.Policy, cmd []string) (int, error) {
+func runNativeAgent(p policy.Policy, cmd []string) (int, error) {
 	cmd, err := policy.ResolveExecutable(cmd)
 	if err != nil {
 		return 2, err
@@ -202,4 +202,8 @@ func runLinuxAgent(p policy.Policy, cmd []string) (int, error) {
 	}
 	fmt.Fprintln(os.Stderr, "Warden: reviewed changes applied; protected values preserved.")
 	return code, nil
+}
+
+func nativeAgentBackend() string {
+	return sandbox.BackendLinux
 }

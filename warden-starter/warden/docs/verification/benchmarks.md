@@ -63,6 +63,22 @@ policy tests use controlled metadata, checksums, and benign lifecycle fixtures.
 Each security result needs a working positive control and the expected negative
 result. Support and audit coverage are backend-specific.
 
+## Autopilot setup and launch
+
+Run the same read-only fixture on each native host:
+
+```sh
+node testdata/ecosystem/benchmark-autopilot.mjs 20
+```
+
+The JSON reports the OS, architecture, CPU, run count, raw samples, median,
+and nearest-rank p95 in milliseconds. Setup measures the native containment
+proof. Launch measures the enrolled run through process exit, including
+workspace projection and audit writes. The times exclude compilation, human
+approval, and fixture provisioning. Each sample checks the projected read,
+blocked writes and offline behavior before the harness accepts its timings.
+Full CI runs retain the JSON alongside the platform benchmark report.
+
 ## Performance
 
 Run the manual **Warden performance benchmark** workflow on a dedicated Linux

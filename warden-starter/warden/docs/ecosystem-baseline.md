@@ -48,6 +48,17 @@ The Filesystem 2.3.0 profile is reviewed for native Linux stdio. The
 home and verifies pinned preparation, clean MCP stdout, an allowed read,
 and blocked writes, outside reads and protected files.
 
+The native development matrix also runs the pinned Filesystem server on
+macOS and Windows. The Windows hosted test stages the exact package with
+npm scripts disabled, then launches it inside AppContainer. Windows
+sandboxed registry preparation is exercised in the full run on a
+WFP-capable host. The native checks verify read-only access, secret-file
+masking, clean stdio, and exact configuration undo.
+
+Windows read-only filesystem masks cover paths matched at launch. Keep
+the selected directory stable during a session. A policy that combines
+masks with write access still requires a projected workspace.
+
 The Git and Memory profiles were also exercised on native Linux with explicit
 policies. [The pack smoke test](https://github.com/Prof-bilal/Warden/blob/81277afd94c15c5a70c69f8d27d3be4043df1da7/warden-starter/warden/testdata/ecosystem/smoke-phase1-packs.mjs)
 checks Git status with staging and outside-repository access blocked. It

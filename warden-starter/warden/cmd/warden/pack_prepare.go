@@ -23,10 +23,10 @@ import (
 // scripts disabled, isolated HOME and npm configuration. It performs no
 // post-install validation; callers verify the installed identity.
 func prepareNPMRuntime(artifact, dest, backend string) error {
-	return installNPMRuntime(artifact, dest, backend, nil, "")
+	return installNPMRuntime(artifact, dest, backend, nil, "", false)
 }
 
-func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifest string) error {
+func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifest string, offline bool) error {
 	if _, e := sandbox.Resolve(backend); e != nil {
 		return e
 	}
@@ -92,8 +92,18 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 	if e = writeExclusive(globalConfig, []byte{}); e != nil {
 		return e
 	}
-	vars := map[string]string{"PATH": filepath.Dir(node) + string(os.PathListSeparator) + "/usr/bin", "NPM_CONFIG_CACHE": filepath.Join(dest, ".npm-cache"), "NPM_CONFIG_USERCONFIG": config, "NPM_CONFIG_GLOBALCONFIG": globalConfig}
+	path := filepath.Dir(node) + string(os.PathListSeparator) + "/usr/bin"
+	if runtime.GOOS == "windows" {
+		// Node's explicit lifecycle runner needs Windows' command interpreter.
+		path = filepath.Dir(node) + string(os.PathListSeparator) + filepath.Join(os.Getenv("SystemRoot"), "System32")
+	}
+	vars := map[string]string{"PATH": path, "NPM_CONFIG_CACHE": filepath.Join(dest, ".npm-cache"), "NPM_CONFIG_USERCONFIG": config, "NPM_CONFIG_GLOBALCONFIG": globalConfig}
 	vars["HOME"] = dest // an isolated installer home, never the user's home
+	if runtime.GOOS == "windows" {
+		vars["USERPROFILE"] = dest
+		vars["TEMP"] = dest
+		vars["TMP"] = dest
+	}
 	p := policy.Policy{
 		Filesystem: policy.Filesystem{Read: []string{filepath.Dir(node), filepath.Dir(filepath.Dir(realNPM))}, Write: []string{dest}},
 		Network:    policy.Network{Allow: []string{"registry.npmjs.org"}},
@@ -103,7 +113,12 @@ func installNPMRuntime(spec, dest, backend string, archive []byte, scriptManifes
 		p.Filesystem.Read = append(p.Filesystem.Read, archiveDir)
 	}
 	// Preparation can precede a stdio MCP session, which reserves stdout.
-	args := []string{node, realNPM, "install", "--silent", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest, "--", artifact}
+	args := []string{node, realNPM, "install", "--silent", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=true", "--prefix", dest}
+	if offline {
+		p.Network.Allow = nil
+		args = append(args, "--offline")
+	}
+	args = append(args, "--", artifact)
 	if err := runInstallSandboxed(args, p, backend, vars); err != nil {
 		return err
 	}

@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -91,9 +92,15 @@ const (
 	accessWrite uint32 = 0x40000000 // GENERIC_WRITE
 	accessExec  uint32 = 0x20000000 // GENERIC_EXECUTE
 	denyAccess  uint32 = 3          // DENY_ACCESS
-	// DELETE and FILE_DELETE_CHILD are separate from GENERIC_WRITE. Include
-	// both so an agent cannot remove or rename a read-only notice overlay.
-	denyWrite uint32 = accessWrite | 0x00010000 | 0x00000040
+	// A generic write denial also denies rights required by ordinary reads.
+	denyWrite uint32 = 0x0002 | // FILE_WRITE_DATA / FILE_ADD_FILE
+		0x0004 | // FILE_APPEND_DATA / FILE_ADD_SUBDIRECTORY
+		0x0010 | // FILE_WRITE_EA
+		0x0040 | // FILE_DELETE_CHILD
+		0x0100 | // FILE_WRITE_ATTRIBUTES
+		0x00010000 | // DELETE
+		0x00040000 | // WRITE_DAC
+		0x00080000 // WRITE_OWNER
 )
 
 // GrantAccessMode value (accctrl.h GRANT_ACCESS). Kept here so plan
@@ -186,9 +193,6 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 	if len(cmd) == 0 {
 		return nil, fmt.Errorf("windows plan: no command")
 	}
-	if len(p.Filesystem.Deny) != 0 || p.Filesystem.ProtectSecrets {
-		return nil, fmt.Errorf("windows plan: filesystem deny/protected-secret rules require a projected workspace; native ACL masking is not available yet")
-	}
 	exe := cmd[0]
 	if !isAbsWin(exe) {
 		return nil, fmt.Errorf("windows plan: command %q must be an absolute path", exe)
@@ -202,6 +206,30 @@ func BuildPlan(cmd []string, p policy.Policy, sessionID, proxyAddr string) (*Pla
 	grants, err := deriveFilesystemGrants(exe, p)
 	if err != nil {
 		return nil, err
+	}
+	if len(p.Filesystem.Deny) != 0 || p.Filesystem.ProtectSecrets {
+		if len(p.Filesystem.Write) != 0 {
+			return nil, fmt.Errorf("windows plan: filesystem masks with write grants require a projected workspace")
+		}
+		denied, err := p.DeniedPaths()
+		if err != nil {
+			return nil, fmt.Errorf("windows plan: expand filesystem masks: %w", err)
+		}
+		for _, mask := range denied {
+			full, err := filepath.EvalSymlinks(mask)
+			if err != nil || !strings.EqualFold(filepath.Clean(mask), full) {
+				return nil, fmt.Errorf("windows plan: filesystem mask must name a canonical path: %q", mask)
+			}
+		}
+		// A default host ACL may already permit writes by applications.
+		grants, err = appendFilesystemMasks(grants, p.Filesystem.Read, denyWrite)
+		if err != nil {
+			return nil, err
+		}
+		grants, err = appendFilesystemMasks(grants, denied, accessRead|accessExec|denyWrite)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	port, err := proxyPort(proxyAddr)
@@ -341,6 +369,18 @@ func deriveFilesystemGrants(exe string, p policy.Policy) ([]pathGrant, error) {
 	sort.Slice(grants, func(i, j int) bool {
 		return strings.ToLower(grants[i].Path) < strings.ToLower(grants[j].Path)
 	})
+	return grants, nil
+}
+
+// Apply masks after inherited grants so the explicit denies take precedence.
+func appendFilesystemMasks(grants []pathGrant, paths []string, mask uint32) ([]pathGrant, error) {
+	for _, path := range paths {
+		clean := cleanWinPath(path)
+		if !isAbsWin(path) || isDriveRootWin(clean) || IsRuntimeWriteDenied(clean) {
+			return nil, fmt.Errorf("windows plan: cannot apply a filesystem mask to %q", path)
+		}
+		grants = append(grants, pathGrant{Path: clean, AccessMask: mask, AccessMode: denyAccess})
+	}
 	return grants, nil
 }
 

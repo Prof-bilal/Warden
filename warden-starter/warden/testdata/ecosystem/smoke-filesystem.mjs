@@ -3,19 +3,28 @@
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import assert from "node:assert/strict";
 
-const warden = resolve(process.env.WARDEN_BIN || "./warden");
+const backend = { linux: "linux", darwin: "seatbelt", win32: "windows" }[process.platform];
+assert(backend, "requires a native Warden backend");
+const warden = resolve(process.env.WARDEN_BIN || (process.platform === "win32" ? "./warden.exe" : "./warden"));
 const zeroConfig = process.env.WARDEN_SMOKE_ZERO_CONFIG === "1";
+assert(!zeroConfig || backend === "linux", "the no-flags smoke scenario requires Linux");
 const artifact = "@modelcontextprotocol/server-filesystem";
 const version = "2.3.0";
-const runtime = resolve(process.env.WARDEN_SMOKE_RUNTIME || "");
-if (!zeroConfig && !process.env.WARDEN_SMOKE_RUNTIME) throw new Error(`Set WARDEN_SMOKE_RUNTIME to a prepared installation of ${artifact}@${version}`);
-const upstream = join(runtime, "node_modules/@modelcontextprotocol/server-filesystem/dist/index.js");
-const work = await mkdtemp(join(tmpdir(), "warden-ecosystem-smoke-"));
+const work = await mkdtemp(join(backend === "linux" ? tmpdir() : homedir(), "warden-ecosystem-smoke-"));
+const prepare = process.env.WARDEN_SMOKE_PREPARE;
+assert(!prepare || prepare === "fixture" || prepare === "sandbox", "unknown fixture preparation mode");
+const runtime = process.env.WARDEN_SMOKE_RUNTIME
+  ? resolve(process.env.WARDEN_SMOKE_RUNTIME)
+  : join(work, "runtime");
+if (!zeroConfig && !prepare && !process.env.WARDEN_SMOKE_RUNTIME) {
+  throw new Error(`Set WARDEN_SMOKE_RUNTIME to a prepared installation of ${artifact}@${version}`);
+}
+const upstream = join(runtime, "node_modules", artifact, "dist", "index.js");
 const dataHome = join(work, "xdg");
 const data = zeroConfig ? join(dataHome, "warden", "data", "filesystem") : join(work, "data");
 await mkdir(data, { recursive: true });
@@ -26,15 +35,28 @@ const policy = join(work, "filesystem.yaml");
 const config = join(work, "mcp.json");
 const original = JSON.stringify({ mcpServers: { filesystem: { command: process.execPath, args: [upstream, data], env: {}, alwaysAllow: [] } }, unrelated: "preserved" }, null, 2);
 await writeFile(config, original, { mode: 0o600 });
-const env = { ...process.env, HOME: work, XDG_CONFIG_HOME: join(work, "config"), XDG_DATA_HOME: dataHome, XDG_STATE_HOME: join(work, "state"), WARDEN_SETUP_STATE_DIR: join(work,"private-setup"), WARDEN_NO_FIRST_RUN: "1" };
+const env = { ...process.env, HOME: work, USERPROFILE: work, XDG_CONFIG_HOME: join(work, "config"), XDG_DATA_HOME: dataHome, XDG_STATE_HOME: join(work, "state"), WARDEN_SETUP_STATE_DIR: join(work,"private-setup"), WARDEN_NO_FIRST_RUN: "1" };
 function cli(args) {
-  const result = spawnSync(warden, args, { env, encoding: "utf8", timeout: 30000 });
+  const result = spawnSync(warden, args, { env, encoding: "utf8", timeout: args[1] === "prepare" ? 180000 : 30000 });
   if (result.status !== 0) throw new Error(`CLI failed (${result.status}): ${result.stderr}`);
   return result;
 }
-const base = ["--client", "cursor", "--config", config, "--server", "filesystem", "--policy", policy, "--backend", "linux", "--use-policy-command"];
+const base = ["--client", "cursor", "--config", config, "--server", "filesystem", "--policy", policy, "--backend", backend, "--use-policy-command"];
 let launcher = { command: warden, args: ["run", "npx", artifact] };
 if (!zeroConfig) {
+  if (prepare === "sandbox") {
+    cli(["packs", "prepare", "filesystem", "--output", runtime, "--backend", backend]);
+  } else if (prepare === "fixture") {
+    // This stages a test dependency. The protocol session itself uses Warden.
+    await mkdir(runtime, { recursive: true });
+    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+    const result = spawnSync(npm, ["install", "--ignore-scripts", "--no-audit", "--no-fund",
+      "--save-exact", `${artifact}@${version}`], {
+      cwd: runtime, stdio: ["ignore", "ignore", "inherit"], timeout: 180000,
+      shell: process.platform === "win32",
+    });
+    assert.equal(result.status, 0, result.error?.message ?? "could not stage pinned Filesystem fixture");
+  }
   const pkg = JSON.parse(await readFile(join(runtime, "node_modules", artifact, "package.json"), "utf8"));
   assert.equal(pkg.version, version, "smoke test requires the recorded upstream version");
   cli(["packs", "generate", "filesystem", "--runtime", runtime, "--path", data, "--output", policy]);
@@ -77,7 +99,8 @@ try {
   const read = await request("tools/call", { name: "read_text_file", arguments: { path: join(data, "allowed.txt") } });
   assert.ok(!read.result.isError && JSON.stringify(read.result).includes("warden-allowed-fixture"), "allowed read must succeed");
   const write = await request("tools/call", { name: "write_file", arguments: { path: join(data, "forbidden-write.txt"), content: "blocked" } });
-  assert.ok(write.result?.isError || write.error, "read-only mount must block a write within the server's allowed directory");
+  assert.ok(write.result?.isError || write.error, "read-only policy must block a write within the server's allowed directory");
+  await assert.rejects(readFile(join(data, "forbidden-write.txt")), { code: "ENOENT" });
   const outside = await request("tools/call", { name: "read_text_file", arguments: { path: join(work, "outside.txt") } });
   assert.ok(outside.result?.isError || outside.error, "out-of-profile path must be denied");
   const secret = await request("tools/call", { name: "read_text_file", arguments: { path: join(data, ".env") } });
@@ -94,7 +117,9 @@ try {
   }
   const checks = ["initialize", "tools/list", "allowed read", "denied write", "denied outside path", "denied protected file", "clean stdout"];
   checks.push(...(zeroConfig ? ["fresh install", "catalog version"] : ["preview", "apply", "second wrap", "undo"]));
-  console.log(JSON.stringify({ status: "pass", upstream: `${artifact}@${version}`, backend: "linux", checks, evidenceDirectory: work }));
+  if (prepare === "sandbox") checks.push("sandboxed registry preparation");
+  if (prepare === "fixture") checks.push("host-staged pinned fixture");
+  console.log(JSON.stringify({ status: "pass", upstream: `${artifact}@${version}`, backend, checks, evidenceDirectory: work }));
 } finally {
   child.stdin.end();
   if (child.exitCode === null) child.kill("SIGTERM");
