@@ -32,6 +32,25 @@ for a full matrix run. Each run writes JSON, Markdown, and per-case logs under
   native gateway and registry preparation checks, and passing WFP/ETW tests.
   A skipped test fails that validation. Keep this runner off untrusted PRs.
   Cross-builds count as compile evidence.
+
+  To provision the strict lane, add a private Windows Server 2022 or Windows
+  11 x64 self-hosted Actions runner to this repository with the labels
+  `Windows`, `X64`, and `warden-wfp`. Give the runner service administrator
+  rights needed by WFP, AppContainer, ETW, and ACL tests, and keep it on a
+  trusted network with no untrusted pull-request jobs. After the runner is
+  online, set the repository variable `WARDEN_WFP_RUNNER_ENABLED` to `true`.
+  Verify the label and variable before a release run:
+
+  ```sh
+  gh api repos/Prof-bilal/Warden/actions/runners \\
+    --jq '[.runners[] | select(.status == "online") | {name,labels: [.labels[].name]}]'
+  gh variable get WARDEN_WFP_RUNNER_ENABLED --repo Prof-bilal/Warden
+  ```
+
+  A tag or `full_benchmark` dispatch then selects only that labeled runner;
+  the WFP probe, gateway smoke, registry preparation, and ETW tests are
+  required to pass. If the runner or variable is absent, release validation
+  fails instead of silently accepting a hosted-runner skip.
 - **Docker** uses the actual container backend on Linux. Pull the pinned image
   first. The case verifies a positive startup control and a denied read.
 - **Registry** uses exact public package versions from the manifest and real npm,
